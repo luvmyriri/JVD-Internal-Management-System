@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
-import { Mail, Lock, Shield, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Shield, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -14,6 +14,7 @@ export default function Login() {
   const [userId, setUserId] = useState<number | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -63,14 +64,14 @@ export default function Login() {
   return (
     <div className="min-h-screen relative overflow-hidden font-sans">
       {/* Full Page Background Image */}
-      <div 
+      <div
         className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 scale-105"
         style={{ backgroundImage: 'url("/JVDBG.png")' }}
       ></div>
-      
+
       {/* Unified Overlay for Depth & Readability */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-800/80"></div>
-      
+
       {/* Interactive Background Elements */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
         <div className="absolute top-[10%] left-[5%] w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]"></div>
@@ -81,9 +82,9 @@ export default function Login() {
         {/* Left Branding Section (Simplified & Clean) */}
         <div className="lg:w-1/2 flex flex-col items-center justify-center p-12">
           <div className="flex flex-col items-center animate-in fade-in zoom-in duration-1000">
-            <img 
-              src="/JVDlogo-removebg-preview.png" 
-              alt="JVD Logo" 
+            <img
+              src="/JVDlogo-removebg-preview.png"
+              alt="JVD Logo"
               className="h-48 md:h-80 w-auto drop-shadow-[0_20px_50px_rgba(0,0,0,0.5)] mb-8"
             />
             <div className="flex items-center gap-6 w-full max-w-[400px]">
@@ -103,7 +104,7 @@ export default function Login() {
               <form onSubmit={handleCredentials} className="space-y-8">
                 <header className="mb-10">
                   <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    Portal Sign In
+                    JVD ETMS
                   </h1>
                   <p className="text-slate-500 font-medium">
                     Enter your company credentials
@@ -141,22 +142,30 @@ export default function Login() {
                       <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
                         Password
                       </label>
-                      <button type="button" className="text-[11px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider transition-colors">
-                        Forgot?
-                      </button>
                     </div>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                         <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
                       </div>
                       <input
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-14 pr-6 py-5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 rounded-2xl text-slate-700 placeholder-slate-300 font-medium transition-all outline-none"
+                        className="w-full pl-14 pr-14 py-5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 rounded-2xl text-slate-700 placeholder-slate-300 font-medium transition-all outline-none"
                         placeholder="••••••••••••"
                       />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-blue-600 transition-colors"
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-5 w-5" />
+                        ) : (
+                          <Eye className="h-5 w-5" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -168,26 +177,13 @@ export default function Login() {
                 >
                   {isLoading ? 'Processing...' : (
                     <>
-                      Authenticate
+                      Log-in
                       <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}
                 </button>
 
-                {/* 2FA Notice Box */}
-                <div className="mt-10 p-6 bg-blue-50 border border-blue-100 rounded-2xl flex gap-4">
-                  <div className="flex-shrink-0">
-                    <Shield className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <h4 className="text-[11px] font-extrabold text-blue-600 uppercase tracking-wider mb-1">
-                      2FA Required
-                    </h4>
-                    <p className="text-slate-500 text-xs leading-relaxed font-medium">
-                      Google Authenticator verification is mandatory for all office staff.
-                    </p>
-                  </div>
-                </div>
+
               </form>
             ) : (
               <form onSubmit={handleTwoFactor} className="space-y-8">
@@ -246,9 +242,7 @@ export default function Login() {
 
       {/* Version Badge */}
       <div className="absolute bottom-8 left-12 z-20 hidden md:block">
-        <p className="text-[10px] font-bold text-white/20 uppercase tracking-[0.3em]">
-          JVD Internal Management System — v2.7
-        </p>
+
       </div>
     </div>
   );
