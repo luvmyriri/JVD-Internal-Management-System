@@ -35,3 +35,6 @@ backend/bootstrap/cache/*
 # Testing
 coverage/
 .phpunit.result.cache
+Project Adherence/JVD_Development_Guide.pdf
+Project Adherence/JVD_System_Architecture.pdf
+Project Adherence/JVD_Travel_Management_System_Proposal.pdf
