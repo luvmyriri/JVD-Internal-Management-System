@@ -12,12 +12,21 @@ export interface TwoFactorRequest {
   code: string;
 }
 
+export interface ConfirmTwoFactorRequest extends TwoFactorRequest {
+  secret: string;
+}
+
 export interface LoginResponse {
   success: boolean;
   data: {
     user: User;
     token: string;
     requires_2fa: boolean;
+    requires_2fa_setup?: boolean;
+    setup_data?: {
+      qr_code_url: string;
+      secret: string;
+    };
     requires_password_change: boolean;
   };
   message: string;

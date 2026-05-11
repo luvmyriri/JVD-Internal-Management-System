@@ -1,5 +1,5 @@
 import client from './client';
-import type { LoginRequest, LoginResponse, TwoFactorRequest, SetupTwoFactorResponse } from '../types/auth';
+import type { LoginRequest, LoginResponse, TwoFactorRequest, ConfirmTwoFactorRequest, SetupTwoFactorResponse } from '../types/auth';
 
 export const authApi = {
   login: (data: LoginRequest) =>
@@ -7,6 +7,9 @@ export const authApi = {
 
   verifyTwoFactor: (data: TwoFactorRequest) =>
     client.post<LoginResponse>('/auth/2fa/verify', data),
+
+  confirmTwoFactorSetup: (data: ConfirmTwoFactorRequest) =>
+    client.post<LoginResponse>('/auth/2fa/setup', data),
 
   setupTwoFactor: () =>
     client.get<SetupTwoFactorResponse>('/auth/2fa/setup'),
