@@ -18,7 +18,12 @@ export interface LoginResponse {
     user: User;
     token: string;
     requires_2fa: boolean;
+    requires_2fa_setup?: boolean;
     requires_password_change: boolean;
+    setup_data?: {
+      qr_code_url: string;
+      secret: string;
+    };
   };
   message: string;
 }
