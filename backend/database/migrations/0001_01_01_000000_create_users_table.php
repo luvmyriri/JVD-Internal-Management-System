@@ -8,17 +8,27 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * Matches ER diagram: JVD_System_Architecture.pdf § 6.1 — USER entity
      */
     public function up(): void
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
+            $table->string('employee_id')->unique();
             $table->string('email')->unique();
-            $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->enum('role', ['super_admin', 'admin', 'human_resource', 'accounting', 'agent']);
+            $table->string('department')->nullable();
+            $table->text('totp_secret')->nullable();            // Google Authenticator TOTP secret
+            $table->boolean('is_active')->default(true);
+            $table->boolean('must_change_password')->default(true);
+            $table->timestamp('last_login')->nullable();
+            $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -42,8 +52,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('users');
     }
 };
