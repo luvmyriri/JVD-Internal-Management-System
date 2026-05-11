@@ -105,23 +105,28 @@ export default function Sidebar() {
     .filter((section) => section.items.length > 0);
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-900 border-r border-gray-800 flex flex-col z-30">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-30">
       {/* Brand */}
       <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-800 shrink-0">
-        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-          <span className="text-xs font-black text-white">JVD</span>
-        </div>
+        <img
+          src="/JVD 3D.png"
+          alt="JVD Logo"
+          className="h-9 w-auto"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
         <div>
-          <p className="text-sm font-semibold text-gray-100 leading-none">JVD System</p>
+          <p className="text-sm font-bold text-white leading-none">JVD ETMS</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Management Platform</p>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
         {filteredNavigation.map((section) => (
           <div key={section.title}>
-            <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+            <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">
               {section.title}
             </p>
             <ul className="space-y-0.5">
@@ -130,15 +135,15 @@ export default function Sidebar() {
                   <NavLink
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                         isActive
-                          ? 'bg-indigo-500/10 text-indigo-400 font-medium'
+                          ? 'bg-blue-600 text-white font-semibold shadow-sm'
                           : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                       }`
                     }
                   >
-                    <span className="text-base">{item.icon}</span>
-                    {item.label}
+                    <span className="text-base shrink-0">{item.icon}</span>
+                    <span className="truncate">{item.label}</span>
                   </NavLink>
                 </li>
               ))}
@@ -146,6 +151,12 @@ export default function Sidebar() {
           </div>
         ))}
       </nav>
+
+      {/* Footer */}
+      <div className="px-4 py-4 border-t border-gray-800 shrink-0">
+        <p className="text-[10px] text-gray-600 text-center">JVD Events & Travels</p>
+        <p className="text-[10px] text-gray-700 text-center">Management Co. — Confidential</p>
+      </div>
     </aside>
   );
 }

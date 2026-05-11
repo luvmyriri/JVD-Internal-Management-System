@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
@@ -6,7 +6,14 @@ import { Mail, Lock, Shield, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
+
   const [step, setStep] = useState<'credentials' | '2fa' | 'setup-2fa'>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -208,7 +215,7 @@ export default function Login() {
                 >
                   {isLoading ? 'Processing...' : (
                     <>
-                      Log-ins
+                      SIGN IN
                       <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                     </>
                   )}

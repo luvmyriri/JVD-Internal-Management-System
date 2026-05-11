@@ -7,10 +7,10 @@ import Header from './Header';
  */
 export default function PageWrapper() {
   return (
-    <div className="min-h-screen bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
       <Header />
-      <main className="ml-64 p-6">
+      <main className="ml-64 pt-16 p-8 min-h-screen">
         <Outlet />
       </main>
     </div>
