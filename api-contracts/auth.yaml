@@ -1,0 +1,106 @@
+openapi: '3.0.3'
+info:
+  title: JVD Management System - Auth API
+  version: '1.0.0'
+  description: Authentication endpoints including login, 2FA, and session management.
+
+paths:
+  /api/auth/login:
+    post:
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+      responses:
+        '200':
+          description: Credentials valid, 2FA required
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/User' }
+                      requires_2fa: { type: boolean }
+                  message: { type: string }
+
+  /api/auth/2fa/verify:
+    post:
+      summary: Verify TOTP 2FA code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [user_id, code]
+              properties:
+                user_id: { type: integer }
+                code: { type: string, pattern: '^\d{6}$' }
+      responses:
+        '200':
+          description: 2FA verified, session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      user: { $ref: '#/components/schemas/User' }
+                      token: { type: string }
+                  message: { type: string }
+
+  /api/auth/logout:
+    post:
+      summary: Logout and invalidate session
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session invalidated
+
+  /api/auth/me:
+    get:
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user data
+
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        employee_id: { type: string }
+        email: { type: string, format: email }
+        first_name: { type: string }
+        last_name: { type: string }
+        role: { type: string, enum: [super_admin, admin, human_resource, accounting, agent] }
+        department: { type: string }
+        is_active: { type: boolean }
+        last_login: { type: string, format: date-time, nullable: true }
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum

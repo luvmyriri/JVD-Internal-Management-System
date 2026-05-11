@@ -1,0 +1,1 @@
+export { useHasRole } from './useHasRole';

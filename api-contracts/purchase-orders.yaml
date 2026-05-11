@@ -1,0 +1,87 @@
+openapi: '3.0.3'
+info:
+  title: JVD Management System - Purchase Orders API
+  version: '1.0.0'
+  description: P.O. lifecycle with multi-step approval pipeline.
+
+paths:
+  /api/purchase-orders:
+    get:
+      summary: List purchase orders (filtered by role/status)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer, default: 20 } }
+        - { name: status, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Paginated P.O. list
+    post:
+      summary: Create a new P.O. draft
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supplier_id, items]
+              properties:
+                supplier_id: { type: integer }
+                items:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: object
+                    required: [item_name, quantity, unit_price]
+                    properties:
+                      item_name: { type: string }
+                      description: { type: string }
+                      quantity: { type: integer, minimum: 1 }
+                      unit_price: { type: number, minimum: 0 }
+                notes: { type: string }
+      responses:
+        '201':
+          description: P.O. draft created
+
+  /api/purchase-orders/{id}/submit:
+    post:
+      summary: Submit P.O. for accounting review
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      responses:
+        '200':
+          description: Status changed to pending_accounting_review
+
+  /api/purchase-orders/{id}/verify:
+    post:
+      summary: Accounting verifies/rejects the P.O.
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved]
+              properties:
+                approved: { type: boolean }
+                notes: { type: string }
+      responses:
+        '200':
+          description: P.O. verified or rejected
+
+  /api/purchase-orders/{id}/approve:
+    post:
+      summary: CEO final approval of the P.O.
+      parameters: [{ name: id, in: path, required: true, schema: { type: integer } }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [approved]
+              properties:
+                approved: { type: boolean }
+                notes: { type: string }
+      responses:
+        '200':
+          description: P.O. approved or rejected

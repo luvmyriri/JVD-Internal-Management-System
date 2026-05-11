@@ -1,0 +1,38 @@
+openapi: '3.0.3'
+info:
+  title: JVD Management System - Users API
+  version: '1.0.0'
+  description: Account management endpoints.
+
+paths:
+  /api/users:
+    get:
+      summary: List all users (Admin only)
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer } }
+        - { name: role, in: query, schema: { type: string } }
+        - { name: search, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: Paginated user list
+    post:
+      summary: Create a new user account (Admin only)
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, first_name, last_name, role, department]
+              properties:
+                email: { type: string, format: email }
+                first_name: { type: string }
+                last_name: { type: string }
+                role: { type: string, enum: [admin, human_resource, accounting, agent] }
+                department: { type: string }
+      responses:
+        '201':
+          description: User created with temporary password
