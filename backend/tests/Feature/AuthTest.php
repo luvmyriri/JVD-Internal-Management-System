@@ -41,7 +41,7 @@ class AuthTest extends TestCase
                     'requires_2fa_setup' => true,
                 ]
             ])
-            ->assertJsonStructure(['data' => ['token']]);
+            ->assertJsonStructure(['data' => ['setup_data' => ['qr_code_url', 'secret']]]);
     }
 
     public function test_login_with_2fa_returns_requires_2fa_flag_no_token()
@@ -93,18 +93,22 @@ class AuthTest extends TestCase
 
     public function test_setup_2fa()
     {
-        // Must be authenticated to setup 2FA
-        $token = $this->user->createToken('test')->plainTextToken;
+        $google2fa = new Google2FA();
+        $secret = $google2fa->generateSecretKey();
+        $code = $google2fa->getCurrentOtp($secret);
 
-        $response = $this->withHeaders(['Authorization' => "Bearer $token"])
-            ->postJson('/api/auth/2fa/setup');
+        $response = $this->postJson('/api/auth/2fa/setup', [
+            'user_id' => $this->user->id,
+            'secret' => $secret,
+            'code' => $code,
+        ]);
 
         $response->assertStatus(200)
             ->assertJson([
                 'success' => true,
             ])
-            ->assertJsonStructure(['data' => ['qr_code_url', 'secret']]);
+            ->assertJsonStructure(['data' => ['token']]);
 
-        $this->assertNotNull($this->user->fresh()->totp_secret);
+        $this->assertEquals($secret, $this->user->fresh()->totp_secret);
     }
 }
