@@ -60,12 +60,40 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo / Branding */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4">
-            <span className="text-2xl font-black text-white">JVD</span>
+    <div className="min-h-screen relative overflow-hidden font-sans">
+      {/* Full Page Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 scale-110"
+        style={{ backgroundImage: 'url("/JVDBG.png")' }}
+      ></div>
+
+      {/* Unified Overlay for Depth & Readability */}
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-800/80"></div>
+
+      {/* Interactive Background Elements */}
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+        <div className="absolute top-[10%] left-[10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]"></div>
+        <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
+      </div>
+
+      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
+        {/* Left Branding Section (Simplified & Clean) */}
+        <div className="lg:w-1/2 flex flex-col items-center justify-center p-12">
+          <div className="flex flex-col items-center animate-in fade-in zoom-in duration-1000">
+            <div className="">
+              <img
+                src="/JVD 3D.png"
+                alt="JVD Logo"
+                className="h-48 md:h-72 w-auto"
+              />
+            </div>
+            <div className="flex items-center gap-6 w-full max-w-[400px]">
+              <div className="h-[2px] flex-1 bg-white/30"></div>
+              <h2 className="text-2xl md:text-3xl font-black text-white tracking-[0.em] uppercase whitespace-nowrap drop-shadow-lg">
+                Management System
+              </h2>
+              <div className="h-[2px] flex-1 bg-white/30"></div>
+            </div>
           </div>
           <h1 className="text-2xl font-bold text-white">JVD Management System</h1>
           <p className="text-gray-400 mt-1 text-sm">Internal Operations Platform</p>
