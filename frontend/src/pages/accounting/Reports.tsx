@@ -135,15 +135,7 @@ export default function Reports() {
         alternateRowStyles: { 
           fillColor: false 
         },
-        margin: { top: 80 },
-        didDrawPage: (dataArg) => {
-          if (dataArg.pageNumber > 0) {
-            doc.setFontSize(60);
-            doc.setTextColor(249, 250, 251); 
-            doc.setFont("helvetica", "bold");
-            doc.text("JVD INTERNAL", 105, 150, { align: "center", angle: 45 });
-          }
-        }
+        margin: { top: 80 }
       });
 
       // Signature Section
