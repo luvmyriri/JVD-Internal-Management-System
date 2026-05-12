@@ -155,10 +155,12 @@ export default function Dashboard() {
     const [isOpen, setIsOpen] = useState(false);
 
     return (
-      <div className="relative flex items-center">
+      <div 
+        className="relative flex items-center"
+        onMouseEnter={() => setIsOpen(true)}
+        onMouseLeave={() => setIsOpen(false)}
+      >
         <button 
-          onMouseEnter={() => setIsOpen(true)}
-          onMouseLeave={() => setIsOpen(false)}
           onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
           className="p-2 hover:bg-slate-50 text-gray-400 hover:text-blue-600 rounded-xl transition-all opacity-0 group-hover:opacity-100"
         >
@@ -166,11 +168,7 @@ export default function Dashboard() {
         </button>
 
         {isOpen && (
-          <div 
-            onMouseEnter={() => setIsOpen(true)}
-            onMouseLeave={() => setIsOpen(false)}
-            className="absolute top-full right-0 mt-2 w-32 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[100] animate-in fade-in slide-in-from-top-1"
-          >
+          <div className="absolute top-full right-0 mt-1 w-32 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-[100] animate-in fade-in slide-in-from-top-1">
             <button 
               onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}
               className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
