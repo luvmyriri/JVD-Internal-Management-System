@@ -11,19 +11,25 @@ class JobOrder extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'jo_number', 'customer_id', 'bus_id', 'created_by',
+        'jo_number', 'customer_id', 'bus_id',
+        'work_order_id', 'purchase_order_id',
+        'created_by', 'requested_by',
         'service_type', 'status', 'service_date', 'destination',
-        'total_cost', 'notes',
+        'total_cost', 'notes', 'requires_po',
     ];
 
     protected function casts(): array
     {
         return [
             'service_date' => 'date',
-            'total_cost' => 'decimal:2',
+            'total_cost'   => 'decimal:2',
+            'requires_po'  => 'boolean',
         ];
     }
 
+    // ── Relationships ───────────────────────────────────────────────
+
+    /** Customer linked to this JO (nullable for maintenance JOs). */
     public function customer()
     {
         return $this->belongsTo(Customer::class);
@@ -39,6 +45,24 @@ class JobOrder extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /** Who requested this JO (e.g., mechanic requesting vehicle maintenance). */
+    public function requester()
+    {
+        return $this->belongsTo(User::class, 'requested_by');
+    }
+
+    /** The Work Order that spawned this maintenance JO (if applicable). */
+    public function workOrder()
+    {
+        return $this->belongsTo(WorkOrder::class);
+    }
+
+    /** The PO linked to this JO for externally sourced parts (if applicable). */
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
     public function passengers()
     {
         return $this->belongsToMany(Passenger::class, 'job_order_passenger');
@@ -47,5 +71,21 @@ class JobOrder extends Model
     public function legalDocuments()
     {
         return $this->hasMany(LegalDocument::class);
+    }
+
+    // ── Scopes ──────────────────────────────────────────────────────
+
+    /** Only maintenance-type JOs (PMS-driven). */
+    public function scopeMaintenance($query)
+    {
+        return $query->where('service_type', 'maintenance');
+    }
+
+    /** Only travel-type JOs (customer-facing). */
+    public function scopeTravel($query)
+    {
+        return $query->whereIn('service_type', [
+            'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event',
+        ]);
     }
 }

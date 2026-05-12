@@ -73,11 +73,16 @@ class SupplierController extends Controller
     public function update(Request $request, Supplier $supplier): JsonResponse
     {
         $validated = $request->validate([
-            'company_name'   => ['sometimes', 'string', 'max:255', 'unique:suppliers,company_name,' . $supplier->id],
-            'contact_person' => ['nullable', 'string', 'max:150'],
-            'phone'          => ['nullable', 'string', 'max:30'],
-            'email'          => ['nullable', 'email', 'max:255'],
-            'address'        => ['nullable', 'string', 'max:500'],
+            'company_name'        => ['sometimes', 'string', 'max:255', 'unique:suppliers,company_name,' . $supplier->id],
+            'contact_person'      => ['nullable', 'string', 'max:150'],
+            'phone'               => ['nullable', 'string', 'max:30'],
+            'email'               => ['nullable', 'email', 'max:255'],
+            'address'             => ['nullable', 'string', 'max:500'],
+            'payment_terms'       => ['nullable', 'string', 'max:500'],
+            'is_consignment'      => ['sometimes', 'boolean'],
+            'bank_name'           => ['nullable', 'string', 'max:255'],
+            'bank_account_number' => ['nullable', 'string', 'max:100'],
+            'tin_number'          => ['nullable', 'string', 'max:50'],
         ]);
 
         $supplier->update($validated);
@@ -86,6 +91,55 @@ class SupplierController extends Controller
             'success' => true,
             'data'    => new SupplierResource($supplier->fresh()),
             'message' => 'Supplier updated successfully.',
+        ]);
+    }
+
+    /**
+     * Accounting verifies/cross-checks a supplier.
+     * Business Rule: Suppliers must be CROSS AND COUNTER CHECKED before
+     * a PO can be issued against them. (Boss mandate)
+     */
+    public function verify(Request $request, Supplier $supplier): JsonResponse
+    {
+        if ($supplier->is_verified) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Supplier is already verified.',
+            ], 422);
+        }
+
+        $supplier->update([
+            'is_verified'          => true,
+            'verified_by'          => $request->user()->id,
+            'verified_at'          => now(),
+            'accreditation_status' => 'accredited',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new SupplierResource($supplier->fresh()),
+            'message' => "Supplier '{$supplier->company_name}' verified and accredited.",
+        ]);
+    }
+
+    /**
+     * Blacklist a supplier (blocks new POs from being issued to them).
+     */
+    public function blacklist(Request $request, Supplier $supplier): JsonResponse
+    {
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        $supplier->update([
+            'is_verified'          => false,
+            'accreditation_status' => 'blacklisted',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new SupplierResource($supplier->fresh()),
+            'message' => "Supplier '{$supplier->company_name}' has been blacklisted. Reason: {$validated['reason']}",
         ]);
     }
 }

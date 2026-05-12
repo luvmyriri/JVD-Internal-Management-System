@@ -18,6 +18,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['jspdf', 'jspdf-autotable', 'xlsx'],
+    include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
   },
 })
