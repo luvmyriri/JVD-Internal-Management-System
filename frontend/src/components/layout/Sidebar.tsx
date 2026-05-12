@@ -18,6 +18,10 @@ import {
   LuUserCog,
   LuScrollText,
   LuSettings,
+<<<<<<< HEAD
+=======
+  LuCircleUser,
+>>>>>>> c49ea97b7b3363c871c1ca1ff83463005e6a7bfe
 } from 'react-icons/lu';
 import type { UserRole } from '../../types/auth';
 
@@ -79,7 +83,11 @@ const navigation: NavSection[] = [
   {
     title: 'HR',
     items: [
+<<<<<<< HEAD
       { label: 'Employees', path: '/hr/employees', icon: <LuUsers />, roles: ['super_admin', 'admin', 'human_resource'] },
+=======
+      { label: 'Employees', path: '/hr/employees', icon: <LuCircleUser />, roles: ['super_admin', 'admin', 'human_resource'] },
+>>>>>>> c49ea97b7b3363c871c1ca1ff83463005e6a7bfe
     ],
   },
   {

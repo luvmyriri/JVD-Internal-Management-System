@@ -1,15 +1,20 @@
 import client from './client';
-import type { LoginRequest, LoginResponse, TwoFactorRequest, SetupTwoFactorResponse } from '../types/auth';
+import type { LoginRequest, LoginResponse, TwoFactorRequest } from '../types/auth';
 
 export const authApi = {
-  login: (data: LoginRequest) =>
-    client.post<LoginResponse>('/auth/login', data),
+  // Initialize CSRF protection for Sanctum
+  getCsrfCookie: () => client.get('/sanctum/csrf-cookie', { baseURL: import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000' }),
+
+  login: async (data: LoginRequest) => {
+    await authApi.getCsrfCookie();
+    return client.post<LoginResponse>('/auth/login', data);
+  },
 
   verifyTwoFactor: (data: TwoFactorRequest) =>
     client.post<LoginResponse>('/auth/2fa/verify', data),
 
-  setupTwoFactor: () =>
-    client.get<SetupTwoFactorResponse>('/auth/2fa/setup'),
+  confirmSetup: (data: TwoFactorRequest & { secret: string }) =>
+    client.post<LoginResponse>('/auth/2fa/setup', data),
 
   logout: () =>
     client.post('/auth/logout'),

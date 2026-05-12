@@ -9,6 +9,7 @@ const client = axios.create({
     'Accept': 'application/json',
   },
   withCredentials: true,
+  withXSRFToken: true,
 });
 
 // Request interceptor — attach auth token

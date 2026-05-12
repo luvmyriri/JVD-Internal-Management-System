@@ -2,16 +2,17 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
-import { Mail, Lock, Shield, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [step, setStep] = useState<'credentials' | '2fa'>('credentials');
+  const [step, setStep] = useState<'credentials' | '2fa' | 'setup2fa'>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [userId, setUserId] = useState<number | null>(null);
+  const [setupData, setSetupData] = useState<{ qr_code_url: string; secret: string } | null>(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -25,7 +26,11 @@ export default function Login() {
       const response = await authApi.login({ email, password });
       const { data } = response.data;
 
-      if (data.requires_2fa) {
+      if (data.requires_2fa_setup) {
+        setUserId(data.user.id);
+        setSetupData(data.setup_data!);
+        setStep('setup2fa');
+      } else if (data.requires_2fa) {
         setUserId(data.user.id);
         setStep('2fa');
       } else {
@@ -61,113 +66,132 @@ export default function Login() {
     }
   };
 
+  const handleSetupTwoFactor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    try {
+      const response = await authApi.confirmSetup({
+        user_id: userId!,
+        code: totpCode,
+        secret: setupData!.secret,
+      });
+      const { data } = response.data;
+      login(data.token, data.user);
+      navigate('/dashboard');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setError(error.response?.data?.message || 'Invalid code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen relative overflow-hidden font-sans">
-      {/* Full Page Background Image */}
+    <div
+      className="min-h-screen flex font-sans bg-slate-950 relative overflow-hidden"
+    >
+      {/* Background Image with Parallax-like effect */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-transform duration-10000 scale-110"
-        style={{ backgroundImage: 'url("/JVDBG.png")' }}
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
+        style={{ backgroundImage: 'url("/bus-bg.png")' }}
       ></div>
 
-      {/* Unified Overlay for Depth & Readability */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-800/80"></div>
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-slate-900/40 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent pointer-events-none"></div>
 
-      {/* Interactive Background Elements */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
-        <div className="absolute top-[10%] left-[10%] w-96 h-96 bg-blue-500/10 rounded-full blur-[120px]"></div>
-        <div className="absolute bottom-[10%] right-[5%] w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px]"></div>
-      </div>
 
-      <div className="relative z-10 min-h-screen flex flex-col lg:flex-row">
-        {/* Left Branding Section (Simplified & Clean) */}
-        <div className="lg:w-1/2 flex flex-col items-center justify-center p-12">
-          <div className="flex flex-col items-center animate-in fade-in zoom-in duration-1000">
-            <div className="">
-              <img
-                src="/JVD 3D.png"
-                alt="JVD Logo"
-                className="h-48 md:h-72 w-auto"
-              />
-            </div>
-            <div className="flex items-center gap-6 w-full max-w-[400px]">
-              <div className="h-[2px] flex-1 bg-white/30"></div>
-              <h2 className="text-2xl md:text-3xl font-black text-white tracking-[0.em] uppercase whitespace-nowrap drop-shadow-lg">
-                Management System
-              </h2>
-              <div className="h-[2px] flex-1 bg-white/30"></div>
-            </div>
+      <div className="relative z-10 flex flex-col lg:flex-row w-full max-w-7xl mx-auto items-center justify-center lg:justify-between p-6 md:p-12 min-h-screen">
+        {/* Left Branding Section */}
+        <div className="lg:w-1/2 flex flex-col items-center lg:items-center text-center mb-12 lg:mb-0 relative z-10">
+          <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 flex flex-col items-center">
+            <img
+              src="/JVD 3D.png"
+              alt="JVD Logo"
+              className="h-80 md:h-100 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)] mb-4"
+            />
+            <div className="h-px w-48 bg-white/40 mb-6"></div>
           </div>
         </div>
 
-        {/* Right Form Section (Solid White Card) */}
-        <div className="lg:w-1/2 flex items-center justify-center p-6 md:p-12">
-          <div className="w-full max-w-lg bg-white rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.4)] p-10 md:p-16 relative overflow-hidden">
+
+
+        {/* Right Form Section (Premium Card) */}
+        <div className="lg:w-1/2 flex justify-center lg:justify-end w-full max-w-lg relative z-10">
+          <div className="w-full bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]">
             {step === 'credentials' ? (
-              <form onSubmit={handleCredentials} className="space-y-8">
-                <header className="mb-10">
-                  <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    JVD ETMS
-                  </h1>
-                  <p className="text-slate-500 font-medium">
-                    Enter your company credentials
-                  </p>
-                </header>
+              <form onSubmit={handleCredentials} className="space-y-10 animate-in fade-in slide-in-from-right-12 duration-700">
+                <div className="text-left">
+                  <h2 className="text-4xl md:text-[2.75rem] font-display font-black text-slate-900 tracking-tight leading-none">JVD ETMS</h2>
+                  <p className="text-sm text-slate-500 mt-3 font-semibold">Enter your company credentials</p>
+                </div>
+
+
 
                 {error && (
-                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-4 animate-in fade-in slide-in-from-top-2">
+                  <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg text-sm flex items-center shadow-sm">
+                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
                     {error}
                   </div>
                 )}
 
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider ml-1">
+                <div className="space-y-5">
+                  <div>
+                    <label htmlFor="email" className="block text-xs font-bold text-slate-400 mb-2 tracking-wider uppercase">
                       Email Address
                     </label>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <Mail className="h-5 w-5 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-5 text-slate-400 flex items-center h-full pointer-events-none">
+                        <Mail className="w-5 h-5 opacity-60" />
                       </div>
+
                       <input
+                        id="email"
                         type="email"
                         required
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-14 pr-6 py-5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 rounded-2xl text-slate-700 placeholder-slate-300 font-medium transition-all outline-none"
+                        className="w-full pl-14 pr-4 py-5 bg-slate-50/50 border-none rounded-2xl text-slate-900 placeholder-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/5 transition-all duration-300"
                         placeholder="employee@jvdtravels.com"
                       />
+
+
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center px-1">
-                      <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                        Password
-                      </label>
-                    </div>
-                    <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                        <Lock className="h-5 w-5 text-slate-300 group-focus-within:text-blue-600 transition-colors" />
+                  <div>
+                    <label htmlFor="password" className="block text-xs font-bold text-slate-400 mb-2 tracking-wider uppercase">
+                      Password
+                    </label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-5 text-blue-600 flex items-center h-full pointer-events-none">
+                        <Lock className="w-5 h-5" />
                       </div>
+                      <div className="absolute left-12 h-6 w-[1.5px] bg-slate-100 flex items-center"></div>
+
                       <input
+                        id="password"
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-14 pr-14 py-5 bg-slate-50 border-transparent focus:bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-600 rounded-2xl text-slate-700 placeholder-slate-300 font-medium transition-all outline-none"
+                        className="w-full pl-16 pr-12 py-5 bg-white border border-blue-100/50 rounded-2xl text-slate-900 placeholder-slate-200 font-medium focus:outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-200 transition-all duration-300 shadow-sm"
                         placeholder="••••••••••••"
                       />
+
+
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute inset-y-0 right-0 pr-5 flex items-center text-slate-300 hover:text-blue-600 transition-colors"
+                        className="absolute right-5 text-slate-300 hover:text-slate-400 transition-colors"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
+
                     </div>
                   </div>
                 </div>
@@ -175,77 +199,145 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full group flex items-center justify-center gap-3 py-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-500/30 transition-all active:scale-[0.98]"
+                  className="w-full py-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-black tracking-widest rounded-2xl shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-all duration-200 flex justify-center items-center mt-6 uppercase text-sm"
                 >
-                  {isLoading ? 'Processing...' : (
+
+
+                  {isLoading ? (
+                    <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                  ) : (
                     <>
-                      Log-ins
-                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      Sign In <ArrowRight className="ml-2 w-4 h-4" />
                     </>
                   )}
                 </button>
-
-
               </form>
-            ) : (
-              <form onSubmit={handleTwoFactor} className="space-y-8">
-                <header className="mb-10 text-center">
-                  <div className="inline-flex items-center justify-center w-20 h-20 rounded-[2rem] bg-blue-50 mb-6">
-                    <Shield className="h-10 w-10 text-blue-600" />
+            ) : step === 'setup2fa' ? (
+              <form onSubmit={handleSetupTwoFactor} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+                <div className="mb-6 text-center">
+                  <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                    </svg>
                   </div>
-                  <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
-                    2FA Verification
-                  </h1>
-                  <p className="text-slate-500 font-medium">
-                    Enter the 6-digit code from your app
-                  </p>
-                </header>
+                  <h2 className="text-2xl font-bold text-gray-900">Secure Your Account</h2>
+                  <p className="text-sm text-gray-500 mt-2 px-4">Scan the QR code below with your Google Authenticator app.</p>
+                </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-100 text-red-600 text-sm rounded-xl p-4">
+                  <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg text-sm shadow-sm">
                     {error}
                   </div>
                 )}
 
-                <div className="flex justify-center">
+                <div className="flex justify-center bg-gray-50 p-6 rounded-2xl border border-gray-100 mx-auto w-max mb-6 shadow-inner">
+                  <img src={setupData?.qr_code_url} alt="QR Code" className="w-48 h-48 mix-blend-multiply" />
+                </div>
+
+                <div>
+                  <label htmlFor="setup_totp" className="block text-sm font-semibold text-gray-700 mb-2 text-center">
+                    Enter 6-Digit Code
+                  </label>
                   <input
+                    id="setup_totp"
                     type="text"
                     required
                     maxLength={6}
                     pattern="[0-9]{6}"
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
-                    className="w-full max-w-[280px] px-4 py-8 bg-slate-50 border-2 border-transparent focus:border-blue-500 rounded-2xl text-slate-800 text-center text-5xl tracking-[0.4em] font-bold focus:outline-none transition-all shadow-inner"
+                    className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-center text-3xl tracking-[0.5em] font-mono placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
                     placeholder="000000"
                     autoFocus
                   />
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading || totpCode.length !== 6}
-                  className="w-full py-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white text-sm font-bold uppercase tracking-[0.2em] rounded-2xl shadow-xl shadow-blue-500/30 transition-all active:scale-[0.98]"
-                >
-                  {isLoading ? 'Verifying...' : 'Verify Access'}
-                </button>
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isLoading || totpCode.length !== 6}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all duration-200"
+                  >
+                    {isLoading ? 'Verifying...' : 'Complete Setup'}
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); }}
-                  className="w-full py-2 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest transition"
-                >
-                  ← Back to login
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); }}
+                    className="w-full mt-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+                  >
+                    Cancel and return
+                  </button>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleTwoFactor} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+                <div className="mb-6 text-center">
+                  <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900">Two-Factor Auth</h2>
+                  <p className="text-sm text-gray-500 mt-2 px-4">Enter the 6-digit code from your authenticator app.</p>
+                </div>
+
+                {error && (
+                  <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg text-sm shadow-sm">
+                    {error}
+                  </div>
+                )}
+
+                <div className="pt-4">
+                  <label htmlFor="totp" className="block text-sm font-semibold text-gray-700 mb-2 text-center">
+                    Authentication Code
+                  </label>
+                  <input
+                    id="totp"
+                    type="text"
+                    required
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ''))}
+                    className="w-full px-4 py-4 bg-gray-50 border border-gray-200 rounded-xl text-gray-900 text-center text-3xl tracking-[0.5em] font-mono placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all"
+                    placeholder="000000"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="pt-6">
+                  <button
+                    type="submit"
+                    disabled={isLoading || totpCode.length !== 6}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all duration-200"
+                  >
+                    {isLoading ? 'Verifying...' : 'Verify Identity'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setStep('credentials'); setError(''); setTotpCode(''); }}
+                    className="w-full mt-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition"
+                  >
+                    Use a different account
+                  </button>
+                </div>
               </form>
             )}
           </div>
         </div>
       </div>
 
-      {/* Version Badge */}
-      <div className="absolute bottom-8 left-12 z-20 hidden md:block">
-
+      <div className="absolute bottom-8 left-0 right-0 z-10 px-6">
+        <p className="text-center text-[10px] font-bold text-white/40 tracking-[0.3em] uppercase">
+          &copy; 2026 JVD Events and Travels Management Co. <span className="mx-2">|</span> Powered by Enterprise Core
+        </p>
       </div>
+
     </div>
   );
 }
