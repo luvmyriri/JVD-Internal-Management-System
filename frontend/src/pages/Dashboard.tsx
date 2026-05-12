@@ -148,7 +148,7 @@ export default function Dashboard() {
       doc.setFontSize(8);
       doc.setTextColor(148, 163, 184);
       doc.text("UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City, Caloocan, Philippines", 14, 37);
-      doc.text("Contact: +63 976 - 4711 - 294 | www.jvdetms.com", 14, 41);
+      doc.text("Contact: +63 976 - 4711 - 294", 14, 41);
       doc.text("Tel: 02 - 82938068", 14, 45);
 
       doc.setDrawColor(226, 232, 240);
@@ -250,7 +250,7 @@ export default function Dashboard() {
         width: Math.max(headerLen, maxContentLen, 12) + 8 // More generous padding
       };
     });
-    
+
     if (columns[0]) columns[0].width = Math.max(columns[0].width, 35);
     worksheet.columns = columns;
 
@@ -271,7 +271,7 @@ export default function Dashboard() {
 
     // 3. Add the Data Table (Starts at row 8)
     worksheet.getRow(8).values = Object.keys(data[0] || {}).map(k => k.toUpperCase());
-    
+
     data.forEach((item) => {
       worksheet.addRow(item);
     });
@@ -304,13 +304,13 @@ export default function Dashboard() {
             bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
             right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
           };
-          
+
           // Center-align numbers, percentages, and currencies
           const val = String(cell.value || '');
           const isNumeric = !isNaN(Number(cell.value)) || val.includes('%') || val.includes('₱');
-          
-          cell.alignment = { 
-            vertical: 'middle', 
+
+          cell.alignment = {
+            vertical: 'middle',
             horizontal: isNumeric ? 'center' : 'left',
             indent: isNumeric ? 0 : 1 // Slight indent for text
           };
