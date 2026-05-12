@@ -24,8 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\AuditLogger::class,
         ]);
 
-        // Sanctum stateful domain for SPA cookie-based auth
-        $middleware->statefulApi();
+        // NOTE: statefulApi() removed — using Bearer token auth, not SPA cookie auth
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
