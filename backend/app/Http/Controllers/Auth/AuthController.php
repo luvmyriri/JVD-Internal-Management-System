@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use PragmaRX\Google2FA\Google2FA;
+use chillerlan\QRCode\QRCode;
 
 class AuthController extends Controller
 {
@@ -73,11 +74,14 @@ class AuthController extends Controller
 
         // First login — no 2FA yet, require setup immediately.
         $secret = $this->google2fa->generateSecretKey();
-        $qrCodeUrl = $this->google2fa->getQRCodeUrl(
+        $qrCodeUri = $this->google2fa->getQRCodeUrl(
             'JVD Management System',
             $user->email,
             $secret
         );
+
+        // Generate actual QR code image as Base64 data URI
+        $qrCodeBase64 = (new QRCode)->render($qrCodeUri);
 
         return response()->json([
             'success' => true,
@@ -86,7 +90,7 @@ class AuthController extends Controller
                 'requires_2fa' => false,
                 'requires_2fa_setup' => true,
                 'setup_data' => [
-                    'qr_code_url' => $qrCodeUrl,
+                    'qr_code_url' => $qrCodeBase64,
                     'secret' => $secret,
                 ]
             ],
