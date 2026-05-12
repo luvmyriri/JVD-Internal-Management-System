@@ -1,7 +1,5 @@
 import {
-  LuReceipt,
   LuFileText,
-  LuClipboardList,
   LuTrendingUp,
   LuTrendingDown,
   LuDollarSign,
@@ -118,7 +116,7 @@ export default function AccountingOverview() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
                 <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }} />
                 <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                  {[0, 1, 2, 3].map((entry, index) => (
+                  {[0, 1, 2, 3].map((_, index) => (
                     <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][index % 4]} />
                   ))}
                 </Bar>

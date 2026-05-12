@@ -9,7 +9,6 @@ import {
   LuGlobe,
   LuArrowUpRight,
   LuActivity,
-  LuCircle,
 } from 'react-icons/lu';
 import {
   AreaChart,

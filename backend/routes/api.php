@@ -97,7 +97,7 @@ Route::middleware('auth:sanctum')->group(function () {
         // Route::apiResource('passport-cases', PassportCaseController::class);
 
         // Customers & Passengers
-        // Route::apiResource('customers', CustomerController::class);
+        Route::apiResource('customers', App\Http\Controllers\Travel\CustomerController::class);
         // Route::apiResource('passengers', PassengerController::class);
     });
 
@@ -106,7 +106,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,accounting')->group(function () {
         // POS / Billing / Reports
-        // Route::apiResource('billing', BillingController::class);
+        Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
+        Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
     });
 
     // ──────────────────────────────────────

@@ -1,8 +1,7 @@
 import {
   LuShoppingCart,
   LuTruck,
-  LuPackage,
-  LuCheckCircle,
+  LuCheck,
   LuClock,
   LuArrowUpRight,
 } from 'react-icons/lu';
@@ -23,7 +22,7 @@ const stats = [
   { label: 'Active POs', value: '142', change: '+8', positive: true, icon: <LuShoppingCart />, color: 'text-blue-600', bg: 'bg-blue-50' },
   { label: 'Total Suppliers', value: '48', change: '+2', positive: true, icon: <LuTruck />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
   { label: 'Pending Approval', value: '12', change: '-3', positive: true, icon: <LuClock />, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Items Received', value: '1.2K', change: '+15%', positive: true, icon: <LuCheckCircle />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { label: 'Items Received', value: '1.2K', change: '+15%', positive: true, icon: <LuCheck />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
 ];
 
 const categoryData = [
@@ -96,7 +95,7 @@ export default function ProcurementOverview() {
                   paddingAngle={8}
                   dataKey="value"
                 >
-                  {categoryData.map((entry, index) => (
+                  {categoryData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>
