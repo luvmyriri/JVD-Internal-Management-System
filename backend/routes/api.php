@@ -22,10 +22,7 @@ use App\Http\Controllers\Admin\UserController;
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
     Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('auth.2fa.verify');
-<<<<<<< HEAD
-=======
     Route::post('/2fa/setup', [AuthController::class, 'confirmSetup'])->name('auth.2fa.setup');
->>>>>>> c49ea97b7b3363c871c1ca1ff83463005e6a7bfe
 });
 
 // ──────────────────────────────────────────
