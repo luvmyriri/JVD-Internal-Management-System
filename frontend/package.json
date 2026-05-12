@@ -14,6 +14,8 @@
     "@tanstack/react-query": "^5.100.9",
     "axios": "^1.16.0",
     "date-fns": "^4.1.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
     "lucide-react": "^1.14.0",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
@@ -22,6 +24,7 @@
     "react-qr-code": "^2.0.21",
     "react-router-dom": "^7.15.0",
     "recharts": "^3.8.1",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
