@@ -7,11 +7,9 @@ import PageWrapper from './components/layout/PageWrapper';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import AccountingOverview from './pages/accounting/Overview';
 import POS from './pages/accounting/POS';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
-import ProcurementOverview from './pages/procurement/Overview';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
@@ -60,13 +58,11 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
 
               {/* Accounting */}
-              <Route path="/accounting/overview" element={<AccountingOverview />} />
               <Route path="/accounting/pos" element={<POS />} />
               <Route path="/accounting/billing" element={<Billing />} />
               <Route path="/accounting/reports" element={<Reports />} />
 
               {/* Procurement */}
-              <Route path="/procurement/overview" element={<ProcurementOverview />} />
               <Route path="/procurement/purchase-orders" element={<PurchaseOrders />} />
               <Route path="/procurement/job-orders" element={<JobOrders />} />
               <Route path="/procurement/work-orders" element={<WorkOrders />} />

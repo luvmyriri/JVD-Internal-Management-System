@@ -77,6 +77,8 @@ export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  if (!user) return null;
+
   return (
     <div className="space-y-8 pb-12">
       {/* Top Section: Global KPIs & Main Graph */}
@@ -92,10 +94,6 @@ export default function Dashboard() {
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
                 <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Revenue</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-indigo-300" />
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Volume</span>
               </div>
             </div>
           </div>
@@ -117,7 +115,6 @@ export default function Dashboard() {
                   labelStyle={{ fontWeight: 800, color: '#1e293b' }}
                 />
                 <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorMain)" />
-                <Area type="monotone" dataKey="performance" stroke="#818cf8" strokeWidth={2} strokeDasharray="5 5" fill="none" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -144,16 +141,6 @@ export default function Dashboard() {
             </div>
             <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
               <LuUsers className="w-6 h-6" />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Total Operations</p>
-              <h3 className="text-2xl font-black text-gray-900">1,248</h3>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
-              <LuActivity className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -240,25 +227,6 @@ export default function Dashboard() {
               </AreaChart>
             </ResponsiveContainer>
           </div>
-        </div>
-      </div>
-
-      {/* Recent Activity Mini-Section */}
-      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Real-time Operations</h3>
-          <button className="text-[10px] font-bold text-blue-600 uppercase tracking-widest hover:underline">View live log</button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1,2,3,4].map(i => (
-            <div key={i} className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl border border-transparent hover:border-slate-200 transition-colors">
-              <LuCircle className="w-2 h-2 text-blue-500 fill-blue-500" />
-              <div>
-                <p className="text-[11px] font-bold text-gray-700">Operation #{1024 + i}</p>
-                <p className="text-[10px] text-gray-400">Successfully updated by Admin</p>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
