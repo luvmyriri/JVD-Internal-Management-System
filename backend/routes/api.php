@@ -8,6 +8,12 @@ use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\SupplierController;
 use App\Http\Controllers\Procurement\JobOrderController;
 use App\Http\Controllers\Procurement\WorkOrderController;
+use App\Http\Controllers\Travel\CustomerController;
+use App\Http\Controllers\Travel\PassengerController;
+use App\Http\Controllers\Travel\PassportCaseController;
+use App\Http\Controllers\Fleet\BusController;
+use App\Http\Controllers\Fleet\AccreditationController;
+use App\Http\Controllers\Inventory\InventoryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -31,14 +37,16 @@ Route::prefix('auth')->group(function () {
 });
 
 // ──────────────────────────────────────────
-// AUTHENTICATED routes (Sanctum token required)
+// AUTHENTICATED routes (Sanctum + password-change enforcement)
 // ──────────────────────────────────────────
-Route::middleware('auth:sanctum')->group(function () {
+Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function () {
 
     // Auth session management
+    // NOTE: change-password and logout bypass EnforcePasswordChange middleware by route name
     Route::prefix('auth')->group(function () {
-        Route::get('/me',       [AuthController::class, 'me'])->name('auth.me');
-        Route::post('/logout',  [AuthController::class, 'logout'])->name('auth.logout');
+        Route::get('/me',              [AuthController::class, 'me'])->name('auth.me');
+        Route::post('/logout',         [AuthController::class, 'logout'])->name('auth.logout');
+        Route::post('/change-password',[AuthController::class, 'changePassword'])->name('auth.change-password');
     });
 
     // ──────────────────────────────────────
@@ -48,9 +56,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // User Management
         Route::apiResource('users', UserController::class)->except(['destroy']);
-        Route::post('/users/{user}/deactivate',     [UserController::class, 'deactivate'])->name('users.deactivate');
-        Route::post('/users/{user}/activate',        [UserController::class, 'activate'])->name('users.activate');
-        Route::post('/users/{user}/reset-password',  [UserController::class, 'resetPassword'])->name('users.reset-password');
+        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
+        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
 
         // Audit Logs (read-only)
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
@@ -85,11 +93,30 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     // ──────────────────────────────────────
-    // TRAVEL (Super Admin, Admin, Agent)
+    // TRAVEL — Customers, Passengers, Passport Cases
+    // (Super Admin, Admin, Agent)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,agent')->group(function () {
-        // Customers & Passengers
-        Route::apiResource('customers', App\Http\Controllers\Travel\CustomerController::class);
+        Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
+        Route::apiResource('passengers',     PassengerController::class)->except(['destroy']);
+        Route::apiResource('passport-cases', PassportCaseController::class)->except(['destroy']);
+    });
+
+    // ──────────────────────────────────────
+    // FLEET — Buses & Accreditations
+    // (Super Admin, Admin)
+    // ──────────────────────────────────────
+    Route::middleware('role:super_admin,admin')->group(function () {
+        Route::apiResource('buses',          BusController::class)->except(['destroy']);
+        Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
+    });
+
+    // ──────────────────────────────────────
+    // INVENTORY
+    // (Super Admin, Admin, Agent)
+    // ──────────────────────────────────────
+    Route::middleware('role:super_admin,admin,agent')->group(function () {
+        Route::apiResource('inventory', InventoryController::class)->except(['destroy']);
     });
 
     // ──────────────────────────────────────
@@ -108,8 +135,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // HR (Super Admin, Admin, HR)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,human_resource')->group(function () {
-        // Employees — to be implemented
+        // Employees — Sprint 6
     });
 });
-
-

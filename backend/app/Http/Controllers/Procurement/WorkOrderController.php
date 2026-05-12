@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Procurement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWorkOrderRequest;
 use App\Http\Resources\WorkOrderResource;
+use App\Http\Services\MaintenanceService;
 use App\Http\Services\WorkOrderService;
 use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,10 @@ use Illuminate\Http\Request;
 
 class WorkOrderController extends Controller
 {
-    public function __construct(private WorkOrderService $service) {}
+    public function __construct(
+        private WorkOrderService $service,
+        private MaintenanceService $maintenanceService,
+    ) {}
 
     /**
      * List Work Orders — filterable by bus, status, priority.
@@ -75,12 +79,17 @@ class WorkOrderController extends Controller
 
     /**
      * Update a Work Order (status transition or field patch).
+     * When a PMS-auto-generated WO is marked 'completed', triggers
+     * MaintenanceService::recalculateNextService() on the parent bus.
      */
     public function update(Request $request, WorkOrder $workOrder): JsonResponse
     {
+        $wasCompleted = false;
+
         if ($request->filled('status')) {
             try {
                 $workOrder = $this->service->updateStatus($workOrder, $request->status);
+                $wasCompleted = $request->status === 'completed';
             } catch (\InvalidArgumentException $e) {
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             }
@@ -96,6 +105,11 @@ class WorkOrderController extends Controller
 
         $workOrder->update($validated);
 
+        // PMS hook: recalculate bus service schedule when a maintenance WO is completed
+        if ($wasCompleted && $workOrder->auto_generated && $workOrder->bus_id) {
+            $this->maintenanceService->recalculateNextService($workOrder->bus);
+        }
+
         return response()->json([
             'success' => true,
             'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
@@ -103,3 +117,4 @@ class WorkOrderController extends Controller
         ]);
     }
 }
+

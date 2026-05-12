@@ -2,33 +2,64 @@
 
 namespace Database\Factories;
 
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use PragmaRX\Google2FA\Google2FA;
 
+/**
+ * @extends Factory<User>
+ */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
+    protected $model = User::class;
 
-    /**
-     * Define the model's default state.
-     */
     public function definition(): array
     {
         return [
-            'employee_id' => 'EMP-' . $this->faker->unique()->numberBetween(1000, 9999),
-            'first_name' => fake()->firstName(),
-            'last_name' => fake()->lastName(),
-            'email' => fake()->unique()->safeEmail(),
-            'password' => static::$password ??= Hash::make('password'),
-            'role' => fake()->randomElement(['admin', 'human_resource', 'accounting', 'agent']),
-            'department' => fake()->word(),
-            'is_active' => true,
-            'must_change_password' => true,
-            'remember_token' => Str::random(10),
+            'employee_id'          => 'EMP-' . $this->faker->unique()->numerify('####'),
+            'email'                => $this->faker->unique()->safeEmail(),
+            'password'             => Hash::make('password'),
+            'first_name'           => $this->faker->firstName(),
+            'last_name'            => $this->faker->lastName(),
+            'role'                 => $this->faker->randomElement(['admin', 'agent', 'accounting', 'human_resource']),
+            'department'           => $this->faker->randomElement(['Operations', 'Finance', 'HR', 'Administration']),
+            'is_active'            => true,
+            'must_change_password' => false,
+            'totp_secret'          => null,
+            'remember_token'       => Str::random(10),
         ];
     }
+
+    /** State: super admin role. */
+    public function superAdmin(): static
+    {
+        return $this->state(fn() => [
+            'employee_id' => 'SA-' . $this->faker->unique()->numerify('####'),
+            'role'        => 'super_admin',
+            'department'  => 'Administration',
+        ]);
+    }
+
+    /** State: forces password change on next login. */
+    public function mustChangePassword(): static
+    {
+        return $this->state(fn() => ['must_change_password' => true]);
+    }
+
+    /** State: deactivated account. */
+    public function inactive(): static
+    {
+        return $this->state(fn() => ['is_active' => false]);
+    }
+
+    /** State: account with 2FA already enrolled. */
+    public function withTwoFactor(): static
+    {
+        return $this->state(fn() => [
+            'totp_secret' => (new Google2FA())->generateSecretKey(),
+        ]);
+    }
 }
+

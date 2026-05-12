@@ -3,35 +3,91 @@
 namespace App\Http\Controllers\Travel;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreCustomerRequest;
+use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
 {
-    public function index()
+    /**
+     * List customers — searchable by name, email, or phone.
+     */
+    public function index(Request $request): JsonResponse
     {
-        $customers = Customer::orderBy('first_name')->get();
+        $query = Customer::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'ilike', "%{$search}%")
+                  ->orWhere('last_name', 'ilike', "%{$search}%")
+                  ->orWhere('email', 'ilike', "%{$search}%")
+                  ->orWhere('phone', 'like', "%{$search}%");
+            });
+        }
+
+        $customers = $query->orderBy('last_name')
+                           ->paginate($request->per_page ?? 20);
+
         return response()->json([
             'success' => true,
-            'data' => $customers
+            'data'    => CustomerResource::collection($customers),
+            'meta'    => [
+                'current_page' => $customers->currentPage(),
+                'last_page'    => $customers->lastPage(),
+                'per_page'     => $customers->perPage(),
+                'total'        => $customers->total(),
+            ],
         ]);
     }
 
-    public function store(Request $request)
+    /**
+     * Create a new customer.
+     */
+    public function store(StoreCustomerRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'nullable|email',
-            'phone' => 'nullable|string',
-            'address' => 'nullable|string',
-        ]);
-
-        $customer = Customer::create($validated);
+        $customer = Customer::create($request->validated());
 
         return response()->json([
             'success' => true,
-            'data' => $customer
+            'data'    => new CustomerResource($customer),
+            'message' => 'Customer created successfully.',
         ], 201);
+    }
+
+    /**
+     * Get a single customer with their passengers.
+     */
+    public function show(Customer $customer): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data'    => new CustomerResource($customer->load('passengers')),
+        ]);
+    }
+
+    /**
+     * Update customer details.
+     */
+    public function update(Request $request, Customer $customer): JsonResponse
+    {
+        $validated = $request->validate([
+            'first_name' => ['sometimes', 'string', 'max:100'],
+            'last_name'  => ['sometimes', 'string', 'max:100'],
+            'email'      => ['nullable', 'email', 'max:255'],
+            'phone'      => ['nullable', 'string', 'max:30'],
+            'address'    => ['nullable', 'string', 'max:500'],
+            'notes'      => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        $customer->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new CustomerResource($customer->fresh()),
+            'message' => 'Customer updated successfully.',
+        ]);
     }
 }
