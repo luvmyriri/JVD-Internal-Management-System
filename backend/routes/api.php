@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\UserController;
 Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->name('auth.login');
     Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('auth.2fa.verify');
+    Route::post('/2fa/setup', [AuthController::class, 'confirmSetup'])->name('auth.2fa.setup');
 });
 
 // ──────────────────────────────────────────
@@ -33,7 +34,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::get('/me', [AuthController::class, 'me'])->name('auth.me');
         Route::post('/logout', [AuthController::class, 'logout'])->name('auth.logout');
-        Route::post('/2fa/setup', [AuthController::class, 'setup2FA'])->name('auth.2fa.setup');
     });
 
     // ──────────────────────────────────────

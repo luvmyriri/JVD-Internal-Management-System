@@ -71,20 +71,26 @@ class AuthController extends Controller
             ]);
         }
 
-        // First login — no 2FA yet, issue token but flag 2FA setup required
-        $token = $user->createToken('auth-token')->plainTextToken;
-        $user->update(['last_login' => now()]);
+        // First login — no 2FA yet, require setup immediately.
+        $secret = $this->google2fa->generateSecretKey();
+        $qrCodeUrl = $this->google2fa->getQRCodeUrl(
+            'JVD Management System',
+            $user->email,
+            $secret
+        );
 
         return response()->json([
             'success' => true,
             'data' => [
                 'user' => new UserResource($user),
-                'token' => $token,
                 'requires_2fa' => false,
-                'requires_password_change' => $user->must_change_password,
-                'requires_2fa_setup' => !$user->totp_secret,
+                'requires_2fa_setup' => true,
+                'setup_data' => [
+                    'qr_code_url' => $qrCodeUrl,
+                    'secret' => $secret,
+                ]
             ],
-            'message' => 'Login successful.',
+            'message' => 'First time login. Please set up 2FA.',
         ]);
     }
 
@@ -128,37 +134,41 @@ class AuthController extends Controller
     }
 
     /**
-     * Generate 2FA secret and QR code for first-time setup.
-     * Must be authenticated (first login with temp password).
+     * Confirm 2FA setup on first login.
      */
-    public function setup2FA(): JsonResponse
+    public function confirmSetup(Verify2FARequest $request): JsonResponse
     {
-        $user = auth()->user();
+        $user = User::findOrFail($request->user_id);
 
         if ($user->totp_secret) {
-            return response()->json([
-                'success' => false,
-                'message' => '2FA is already configured.',
-            ], 400);
+            return response()->json(['success' => false, 'message' => 'Already setup'], 400);
         }
 
-        $secret = $this->google2fa->generateSecretKey();
-        $qrCodeUrl = $this->google2fa->getQRCodeUrl(
-            'JVD Management System',
-            $user->email,
-            $secret
-        );
+        // The secret is passed from the frontend (which got it from login)
+        $secret = $request->secret;
+        
+        $valid = $this->google2fa->verifyKey($secret, $request->code);
 
-        // Store secret (will be confirmed on first successful verification)
-        $user->update(['totp_secret' => $secret]);
+        if (!$valid) {
+            return response()->json(['success' => false, 'message' => 'Invalid setup code.'], 401);
+        }
+
+        // Save the secret permanently now that we know it works
+        $user->update([
+            'totp_secret' => $secret,
+            'last_login' => now()
+        ]);
+
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'data' => [
-                'qr_code_url' => $qrCodeUrl,
-                'secret' => $secret,
+                'user' => new UserResource($user),
+                'token' => $token,
+                'requires_password_change' => $user->must_change_password,
             ],
-            'message' => 'Scan the QR code with Google Authenticator.',
+            'message' => '2FA Setup Complete.',
         ]);
     }
 

@@ -16,6 +16,7 @@ class Verify2FARequest extends FormRequest
         return [
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'code' => ['required', 'string', 'size:6', 'regex:/^\d{6}$/'],
+            'secret' => ['sometimes', 'required', 'string'],
         ];
     }
 
