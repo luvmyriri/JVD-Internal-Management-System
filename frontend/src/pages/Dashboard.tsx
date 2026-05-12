@@ -159,11 +159,7 @@ export default function Dashboard() {
       doc.text(`Date: ${new Date().toLocaleString()}`, 14, 67);
       doc.text(`Reference ID: JVD-REF-${Math.floor(100000 + Math.random() * 900000)}`, 14, 72);
 
-      // Background Watermark (Page 1)
-      doc.setFontSize(60);
-      doc.setTextColor(249, 250, 251); // Extremely faint
-      doc.setFont("helvetica", "bold");
-      doc.text("JVD INTERNAL", 105, 150, { align: "center", angle: 45 });
+
 
       // Main Data Table
       autoTable(doc, {
