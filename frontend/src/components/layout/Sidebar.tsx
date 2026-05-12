@@ -18,10 +18,7 @@ import {
   LuUserCog,
   LuScrollText,
   LuSettings,
-<<<<<<< HEAD
-=======
   LuCircleUser,
->>>>>>> c49ea97b7b3363c871c1ca1ff83463005e6a7bfe
 } from 'react-icons/lu';
 import type { UserRole } from '../../types/auth';
 
@@ -83,11 +80,7 @@ const navigation: NavSection[] = [
   {
     title: 'HR',
     items: [
-<<<<<<< HEAD
-      { label: 'Employees', path: '/hr/employees', icon: <LuUsers />, roles: ['super_admin', 'admin', 'human_resource'] },
-=======
       { label: 'Employees', path: '/hr/employees', icon: <LuCircleUser />, roles: ['super_admin', 'admin', 'human_resource'] },
->>>>>>> c49ea97b7b3363c871c1ca1ff83463005e6a7bfe
     ],
   },
   {
@@ -138,10 +131,9 @@ export default function Sidebar() {
                   <NavLink
                     to={item.path}
                     className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
-                        isActive
-                          ? 'bg-indigo-500/10 text-indigo-400 font-medium'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${isActive
+                        ? 'bg-indigo-500/10 text-indigo-400 font-medium'
+                        : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                       }`
                     }
                   >
