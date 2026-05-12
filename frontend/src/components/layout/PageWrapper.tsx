@@ -10,7 +10,7 @@ export default function PageWrapper() {
     <div className="min-h-screen bg-gray-50 text-gray-900">
       <Sidebar />
       <Header />
-      <main className="ml-64 pt-16 p-8 min-h-screen">
+      <main className="ml-64 pt-16 px-8 py-6 min-h-screen">
         <Outlet />
       </main>
     </div>

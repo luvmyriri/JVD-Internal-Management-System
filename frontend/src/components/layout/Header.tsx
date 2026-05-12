@@ -1,5 +1,5 @@
 import { useAuth } from '../../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials } from '../../utils';
 import { LuBell, LuChevronDown, LuLogOut } from 'react-icons/lu';
 import { useState } from 'react';
@@ -7,6 +7,7 @@ import { useState } from 'react';
 export default function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
   const handleLogout = async () => {
@@ -18,10 +19,44 @@ export default function Header() {
 
   const initials = getInitials(user.first_name, user.last_name);
 
+  // Determine page title and subtitle based on path
+  const getPageContext = () => {
+    const path = location.pathname;
+    
+    if (path === '/dashboard') {
+      return {
+        title: 'Dashboard',
+        subtitle: `Welcome back, ${user.first_name} ${user.last_name}. Here's what's happening.`
+      };
+    }
+    
+    // Map other paths (simplified)
+    const segments = path.split('/').filter(Boolean);
+    if (segments.length === 0) return { title: '', subtitle: '' };
+
+    const format = (s: string) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+    
+    return {
+      title: format(segments[segments.length - 1]),
+      subtitle: segments.length > 1 ? `Management / ${format(segments[0])}` : 'Internal Management System'
+    };
+  };
+
+  const { title, subtitle } = getPageContext();
+
   return (
     <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-20">
-      {/* Left: page context (empty, page title is in the page itself) */}
-      <div />
+      {/* Left: page context */}
+      <div className="flex flex-col">
+        <h1 className="text-lg font-bold text-gray-900 leading-none tracking-tight">
+          {title}
+        </h1>
+        {subtitle && (
+          <p className="text-[11px] text-gray-500 mt-1 font-medium truncate max-w-[400px]">
+            {subtitle}
+          </p>
+        )}
+      </div>
 
       {/* Right: Notifications + User */}
       <div className="flex items-center gap-3">
@@ -46,14 +81,14 @@ export default function Header() {
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
               <span className="text-xs font-bold text-white">{initials}</span>
             </div>
-            {/* Name & email */}
-            <div className="hidden sm:block text-left">
-              <p className="text-sm font-semibold text-gray-800 leading-none">
-                {user.first_name} {user.last_name}
+            {/* Role Display */}
+            <div className="hidden sm:block text-right mr-1">
+              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest leading-none">
+                {user.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
               </p>
-              <p className="text-[11px] text-gray-400 mt-0.5">{user.email}</p>
+              <p className="text-[11px] text-gray-400 mt-1 font-medium">Authorized Session</p>
             </div>
-            <LuChevronDown className="w-4 h-4 text-gray-400 ml-1" />
+            <LuChevronDown className="w-4 h-4 text-gray-400" />
           </button>
 
           {/* Dropdown */}

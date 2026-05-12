@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
   LuLayoutDashboard,
@@ -19,6 +20,7 @@ import {
   LuScrollText,
   LuSettings,
   LuCircleUser,
+  LuChevronDown,
 } from 'react-icons/lu';
 import type { UserRole } from '../../types/auth';
 
@@ -95,6 +97,20 @@ const navigation: NavSection[] = [
 
 export default function Sidebar() {
   const { user } = useAuth();
+  const location = useLocation();
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    'Overview': true,
+  });
+
+  // Auto-expand section on mount if an item within it is active
+  useEffect(() => {
+    const currentPath = location.pathname;
+    navigation.forEach(section => {
+      if (section.items.some(item => currentPath.startsWith(item.path))) {
+        setExpandedSections(prev => ({ ...prev, [section.title]: true }));
+      }
+    });
+  }, [location.pathname]);
 
   if (!user) return null;
 
@@ -104,6 +120,13 @@ export default function Sidebar() {
       items: section.items.filter((item) => item.roles.includes(user.role)),
     }))
     .filter((section) => section.items.length > 0);
+
+  const toggleSection = (title: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [title]: !prev[title],
+    }));
+  };
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-30">
@@ -124,33 +147,55 @@ export default function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-        {filteredNavigation.map((section) => (
-          <div key={section.title}>
-            <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-              {section.title}
-            </p>
-            <ul className="space-y-0.5">
-              {section.items.map((item) => (
-                <li key={item.path}>
-                  <NavLink
-                    to={item.path}
-                    className={({ isActive }) =>
-                      `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
-                        isActive
-                          ? 'bg-blue-600 text-white font-semibold shadow-sm'
-                          : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
-                      }`
-                    }
-                  >
-                    <span className="text-base shrink-0">{item.icon}</span>
-                    <span className="truncate">{item.label}</span>
-                  </NavLink>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-2">
+        {filteredNavigation.map((section) => {
+          const isExpanded = expandedSections[section.title];
+          const hasMultipleItems = section.items.length > 0; // Most sections have multiple or at least one
+
+          return (
+            <div key={section.title} className="space-y-1">
+              <button
+                onClick={() => toggleSection(section.title)}
+                className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-colors group"
+              >
+                <span>{section.title}</span>
+                {hasMultipleItems && (
+                  <LuChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      isExpanded ? 'rotate-0' : '-rotate-90'
+                    }`}
+                  />
+                )}
+              </button>
+              
+              <div
+                className={`grid transition-all duration-200 ease-in-out ${
+                  isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 overflow-hidden'
+                }`}
+              >
+                <ul className="min-h-0 space-y-0.5 overflow-hidden">
+                  {section.items.map((item) => (
+                    <li key={item.path}>
+                      <NavLink
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                            isActive
+                              ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                              : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                          }`
+                        }
+                      >
+                        <span className="text-base shrink-0">{item.icon}</span>
+                        <span className="truncate">{item.label}</span>
+                      </NavLink>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          );
+        })}
       </nav>
 
       {/* Footer */}
