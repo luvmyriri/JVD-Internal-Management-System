@@ -14,9 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Register custom middleware aliases
         $middleware->alias([
-            'role' => \App\Http\Middleware\CheckRole::class,
-            'audit' => \App\Http\Middleware\AuditLogger::class,
-            'verify.2fa' => \App\Http\Middleware\VerifyTwoFactor::class,
+            'role'                    => \App\Http\Middleware\CheckRole::class,
+            'audit'                   => \App\Http\Middleware\AuditLogger::class,
+            'verify.2fa'              => \App\Http\Middleware\VerifyTwoFactor::class,
+            'enforce.password.change' => \App\Http\Middleware\EnforcePasswordChange::class,
         ]);
 
         // Apply audit logging to all API routes
