@@ -80,69 +80,110 @@ export default function Dashboard() {
   if (!user) return null;
 
   return (
-    <div className="space-y-8 pb-12">
-      {/* Top Section: Global KPIs & Main Graph */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Performance Graph */}
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h2 className="text-xl font-black text-gray-900 tracking-tight">System Overview</h2>
-              <p className="text-xs text-gray-400 font-medium mt-1">Consolidated performance across all branches</p>
+    <div className="space-y-10 pb-12 pt-4">
+      {/* Top Row: Global KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* Total Employees */}
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
+              <LuUsers className="w-6 h-6" />
             </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-600" />
-                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Revenue</span>
-              </div>
+            <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 flex items-center gap-1">
+              <LuArrowUpRight className="w-3 h-3" />
+              +12%
             </div>
           </div>
-          
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={mainChartData}>
-                <defs>
-                  <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }}
-                  labelStyle={{ fontWeight: 800, color: '#1e293b' }}
-                />
-                <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorMain)" />
-              </AreaChart>
-            </ResponsiveContainer>
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Employees</p>
+            <p className="text-3xl font-black text-gray-900">234</p>
           </div>
         </div>
 
-        {/* Global Stats */}
-        <div className="space-y-6">
-          <div className="bg-blue-600 rounded-[2.5rem] p-8 text-white shadow-xl shadow-blue-200 relative overflow-hidden group">
-            <div className="relative z-10">
-              <p className="text-blue-100 text-[10px] font-bold uppercase tracking-[0.2em] mb-2">Total Ecosystem Revenue</p>
-              <h3 className="text-4xl font-black tracking-tight mb-4">₱12.8M</h3>
-              <div className="flex items-center gap-2 bg-blue-500/30 w-fit px-3 py-1.5 rounded-full backdrop-blur-sm">
-                <LuArrowUpRight className="w-4 h-4" />
-                <span className="text-xs font-bold">+24.5% this month</span>
-              </div>
+        {/* Monthly Revenue */}
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 group-hover:scale-110 transition-transform">
+              <LuDollarSign className="w-6 h-6" />
             </div>
-            <LuDollarSign className="absolute -right-4 -bottom-4 w-32 h-32 text-blue-500/20 group-hover:scale-110 transition-transform duration-700" />
+            <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 flex items-center gap-1">
+              <LuArrowUpRight className="w-3 h-3" />
+              +8%
+            </div>
           </div>
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Monthly Revenue</p>
+            <p className="text-3xl font-black text-gray-900">₱2.3M</p>
+          </div>
+        </div>
 
-          <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 flex items-center justify-between">
-            <div>
-              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest mb-1">Active Personnel</p>
-              <h3 className="text-2xl font-black text-gray-900">324</h3>
+        {/* Active Agents */}
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="w-12 h-12 rounded-2xl bg-violet-500 flex items-center justify-center text-white shadow-lg shadow-violet-200 group-hover:scale-110 transition-transform">
+              <LuActivity className="w-6 h-6" />
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center text-slate-400">
-              <LuUsers className="w-6 h-6" />
+            <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 flex items-center gap-1">
+              <LuArrowUpRight className="w-3 h-3" />
+              +5%
             </div>
           </div>
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Active Agents</p>
+            <p className="text-3xl font-black text-gray-900">89</p>
+          </div>
+        </div>
+
+        {/* Total Customers */}
+        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+          <div className="flex items-start justify-between">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-200 group-hover:scale-110 transition-transform">
+              <LuGlobe className="w-6 h-6" />
+            </div>
+            <div className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-600 flex items-center gap-1">
+              <LuArrowUpRight className="w-3 h-3" />
+              +15%
+            </div>
+          </div>
+          <div>
+            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Customers</p>
+            <p className="text-3xl font-black text-gray-900">1,456</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Performance Graph */}
+      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-xl font-black text-gray-900 tracking-tight">System Performance</h2>
+            <p className="text-xs text-gray-400 font-medium mt-1">Consolidated revenue overview in Millions (PHP)</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Revenue</span>
+          </div>
+        </div>
+        
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={mainChartData}>
+              <defs>
+                <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+              <Tooltip 
+                contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }}
+                labelStyle={{ fontWeight: 800, color: '#1e293b' }}
+              />
+              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorMain)" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
