@@ -43,4 +43,10 @@ export const billingApi = {
     items: { service_id: number; quantity: number }[];
     notes?: string;
   }) => client.post('/billing', data),
+  createService: (data: {
+    name: string;
+    category: string;
+    price: number;
+    description: string;
+  }) => client.post('/billing/services', data),
 };

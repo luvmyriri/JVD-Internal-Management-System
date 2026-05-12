@@ -107,6 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:super_admin,accounting')->group(function () {
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
+        Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
     });
 

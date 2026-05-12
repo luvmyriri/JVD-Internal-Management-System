@@ -28,9 +28,6 @@ class BillingController extends Controller
         ]);
     }
 
-    /**
-     * Get active services for POS.
-     */
     public function getServices()
     {
         $services = Service::where('is_active', true)->get();
@@ -39,6 +36,37 @@ class BillingController extends Controller
             'success' => true,
             'data' => $services
         ]);
+    }
+
+    /**
+     * Store a new service.
+     */
+    public function storeService(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'category' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $service = Service::create([
+            'name' => $request->name,
+            'category' => $request->category,
+            'price' => $request->price,
+            'description' => $request->description,
+            'is_active' => true
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service created successfully',
+            'data' => $service
+        ], 201);
     }
 
     /**
