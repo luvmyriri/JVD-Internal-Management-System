@@ -46,7 +46,6 @@ const navigation: NavSection[] = [
   {
     title: 'Accounting',
     items: [
-      { label: 'Overview', path: '/accounting/overview', icon: <LuReceipt />, roles: ['super_admin', 'accounting'] },
       { label: 'POS', path: '/accounting/pos', icon: <LuReceipt />, roles: ['super_admin', 'accounting'] },
       { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />, roles: ['super_admin', 'accounting'] },
       { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'accounting'] },
