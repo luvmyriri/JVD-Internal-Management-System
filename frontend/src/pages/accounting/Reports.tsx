@@ -271,7 +271,7 @@ export default function Reports() {
 
         <div className="flex items-center gap-3">
           <div className="flex bg-white p-1 rounded-2xl border border-gray-100 shadow-sm">
-            {['month', 'year', 'all'].map((r) => (
+            {['day', 'week', 'month', 'year', 'all'].map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}

@@ -18,7 +18,11 @@ class ReportController extends Controller
         $range = $request->range ?? 'month'; // month, year, all
         $query = Invoice::where('status', 'paid');
 
-        if ($range === 'month') {
+        if ($range === 'day') {
+            $query->where('created_at', '>=', Carbon::now()->startOfDay());
+        } elseif ($range === 'week') {
+            $query->where('created_at', '>=', Carbon::now()->startOfWeek());
+        } elseif ($range === 'month') {
             $query->where('created_at', '>=', Carbon::now()->startOfMonth());
         } elseif ($range === 'year') {
             $query->where('created_at', '>=', Carbon::now()->startOfYear());
