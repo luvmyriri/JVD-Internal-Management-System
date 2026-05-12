@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Http\Controllers\Procurement;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreSupplierRequest;
+use App\Http\Resources\SupplierResource;
+use App\Models\Supplier;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class SupplierController extends Controller
+{
+    /**
+     * List all suppliers (searchable).
+     */
+    public function index(Request $request): JsonResponse
+    {
+        $query = Supplier::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('company_name', 'ilike', "%{$search}%")
+                  ->orWhere('contact_person', 'ilike', "%{$search}%")
+                  ->orWhere('email', 'ilike', "%{$search}%");
+            });
+        }
+
+        $suppliers = $query->orderBy('company_name')
+                           ->paginate($request->per_page ?? 20);
+
+        return response()->json([
+            'success' => true,
+            'data'    => SupplierResource::collection($suppliers),
+            'meta'    => [
+                'current_page' => $suppliers->currentPage(),
+                'last_page'    => $suppliers->lastPage(),
+                'per_page'     => $suppliers->perPage(),
+                'total'        => $suppliers->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Create a new supplier.
+     */
+    public function store(StoreSupplierRequest $request): JsonResponse
+    {
+        $supplier = Supplier::create($request->validated());
+
+        return response()->json([
+            'success' => true,
+            'data'    => new SupplierResource($supplier),
+            'message' => 'Supplier created successfully.',
+        ], 201);
+    }
+
+    /**
+     * Get a single supplier.
+     */
+    public function show(Supplier $supplier): JsonResponse
+    {
+        return response()->json([
+            'success' => true,
+            'data'    => new SupplierResource($supplier),
+        ]);
+    }
+
+    /**
+     * Update supplier details.
+     */
+    public function update(Request $request, Supplier $supplier): JsonResponse
+    {
+        $validated = $request->validate([
+            'company_name'   => ['sometimes', 'string', 'max:255', 'unique:suppliers,company_name,' . $supplier->id],
+            'contact_person' => ['nullable', 'string', 'max:150'],
+            'phone'          => ['nullable', 'string', 'max:30'],
+            'email'          => ['nullable', 'email', 'max:255'],
+            'address'        => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $supplier->update($validated);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new SupplierResource($supplier->fresh()),
+            'message' => 'Supplier updated successfully.',
+        ]);
+    }
+}
