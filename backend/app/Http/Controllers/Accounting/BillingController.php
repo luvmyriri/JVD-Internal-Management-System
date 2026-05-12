@@ -16,15 +16,38 @@ class BillingController extends Controller
     /**
      * Display a listing of invoices.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $invoices = Invoice::with(['customer', 'creator', 'items.service'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(15);
+        $query = Invoice::with(['customer', 'creator', 'items.service']);
+
+        // Search
+        if ($request->has('search')) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('invoice_number', 'like', "%$search%")
+                  ->orWhere('customer_name', 'like', "%$search%");
+            });
+        }
+
+        // Filter by Status
+        if ($request->has('status') && $request->status !== 'all') {
+            $query->where('status', $request->status);
+        }
+
+        $invoices = $query->orderBy('created_at', 'desc')
+            ->paginate($request->per_page ?? 15);
+
+        // Calculate Stats for Dashboard
+        $stats = [
+            'total_revenue' => Invoice::where('status', 'paid')->sum('total_amount'),
+            'pending_amount' => Invoice::where('status', 'pending_payment')->sum('total_amount'),
+            'invoice_count' => Invoice::count(),
+        ];
 
         return response()->json([
             'success' => true,
-            'data' => $invoices
+            'data' => $invoices,
+            'stats' => $stats
         ]);
     }
 
@@ -201,6 +224,23 @@ class BillingController extends Controller
 
         return response()->json([
             'success' => true,
+            'data' => $invoice
+        ]);
+    }
+
+    /**
+     * Update invoice status (e.g., mark as paid).
+     */
+    public function updateStatus(Request $request, $id)
+    {
+        $invoice = Invoice::findOrFail($id);
+        $invoice->update([
+            'status' => $request->status,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Invoice status updated successfully',
             'data' => $invoice
         ]);
     }

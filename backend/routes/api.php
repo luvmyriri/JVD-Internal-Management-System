@@ -99,6 +99,8 @@ Route::middleware('auth:sanctum')->group(function () {
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
+        Route::patch('/billing/{billing}/status', [App\Http\Controllers\Accounting\BillingController::class, 'updateStatus'])->name('billing.status.update');
+        Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
     });
 

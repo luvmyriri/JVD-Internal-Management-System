@@ -21,6 +21,7 @@ export interface Invoice {
   id: number;
   invoice_number: string;
   customer_id?: number;
+  customer_name?: string;
   subtotal: number;
   tax_amount: number;
   total_amount: number;
@@ -34,7 +35,8 @@ export interface Invoice {
 
 export const billingApi = {
   getServices: () => client.get('/billing/services'),
-  getInvoices: (page = 1) => client.get(`/billing?page=${page}`),
+  getInvoices: (params: { page?: number; search?: string; status?: string }) => 
+    client.get('/billing', { params }),
   getInvoice: (id: number) => client.get(`/billing/${id}`),
   createInvoice: (data: {
     customer_id?: number | null;
@@ -49,4 +51,8 @@ export const billingApi = {
     price: number;
     description: string;
   }) => client.post('/billing/services', data),
+  updateStatus: (id: number, status: string) => 
+    client.patch(`/billing/${id}/status`, { status }),
+  getReportsSummary: (range = 'month') => 
+    client.get('/billing/reports/summary', { params: { range } }),
 };

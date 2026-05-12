@@ -58,6 +58,7 @@ export default function App() {
               <Route path="/dashboard" element={<Dashboard />} />
 
               {/* Accounting */}
+              <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
               <Route path="/accounting/pos" element={<POS />} />
               <Route path="/accounting/billing" element={<Billing />} />
               <Route path="/accounting/reports" element={<Reports />} />
