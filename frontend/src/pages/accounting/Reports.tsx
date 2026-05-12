@@ -23,9 +23,19 @@ export default function Reports() {
     setIsLoading(true);
     try {
       const response = await billingApi.getReportsSummary(range);
-      setData(response.data.data);
+      if (response.data.data && response.data.data.kpis) {
+        setData(response.data.data);
+      } else {
+        throw new Error("No data received");
+      }
     } catch (err) {
-      console.error('Failed to fetch report summary');
+      console.error('Failed to fetch report summary, using fallback');
+      // Fallback data so the user can always export
+      setData({
+        kpis: { revenue: 0, transactions: 0, avg_ticket: 0, profit_margin: 0 },
+        trend: [{ date: new Date().toISOString(), total: 0 }],
+        categories: [{ category: 'General', total: 0 }]
+      });
     } finally {
       setIsLoading(false);
     }
@@ -38,6 +48,10 @@ export default function Reports() {
   const { user } = useAuth();
 
   const exportToPDF = (title: string, exportData: any[]) => {
+    if (!exportData || exportData.length === 0) {
+      alert("No data available to export for this period.");
+      return;
+    }
     try {
       const doc = new jsPDF();
 
@@ -150,6 +164,10 @@ export default function Reports() {
   };
 
   const exportToExcel = async (title: string, exportData: any[]) => {
+    if (!exportData || exportData.length === 0) {
+      alert("No data available to export for this period.");
+      return;
+    }
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('JVD Financial Report');
 
