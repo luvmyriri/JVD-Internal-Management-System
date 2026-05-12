@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -64,18 +65,47 @@ const branchData = {
   ],
 };
 
-const mainChartData = [
-  { name: 'Jan', revenue: 1.2, performance: 0.8 },
-  { name: 'Feb', revenue: 1.5, performance: 1.1 },
-  { name: 'Mar', revenue: 1.3, performance: 0.9 },
-  { name: 'Apr', revenue: 1.8, performance: 1.4 },
-  { name: 'May', revenue: 2.1, performance: 1.7 },
-  { name: 'Jun', revenue: 2.3, performance: 1.9 },
-];
+  const mainChartData = {
+    Day: [
+      { name: '8 AM', revenue: 100000 },
+      { name: '10 AM', revenue: 300000 },
+      { name: '12 PM', revenue: 500000 },
+      { name: '2 PM', revenue: 400000 },
+      { name: '4 PM', revenue: 800000 },
+      { name: '6 PM', revenue: 600000 },
+    ],
+    Week: [
+      { name: 'Mon', revenue: 1200000 },
+      { name: 'Tue', revenue: 1500000 },
+      { name: 'Wed', revenue: 1100000 },
+      { name: 'Thu', revenue: 1800000 },
+      { name: 'Fri', revenue: 2100000 },
+      { name: 'Sat', revenue: 2300000 },
+      { name: 'Sun', revenue: 1900000 },
+    ],
+    Month: [
+      { name: 'Jan', revenue: 1200000 },
+      { name: 'Feb', revenue: 1500000 },
+      { name: 'Mar', revenue: 1300000 },
+      { name: 'Apr', revenue: 1800000 },
+      { name: 'May', revenue: 2100000 },
+      { name: 'Jun', revenue: 2300000 },
+    ],
+    Year: [
+      { name: '2021', revenue: 10500000 },
+      { name: '2022', revenue: 12800000 },
+      { name: '2023', revenue: 15200000 },
+      { name: '2024', revenue: 18500000 },
+      { name: '2025', revenue: 22100000 },
+      { name: '2026', revenue: 12800000 },
+    ],
+  };
 
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const [activeFilter, setActiveFilter] = useState<keyof typeof mainChartData>('Month');
 
   if (!user) return null;
 
@@ -154,20 +184,37 @@ export default function Dashboard() {
 
       {/* Main Performance Graph */}
       <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <h2 className="text-xl font-black text-gray-900 tracking-tight">System Performance</h2>
             <p className="text-xs text-gray-400 font-medium mt-1">Consolidated revenue overview in Millions (PHP)</p>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
-            <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Revenue</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+              {(['Day', 'Week', 'Month', 'Year'] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    activeFilter === filter
+                      ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200/50'
+                      : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 px-3">
+              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Revenue</span>
+            </div>
           </div>
         </div>
         
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mainChartData}>
+            <AreaChart data={mainChartData[activeFilter]} key={activeFilter}>
               <defs>
                 <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
@@ -176,12 +223,30 @@ export default function Dashboard() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+              <YAxis 
+                axisLine={false} 
+                tickLine={false} 
+                tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
+                domain={[0, 'auto']}
+                tickFormatter={(value) => {
+                  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                  if (value >= 1000) return `${(value / 1000)}K`;
+                  return value;
+                }}
+              />
               <Tooltip 
                 contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }}
                 labelStyle={{ fontWeight: 800, color: '#1e293b' }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorMain)" />
+              <Area 
+                type="monotone" 
+                dataKey="revenue" 
+                stroke="#3b82f6" 
+                strokeWidth={4} 
+                fillOpacity={1} 
+                fill="url(#colorMain)"
+                animationDuration={800}
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
