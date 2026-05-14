@@ -7,6 +7,7 @@ import {
 } from 'react-icons/lu';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
+import AddressSelector, { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/AddressSelector';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -38,6 +39,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
     address: '', payment_terms: '', is_consignment: false,
     bank_name: '', bank_account_number: '', tin_number: '',
   });
+  const [addressVal, setAddressVal] = useState<AddressValue>(EMPTY_ADDRESS);
 
   const mutation = useMutation({
     mutationFn: () => supplierApi.create(form),
@@ -106,9 +108,22 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
               {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX', val => setForm(p => ({ ...p, phone: formatPhone(val) })))}
               {field('Email', 'email', 'email', 'supplier@example.com', val => setForm(p => ({ ...p, email: formatEmail(val) })))}
             </div>
-            {field('Address', 'address', 'text', 'Street, City, Province')}
 
-            <div className="pt-6 mt-6 border-t border-gray-100">
+            {/* Address — PSGC cascading */}
+            <div className="pt-4 mt-2 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Address</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <AddressSelector
+                  value={addressVal}
+                  onChange={(val, full) => {
+                    setAddressVal(val);
+                    setForm(p => ({ ...p, address: full }));
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="pt-6 mt-4 border-t border-gray-100">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Financial / Compliance</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {field('TIN Number', 'tin_number', 'text', '000-000-000-000', val => setForm(p => ({ ...p, tin_number: formatTIN(val) })))}
