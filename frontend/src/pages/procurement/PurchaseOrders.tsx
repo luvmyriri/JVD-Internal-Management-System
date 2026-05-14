@@ -117,69 +117,72 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-[2rem]">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
-            <h2 className="text-xl font-black text-gray-900">Create Purchase Order</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Only accredited suppliers are available for selection.</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create Purchase Order</h2>
+            <p className="text-sm text-gray-500 mt-1">Only accredited suppliers are available for selection.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
         </div>
 
-        <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="p-8 space-y-6">
-          {/* Supplier */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Supplier *</label>
-            <div className="relative">
-              <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">Select accredited supplier...</option>
-                {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
-              </select>
-              <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <div className="p-8 overflow-y-auto">
+          <form id="po-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-8">
+            {/* Supplier */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Supplier *</label>
+              <div className="relative">
+                <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                  <option value="">Select accredited supplier...</option>
+                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+                </select>
+                <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+              {suppliers.length === 0 && (
+                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100"><LuTriangleAlert size={14} /> No accredited suppliers yet. Verify a supplier first.</p>
+              )}
             </div>
-            {suppliers.length === 0 && (
-              <p className="text-xs text-amber-600 mt-1 flex items-center gap-1"><LuTriangleAlert size={12} /> No accredited suppliers yet. Verify a supplier first.</p>
+
+            {/* Line Items */}
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Line Items *</label>
+                <button type="button" onClick={addItem} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"><LuPlus size={14} /> Add Item</button>
+              </div>
+              <div className="space-y-4">
+                {items.map((item, i) => <LineItemRow key={i} item={item} index={i} onChange={updateItem} onRemove={removeItem} />)}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
+              <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional instructions or notes..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+            </div>
+
+            {/* Total */}
+            <div className="flex items-center justify-between bg-blue-50/50 rounded-2xl px-6 py-5 border border-blue-100">
+              <span className="text-sm font-bold text-blue-700 uppercase tracking-wider">Total Amount</span>
+              <span className="text-2xl font-black text-blue-700">{fmt(total)}</span>
+            </div>
+
+            {mutation.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">Failed to create PO. Please check all required fields.</p>
             )}
-          </div>
+          </form>
+        </div>
 
-          {/* Line Items */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Line Items *</label>
-              <button type="button" onClick={addItem} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"><LuPlus size={12} /> Add Item</button>
-            </div>
-            <div className="space-y-3">
-              {items.map((item, i) => <LineItemRow key={i} item={item} index={i} onChange={updateItem} onRemove={removeItem} />)}
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Notes</label>
-            <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional instructions or notes..."
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-
-          {/* Total */}
-          <div className="flex items-center justify-between bg-blue-50 rounded-2xl px-6 py-4 border border-blue-100">
-            <span className="text-sm font-bold text-blue-700">Total Amount</span>
-            <span className="text-xl font-black text-blue-700">{fmt(total)}</span>
-          </div>
-
-          {mutation.isError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">Failed to create PO. Please check all required fields.</p>
-          )}
-
-          <div className="flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={!canSubmit || mutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition">
-              {mutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuFileText size={14} />}
-              Create Draft PO
-            </button>
-          </div>
-        </form>
+        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+            Cancel
+          </button>
+          <button form="po-form" type="submit" disabled={!canSubmit || mutation.isPending}
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50">
+            {mutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuFileText size={16} />} Create Draft PO
+          </button>
+        </div>
       </div>
     </div>
   );

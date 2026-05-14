@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuTruck, LuPlus, LuSearch, LuShieldCheck, LuShieldX,
   LuBan, LuPhone, LuMail, LuMapPin, LuX, LuLoaderCircle,
-  LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash,
+  LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash, LuChevronDown
 } from 'react-icons/lu';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
@@ -44,68 +44,122 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); onClose(); },
   });
 
-  const field = (label: string, key: keyof SupplierFormData, type = 'text', placeholder = '') => (
+  const formatTIN = (val: string) => {
+    const digits = val.replace(/\D/g, '').slice(0, 12);
+    const parts = [];
+    for (let i = 0; i < digits.length; i += 3) {
+      parts.push(digits.slice(i, i + 3));
+    }
+    return parts.join('-');
+  };
+
+  const formatBankAcc = (val: string) => val.replace(/[^\d-]/g, '');
+
+  const formatPhone = (val: string) => {
+    let digits = val.replace(/\D/g, '');
+    if (digits.startsWith('63')) digits = digits.slice(2);
+    else if (digits.startsWith('0')) digits = digits.slice(1);
+    
+    digits = digits.slice(0, 10);
+    
+    if (digits.length === 0) return '';
+    if (digits.length <= 3) return `+63 ${digits}`;
+    if (digits.length <= 6) return `+63 ${digits.slice(0, 3)} ${digits.slice(3)}`;
+    return `+63 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
+  };
+
+  const formatName = (val: string) => val.replace(/[^a-zA-Z\s.,'-]/g, '');
+  
+  const formatEmail = (val: string) => val.replace(/\s/g, '').toLowerCase();
+
+  const field = (label: string, key: keyof SupplierFormData, type = 'text', placeholder = '', customOnChange?: (val: string) => void) => (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
+      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
       <input
         type={type}
         value={form[key] as string ?? ''}
-        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+        onChange={e => {
+          if (customOnChange) customOnChange(e.target.value);
+          else setForm(p => ({ ...p, [key]: e.target.value }));
+        }}
         placeholder={placeholder}
-        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-100">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
-            <h2 className="text-xl font-black text-gray-900">New Supplier</h2>
-            <p className="text-sm text-gray-500 mt-0.5">All suppliers undergo cross-verification before PO issuance.</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Supplier</h2>
+            <p className="text-sm text-gray-500 mt-1">All suppliers undergo cross-verification before PO issuance.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="p-8 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.')}
-            {field('Contact Person', 'contact_person', 'text', 'Juan Dela Cruz')}
-            {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX')}
-            {field('Email', 'email', 'email', 'supplier@example.com')}
-          </div>
-          {field('Address', 'address', 'text', 'Street, City, Province')}
-
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Financial / Compliance</p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {field('TIN Number', 'tin_number', 'text', '000-000-000-000')}
-              {field('Bank Name', 'bank_name', 'text', 'BDO, BPI, Metrobank...')}
-              {field('Bank Account Number', 'bank_account_number', 'text', '0000-0000-0000')}
-              {field('Payment Terms', 'payment_terms', 'text', 'e.g. Net 30, Monthly, COD')}
+        <div className="p-8 overflow-y-auto">
+          <form id="supplier-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.')}
+              {field('Contact Person', 'contact_person', 'text', 'Juan Dela Cruz', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
+              {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX', val => setForm(p => ({ ...p, phone: formatPhone(val) })))}
+              {field('Email', 'email', 'email', 'supplier@example.com', val => setForm(p => ({ ...p, email: formatEmail(val) })))}
             </div>
-            <div className="mt-3 flex items-center gap-2">
-              <input type="checkbox" id="is_consignment" checked={form.is_consignment}
-                onChange={e => setForm(p => ({ ...p, is_consignment: e.target.checked }))}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
-              <label htmlFor="is_consignment" className="text-sm text-gray-700">Consignment arrangement</label>
-            </div>
-          </div>
+            {field('Address', 'address', 'text', 'Street, City, Province')}
 
-          {mutation.isError && (
-            <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-2">
-              Failed to create supplier. Please check required fields.
-            </p>
-          )}
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={!form.company_name || mutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2">
-              {mutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />}
-              Create Supplier
-            </button>
-          </div>
-        </form>
+            <div className="pt-6 mt-6 border-t border-gray-100">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Financial / Compliance</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {field('TIN Number', 'tin_number', 'text', '000-000-000-000', val => setForm(p => ({ ...p, tin_number: formatTIN(val) })))}
+                {field('Bank Name', 'bank_name', 'text', 'BDO, BPI, Metrobank...', val => setForm(p => ({ ...p, bank_name: formatName(val) })))}
+                {field('Bank Account Number', 'bank_account_number', 'text', '0000-0000-0000', val => setForm(p => ({ ...p, bank_account_number: formatBankAcc(val) })))}
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Terms</label>
+                  <div className="relative">
+                    <select
+                      value={form.payment_terms}
+                      onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white"
+                    >
+                      <option value="">Select Terms...</option>
+                      <option value="COD">COD (Cash on Delivery)</option>
+                      <option value="Net 15">Net 15</option>
+                      <option value="Net 30">Net 30</option>
+                      <option value="Net 60">Net 60</option>
+                      <option value="Monthly">Monthly</option>
+                      <option value="Upon Order">Upon Order</option>
+                    </select>
+                    <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-6 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                <input type="checkbox" id="is_consignment" checked={form.is_consignment}
+                  onChange={e => setForm(p => ({ ...p, is_consignment: e.target.checked }))}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+                <label htmlFor="is_consignment" className="text-sm font-medium text-blue-900 cursor-pointer select-none">Consignment arrangement</label>
+              </div>
+            </div>
+
+            {mutation.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">
+                Failed to create supplier. Please check required fields.
+              </p>
+            )}
+          </form>
+        </div>
+        
+        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+            Cancel
+          </button>
+          <button form="supplier-form" type="submit" disabled={!form.company_name || mutation.isPending}
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
+            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
+            Create Supplier
+          </button>
+        </div>
       </div>
     </div>
   );

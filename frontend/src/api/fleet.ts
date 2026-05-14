@@ -1,24 +1,26 @@
 import client from './client';
+import type { Bus, BusFormData } from '../types/inventory';
+import type { PaginatedResponse } from '../types/procurement';
 
 export const fleetApi = {
   list: (params?: Record<string, unknown>) =>
-    client.get('/fleet', { params }),
+    client.get<PaginatedResponse<Bus>>('/buses', { params }),
 
   get: (id: number) =>
-    client.get(`/fleet/${id}`),
+    client.get<{ success: boolean; data: Bus }>(`/buses/${id}`),
 
-  create: (data: Record<string, unknown>) =>
-    client.post('/fleet', data),
+  create: (data: BusFormData) =>
+    client.post<{ success: boolean; data: Bus }>('/buses', data),
 
-  update: (id: number, data: Record<string, unknown>) =>
-    client.put(`/fleet/${id}`, data),
+  update: (id: number, data: Partial<BusFormData>) =>
+    client.put<{ success: boolean; data: Bus }>(`/buses/${id}`, data),
 
   delete: (id: number) =>
-    client.delete(`/fleet/${id}`),
+    client.delete(`/buses/${id}`),
 
   getMaintenanceHistory: (id: number) =>
-    client.get(`/fleet/${id}/maintenance-history`),
+    client.get(`/buses/${id}/maintenance-history`),
 
   getPmsStatus: (id: number) =>
-    client.get(`/fleet/${id}/pms-status`),
+    client.get(`/buses/${id}/pms-status`),
 };

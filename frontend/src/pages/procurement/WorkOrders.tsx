@@ -124,46 +124,58 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
   });
   const f = (label: string, key: keyof WorkOrderFormData, type = 'text') => (
     <div>
-      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</label>
-      <input type={type} value={(form[key] as string | number) ?? ''} onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
+      <input type={type} value={(form[key] as string | number) || ''} onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder={`Enter ${label.replace(' *', '').replace(' (User ID)', '').toLowerCase()}...`} />
     </div>
   );
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="font-black text-gray-900">Request Work Order</h2>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={18} /></button>
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Request Work Order</h2>
+            <p className="text-sm text-gray-500 mt-1">Submit a maintenance or repair request for a fleet vehicle.</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
-          {f('Bus ID *', 'bus_id', 'number')}
-          {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Priority</label>
-            <div className="relative">
-              <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as WorkOrderFormData['priority'] }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="routine">Routine</option>
-                <option value="urgent">Urgent</option>
-                <option value="critical">Critical</option>
-              </select>
-              <LuChevronDown size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        
+        <div className="p-8 overflow-y-auto">
+          <form id="wo-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              {f('Bus ID *', 'bus_id', 'number')}
+              {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
             </div>
-          </div>
-          <div>
-            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description *</label>
-            <textarea rows={3} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition">
-              {mutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />} Submit Request
-            </button>
-          </div>
-        </form>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Priority Level</label>
+              <div className="relative">
+                <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as WorkOrderFormData['priority'] }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                  <option value="routine">Routine</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="critical">Critical</option>
+                </select>
+                <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detailed Description *</label>
+              <textarea rows={4} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Describe the issue, symptoms, or maintenance required..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+            </div>
+          </form>
+        </div>
+
+        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+            Cancel
+          </button>
+          <button form="wo-form" type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50">
+            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />} Submit Request
+          </button>
+        </div>
       </div>
     </div>
   );
