@@ -30,13 +30,15 @@ return new class extends Migration
             $table->index('approved_by');
         });
 
-        // PostgreSQL: add new enum values to the existing type
-        // The status column was defined inline (not as a named type), so we
-        // alter the column using a string type with a CHECK constraint workaround.
-        DB::statement("ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS work_orders_status_check");
-        DB::statement("ALTER TABLE work_orders ADD CONSTRAINT work_orders_status_check CHECK (status IN (
-            'pending_approval', 'open', 'in_progress', 'completed', 'cancelled'
-        ))");
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            // PostgreSQL: add new enum values to the existing type
+            // The status column was defined inline (not as a named type), so we
+            // alter the column using a string type with a CHECK constraint workaround.
+            DB::statement("ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS work_orders_status_check");
+            DB::statement("ALTER TABLE work_orders ADD CONSTRAINT work_orders_status_check CHECK (status IN (
+                'pending_approval', 'open', 'in_progress', 'completed', 'cancelled'
+            ))");
+        }
     }
 
     public function down(): void
@@ -47,9 +49,11 @@ return new class extends Migration
             $table->dropColumn(['approved_by', 'approved_at', 'approval_notes']);
         });
 
-        DB::statement("ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS work_orders_status_check");
-        DB::statement("ALTER TABLE work_orders ADD CONSTRAINT work_orders_status_check CHECK (status IN (
-            'open', 'in_progress', 'completed'
-        ))");
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE work_orders DROP CONSTRAINT IF EXISTS work_orders_status_check");
+            DB::statement("ALTER TABLE work_orders ADD CONSTRAINT work_orders_status_check CHECK (status IN (
+                'open', 'in_progress', 'completed'
+            ))");
+        }
     }
 };

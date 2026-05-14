@@ -45,58 +45,68 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
 
   const field = (label: string, key: keyof Accreditation, type = 'text', placeholder = '') => (
     <div>
-      <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">{label}</label>
+      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
       <input
         type={type}
         value={form[key] as string ?? ''}
         onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl">
-        <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-100">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
-            <h2 className="text-xl font-black text-gray-900">New Accreditation</h2>
-            <p className="text-sm text-gray-500 mt-0.5">Initialize a new entity accreditation process.</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Accreditation</h2>
+            <p className="text-sm text-gray-500 mt-1">Initialize a new entity accreditation process.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
         </div>
-        <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="p-8 space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Entity Type</label>
-              <select
-                value={form.entity_type}
-                onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
-                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition bg-white"
-              >
-                <option value="supplier">Supplier</option>
-                <option value="partner">Partner</option>
-                <option value="client">Client</option>
-                <option value="driver">Driver</option>
-                <option value="bus">Bus</option>
-              </select>
+        <div className="p-8 overflow-y-auto">
+          <form id="accreditation-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Entity Type</label>
+                <select
+                  value={form.entity_type}
+                  onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white"
+                >
+                  <option value="supplier">Supplier</option>
+                  <option value="partner">Partner</option>
+                  <option value="client">Client</option>
+                  <option value="driver">Driver</option>
+                  <option value="bus">Bus</option>
+                </select>
+              </div>
+              {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name')}
+              {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
+              {field('Contact Person', 'contact_person', 'text', 'Primary Contact')}
+              {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
             </div>
-            {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name')}
-            {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
-            {field('Contact Person', 'contact_person', 'text', 'Primary Contact')}
-            {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
-          </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
-            <button type="submit" disabled={!form.entity_name || !form.contact_email || mutation.isPending}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2">
-              {mutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />}
-              Create Accreditation
-            </button>
-          </div>
-        </form>
+            {mutation.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">
+                Failed to create accreditation. Please check required fields.
+              </p>
+            )}
+          </form>
+        </div>
+
+        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+            Cancel
+          </button>
+          <button form="accreditation-form" type="submit" disabled={!form.entity_name || !form.contact_email || mutation.isPending}
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
+            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
+            Create Accreditation
+          </button>
+        </div>
       </div>
     </div>
   );

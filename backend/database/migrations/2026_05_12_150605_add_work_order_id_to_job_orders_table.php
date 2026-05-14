@@ -39,10 +39,12 @@ return new class extends Migration
         });
 
         // PostgreSQL: extend service_type enum using CHECK constraint
-        DB::statement("ALTER TABLE job_orders DROP CONSTRAINT IF EXISTS job_orders_service_type_check");
-        DB::statement("ALTER TABLE job_orders ADD CONSTRAINT job_orders_service_type_check CHECK (service_type IN (
-            'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event', 'maintenance'
-        ))");
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE job_orders DROP CONSTRAINT IF EXISTS job_orders_service_type_check");
+            DB::statement("ALTER TABLE job_orders ADD CONSTRAINT job_orders_service_type_check CHECK (service_type IN (
+                'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event', 'maintenance'
+            ))");
+        }
     }
 
     public function down(): void
@@ -55,9 +57,11 @@ return new class extends Migration
             $table->dropColumn(['work_order_id', 'purchase_order_id', 'requested_by', 'requires_po']);
         });
 
-        DB::statement("ALTER TABLE job_orders DROP CONSTRAINT IF EXISTS job_orders_service_type_check");
-        DB::statement("ALTER TABLE job_orders ADD CONSTRAINT job_orders_service_type_check CHECK (service_type IN (
-            'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event'
-        ))");
+        if (DB::connection()->getDriverName() !== 'sqlite') {
+            DB::statement("ALTER TABLE job_orders DROP CONSTRAINT IF EXISTS job_orders_service_type_check");
+            DB::statement("ALTER TABLE job_orders ADD CONSTRAINT job_orders_service_type_check CHECK (service_type IN (
+                'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event'
+            ))");
+        }
     }
 };
