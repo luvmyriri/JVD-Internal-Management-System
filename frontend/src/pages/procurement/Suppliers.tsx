@@ -229,7 +229,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
 
   return (
     <>
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-lg transition-all p-6 flex flex-col gap-4">
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
@@ -243,7 +243,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
           <AccreditationBadge status={supplier.accreditation_status} />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="space-y-2.5">
           {supplier.phone && (
             <div className="flex items-center gap-2 text-xs text-gray-600"><LuPhone size={12} className="text-gray-400" />{supplier.phone}</div>
           )}
@@ -325,7 +325,7 @@ export default function Suppliers() {
   const meta = data?.data?.meta;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -343,7 +343,7 @@ export default function Suppliers() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
@@ -356,7 +356,7 @@ export default function Suppliers() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1 bg-gray-100/50 p-1 rounded-[1.25rem] border border-gray-100">
+        <div className="flex gap-1.5 bg-gray-100/50 p-1.5 rounded-[1.5rem] border border-gray-100">
           {(['all', 'accredited', 'pending', 'blacklisted'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-5 py-2 rounded-[1rem] text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -381,7 +381,7 @@ export default function Suppliers() {
           <p className="text-sm font-medium">No suppliers found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           {suppliers.map(s => <SupplierCard key={s.id} supplier={s} />)}
         </div>
       )}

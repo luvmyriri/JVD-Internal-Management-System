@@ -37,7 +37,7 @@ export default function PMS() {
   const paginatedBuses = priorityBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -50,32 +50,32 @@ export default function PMS() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-            <LuTriangleAlert size={24} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
+        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex items-center gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
+            <LuTriangleAlert size={28} />
           </div>
           <div>
-            <div className="text-3xl font-black text-gray-900">{overdueBuses.length}</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-1">Overdue for Service</div>
+            <div className="text-4xl font-black text-gray-900 leading-none">{overdueBuses.length}</div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Overdue for Service</div>
           </div>
         </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <LuClock size={24} />
+        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex items-center gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+            <LuClock size={28} />
           </div>
           <div>
-            <div className="text-3xl font-black text-gray-900">{upcomingBuses.length}</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-1">Due within 7 Days</div>
+            <div className="text-4xl font-black text-gray-900 leading-none">{upcomingBuses.length}</div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Due within 7 Days</div>
           </div>
         </div>
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <LuCircleCheckBig size={24} />
+        <div className="bg-white rounded-[2rem] p-8 border border-gray-100 shadow-sm flex items-center gap-6">
+          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <LuCircleCheckBig size={28} />
           </div>
           <div>
-            <div className="text-3xl font-black text-gray-900">{healthyBuses.length}</div>
-            <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mt-1">Healthy Fleet</div>
+            <div className="text-4xl font-black text-gray-900 leading-none">{healthyBuses.length}</div>
+            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Healthy Fleet</div>
           </div>
         </div>
       </div>
@@ -95,13 +95,13 @@ export default function PMS() {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-white text-gray-500 font-semibold border-b border-gray-100">
+            <thead className="bg-white text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
               <tr>
-                <th className="px-6 py-4">Bus Details</th>
-                <th className="px-6 py-4">Current Status</th>
-                <th className="px-6 py-4">Last Serviced</th>
-                <th className="px-6 py-4">Next Service Due</th>
-                <th className="px-6 py-4 text-center">Action</th>
+                <th className="px-8 py-5">Bus Details</th>
+                <th className="px-8 py-5">Current Status</th>
+                <th className="px-8 py-5">Last Serviced</th>
+                <th className="px-8 py-5">Next Service Due</th>
+                <th className="px-8 py-5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -114,38 +114,40 @@ export default function PMS() {
                 </tr>
               ) : (
                 paginatedBuses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{bus.plate_number}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{bus.model}</div>
+                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50/50 last:border-0">
+                    <td className="px-8 py-6">
+                      <div className="font-bold text-gray-900 text-base">{bus.plate_number}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        bus.status === 'in_service' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                        bus.status === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                        'bg-amber-50 text-amber-700 border-amber-200'
+                    <td className="px-8 py-6">
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
+                        bus.status === 'in_service' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-200/20' :
+                        bus.status === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-200/20' :
+                        'bg-amber-50 text-amber-700 border-amber-200 shadow-sm shadow-amber-200/20'
                       } border`}>
                         {bus.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 font-medium text-gray-600">
-                      {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : 'Never'}
+                    <td className="px-8 py-6 font-medium text-gray-600">
+                      <div className="text-gray-900 font-bold">{bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : 'Never'}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-6">
                       {bus.next_service_due ? (
-                        <div className={`font-bold ${bus.is_service_overdue ? 'text-red-600' : 'text-amber-600'}`}>
-                          {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
-                          <div className="text-xs font-medium opacity-70 mt-0.5">
+                        <div>
+                          <div className={`font-black text-base ${bus.is_service_overdue ? 'text-red-600' : 'text-amber-600'}`}>
+                            {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
+                          </div>
+                          <div className={`text-[10px] font-black uppercase tracking-widest mt-1 opacity-70 ${bus.is_service_overdue ? 'text-red-500' : 'text-amber-500'}`}>
                             {bus.is_service_overdue ? 'Overdue' : 'Upcoming'}
                           </div>
                         </div>
                       ) : (
-                        <span className="text-gray-400">Not scheduled</span>
+                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Not scheduled</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <button className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs font-bold hover:bg-blue-100 transition mx-auto border border-blue-100">
-                        <LuWrench size={12} /> Log Maintenance
+                    <td className="px-8 py-6 text-center">
+                      <button className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition mx-auto border border-blue-100 shadow-sm shadow-blue-200/20">
+                        <LuWrench size={14} /> Log Maintenance
                       </button>
                     </td>
                   </tr>

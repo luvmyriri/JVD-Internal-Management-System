@@ -292,19 +292,25 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
 function PORow({ po, onClick }: { po: PurchaseOrder; onClick: () => void }) {
   return (
-    <tr onClick={onClick} className="cursor-pointer transition-colors border-b border-gray-50/50">
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0"><LuFileText size={14} /></div>
-          <span className="font-mono text-sm font-bold text-gray-900">{po.po_number}</span>
+    <tr onClick={onClick} className="cursor-pointer hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-blue-200/20 group-hover:bg-white group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
+          <span className="font-black text-gray-900 tracking-tight">{po.po_number}</span>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-700">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</td>
-      <td className="px-6 py-4"><StatusBadge status={po.status} /></td>
-      <td className="px-6 py-4 text-sm font-bold text-gray-900">{fmt(po.total_amount)}</td>
-      <td className="px-6 py-4 text-xs text-gray-400">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-1 text-gray-400 hover:text-blue-600 text-sm font-medium transition">View <LuArrowRight size={13} /></div>
+      <td className="px-8 py-6 text-sm font-bold text-gray-700">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</td>
+      <td className="px-8 py-6"><StatusBadge status={po.status} /></td>
+      <td className="px-8 py-6">
+        <div className="text-gray-900 font-black text-base">{fmt(po.total_amount)}</div>
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
+      </td>
+      <td className="px-8 py-6">
+        <div className="text-gray-700 font-medium text-xs">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Date Issued</div>
+      </td>
+      <td className="px-8 py-6">
+        <div className="flex items-center justify-end gap-2 text-gray-400 group-hover:text-blue-600 text-xs font-black uppercase tracking-widest transition-all">View Details <LuArrowRight size={14} /></div>
       </td>
     </tr>
   );
@@ -336,7 +342,7 @@ export default function PurchaseOrders() {
   const statuses = ['', 'draft', 'pending_accounting_review', 'verified', 'pending_ceo_approval', 'approved', 'rejected'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -354,18 +360,18 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Pipeline legend */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+      <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
         {['Draft', 'Accounting Review', 'Verified', 'CEO Approval', 'Approved'].map((s, i, arr) => (
-          <div key={s} className="flex items-center gap-2 shrink-0">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">{s}</span>
-            {i < arr.length - 1 && <LuArrowRight size={12} className="text-gray-300" />}
+          <div key={s} className="flex items-center gap-4 shrink-0">
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 whitespace-nowrap">{s}</span>
+            {i < arr.length - 1 && <LuArrowRight size={14} className="text-gray-200" />}
           </div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
@@ -379,10 +385,10 @@ export default function PurchaseOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-4 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
             {statuses.map(s => <option key={s} value={s}>{s ? PO_STATUS_LABELS[s] : 'All Statuses'}</option>)}
           </select>
-          <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
       </div>
 
@@ -397,10 +403,10 @@ export default function PurchaseOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50/50 border-b border-gray-100">
               <tr>
                 {['PO Number', 'Supplier', 'Status', 'Amount', 'Date', ''].map(h => (
-                  <th key={h} className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{h}</th>
+                  <th key={h} className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>

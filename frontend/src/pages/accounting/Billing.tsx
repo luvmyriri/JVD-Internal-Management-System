@@ -101,7 +101,7 @@ export default function Billing() {
             <LuTrendingUp className="text-emerald-500 w-5 h-5" />
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Revenue</p>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.total_revenue?.toLocaleString() || '0'}</h3>
+          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.total_revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</h3>
         </div>
 
         <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm group hover:shadow-xl transition-all">
@@ -112,7 +112,7 @@ export default function Billing() {
             <span className="text-[10px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-lg tracking-tighter">Outstanding</span>
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Pending Amount</p>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.pending_amount?.toLocaleString() || '0'}</h3>
+          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.pending_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</h3>
         </div>
 
         <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm group hover:shadow-xl transition-all">
@@ -218,7 +218,7 @@ export default function Billing() {
                       </p>
                     </td>
                     <td className="px-8 py-6">
-                      <p className="text-lg font-black text-gray-900 dark:text-white">₱{Number(invoice.total_amount).toLocaleString()}</p>
+                      <p className="text-lg font-black text-gray-900 dark:text-white">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </td>
                     <td className="px-8 py-6">
                       <StatusBadge status={invoice.status} />
@@ -396,7 +396,7 @@ export default function Billing() {
                         <p className="text-[10px] text-gray-400 font-medium uppercase">{item.service?.category}</p>
                       </td>
                       <td className="py-5 text-center font-bold text-gray-600">{item.quantity}</td>
-                      <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString()}</td>
+                      <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -406,15 +406,15 @@ export default function Billing() {
                 <div className="w-64 space-y-3">
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>Subtotal</span>
-                    <span className="text-gray-900">₱{Number(selectedInvoice.subtotal).toLocaleString()}</span>
+                    <span className="text-gray-900">₱{Number(selectedInvoice.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>Tax (12%)</span>
-                    <span className="text-gray-900">₱{Number(selectedInvoice.tax_amount).toLocaleString()}</span>
+                    <span className="text-gray-900">₱{Number(selectedInvoice.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
                     <span className="text-sm font-black text-gray-900 uppercase">Total</span>
-                    <span className="text-2xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString()}</span>
+                    <span className="text-2xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
