@@ -8,6 +8,7 @@ import {
 import { workOrderApi } from '../../api/workOrders';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -227,9 +228,16 @@ export default function WorkOrders() {
   const [showCreate, setShowCreate] = useState(false);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['work-orders', search, status],
-    queryFn: () => workOrderApi.list({ search: search || undefined, status: status || undefined }),
+    queryKey: ['work-orders', search, status, page],
+    queryFn: () => workOrderApi.list({ 
+      search: search || undefined, 
+      status: status || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -316,6 +324,16 @@ export default function WorkOrders() {
 
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
       {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

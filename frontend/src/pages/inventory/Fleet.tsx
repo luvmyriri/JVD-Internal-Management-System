@@ -4,6 +4,7 @@ import {
   LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuUser
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
+import { Pagination } from '../../components/ui';
 import type { Bus, BusFormData } from '../../types/inventory';
 import { userApi } from '../../api/users'; // To get drivers
 
@@ -151,9 +152,16 @@ export default function Fleet() {
   const [showModal, setShowModal] = useState(false);
   const [editingBus, setEditingBus] = useState<Bus | undefined>();
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['buses', search, statusFilter],
-    queryFn: () => fleetApi.list({ search: search || undefined, status: statusFilter || undefined }),
+    queryKey: ['buses', search, statusFilter, page],
+    queryFn: () => fleetApi.list({ 
+      search: search || undefined, 
+      status: statusFilter || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -275,6 +283,16 @@ export default function Fleet() {
       </div>
 
       {showModal && <BusModal bus={editingBus} onClose={() => setShowModal(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

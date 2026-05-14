@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  LuFileText, LuPlus, LuSearch, LuSettings, LuX, LuLoaderCircle, LuSend
+  LuPlus, LuSearch, LuSettings, LuX, LuLoaderCircle, LuSend
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
+import { Pagination } from '../../components/ui';
 import { fleetApi } from '../../api/fleet';
 import { format, parseISO } from 'date-fns';
 
@@ -134,27 +135,28 @@ export default function BusAccreditation() {
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingAcc, setEditingAcc] = useState<Accreditation | undefined>();
+  const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['accreditations'],
-    queryFn: accreditationsApi.getAll,
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['accreditations', 'bus', search, page],
+    queryFn: () => accreditationsApi.list({ 
+      entity_type: 'bus', 
+      search: search || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
-  const allAccreditations = data ?? [];
-  const busAccreditations = allAccreditations.filter(a => a.entity_type === 'bus');
-
-  const filtered = busAccreditations.filter(a => 
-    (a.entity_name?.toLowerCase() || '').includes(search.toLowerCase()) || 
-    (a.accreditation_type?.toLowerCase() || '').includes(search.toLowerCase())
-  );
+  const busAccreditations = response?.data?.data ?? [];
+  const meta = response?.data?.meta;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
-            {filtered.length} Records
+            {meta?.total ?? '0'} Records
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
             Compliance & Legal Registry
@@ -200,15 +202,8 @@ export default function BusAccreditation() {
                     Loading compliance records...
                   </td>
                 </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <LuFileText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                    No compliance records found.
-                  </td>
-                </tr>
               ) : (
-                filtered.map(acc => (
+                busAccreditations.map(acc => (
                   <tr key={acc.id} className="transition-colors border-b border-gray-50/50">
                     <td className="px-6 py-4 font-bold text-gray-900">{acc.entity_name}</td>
                     <td className="px-6 py-4 font-medium text-gray-600">{acc.accreditation_type}</td>
@@ -249,6 +244,16 @@ export default function BusAccreditation() {
       </div>
 
       {showModal && <BusAccreditationModal accreditation={editingAcc} onClose={() => setShowModal(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

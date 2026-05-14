@@ -1,4 +1,5 @@
-import axios from 'axios';
+import client from './client';
+import type { PaginatedResponse } from '../types/procurement';
 
 export interface Accreditation {
   id: number;
@@ -21,23 +22,15 @@ export interface Accreditation {
 }
 
 export const accreditationsApi = {
-  getAll: async () => {
-    const response = await axios.get('/api/accreditations');
-    return response.data.data as Accreditation[];
-  },
+  list: (params?: Record<string, unknown>) =>
+    client.get<PaginatedResponse<Accreditation>>('/accreditations', { params }),
 
-  create: async (data: Partial<Accreditation>) => {
-    const response = await axios.post('/api/accreditations', data);
-    return response.data as Accreditation;
-  },
+  create: (data: Partial<Accreditation>) =>
+    client.post<Accreditation>('/accreditations', data),
 
-  update: async (id: number, data: Partial<Accreditation>) => {
-    const response = await axios.put(`/api/accreditations/${id}`, data);
-    return response.data as Accreditation;
-  },
+  update: (id: number, data: Partial<Accreditation>) =>
+    client.put<Accreditation>(`/accreditations/${id}`, data),
 
-  generateKycLink: async (id: number) => {
-    const response = await axios.post(`/api/accreditations/${id}/generate-kyc`);
-    return response.data as { message: string, link: string, email_sent_to: string };
-  }
+  generateKycLink: (id: number) =>
+    client.post<{ message: string, link: string, email_sent_to: string }>(`/accreditations/${id}/generate-kyc`),
 };

@@ -9,6 +9,7 @@ import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { supplierApi } from '../../api/suppliers';
 import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../types/procurement';
 import { PO_STATUS_LABELS } from '../../constants';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -316,10 +317,16 @@ export default function PurchaseOrders() {
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['purchase-orders', search, status],
-    queryFn: () => purchaseOrderApi.list({ search: search || undefined, status: status || undefined }),
+    queryKey: ['purchase-orders', search, status, page],
+    queryFn: () => purchaseOrderApi.list({ 
+      search: search || undefined, 
+      status: status || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -406,6 +413,16 @@ export default function PurchaseOrders() {
 
       {showCreate && <CreatePOModal onClose={() => setShowCreate(false)} />}
       {selectedPO && <PODetailModal po={selectedPO} onClose={() => setSelectedPO(null)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

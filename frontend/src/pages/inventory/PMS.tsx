@@ -4,10 +4,13 @@ import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock, LuLoaderCircle
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
+import { Pagination } from '../../components/ui';
 import { format, parseISO } from 'date-fns';
 
 export default function PMS() {
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const itemsPerPage = 10;
 
   // Fetch all buses to see overall PMS status, but we will mostly focus on overdue
   const { data, isLoading } = useQuery({
@@ -29,6 +32,9 @@ export default function PMS() {
     if (!b.next_service_due) return -1;
     return new Date(a.next_service_due).getTime() - new Date(b.next_service_due).getTime();
   });
+
+  const totalPages = Math.ceil(priorityBuses.length / itemsPerPage);
+  const paginatedBuses = priorityBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <div className="space-y-6">
@@ -106,15 +112,8 @@ export default function PMS() {
                     Loading PMS data...
                   </td>
                 </tr>
-              ) : priorityBuses.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                    <LuCircleCheckBig size={32} strokeWidth={1.5} className="mx-auto mb-3 text-emerald-300" />
-                    No buses require immediate maintenance!
-                  </td>
-                </tr>
               ) : (
-                priorityBuses.map(bus => (
+                paginatedBuses.map(bus => (
                   <tr key={bus.id} className="hover:bg-blue-50/30 transition-colors">
                     <td className="px-6 py-4">
                       <div className="font-bold text-gray-900">{bus.plate_number}</div>
@@ -156,6 +155,15 @@ export default function PMS() {
           </table>
         </div>
       </div>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={totalPages}
+          total={priorityBuses.length}
+          perPage={itemsPerPage}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

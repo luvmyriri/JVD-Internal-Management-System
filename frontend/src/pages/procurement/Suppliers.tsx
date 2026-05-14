@@ -8,6 +8,7 @@ import {
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
 import AddressSelector, { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/AddressSelector';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -307,10 +308,16 @@ export default function Suppliers() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'accredited' | 'pending' | 'blacklisted'>('all');
   const [showAdd, setShowAdd] = useState(false);
+  const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['suppliers', search, filter],
-    queryFn: () => supplierApi.list({ search: search || undefined, accreditation_status: filter !== 'all' ? filter : undefined }),
+    queryKey: ['suppliers', search, filter, page],
+    queryFn: () => supplierApi.list({ 
+      search: search || undefined, 
+      accreditation_status: filter !== 'all' ? filter : undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -380,6 +387,16 @@ export default function Suppliers() {
       )}
 
       {showAdd && <AddSupplierModal onClose={() => setShowAdd(false)} />}
+      
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
 import { jobOrderApi } from '../../api/jobOrders';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -205,9 +206,17 @@ export default function JobOrders() {
   const [serviceType, setServiceType] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['job-orders', search, status, serviceType],
-    queryFn: () => jobOrderApi.list({ search: search || undefined, status: status || undefined, service_type: serviceType || undefined }),
+    queryKey: ['job-orders', search, status, serviceType, page],
+    queryFn: () => jobOrderApi.list({ 
+      search: search || undefined, 
+      status: status || undefined, 
+      service_type: serviceType || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -293,6 +302,16 @@ export default function JobOrders() {
       </div>
 
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

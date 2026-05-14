@@ -5,6 +5,7 @@ import {
   LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
+import { Pagination } from '../../components/ui';
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   supplier: <LuBuilding2 size={16} />,
@@ -118,7 +119,8 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
   const qc = useQueryClient();
   const kycMutation = useMutation({
     mutationFn: () => accreditationsApi.generateKycLink(acc.id),
-    onSuccess: (data) => {
+    onSuccess: (res) => {
+      const data = res.data;
       alert(`KYC Link Generated!\n\nEmail sent to: ${data.email_sent_to}\nLink: ${data.link}`);
       qc.invalidateQueries({ queryKey: ['accreditations'] });
     },
@@ -182,15 +184,19 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
 export default function Accreditations() {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
-  const { data: accreditations, isLoading } = useQuery({
-    queryKey: ['accreditations'],
-    queryFn: accreditationsApi.getAll,
+  const [page, setPage] = useState(1);
+
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['accreditations', search, page],
+    queryFn: () => accreditationsApi.list({ 
+      search: search || undefined,
+      page,
+      per_page: 10
+    }),
   });
 
-  const filtered = accreditations?.filter(a => 
-    a.entity_name.toLowerCase().includes(search.toLowerCase()) ||
-    a.contact_email.toLowerCase().includes(search.toLowerCase())
-  ) ?? [];
+  const accreditations = response?.data?.data ?? [];
+  const meta = response?.data?.meta;
 
   return (
     <div className="space-y-6">
@@ -198,7 +204,7 @@ export default function Accreditations() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
-            {filtered.length} Records
+            {meta?.total ?? '0'} Records
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
             KYC & Compliance Management
@@ -228,7 +234,7 @@ export default function Accreditations() {
           <LuLoaderCircle size={32} className="animate-spin text-blue-600" />
           <p className="text-sm text-gray-500 font-medium">Loading accreditations...</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : accreditations.length === 0 ? (
         <div className="bg-white rounded-[2rem] border border-gray-100 border-dashed flex flex-col items-center justify-center py-24 text-center px-4">
           <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-4">
             <LuShieldCheck size={28} />
@@ -238,8 +244,18 @@ export default function Accreditations() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filtered.map(acc => <AccreditationCard key={acc.id} acc={acc} />)}
+          {accreditations.map(acc => <AccreditationCard key={acc.id} acc={acc} />)}
         </div>
+      )}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
       )}
 
       {showAdd && <AddAccreditationModal onClose={() => setShowAdd(false)} />}

@@ -4,6 +4,7 @@ import {
   LuPackage, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuArrowDownToLine
 } from 'react-icons/lu';
 import { inventoryApi } from '../../api/inventory';
+import { Pagination } from '../../components/ui';
 import type { InventoryItem, InventoryItemFormData } from '../../types/inventory';
 
 // ── Add/Edit Item Modal ──────────────────────────────────────────────────────
@@ -119,9 +120,17 @@ export default function Supplies() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['inventory', search, categoryFilter, lowStockOnly],
-    queryFn: () => inventoryApi.list({ search: search || undefined, category: categoryFilter || undefined, low_stock: lowStockOnly ? true : undefined }),
+    queryKey: ['inventory', search, categoryFilter, lowStockOnly, page],
+    queryFn: () => inventoryApi.list({ 
+      search: search || undefined, 
+      category: categoryFilter || undefined, 
+      low_stock: lowStockOnly ? true : undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -240,6 +249,16 @@ export default function Supplies() {
       </div>
 
       {showModal && <ItemModal item={editingItem} onClose={() => setShowModal(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }
