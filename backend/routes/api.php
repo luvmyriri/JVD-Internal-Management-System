@@ -12,7 +12,7 @@ use App\Http\Controllers\Travel\CustomerController;
 use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Fleet\BusController;
-use App\Http\Controllers\Fleet\AccreditationController;
+use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Inventory\InventoryController;
 
 /*
@@ -35,6 +35,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('auth.2fa.verify');
     Route::post('/2fa/setup',  [AuthController::class, 'confirmSetup'])->name('auth.2fa.setup');
 });
+
+// Public KYC route
+Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->name('accreditations.submit-kyc');
 
 // ──────────────────────────────────────────
 // AUTHENTICATED routes (Sanctum + password-change enforcement)
@@ -122,11 +125,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // FLEET — Buses & Accreditations
+    // FLEET & ACCREDITATIONS
     // (Super Admin, Admin)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::apiResource('buses',          BusController::class)->except(['destroy']);
+        
+        Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
     });
 

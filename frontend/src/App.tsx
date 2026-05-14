@@ -10,6 +10,7 @@ import Dashboard from './pages/Dashboard';
 import POS from './pages/accounting/POS';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
+import ProcurementOverview from './pages/procurement/Overview';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
@@ -27,6 +28,7 @@ import Employees from './pages/hr/Employees';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
+import KycSubmission from './pages/KycSubmission';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -46,6 +48,7 @@ export default function App() {
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />
+            <Route path="/kyc-submission" element={<KycSubmission />} />
 
             {/* Authenticated */}
             <Route
@@ -64,6 +67,8 @@ export default function App() {
               <Route path="/accounting/reports" element={<Reports />} />
 
               {/* Procurement */}
+              <Route path="/procurement" element={<Navigate to="/procurement/overview" replace />} />
+              <Route path="/procurement/overview" element={<ProcurementOverview />} />
               <Route path="/procurement/purchase-orders" element={<PurchaseOrders />} />
               <Route path="/procurement/job-orders" element={<JobOrders />} />
               <Route path="/procurement/work-orders" element={<WorkOrders />} />

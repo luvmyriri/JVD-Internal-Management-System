@@ -15,7 +15,6 @@ import {
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
-import { customerApi } from '../../api/customers';
 
 interface CartItem {
   service: Service;
@@ -25,7 +24,6 @@ interface CartItem {
 export default function POS() {
   // State
   const [services, setServices] = useState<Service[]>([]);
-  const [customers, setCustomers] = useState<any[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -50,12 +48,10 @@ export default function POS() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [servicesRes, customersRes] = await Promise.all([
-          billingApi.getServices(),
-          customerApi.list()
+        const [servicesRes] = await Promise.all([
+          billingApi.getServices()
         ]);
         setServices(servicesRes.data.data);
-        setCustomers(customersRes.data.data || []);
       } catch (err) {
         console.error('Failed to fetch POS data:', err);
       } finally {
