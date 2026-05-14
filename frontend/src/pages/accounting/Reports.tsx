@@ -281,7 +281,7 @@ export default function Reports() {
                 onClick={() => setRange(r)}
                 className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   range === r 
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                  ? 'bg-white text-gray-900 shadow-sm' 
                   : 'text-gray-400 hover:text-gray-900'
                 }`}
               >
