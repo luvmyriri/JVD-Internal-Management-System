@@ -58,15 +58,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // ADMINISTRATION (Super Admin + Admin)
+    // ADMINISTRATION (Super Admin + Admin + HR)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin')->group(function () {
-
-        // User Management
-        Route::apiResource('users', UserController::class)->except(['destroy']);
-        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
-        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
 
         // Audit Logs (read-only)
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
@@ -167,6 +161,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // HR (Super Admin, Admin, HR)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,human_resource')->group(function () {
-        // Employees — Sprint 6
+        // User/Employee Management
+        Route::apiResource('users', UserController::class)->except(['destroy']);
+        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
+        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     });
 });

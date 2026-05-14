@@ -42,7 +42,7 @@ class AuthController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
+        if (!$user || !\Hash::check($request->password, $user->password)) {
             RateLimiter::hit($key, 60);
             return response()->json([
                 'success' => false,

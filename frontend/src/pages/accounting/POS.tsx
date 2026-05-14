@@ -62,7 +62,8 @@ export default function POS() {
     name: '',
     category: 'Travel',
     description: '',
-    price: 0
+    price: 0,
+    image_url: ''
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
 
@@ -238,7 +239,6 @@ export default function POS() {
                 </button>
               ))}
             </div>
-
             {(user?.role === 'super_admin' || user?.role === 'admin') && (
               <button 
                 onClick={() => setShowAddService(true)}
@@ -290,6 +290,8 @@ export default function POS() {
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                     <p className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-sm">View</p>
                   </div>
+                </div>
+              </div>
                 </div>
               </div>
 
@@ -764,6 +766,16 @@ export default function POS() {
                   onChange={e => setNewService({...newService, description: e.target.value})}
                 />
               </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Image URL</label>
+                <input 
+                  type="text" 
+                  placeholder="https://images.unsplash.com/..."
+                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-bold"
+                  value={newService.image_url}
+                  onChange={e => setNewService({...newService, image_url: e.target.value})}
+                />
+              </div>
             </div>
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
@@ -791,6 +803,7 @@ export default function POS() {
                     setEditingServiceId(null);
                     setServiceImages([]);
                     setNewService({ name: '', category: 'Travel', description: '', price: 0 });
+                    setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
                   }

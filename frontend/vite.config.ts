@@ -11,7 +11,7 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
-    strictPort: true, // Never silently fall back to a different port — fail loudly instead
+    strictPort: false, // Allow falling back to another port if 3000 is busy
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -20,6 +20,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['jspdf', 'jspdf-autotable', 'xlsx', 'exceljs', 'file-saver'],
+    include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
   },
 })
