@@ -7,8 +7,6 @@ import {
   LuMinus, 
   LuTrash2, 
   LuCreditCard, 
-  LuBanknote, 
-  LuSmartphone, 
   LuPrinter,
   LuCheck,
   LuX,
@@ -18,8 +16,7 @@ import {
   LuPackage,
   LuWallet
 } from 'react-icons/lu';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
+
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 
@@ -29,9 +26,6 @@ interface CartItem {
 }
 
 export default function POS() {
-  const { user } = useAuth();
-  const { theme } = useTheme();
-  
   // State
   const [services, setServices] = useState<Service[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -125,10 +119,10 @@ export default function POS() {
     setIsProcessing(true);
     try {
       const response = await billingApi.createInvoice({
-        customer_name: customerName || null,
-        customer_address: customerAddress || null,
-        customer_email: customerEmail || null,
-        customer_contact: customerContact || null,
+        customer_name: customerName || undefined,
+        customer_address: customerAddress || undefined,
+        customer_email: customerEmail || undefined,
+        customer_contact: customerContact || undefined,
         payment_method: paymentMethod,
         items: cart.map(item => ({
           service_id: item.service.id,

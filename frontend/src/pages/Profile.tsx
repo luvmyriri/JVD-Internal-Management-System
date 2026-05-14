@@ -1,7 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
-import { useTheme } from '../context/ThemeContext';
 import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
@@ -10,7 +9,6 @@ import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { user, setUser } = useAuth();
-  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);

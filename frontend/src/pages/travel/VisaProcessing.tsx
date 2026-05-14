@@ -1,3 +1,5 @@
+import { LuGlobe } from 'react-icons/lu';
+
 export default function VisaProcessing() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[40vh] text-center p-8 bg-white rounded-[3rem] border border-gray-100 shadow-sm mt-10">
