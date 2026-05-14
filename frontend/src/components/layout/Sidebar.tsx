@@ -141,7 +141,7 @@ export default function Sidebar() {
           }}
         />
         <div>
-          <p className="text-sm font-bold text-white leading-none">JVD ETMS</p>
+          <p className="text-sm font-bold text-white leading-none select-none">JVD ETMS</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Management Platform</p>
         </div>
       </div>
@@ -158,7 +158,7 @@ export default function Sidebar() {
                 onClick={() => toggleSection(section.title)}
                 className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-colors group"
               >
-                <span>{section.title}</span>
+                <span className="select-none">{section.title}</span>
                 {hasMultipleItems && (
                   <LuChevronDown
                     className={`w-3 h-3 transition-transform duration-200 ${
@@ -179,15 +179,22 @@ export default function Sidebar() {
                       <NavLink
                         to={item.path}
                         className={({ isActive }) =>
-                          `flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                          `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
                             isActive
-                              ? 'bg-blue-600 text-white font-semibold shadow-sm'
+                              ? 'text-blue-700 font-bold'
                               : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
                           }`
                         }
                       >
-                        <span className="text-base shrink-0">{item.icon}</span>
-                        <span className="truncate">{item.label}</span>
+                        {({ isActive }) => (
+                          <>
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />
+                            )}
+                            <span className={`text-base shrink-0 ${isActive ? 'text-blue-600' : ''}`}>{item.icon}</span>
+                            <span className="truncate">{item.label}</span>
+                          </>
+                        )}
                       </NavLink>
                     </li>
                   ))}

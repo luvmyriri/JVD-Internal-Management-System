@@ -56,7 +56,7 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">{accreditation ? 'Edit Compliance Record' : 'New Compliance Record'}</h2>
@@ -150,11 +150,15 @@ export default function BusAccreditation() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Bus Compliance & Accreditations</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Manage LTO, LTFRB, and Insurance records</p>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            {filtered.length} Records
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            Compliance & Legal Registry
+          </p>
         </div>
         <button onClick={() => { setEditingAcc(undefined); setShowModal(true); }}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
@@ -162,12 +166,17 @@ export default function BusAccreditation() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <LuSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search plate or record type..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md">
+        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+          <LuSearch size={18} />
         </div>
+        <input
+          type="text"
+          placeholder="Search plate or record type..."
+          className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
       <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
@@ -200,7 +209,7 @@ export default function BusAccreditation() {
                 </tr>
               ) : (
                 filtered.map(acc => (
-                  <tr key={acc.id} className="hover:bg-blue-50/30 transition-colors">
+                  <tr key={acc.id} className="transition-colors border-b border-gray-50/50">
                     <td className="px-6 py-4 font-bold text-gray-900">{acc.entity_name}</td>
                     <td className="px-6 py-4 font-medium text-gray-600">{acc.accreditation_type}</td>
                     <td className="px-6 py-4 text-gray-500">{acc.issuing_body || '—'}</td>

@@ -361,7 +361,7 @@ export default function Dashboard() {
         </button>
 
         {isOpen && (
-          <div className="absolute top-full right-0 pt-2 z-[100] animate-in fade-in slide-in-from-top-1">
+          <div className="absolute top-full right-0 pt-2 z-[100]">
             <div className="w-32 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2">
               <button
                 onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}

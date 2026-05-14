@@ -22,6 +22,9 @@ export interface Invoice {
   invoice_number: string;
   customer_id?: number;
   customer_name?: string;
+  customer_address?: string;
+  customer_email?: string;
+  customer_contact?: string;
   subtotal: number;
   tax_amount: number;
   total_amount: number;

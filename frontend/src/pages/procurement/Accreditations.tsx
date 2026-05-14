@@ -58,7 +58,7 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Accreditation</h2>
@@ -193,11 +193,16 @@ export default function Accreditations() {
   ) ?? [];
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto min-h-screen">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight">Accreditations</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium">Manage KYC and compliance for suppliers, partners, and clients.</p>
+    <div className="space-y-6">
+      {/* Header Actions */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            {filtered.length} Records
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            KYC & Compliance Management
+          </p>
         </div>
         <button onClick={() => setShowAdd(true)} className="inline-flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-3 rounded-2xl text-sm font-bold hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-600/20 transition-all active:scale-95 shrink-0">
           <LuPlus size={18} />
@@ -205,7 +210,7 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 mb-8 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md">
+      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md">
         <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
           <LuSearch size={18} />
         </div>

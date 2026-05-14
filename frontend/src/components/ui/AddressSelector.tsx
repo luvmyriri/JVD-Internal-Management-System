@@ -213,7 +213,7 @@ function PsgcCombobox({
 
       {/* Dropdown panel */}
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute z-50 mt-1.5 w-full bg-white border border-gray-200 rounded-2xl shadow-xl overflow-hidden">
           {/* Search bar */}
           <div className="p-2 border-b border-gray-100">
             <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl">

@@ -157,7 +157,7 @@ export default function POS() {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] mt-4 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="h-[calc(100vh-120px)] mt-4 flex flex-col lg:flex-row gap-6">
       
       {/* Left Column: Service Catalog */}
       <div className="flex-1 flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -241,7 +241,7 @@ export default function POS() {
               </div>
             ) : (
               cart.map((item) => (
-                <div key={item.service.id} className="flex items-center gap-4 group py-2 animate-in slide-in-from-right-2 duration-300">
+                <div key={item.service.id} className="flex items-center gap-4 group py-2">
                   <div className="flex-1">
                     <h4 className="text-sm font-black text-gray-900 tracking-tight leading-tight">{item.service.name}</h4>
                     <p className="text-[10px] text-gray-400 font-bold mt-0.5">₱{Number(item.service.price).toLocaleString()}</p>
@@ -361,7 +361,7 @@ export default function POS() {
         {/* Footer: Totals & Button (Fixed) */}
         <div className="p-6 bg-white border-t border-gray-100 space-y-4 shrink-0">
           {paymentMethod === 'Cash' && cart.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300 pb-2">
+            <div className="grid grid-cols-2 gap-4 pb-2">
               <div className="space-y-1.5">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Received</label>
                 <div className="relative">
@@ -414,8 +414,8 @@ export default function POS() {
 
       {/* Formal Invoice Modal */}
       {showReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[95vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 no-print">
@@ -585,8 +585,8 @@ export default function POS() {
 
       {/* Add Service Modal */}
       {showAddService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm duration-300">
+          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden">
             <div className="p-8 border-b border-gray-50 flex items-center justify-between">
               <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Add New Service</h3>
               <button onClick={() => setShowAddService(false)} className="text-gray-400 hover:text-gray-900"><LuX className="w-6 h-6" /></button>

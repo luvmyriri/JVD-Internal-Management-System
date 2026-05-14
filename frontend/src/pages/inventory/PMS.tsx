@@ -31,11 +31,16 @@ export default function PMS() {
   });
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6">
+      {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Preventive Maintenance Schedule</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Track fleet health and service deadlines</p>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            {buses.length} Vehicles
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            Fleet Health Tracking
+          </p>
         </div>
       </div>
 
@@ -72,10 +77,14 @@ export default function PMS() {
       <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
           <h2 className="font-bold text-gray-900">Priority Maintenance Queue</h2>
-          <div className="relative w-64">
-            <LuSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search plate or model..."
-              className="w-full pl-9 pr-4 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white" />
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-gray-100 shadow-sm w-72 focus-within:ring-2 focus-within:ring-blue-600/10 transition-all">
+            <LuSearch size={16} className="text-gray-400" />
+            <input 
+              value={search} 
+              onChange={e => setSearch(e.target.value)} 
+              placeholder="Search plate or model..."
+              className="bg-transparent border-none focus:ring-0 text-sm font-medium w-full" 
+            />
           </div>
         </div>
         <div className="overflow-x-auto">

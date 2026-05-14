@@ -113,7 +113,7 @@ export default function Login() {
       <div className="relative z-10 flex flex-col lg:flex-row w-full max-w-7xl mx-auto items-center justify-center lg:justify-between p-6 md:p-12 min-h-screen">
         {/* Left Branding Section */}
         <div className="lg:w-1/2 flex flex-col items-center lg:items-center text-center mb-12 lg:mb-0 relative z-10">
-          <div className="animate-in fade-in slide-in-from-bottom-12 duration-1000 flex flex-col items-center">
+          <div className="flex flex-col items-center">
             <img
               src="/JVD 3D.png"
               alt="JVD Logo"
@@ -129,7 +129,7 @@ export default function Login() {
         <div className="lg:w-1/2 flex justify-center lg:justify-end w-full max-w-lg relative z-10">
           <div className="w-full bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]">
             {step === 'credentials' ? (
-              <form onSubmit={handleCredentials} className="space-y-10 animate-in fade-in slide-in-from-right-12 duration-700">
+              <form onSubmit={handleCredentials} className="space-y-10">
                 <div className="text-left">
                   <h2 className="text-4xl md:text-[2.75rem] font-display font-black text-slate-900 tracking-tight leading-none">JVD ETMS</h2>
                   <p className="text-sm text-slate-500 mt-3 font-semibold">Enter your company credentials</p>
@@ -223,7 +223,7 @@ export default function Login() {
                 </button>
               </form>
             ) : step === 'setup2fa' ? (
-              <form onSubmit={handleSetupTwoFactor} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+              <form onSubmit={handleSetupTwoFactor} className="space-y-6">
                 <div className="mb-6 text-center">
                   <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,7 +281,7 @@ export default function Login() {
                 </div>
               </form>
             ) : (
-              <form onSubmit={handleTwoFactor} className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-500">
+              <form onSubmit={handleTwoFactor} className="space-y-6">
                 <div className="mb-6 text-center">
                   <div className="w-16 h-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

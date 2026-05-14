@@ -72,7 +72,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Job Order</h2>
@@ -215,12 +215,16 @@ export default function JobOrders() {
   const meta = data?.data?.meta;
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      {/* Header */}
+    <div className="space-y-6">
+      {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Job Orders</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Issued by Ma'am Minda · {meta?.total ?? '—'} total</p>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            {meta?.total ?? '0'} Orders
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            Issued by Ma'am Minda
+          </p>
         </div>
         <button onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
@@ -230,10 +234,17 @@ export default function JobOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="relative flex-1 min-w-[180px] max-w-sm">
-          <LuSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="JO number or destination..."
-            className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+            <LuSearch size={18} />
+          </div>
+          <input
+            type="text"
+            placeholder="JO number or destination..."
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}

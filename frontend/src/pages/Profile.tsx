@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
-import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck, LuShieldAlert } from 'react-icons/lu';
+import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
 import { getAvatarUrl } from '../utils';
@@ -135,7 +135,7 @@ export default function Profile() {
   if (!user) return null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Account Profile</h2>
@@ -266,7 +266,7 @@ export default function Profile() {
             </div>
 
             {isEditing && (
-              <div className="pt-4 flex justify-end gap-3 animate-in fade-in zoom-in-95 duration-200">
+              <div className="pt-4 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={cancelEditing}
@@ -310,7 +310,7 @@ export default function Profile() {
                   </div>
                 </div>
 
-                <form onSubmit={handleChangePassword} className="space-y-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                <form onSubmit={handleChangePassword} className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
                       <LuLock className="w-3 h-3 text-gray-400" />
@@ -445,7 +445,7 @@ export default function Profile() {
 
       {/* Cropping Modal */}
       {isCropping && imageSrc && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm duration-300">
           <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
               <h3 className="text-lg font-bold text-gray-900">Adjust Profile Picture</h3>

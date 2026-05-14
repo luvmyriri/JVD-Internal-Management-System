@@ -89,7 +89,7 @@ export default function Billing() {
   };
 
   return (
-    <div className="space-y-8 pb-12 mt-10 animate-in fade-in duration-700">
+    <div className="space-y-8 pb-12 mt-10">
       
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -289,8 +289,8 @@ export default function Billing() {
 
       {/* Invoice Detail Modal */}
       {showModal && selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 max-h-[95vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
+          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 no-print">

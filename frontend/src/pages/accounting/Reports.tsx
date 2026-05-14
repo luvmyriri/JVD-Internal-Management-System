@@ -260,13 +260,17 @@ export default function Reports() {
   }
 
   return (
-    <div className="space-y-10 pb-12 mt-10 animate-in fade-in duration-700">
+    <div className="space-y-10 pb-12 mt-10">
       
-      {/* Header with Actions */}
+      {/* Header Actions */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight uppercase">Financial Analytics</h1>
-          <p className="text-[11px] text-gray-400 font-bold tracking-widest uppercase mt-1">Intelligence and reporting suite</p>
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            Analytics Module
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            Financial Intelligence & Export
+          </p>
         </div>
 
         <div className="flex items-center gap-3">
