@@ -4,8 +4,7 @@ import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock, LuLoaderCircle
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
-import type { Bus } from '../../types/inventory';
-import { format, isPast, parseISO } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 
 export default function PMS() {
   const [search, setSearch] = useState('');
