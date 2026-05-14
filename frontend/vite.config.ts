@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+// Triggering reload after installing new dependencies
 export default defineConfig({
   plugins: [
     react(),
@@ -19,6 +20,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
+    include: ['jspdf', 'jspdf-autotable', 'xlsx', 'exceljs', 'file-saver'],
   },
 })

@@ -41,6 +41,9 @@ export const billingApi = {
   createInvoice: (data: {
     customer_id?: number | null;
     customer_name?: string;
+    customer_address?: string;
+    customer_email?: string;
+    customer_contact?: string;
     payment_method: string;
     items: { service_id: number; quantity: number }[];
     notes?: string;

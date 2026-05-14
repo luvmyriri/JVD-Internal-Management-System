@@ -11,7 +11,10 @@ import {
   LuSmartphone, 
   LuPrinter,
   LuCheck,
-  LuX
+  LuX,
+  LuMapPin,
+  LuPhone,
+  LuMail
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
@@ -27,6 +30,9 @@ export default function POS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerContact, setCustomerContact] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastInvoice, setLastInvoice] = useState<any>(null);
@@ -103,7 +109,10 @@ export default function POS() {
     setIsProcessing(true);
     try {
       const response = await billingApi.createInvoice({
-        customer_name: customerName,
+        customer_name: customerName || null,
+        customer_address: customerAddress || null,
+        customer_email: customerEmail || null,
+        customer_contact: customerContact || null,
         payment_method: paymentMethod,
         items: cart.map(item => ({
           service_id: item.service.id,
@@ -121,6 +130,9 @@ export default function POS() {
 
       setCart([]);
       setCustomerName('');
+      setCustomerAddress('');
+      setCustomerEmail('');
+      setCustomerContact('');
       setAmountReceived('');
       setPaymentMethod('Cash');
     } catch (err) {
@@ -145,7 +157,7 @@ export default function POS() {
   }
 
   return (
-    <div className="h-[calc(100vh-160px)] mt-8 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700 min-h-[750px]">
+    <div className="h-[calc(100vh-120px)] mt-4 flex flex-col lg:flex-row gap-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       
       {/* Left Column: Service Catalog */}
       <div className="flex-1 flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
@@ -206,7 +218,7 @@ export default function POS() {
       {/* Right Column: Cart & Checkout */}
       <div className="w-full lg:w-[480px] flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden h-full">
         {/* Header */}
-        <div className="p-6 border-b border-gray-50 bg-gray-50/50">
+        <div className="p-6 border-b border-gray-50 bg-gray-50/50 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-600 text-white rounded-xl">
               <LuShoppingCart className="w-5 h-5" />
@@ -215,146 +227,186 @@ export default function POS() {
           </div>
         </div>
 
-        {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 max-h-[400px]">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-20">
-              <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6">
-                <LuShoppingCart className="w-10 h-10 opacity-20" />
-              </div>
-              <p className="text-sm font-black uppercase tracking-[0.2em] text-gray-300">Your cart is empty</p>
-              <p className="text-[10px] font-bold uppercase tracking-widest mt-2 text-gray-300">Add services from the catalog</p>
-            </div>
-          ) : (
-            cart.map((item) => (
-              <div key={item.service.id} className="flex items-center gap-4 group py-2 animate-in slide-in-from-right-2 duration-300">
-                <div className="flex-1">
-                  <h4 className="text-base font-black text-gray-900 tracking-tight leading-tight">{item.service.name}</h4>
-                  <p className="text-xs text-gray-400 font-bold mt-1">₱{Number(item.service.price).toLocaleString()}</p>
+        {/* Scrollable Area: Cart + Customer Info */}
+        <div className="flex-1 overflow-y-auto">
+          {/* Cart Items */}
+          <div className="p-6 space-y-4 border-b border-gray-50">
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center text-gray-400 py-10">
+                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
+                  <LuShoppingCart className="w-8 h-8 opacity-20" />
                 </div>
-                <div className="flex items-center bg-gray-50 rounded-2xl p-1.5 border border-gray-100">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Your cart is empty</p>
+                <p className="text-[8px] font-bold uppercase tracking-widest mt-1 text-gray-300">Add services from the catalog</p>
+              </div>
+            ) : (
+              cart.map((item) => (
+                <div key={item.service.id} className="flex items-center gap-4 group py-2 animate-in slide-in-from-right-2 duration-300">
+                  <div className="flex-1">
+                    <h4 className="text-sm font-black text-gray-900 tracking-tight leading-tight">{item.service.name}</h4>
+                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">₱{Number(item.service.price).toLocaleString()}</p>
+                  </div>
+                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
+                    <button 
+                      onClick={() => updateQuantity(item.service.id, -1)}
+                      className="p-1 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-gray-900"
+                    >
+                      <LuMinus className="w-3 h-3" />
+                    </button>
+                    <span className="w-8 text-center text-xs font-black text-gray-900">{item.quantity}</span>
+                    <button 
+                      onClick={() => updateQuantity(item.service.id, 1)}
+                      className="p-1 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-gray-900"
+                    >
+                      <LuPlus className="w-3 h-3" />
+                    </button>
+                  </div>
                   <button 
-                    onClick={() => updateQuantity(item.service.id, -1)}
-                    className="p-1.5 hover:bg-white rounded-xl transition-all text-gray-400 hover:text-gray-900 hover:shadow-sm active:scale-90"
+                    onClick={() => removeFromCart(item.service.id)}
+                    className="p-2 text-gray-300 hover:text-rose-500 transition-all"
                   >
-                    <LuMinus className="w-3.5 h-3.5" />
-                  </button>
-                  <span className="w-10 text-center text-sm font-black text-gray-900">{item.quantity}</span>
-                  <button 
-                    onClick={() => updateQuantity(item.service.id, 1)}
-                    className="p-1.5 hover:bg-white rounded-xl transition-all text-gray-400 hover:text-gray-900 hover:shadow-sm active:scale-90"
-                  >
-                    <LuPlus className="w-3.5 h-3.5" />
+                    <LuTrash2 className="w-4 h-4" />
                   </button>
                 </div>
-                <button 
-                  onClick={() => removeFromCart(item.service.id)}
-                  className="p-2.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-2xl transition-all active:scale-90"
-                >
-                  <LuTrash2 className="w-5 h-5" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Footer: Customer & Payment & Total */}
-        <div className="p-6 bg-gray-50/70 border-t border-gray-100 space-y-4 shrink-0">
-          {/* Customer Input */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <LuUser className="w-3 h-3" /> Customer Name
-            </label>
-            <input 
-              type="text"
-              placeholder="Enter customer name..."
-              className="w-full bg-white border border-gray-100 rounded-2xl py-3 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 shadow-sm transition-all"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-            />
+              ))
+            )}
           </div>
 
-          {/* Payment Method */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-              <LuCreditCard className="w-3 h-3" /> Payment
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: 'Cash', icon: <LuBanknote /> },
-                { id: 'GCash', icon: <LuSmartphone /> },
-                { id: 'Card', icon: <LuCreditCard /> },
-              ].map((method) => (
-                <button
-                  key={method.id}
-                  onClick={() => setPaymentMethod(method.id)}
-                  className={`flex items-center justify-center gap-2 py-2.5 rounded-xl border transition-all ${
-                    paymentMethod === method.id 
-                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                    : 'bg-white border-gray-100 text-gray-400 hover:border-blue-200'
-                  }`}
-                >
-                  <span className="text-sm">{method.icon}</span>
-                  <span className="text-[10px] font-black uppercase tracking-widest">{method.id}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Amount Received (Cash Only) */}
-          {paymentMethod === 'Cash' && cart.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+          {/* Customer Info Form */}
+          <div className="p-6 bg-gray-50/30 space-y-6">
+            <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  <LuBanknote className="w-3 h-3" /> Received
+                  <LuUser className="w-3 h-3" /> Customer Name
                 </label>
+                <input 
+                  type="text"
+                  placeholder="Enter name"
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <LuPhone className="w-3 h-3" /> Contact
+                  </label>
+                  <input 
+                    type="text"
+                    placeholder="Number"
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                    value={customerContact}
+                    onChange={(e) => setCustomerContact(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                    <LuMail className="w-3 h-3" /> Email
+                  </label>
+                  <input 
+                    type="email"
+                    placeholder="Email address"
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                  <LuMapPin className="w-3 h-3" /> Full Address
+                </label>
+                <input 
+                  type="text"
+                  placeholder="Street, City, Province"
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                  value={customerAddress}
+                  onChange={(e) => setCustomerAddress(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Payment Method */}
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                <LuCreditCard className="w-3 h-3" /> Payment Method
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'Cash', icon: <LuBanknote /> },
+                  { id: 'GCash', icon: <LuSmartphone /> },
+                  { id: 'Card', icon: <LuCreditCard /> },
+                ].map((method) => (
+                  <button
+                    key={method.id}
+                    onClick={() => setPaymentMethod(method.id)}
+                    className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border transition-all ${
+                      paymentMethod === method.id 
+                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' 
+                      : 'bg-white border-gray-200 text-gray-400 hover:border-blue-200'
+                    }`}
+                  >
+                    <span className="text-base">{method.icon}</span>
+                    <span className="text-[9px] font-black uppercase tracking-widest">{method.id}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer: Totals & Button (Fixed) */}
+        <div className="p-6 bg-white border-t border-gray-100 space-y-4 shrink-0">
+          {paymentMethod === 'Cash' && cart.length > 0 && (
+            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300 pb-2">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Received</label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₱</span>
                   <input 
                     type="number"
-                    className="w-full bg-white border border-blue-100 rounded-xl py-2.5 pl-7 pr-3 text-sm font-black text-blue-600 focus:ring-2 focus:ring-blue-600/10 shadow-sm"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 pl-7 pr-3 text-sm font-black text-blue-600 focus:ring-2 focus:ring-blue-600/10"
                     value={amountReceived}
                     onChange={(e) => setAmountReceived(e.target.value ? Number(e.target.value) : '')}
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  Change
-                </label>
-                <div className="w-full bg-emerald-50 border border-emerald-100 rounded-xl py-2.5 px-3 text-sm font-black text-emerald-600">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</label>
+                <div className="w-full bg-emerald-50 border border-emerald-100 rounded-xl py-2 px-3 text-sm font-black text-emerald-600">
                   ₱{change.toLocaleString()}
                 </div>
               </div>
             </div>
           )}
 
-          {/* Totals */}
-          <div className="space-y-4 pt-6 border-t border-gray-200/50">
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 font-black uppercase tracking-widest text-[11px]">Subtotal</span>
-              <span className="text-lg font-bold text-gray-900">₱{subtotal.toLocaleString()}</span>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <span>Subtotal</span>
+              <span className="text-gray-900">₱{subtotal.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center">
-              <span className="text-gray-400 font-black uppercase tracking-widest text-[11px]">VAT (12%)</span>
-              <span className="text-lg font-bold text-gray-900">₱{tax.toLocaleString()}</span>
+            <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <span>VAT (12%)</span>
+              <span className="text-gray-900">₱{tax.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center pt-4 border-t border-dashed border-gray-200">
-              <span className="text-gray-900 font-black uppercase tracking-[0.2em] text-sm">Total Amount</span>
-              <span className="text-4xl font-black text-blue-600 tracking-tighter">₱{total.toLocaleString()}</span>
+            <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100">
+              <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Total</span>
+              <span className="text-3xl font-black text-blue-600 tracking-tighter">₱{total.toLocaleString()}</span>
             </div>
           </div>
 
-          {/* Checkout Button */}
           <button 
             disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total))}
             onClick={handleCheckout}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 text-white py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-sm shadow-2xl shadow-blue-600/30 active:scale-[0.98] transition-all flex justify-center items-center gap-4 mt-2"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 disabled:text-gray-400 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 mt-2 active:scale-95"
           >
             {isProcessing ? (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
             ) : (
-              <>Complete Transaction <LuCheck className="w-5 h-5" /></>
+              <>Complete Transaction <LuCheck className="w-4 h-4" /></>
             )}
           </button>
         </div>
@@ -397,14 +449,22 @@ export default function POS() {
               {/* Invoice Header */}
               <div className="flex justify-between items-start mb-12">
                 <div>
-                  <h1 className="text-3xl font-black text-blue-600 tracking-tighter mb-1">JVD EVENTS & TRAVELS</h1>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">Management System</p>
+                <div className="flex flex-col items-start">
+                  <img src="/JVDlogo-removebg-preview.png" alt="JVD Logo" className="h-16 mb-2 object-contain" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
                   
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 font-medium">Bldg 123, Business District</p>
-                    <p className="text-xs text-gray-500 font-medium">Metro Manila, Philippines</p>
-                    <p className="text-xs text-gray-500 font-medium">support@jvdevents.com</p>
+                  <div className="space-y-1 pl-1">
+                    <p className="text-[11px] text-gray-900 font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City</p>
+                    <div className="flex flex-col gap-0.5 mt-2">
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="text-blue-600">PHONE:</span> 0976 4711294
+                      </p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="text-blue-600">TEL:</span> 02 82938068
+                      </p>
+                    </div>
                   </div>
+                </div>
                 </div>
                 <div className="text-right">
                   <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-2">INVOICE</h2>
@@ -422,7 +482,24 @@ export default function POS() {
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
                   <p className="text-lg font-black text-gray-900">{lastInvoice?.customer_name || 'Walk-in Customer'}</p>
-                  <p className="text-xs text-gray-500 mt-1 font-medium">Verified POS Transaction</p>
+                  <div className="mt-2 space-y-1">
+                    {lastInvoice?.customer_contact && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuPhone className="w-3 h-3" /> {lastInvoice.customer_contact}
+                      </p>
+                    )}
+                    {lastInvoice?.customer_email && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuMail className="w-3 h-3" /> {lastInvoice.customer_email}
+                      </p>
+                    )}
+                    {lastInvoice?.customer_address && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuMapPin className="w-3 h-3" /> {lastInvoice.customer_address}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-blue-600 mt-3 font-bold uppercase tracking-tight italic">Verified POS Transaction</p>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>

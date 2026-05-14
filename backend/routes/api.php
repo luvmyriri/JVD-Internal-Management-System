@@ -14,6 +14,7 @@ use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Fleet\BusController;
 use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Inventory\InventoryController;
+use App\Http\Controllers\Auth\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
@@ -50,6 +51,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::get('/me',              [AuthController::class, 'me'])->name('auth.me');
         Route::post('/logout',         [AuthController::class, 'logout'])->name('auth.logout');
         Route::post('/change-password',[AuthController::class, 'changePassword'])->name('auth.change-password');
+        
+        // Profile Management
+        Route::put('/profile',         [ProfileController::class, 'update'])->name('auth.profile.update');
+        Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('auth.profile.avatar');
     });
 
     // ──────────────────────────────────────

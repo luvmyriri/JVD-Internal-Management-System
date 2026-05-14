@@ -1,7 +1,7 @@
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { getInitials } from '../../utils';
-import { LuBell, LuChevronDown, LuLogOut } from 'react-icons/lu';
+import { getInitials, getAvatarUrl } from '../../utils';
+import { LuBell, LuChevronDown, LuLogOut, LuUser } from 'react-icons/lu';
 import { useState } from 'react';
 
 export default function Header() {
@@ -27,6 +27,13 @@ export default function Header() {
       return {
         title: 'Dashboard',
         subtitle: `Welcome back, ${user.first_name} ${user.last_name}. Here's what's happening.`
+      };
+    }
+
+    if (path === '/profile') {
+      return {
+        title: 'Account Settings',
+        subtitle: 'Manage your personal information and preferences.'
       };
     }
     
@@ -78,8 +85,12 @@ export default function Header() {
             className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-gray-100 transition"
           >
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center shrink-0">
-              <span className="text-xs font-bold text-white">{initials}</span>
+            <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center shrink-0">
+              {user.avatar_url ? (
+                <img src={getAvatarUrl(user.avatar_url) || ''} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-xs font-bold text-white">{initials}</span>
+              )}
             </div>
             {/* Role Display */}
             <div className="hidden sm:block text-right mr-1">
@@ -103,6 +114,18 @@ export default function Header() {
                   <p className="text-sm font-semibold text-gray-800">{user.first_name} {user.last_name}</p>
                   <p className="text-xs text-gray-400 truncate">{user.email}</p>
                 </div>
+                <button
+                  id="header-profile"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/profile');
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <LuUser className="w-4 h-4 text-blue-600" />
+                  My Profile
+                </button>
+                <div className="border-t border-gray-100 my-1" />
                 <button
                   id="header-logout"
                   onClick={handleLogout}

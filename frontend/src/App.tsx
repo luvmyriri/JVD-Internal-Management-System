@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './context/AuthContext';
 import { AuthGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
+import { Toaster } from 'react-hot-toast';
 
 // Pages
 import Login from './pages/Login';
@@ -29,6 +30,7 @@ import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
 import KycSubmission from './pages/KycSubmission';
+import Profile from './pages/Profile';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -59,6 +61,7 @@ export default function App() {
               }
             >
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
 
               {/* Accounting */}
               <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
@@ -96,9 +99,9 @@ export default function App() {
               <Route path="/admin/settings" element={<Settings />} />
             </Route>
 
-            {/* Catch-all */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
+          <Toaster position="top-right" />
         </AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
