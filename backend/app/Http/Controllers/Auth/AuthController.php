@@ -59,6 +59,23 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
 
+        // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
+        if (env('REQUIRE_2FA', true) === false) {
+            $token = $user->createToken('auth-token')->plainTextToken;
+            $user->update(['last_login' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'user' => new UserResource($user),
+                    'token' => $token,
+                    'requires_2fa' => false,
+                    'requires_password_change' => $user->must_change_password,
+                ],
+                'message' => 'Authentication successful (2FA Bypassed).',
+            ]);
+        }
+
         // If user has 2FA set up, require TOTP verification
         if ($user->totp_secret) {
             return response()->json([

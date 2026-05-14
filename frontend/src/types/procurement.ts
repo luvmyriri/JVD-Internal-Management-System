@@ -34,18 +34,23 @@ export interface PaginatedResponse<T> {
 export type POStatus =
   | 'draft'
   | 'pending_accounting_review'
+  | 'verified'
   | 'pending_ceo_approval'
   | 'approved'
   | 'rejected';
 
 export interface POLineItem {
   id: number;
-  purchase_order_id: number;
+  purchase_order_id?: number;
   item_name: string;
-  description: string;
+  part_number: string | null;     // boss-mandated: cross-check field
+  description: string | null;
   quantity: number;
+  unit_of_measure: string;        // e.g. 'pcs', 'ltr', 'set'
   unit_price: number;
   total_price: number;
+  receipt_number: string | null;  // boss-mandated: audit trail
+  item_notes: string | null;
 }
 
 export interface PurchaseOrder {
@@ -69,9 +74,13 @@ export interface PurchaseOrderFormData {
   supplier_id: number;
   items: {
     item_name: string;
-    description: string;
+    part_number?: string;
+    description?: string;
     quantity: number;
+    unit_of_measure?: string;
     unit_price: number;
+    receipt_number?: string;
+    item_notes?: string;
   }[];
   notes?: string;
 }
@@ -88,7 +97,8 @@ export type ServiceType =
   | 'field_trip'
   | 'corporate_transport'
   | 'travel_package'
-  | 'event';
+  | 'event'
+  | 'maintenance';
 
 export interface JobOrder {
   id: number;
@@ -121,9 +131,11 @@ export interface JobOrderFormData {
 }
 
 export type WOStatus =
+  | 'pending_approval'
   | 'open'
   | 'in_progress'
-  | 'completed';
+  | 'completed'
+  | 'cancelled';
 
 export type WOPriority =
   | 'routine'
@@ -136,7 +148,12 @@ export interface WorkOrder {
   bus_id: number;
   bus?: Bus;
   assigned_to: number;
+  assignee?: { id: number; first_name: string; last_name: string };
   created_by: number;
+  approved_by: number | null;
+  approved_at: string | null;
+  approval_notes: string | null;
+  approver?: { id: number; first_name: string; last_name: string } | null;
   status: WOStatus;
   priority: WOPriority;
   description: string;
@@ -158,13 +175,31 @@ export interface WorkOrderFormData {
 // Supplier Types
 // ──────────────────────────────────────────
 
+export type SupplierAccreditationStatus =
+  | 'pending'
+  | 'accredited'
+  | 'suspended'
+  | 'blacklisted';
+
 export interface Supplier {
   id: number;
   company_name: string;
-  contact_person: string;
-  phone: string;
-  email: string;
-  address: string;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  is_verified: boolean;
+  verified_at: string | null;
+  verified_by: number | null;
+  accreditation_status: SupplierAccreditationStatus;
+  payment_terms: string | null;
+  is_consignment: boolean;
+  bank_name: string | null;
+  bank_account_number: string | null;
+  tin_number: string | null;
+  purchase_orders_count?: number;
+  created_at: string;
+  updated_at: string;
 }
 
 // ──────────────────────────────────────────

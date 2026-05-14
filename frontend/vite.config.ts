@@ -10,6 +10,7 @@ export default defineConfig({
   ],
   server: {
     port: 3000,
+    strictPort: true, // Never silently fall back to a different port — fail loudly instead
     proxy: {
       '/api': {
         target: 'http://localhost:8000',
@@ -18,6 +19,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['jspdf', 'jspdf-autotable', 'xlsx'],
+    include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
   },
 })

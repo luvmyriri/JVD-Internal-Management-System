@@ -116,5 +116,72 @@ class WorkOrderController extends Controller
             'message' => 'Work Order updated.',
         ]);
     }
+
+    /**
+     * Designated employee approves an auto-generated WO.
+     * Business Rule: Auto-generated PMS WOs must be approved before any
+     * maintenance work begins. Transitions: pending_approval → open
+     */
+    public function approve(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        if ($workOrder->status !== 'pending_approval') {
+            return response()->json([
+                'success' => false,
+                'message' => "Only Work Orders in 'pending_approval' status can be approved. Current status: {$workOrder->status}.",
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'notes'       => ['nullable', 'string', 'max:1000'],
+            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+            'priority'    => ['nullable', 'in:routine,urgent,critical'],
+        ]);
+
+        $workOrder->update([
+            'status'       => 'open',
+            'approved_by'  => $request->user()->id,
+            'approved_at'  => now(),
+            'approval_notes' => $validated['notes'] ?? null,
+            'assigned_to'  => $validated['assigned_to'] ?? $workOrder->assigned_to,
+            'priority'     => $validated['priority'] ?? $workOrder->priority,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
+            'message' => 'Work Order approved. Maintenance may now proceed.',
+        ]);
+    }
+
+    /**
+     * Designated employee rejects an auto-generated WO (sends it back for review).
+     * Transitions: pending_approval → cancelled
+     */
+    public function reject(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        if ($workOrder->status !== 'pending_approval') {
+            return response()->json([
+                'success' => false,
+                'message' => "Only Work Orders in 'pending_approval' status can be rejected.",
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'notes' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $workOrder->update([
+            'status'         => 'cancelled',
+            'approved_by'    => $request->user()->id,
+            'approved_at'    => now(),
+            'approval_notes' => $validated['notes'],
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
+            'message' => 'Work Order rejected and cancelled.',
+        ]);
+    }
 }
 

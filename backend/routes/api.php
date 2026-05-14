@@ -12,7 +12,7 @@ use App\Http\Controllers\Travel\CustomerController;
 use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Fleet\BusController;
-use App\Http\Controllers\Fleet\AccreditationController;
+use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Inventory\InventoryController;
 
 /*
@@ -35,6 +35,9 @@ Route::prefix('auth')->group(function () {
     Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('auth.2fa.verify');
     Route::post('/2fa/setup',  [AuthController::class, 'confirmSetup'])->name('auth.2fa.setup');
 });
+
+// Public KYC route
+Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->name('accreditations.submit-kyc');
 
 // ──────────────────────────────────────────
 // AUTHENTICATED routes (Sanctum + password-change enforcement)
@@ -70,6 +73,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,accounting')->group(function () {
         Route::apiResource('suppliers', SupplierController::class)->except(['destroy']);
+        // Supplier cross-check / counter-check verification (boss-mandated)
+        Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
+        Route::post('/suppliers/{supplier}/blacklist', [SupplierController::class, 'blacklist'])->name('suppliers.blacklist');
     });
 
     // ──────────────────────────────────────
@@ -93,6 +99,22 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
+    // PMS WORK ORDER APPROVAL
+    // Designated employee approves/rejects auto-generated WOs
+    // before any maintenance work proceeds (boss-mandated)
+    // (Super Admin, Admin — designated approvers)
+    // ──────────────────────────────────────
+    Route::middleware('role:super_admin,admin')->group(function () {
+        Route::post('/work-orders/{workOrder}/approve', [WorkOrderController::class, 'approve'])->name('work-orders.approve');
+        Route::post('/work-orders/{workOrder}/reject',  [WorkOrderController::class, 'reject'])->name('work-orders.reject');
+    });
+
+    // Mechanics can REQUEST a Work Order (but not approve)
+    Route::middleware('role:mechanic,super_admin,admin,agent')->group(function () {
+        Route::post('/work-orders/request', [WorkOrderController::class, 'store'])->name('work-orders.request');
+    });
+
+    // ──────────────────────────────────────
     // TRAVEL — Customers, Passengers, Passport Cases
     // (Super Admin, Admin, Agent)
     // ──────────────────────────────────────
@@ -103,11 +125,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // FLEET — Buses & Accreditations
+    // FLEET & ACCREDITATIONS
     // (Super Admin, Admin)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::apiResource('buses',          BusController::class)->except(['destroy']);
+        
+        Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
     });
 
