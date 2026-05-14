@@ -7,6 +7,7 @@ import {
 import { jobOrderApi } from '../../api/jobOrders';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -163,36 +164,39 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
 function JORow({ jo }: { jo: JobOrder }) {
   return (
-    <tr className="hover:bg-gray-50/60 transition-colors">
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0">
-            <LuClipboardList size={14} />
+    <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm shadow-sky-200/20 group-hover:bg-white group-hover:shadow-md transition-all">
+            <LuClipboardList size={18} />
           </div>
-          <span className="font-mono text-sm font-bold text-gray-900">{jo.jo_number}</span>
+          <span className="font-black text-gray-900 tracking-tight">{jo.jo_number}</span>
         </div>
       </td>
-      <td className="px-6 py-4"><ServiceTypeBadge type={jo.service_type} /></td>
-      <td className="px-6 py-4 text-sm text-gray-700">
+      <td className="px-8 py-6"><ServiceTypeBadge type={jo.service_type} /></td>
+      <td className="px-8 py-6 text-sm font-bold text-gray-700">
         {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
       </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-1.5 text-xs text-gray-600">
-          <LuMapPin size={11} className="text-gray-400 shrink-0" />
-          <span className="truncate max-w-[150px]">{jo.destination}</span>
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+          <LuMapPin size={12} className="shrink-0" /> Destination
         </div>
+        <div className="text-sm font-bold text-gray-700 truncate max-w-[150px]">{jo.destination}</div>
       </td>
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-1.5 text-xs text-gray-600">
-          <LuCalendar size={11} className="text-gray-400" />
-          {fmt(jo.service_date)}
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+          <LuCalendar size={12} /> Schedule
         </div>
+        <div className="text-sm font-bold text-gray-700">{fmt(jo.service_date)}</div>
       </td>
-      <td className="px-6 py-4"><StatusBadge status={jo.status} /></td>
-      <td className="px-6 py-4 text-sm font-bold text-gray-900">
-        {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}
+      <td className="px-8 py-6"><StatusBadge status={jo.status} /></td>
+      <td className="px-8 py-6">
+        <div className="text-gray-900 font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
-      <td className="px-6 py-4 text-gray-400 hover:text-blue-600 transition"><LuArrowRight size={14} /></td>
+      <td className="px-8 py-6">
+        <div className="flex items-center justify-end gap-2 text-gray-400 group-hover:text-blue-600 text-[10px] font-black uppercase tracking-widest transition-all">View <LuArrowRight size={14} /></div>
+      </td>
     </tr>
   );
 }
@@ -205,9 +209,17 @@ export default function JobOrders() {
   const [serviceType, setServiceType] = useState('');
   const [showCreate, setShowCreate] = useState(false);
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['job-orders', search, status, serviceType],
-    queryFn: () => jobOrderApi.list({ search: search || undefined, status: status || undefined, service_type: serviceType || undefined }),
+    queryKey: ['job-orders', search, status, serviceType, page],
+    queryFn: () => jobOrderApi.list({ 
+      search: search || undefined, 
+      status: status || undefined, 
+      service_type: serviceType || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -215,7 +227,7 @@ export default function JobOrders() {
   const meta = data?.data?.meta;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -234,7 +246,7 @@ export default function JobOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
+        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
@@ -248,20 +260,20 @@ export default function JobOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-4 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
             <option value="">All Statuses</option>
             {Object.entries(JO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
         <div className="relative">
           <select value={serviceType} onChange={e => setServiceType(e.target.value)}
-            className="pl-4 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
             <option value="">All Types</option>
             {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             <option value="maintenance">Maintenance (PMS)</option>
           </select>
-          <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
       </div>
 
@@ -277,13 +289,13 @@ export default function JobOrders() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-100">
-                <tr>
-                  {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
-                    <th key={h} className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
+                <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
+                  <tr>
+                    {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
+                      <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
               <tbody className="divide-y divide-gray-50">
                 {jos.map(jo => <JORow key={jo.id} jo={jo} />)}
               </tbody>
@@ -293,6 +305,16 @@ export default function JobOrders() {
       </div>
 
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

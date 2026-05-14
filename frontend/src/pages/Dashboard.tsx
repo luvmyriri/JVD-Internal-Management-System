@@ -425,8 +425,7 @@ export default function Dashboard() {
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Monthly Revenue</p>
-            <p className="text-3xl font-black text-gray-900 dark:text-white">₱2.3M</p>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">₱2,300,000.00</p>
           </div>
         </div>
 
@@ -535,6 +534,7 @@ export default function Dashboard() {
                 }}
                 itemStyle={{ color: theme === 'dark' ? '#60a5fa' : '#3b82f6' }}
                 labelStyle={{ fontWeight: 800, color: theme === 'dark' ? '#ffffff' : '#1e293b' }}
+                formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
               />
               <Area
                 type="monotone"
@@ -560,8 +560,7 @@ export default function Dashboard() {
               <LuDollarSign className="w-6 h-6" />
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Accounting</p>
-              <p className="text-xl font-black text-gray-900 dark:text-white">₱4.2M</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">₱4,200,000.00</p>
               <DownloadActions title="Accounting Branch Report" data={branchData.accounting} />
             </div>
           </div>

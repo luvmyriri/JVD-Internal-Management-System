@@ -8,6 +8,7 @@ import {
 import { workOrderApi } from '../../api/workOrders';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
+import { Pagination } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -185,34 +186,37 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
 
 function WORow({ wo, onReview }: { wo: WorkOrder; onReview: (wo: WorkOrder) => void }) {
   return (
-    <tr className="hover:bg-gray-50/60 transition-colors">
-      <td className="px-6 py-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-            <LuWrench size={14} />
+    <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+      <td className="px-8 py-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 shadow-sm shadow-purple-200/20 group-hover:bg-white group-hover:shadow-md transition-all">
+            <LuWrench size={18} />
           </div>
           <div>
-            <p className="font-mono text-sm font-bold text-gray-900">{wo.wo_number}</p>
+            <p className="font-black text-gray-900 tracking-tight">{wo.wo_number}</p>
             {wo.auto_generated && (
-              <span className="text-[10px] text-purple-500 font-semibold">Auto-generated (PMS)</span>
+              <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest mt-1">Auto-generated (PMS)</span>
             )}
           </div>
         </div>
       </td>
-      <td className="px-6 py-4 text-sm text-gray-700">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</td>
-      <td className="px-6 py-4"><PriorityBadge priority={wo.priority} /></td>
-      <td className="px-6 py-4"><StatusBadge status={wo.status} /></td>
-      <td className="px-6 py-4 text-xs text-gray-500 max-w-[200px] truncate">{wo.description}</td>
-      <td className="px-6 py-4">
+      <td className="px-8 py-6">
+        <div className="text-sm font-bold text-gray-700">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'}</div>
+      </td>
+      <td className="px-8 py-6"><PriorityBadge priority={wo.priority} /></td>
+      <td className="px-8 py-6"><StatusBadge status={wo.status} /></td>
+      <td className="px-8 py-6 text-xs text-gray-500 max-w-[200px] truncate leading-relaxed">{wo.description}</td>
+      <td className="px-8 py-6">
         {wo.status === 'pending_approval' ? (
           <button onClick={() => onReview(wo)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-bold hover:bg-amber-200 transition">
-            <LuShieldCheck size={12} /> Review
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition border border-amber-100 shadow-sm shadow-amber-200/20">
+            <LuShieldCheck size={14} /> Review
           </button>
         ) : wo.approved_by ? (
-          <div className="flex items-center gap-1 text-xs text-emerald-600 font-semibold"><LuCheck size={12} /> Approved</div>
+          <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase tracking-widest"><LuCheck size={14} /> Approved</div>
         ) : (
-          <div className="flex items-center gap-1 text-xs text-gray-400"><LuArrowRight size={12} /></div>
+          <div className="flex items-center justify-center text-gray-300"><LuArrowRight size={14} /></div>
         )}
       </td>
     </tr>
@@ -227,9 +231,16 @@ export default function WorkOrders() {
   const [showCreate, setShowCreate] = useState(false);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['work-orders', search, status],
-    queryFn: () => workOrderApi.list({ search: search || undefined, status: status || undefined }),
+    queryKey: ['work-orders', search, status, page],
+    queryFn: () => workOrderApi.list({ 
+      search: search || undefined, 
+      status: status || undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -238,7 +249,7 @@ export default function WorkOrders() {
   const pendingCount = wos.filter(w => w.status === 'pending_approval').length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -257,17 +268,17 @@ export default function WorkOrders() {
 
       {/* Pending approval banner */}
       {pendingCount > 0 && (
-        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
-          <LuClock size={16} className="text-amber-600 shrink-0" />
-          <p className="text-sm font-semibold text-amber-800">
-            <strong>{pendingCount}</strong> auto-generated work order{pendingCount > 1 ? 's' : ''} pending your approval.
+        <div className="flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-[1.5rem] px-6 py-4 shadow-sm shadow-amber-200/20">
+          <LuClock size={18} className="text-amber-600 shrink-0" />
+          <p className="text-sm font-bold text-amber-800">
+            {pendingCount} auto-generated work order{pendingCount > 1 ? 's' : ''} pending your approval.
           </p>
         </div>
       )}
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
+      <div className="flex flex-wrap gap-4">
+        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
@@ -281,11 +292,11 @@ export default function WorkOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-4 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
             <option value="">All Statuses</option>
             {Object.entries(WO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
       </div>
 
@@ -300,10 +311,10 @@ export default function WorkOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-100">
+            <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
               <tr>
                 {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
-                  <th key={h} className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{h}</th>
+                  <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>
@@ -316,6 +327,16 @@ export default function WorkOrders() {
 
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
       {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

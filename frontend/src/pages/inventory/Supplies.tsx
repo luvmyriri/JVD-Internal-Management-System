@@ -4,6 +4,7 @@ import {
   LuPackage, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuArrowDownToLine
 } from 'react-icons/lu';
 import { inventoryApi } from '../../api/inventory';
+import { Pagination } from '../../components/ui';
 import type { InventoryItem, InventoryItemFormData } from '../../types/inventory';
 
 // ── Add/Edit Item Modal ──────────────────────────────────────────────────────
@@ -119,9 +120,17 @@ export default function Supplies() {
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
 
+  const [page, setPage] = useState(1);
+
   const { data, isLoading } = useQuery({
-    queryKey: ['inventory', search, categoryFilter, lowStockOnly],
-    queryFn: () => inventoryApi.list({ search: search || undefined, category: categoryFilter || undefined, low_stock: lowStockOnly ? true : undefined }),
+    queryKey: ['inventory', search, categoryFilter, lowStockOnly, page],
+    queryFn: () => inventoryApi.list({ 
+      search: search || undefined, 
+      category: categoryFilter || undefined, 
+      low_stock: lowStockOnly ? true : undefined,
+      page,
+      per_page: 10
+    }),
     staleTime: 30_000,
   });
 
@@ -131,7 +140,7 @@ export default function Supplies() {
   const categories = Array.from(new Set(items.map(i => i.category))).filter(Boolean);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
@@ -147,7 +156,7 @@ export default function Supplies() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
@@ -175,14 +184,14 @@ export default function Supplies() {
       <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-500 font-semibold border-b border-gray-100">
+            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
               <tr>
-                <th className="px-6 py-4">Item Name</th>
-                <th className="px-6 py-4">Category</th>
-                <th className="px-6 py-4 text-center">In Stock</th>
-                <th className="px-6 py-4 text-center">Status</th>
-                <th className="px-6 py-4 text-right">Unit Price</th>
-                <th className="px-6 py-4 text-center">Actions</th>
+                <th className="px-8 py-5">Item Name</th>
+                <th className="px-8 py-5">Category</th>
+                <th className="px-8 py-5 text-center">In Stock</th>
+                <th className="px-8 py-5 text-center">Status</th>
+                <th className="px-8 py-5 text-right">Unit Price</th>
+                <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -202,33 +211,36 @@ export default function Supplies() {
                 </tr>
               ) : (
                 items.map(item => (
-                  <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
-                    <td className="px-6 py-4 font-bold text-gray-900">{item.item_name}</td>
-                    <td className="px-6 py-4 font-medium text-gray-600">
-                      <span className="px-2.5 py-1 rounded-full bg-gray-100 text-[10px] tracking-wider uppercase">{item.category}</span>
+                  <tr key={item.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50/50 last:border-0">
+                    <td className="px-8 py-6">
+                      <div className="font-bold text-gray-900 text-base">{item.item_name}</div>
                     </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="font-bold text-gray-900 text-lg">{item.quantity}</div>
-                      <div className="text-[10px] text-gray-400 uppercase tracking-wider">{item.unit}</div>
+                    <td className="px-8 py-6 font-medium text-gray-600">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-bold tracking-widest uppercase border border-gray-100">{item.category}</span>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-8 py-6 text-center">
+                      <div className="font-black text-gray-900 text-xl tracking-tight">{item.quantity}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{item.unit}</div>
+                    </td>
+                    <td className="px-8 py-6 text-center">
                       {item.is_low_stock ? (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-bold border border-red-200">
+                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-50 text-red-700 text-[10px] font-black uppercase tracking-widest border border-red-100 shadow-sm shadow-red-200/20">
                           <LuArrowDownToLine size={14} /> Reorder (≤{item.reorder_level})
                         </div>
                       ) : (
-                        <div className="inline-flex items-center px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+                        <div className="inline-flex items-center px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm shadow-emerald-200/20">
                           Sufficient
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-700">
-                      ₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    <td className="px-8 py-6 text-right">
+                      <div className="text-gray-900 font-bold text-base">₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                      <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Per {item.unit}</div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-8 py-6 text-center">
                       <button onClick={() => { setEditingItem(item); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition">
-                        <LuSettings size={18} />
+                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
+                        <LuSettings size={20} />
                       </button>
                     </td>
                   </tr>
@@ -240,6 +252,16 @@ export default function Supplies() {
       </div>
 
       {showModal && <ItemModal item={editingItem} onClose={() => setShowModal(false)} />}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={meta.last_page}
+          total={meta.total}
+          perPage={meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }

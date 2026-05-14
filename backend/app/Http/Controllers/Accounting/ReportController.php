@@ -71,4 +71,30 @@ class ReportController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Get detailed invoice list for exports.
+     */
+    public function getDetailed(Request $request)
+    {
+        $range = $request->range ?? 'month';
+        $query = Invoice::with(['customer', 'items.service'])->where('status', 'paid');
+
+        if ($range === 'day') {
+            $query->where('created_at', '>=', Carbon::now()->startOfDay());
+        } elseif ($range === 'week') {
+            $query->where('created_at', '>=', Carbon::now()->startOfWeek());
+        } elseif ($range === 'month') {
+            $query->where('created_at', '>=', Carbon::now()->startOfMonth());
+        } elseif ($range === 'year') {
+            $query->where('created_at', '>=', Carbon::now()->startOfYear());
+        }
+
+        $invoices = $query->orderBy('created_at', 'desc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $invoices
+        ]);
+    }
 }

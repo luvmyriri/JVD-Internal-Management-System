@@ -72,4 +72,6 @@ export const billingApi = {
     client.patch(`/billing/${id}/status`, { status }),
   getReportsSummary: (range = 'month') => 
     client.get('/billing/reports/summary', { params: { range } }),
+  getReportsDetailed: (range = 'month') => 
+    client.get('/billing/reports/detailed', { params: { range } }),
 };
