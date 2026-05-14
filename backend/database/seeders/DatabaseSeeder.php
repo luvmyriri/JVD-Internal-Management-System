@@ -15,7 +15,16 @@ class DatabaseSeeder extends Seeder
         $this->call([
             SuperAdminSeeder::class,
             CustomerSeeder::class,
+            PassengerSeeder::class,
             ServiceSeeder::class,
+            SupplierSeeder::class,
+            BusSeeder::class,
+            InventorySeeder::class,
+            PurchaseOrderSeeder::class,
+            WorkOrderSeeder::class,
+            JobOrderSeeder::class,
+            PassportCaseSeeder::class,
+            AccreditationSeeder::class,
         ]);
     }
 }
