@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useTheme } from '../../context/ThemeContext';
+import { useState, useEffect } from 'react';
 import { 
   LuSearch, LuPrinter, LuEye, LuFileCheck, 
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
@@ -9,7 +8,7 @@ import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 
 export default function Billing() {
-  const { theme } = useTheme();
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [pagination, setPagination] = useState<any>(null);

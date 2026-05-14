@@ -7,8 +7,6 @@ import {
   LuMinus, 
   LuTrash2, 
   LuCreditCard, 
-  LuBanknote, 
-  LuSmartphone, 
   LuPrinter,
   LuCheck,
   LuX,
@@ -16,7 +14,13 @@ import {
   LuPhone,
   LuMail,
   LuPackage,
-  LuWallet
+  LuWallet,
+  LuCamera,
+  LuChevronLeft,
+  LuChevronRight,
+  LuImage,
+  LuPencil,
+  LuTrash
 } from 'react-icons/lu';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -47,32 +51,39 @@ export default function POS() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [amountReceived, setAmountReceived] = useState<number | string>('');
+  
+  // Service Management State
   const [showAddService, setShowAddService] = useState(false);
+  const [isEditingService, setIsEditingService] = useState(false);
+  const [editingServiceId, setEditingServiceId] = useState<number | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedServiceForDetail, setSelectedServiceForDetail] = useState<Service | null>(null);
+  const [serviceImages, setServiceImages] = useState<string[]>([]);
   const [newService, setNewService] = useState({
     name: '',
     category: 'Travel',
     description: '',
     price: 0
   });
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
 
   // Constants
   const TAX_RATE = 0.12;
 
   // Load initial data
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchServices = async () => {
       try {
-        const [servicesRes] = await Promise.all([
-          billingApi.getServices()
-        ]);
-        setServices(servicesRes.data.data);
+        const res = await billingApi.getServices();
+        setServices(Array.isArray(res?.data?.data) ? res.data.data : []);
       } catch (err) {
-        console.error('Failed to fetch POS data:', err);
+        console.error('Failed to fetch services:', err);
+        setServices([]);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchData();
+    fetchServices();
   }, []);
 
   // Cart operations
@@ -111,11 +122,12 @@ export default function POS() {
   const change = typeof amountReceived === 'number' ? Math.max(0, amountReceived - total) : 0;
 
   const filteredServices = useMemo(() => {
-    return services.filter(s => 
-      (selectedCategory === 'All' || s.category === selectedCategory) &&
-      (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       s.category.toLowerCase().includes(searchTerm.toLowerCase()))
-    );
+    return services.filter(service => {
+      const matchesSearch = (service.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+                          (service.category?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+      const matchesCategory = selectedCategory === 'All' || service.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
   }, [services, searchTerm, selectedCategory]);
 
   // Checkout
@@ -125,10 +137,10 @@ export default function POS() {
     setIsProcessing(true);
     try {
       const response = await billingApi.createInvoice({
-        customer_name: customerName || null,
-        customer_address: customerAddress || null,
-        customer_email: customerEmail || null,
-        customer_contact: customerContact || null,
+        customer_name: customerName || undefined,
+        customer_address: customerAddress || undefined,
+        customer_email: customerEmail || undefined,
+        customer_contact: customerContact || undefined,
         payment_method: paymentMethod,
         items: cart.map(item => ({
           service_id: item.service.id,
@@ -158,6 +170,36 @@ export default function POS() {
     }
   };
 
+  const handleDeleteService = async (id: number) => {
+    if (!confirm('Are you sure you want to delete this service? This cannot be undone.')) return;
+    try {
+      await billingApi.deleteService(id);
+      setServices(prev => prev.filter(s => s.id !== id));
+      setShowDetailModal(false);
+    } catch (err) {
+      alert('Failed to delete service.');
+    }
+  };
+
+  const handleOpenEditModal = (service: Service) => {
+    setEditingServiceId(service.id);
+    setNewService({
+      name: service.name,
+      category: service.category,
+      description: service.description,
+      price: Number(service.price)
+    });
+    // For images, we need to handle existing ones. 
+    // We'll map them to full URLs for preview but keep track that they are existing
+    const existingImages = service.images?.map(img => 
+      img.startsWith('http') ? img : `http://localhost:8000/storage/${img}`
+    ) || [];
+    setServiceImages(existingImages);
+    setIsEditingService(true);
+    setShowAddService(true);
+    setShowDetailModal(false);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -167,7 +209,7 @@ export default function POS() {
   }
 
   return (
-    <div className="h-[calc(100vh-100px)] gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row">
+    <div className={`h-[calc(100vh-100px)] gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col gap-6">
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6">
@@ -197,6 +239,15 @@ export default function POS() {
                 </button>
               ))}
             </div>
+
+            {(user?.role === 'super_admin' || user?.role === 'admin') && (
+              <button 
+                onClick={() => setShowAddService(true)}
+                className="px-6 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2"
+              >
+                <LuPlus className="w-4 h-4" /> Add Service
+              </button>
+            )}
           </div>
         </div>
 
@@ -204,24 +255,64 @@ export default function POS() {
           {filteredServices.map((service) => (
             <div 
               key={service.id}
-              onClick={() => addToCart(service)}
-              className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer active:scale-95"
+              onClick={() => { setSelectedServiceForDetail(service); setDetailImageIndex(0); setShowDetailModal(true); }}
+              className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col"
             >
-              <div className="flex justify-between items-start mb-6">
-                <div className={`p-4 rounded-2xl shadow-lg transition-transform group-hover:scale-110 ${
-                  service.category === 'Documentation' ? 'bg-blue-500 shadow-blue-200 dark:shadow-blue-950/40' :
-                  service.category === 'Package' ? 'bg-emerald-500 shadow-emerald-200 dark:shadow-emerald-950/40' :
-                  'bg-violet-500 shadow-violet-200 dark:shadow-violet-950/40'
-                }`}>
-                  <LuPackage className="w-6 h-6 text-white" />
+              {/* Card Image Header */}
+              <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+                {service.images && service.images.length > 0 ? (
+                  <img 
+                    src={service.images[0]?.startsWith('http') ? service.images[0] : `http://localhost:8000/storage/${service.images[0]}`} 
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    alt={service.name}
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                    <LuImage className="w-12 h-12 opacity-20" />
+                  </div>
+                )}
+
+                <div className="absolute top-4 right-4 flex gap-2 z-20">
+                   <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
+                      <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                   </div>
+                   {(user?.role === 'super_admin' || user?.role === 'admin') && (
+                     <button 
+                       onClick={(e) => { e.stopPropagation(); handleDeleteService(service.id); }}
+                       className="p-2 bg-rose-500 text-white rounded-xl shadow-lg hover:bg-rose-600 transition-all"
+                     >
+                       <LuTrash className="w-3.5 h-3.5" />
+                     </button>
+                   )}
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{service.category}</p>
-                  <p className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+
+                {/* View Overlay */}
+                <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
+                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                    <p className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-sm">View</p>
+                  </div>
                 </div>
               </div>
-              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors">{service.name}</h4>
-              <p className="text-[10px] text-gray-400 mt-2 font-medium leading-relaxed line-clamp-2">{service.description}</p>
+
+              <div className="p-6 flex-1 flex flex-col">
+                <div className="flex justify-between items-start mb-2">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{service.category}</p>
+                  {service.images && service.images.length > 1 && (
+                    <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                      +{service.images.length - 1} Images
+                    </span>
+                  )}
+                </div>
+                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-4">{service.description}</p>
+                
+                <button 
+                  onClick={(e) => { e.stopPropagation(); addToCart(service); }}
+                  className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                >
+                  <LuPlus className="w-3.5 h-3.5" /> Add to Order
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -571,100 +662,270 @@ export default function POS() {
 
       {/* Add Service Modal */}
       {showAddService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm duration-300">
-          <div className="bg-white w-full max-w-lg rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <div className="p-8 border-b border-gray-50 flex items-center justify-between">
-              <h3 className="text-xl font-black text-gray-900 tracking-tight uppercase">Add New Service</h3>
-              <button onClick={() => setShowAddService(false)} className="text-gray-400 hover:text-gray-900"><LuX className="w-6 h-6" /></button>
-            </div>
-            <div className="p-8 space-y-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Name</label>
-                <input 
-                  type="text" 
-                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-bold"
-                  value={newService.name}
-                  onChange={e => setNewService({...newService, name: e.target.value})}
-                />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Register New Service</h3>
+                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Create a new item in the catalog</p>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <button onClick={() => { setShowAddService(false); setServiceImages([]); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-colors">
+                <LuX className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-6 overflow-y-auto flex-1">
+              {/* Image Upload Area */}
+              <div className="space-y-4">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Gallery (Multiple Images)</label>
+                <div className="grid grid-cols-4 gap-4">
+                  {serviceImages.map((img, idx) => (
+                    <div key={idx} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-gray-50 dark:bg-gray-800">
+                      <img src={img} className="w-full h-full object-cover" />
+                      <button 
+                        onClick={() => setServiceImages(prev => prev.filter((_, i) => i !== idx))}
+                        className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <LuTrash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button 
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.multiple = true;
+                      input.onchange = (e: any) => {
+                        const files = Array.from(e.target.files);
+                        files.forEach((file: any) => {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setServiceImages(prev => [...prev, reader.result as string]);
+                          };
+                          reader.readAsDataURL(file);
+                        });
+                      };
+                      input.click();
+                    }}
+                    className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700 flex flex-col items-center justify-center gap-2 text-gray-400 hover:border-blue-500 hover:text-blue-500 transition-all bg-gray-50/50 dark:bg-gray-800/30"
+                  >
+                    <LuCamera className="w-6 h-6" />
+                    <span className="text-[10px] font-black uppercase">Upload</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Category</label>
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. Boracay Luxury Package"
+                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                    value={newService.name}
+                    onChange={e => setNewService({...newService, name: e.target.value})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
                   <select 
-                    className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-bold"
+                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none appearance-none"
                     value={newService.category}
                     onChange={e => setNewService({...newService, category: e.target.value})}
                   >
-                    <option>Travel</option>
-                    <option>Documentation</option>
-                    <option>Transportation</option>
-                    <option>Accommodation</option>
-                    <option>Other</option>
+                    <option value="Travel">Travel Package</option>
+                    <option value="Documentation">Documentation</option>
+                    <option value="Transport">Transportation</option>
+                    <option value="Other">Other Services</option>
                   </select>
                 </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Base Price (₱)</label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>
+                <div className="relative">
+                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
                   <input 
                     type="number" 
-                    className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-bold"
+                    placeholder="0.00"
+                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-xl font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                     value={newService.price}
                     onChange={e => setNewService({...newService, price: Number(e.target.value)})}
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Description</label>
                 <textarea 
-                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-medium h-24"
+                  placeholder="Provide detailed information about the service or package inclusions..."
+                  className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-[2rem] py-5 px-6 text-sm font-medium dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none min-h-[120px]"
                   value={newService.description}
                   onChange={e => setNewService({...newService, description: e.target.value})}
                 />
               </div>
             </div>
-            <div className="p-8 bg-gray-50 flex gap-4">
+
+            <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button 
-                onClick={() => setShowAddService(false)}
-                className="flex-1 py-4 bg-white border border-gray-200 rounded-2xl font-black text-xs uppercase"
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); }}
+                className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all"
               >
                 Cancel
               </button>
               <button 
                 onClick={async () => {
                   try {
-                    await billingApi.createService(newService);
-                    const servicesRes = await billingApi.getServices();
-                    setServices(servicesRes.data.data);
-                    setShowAddService(false);
+                    if (isEditingService && editingServiceId) {
+                      await billingApi.updateService(editingServiceId, {...newService, images: serviceImages});
+                    } else {
+                      await billingApi.createService({...newService, images: serviceImages});
+                    }
+                    const response = await billingApi.getServices();
+                    if (response?.data?.data && Array.isArray(response.data.data)) {
+                      setServices(response.data.data);
+                    } else {
+                      setServices([]);
+                    }
+                    setIsEditingService(false);
+                    setEditingServiceId(null);
+                    setServiceImages([]);
                     setNewService({ name: '', category: 'Travel', description: '', price: 0 });
                   } catch (err) {
                     alert('Failed to save service');
                   }
                 }}
-                className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg shadow-blue-600/20"
+                className="flex-2 py-5 bg-blue-600 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
               >
-                Save Service
+                <LuCheck className="w-5 h-5" /> {isEditingService ? 'Update Service' : 'Confirm Registration'}
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Service Detail Modal */}
+      {showDetailModal && selectedServiceForDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
+            {/* Gallery Column */}
+            <div className="flex-1 bg-gray-50 dark:bg-gray-800 relative group">
+              {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
+                <>
+                  <img 
+                    src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http') 
+                      ? selectedServiceForDetail.images[detailImageIndex] 
+                      : `http://localhost:8000/storage/${selectedServiceForDetail.images[detailImageIndex]}`} 
+                    className="w-full h-full object-cover" 
+                    alt={selectedServiceForDetail.name}
+                  />
+                  {selectedServiceForDetail.images.length > 1 && (
+                    <div className="absolute inset-x-0 bottom-8 flex justify-center gap-2">
+                      {selectedServiceForDetail.images.map((_, i) => (
+                        <button 
+                          key={i} 
+                          onClick={() => setDetailImageIndex(i)}
+                          className={`w-3 h-3 rounded-full border-2 border-white transition-all ${detailImageIndex === i ? 'bg-blue-600 w-8' : 'bg-white/50'}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {selectedServiceForDetail.images.length > 1 && (
+                    <div className="absolute inset-y-0 inset-x-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
+                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all"><LuChevronRight className="w-6 h-6" /></button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 gap-4">
+                  <LuImage className="w-20 h-20 opacity-10" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Preview Available</p>
+                </div>
+              )}
+              <button 
+                onClick={() => setShowDetailModal(false)}
+                className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-white hover:bg-white hover:text-gray-900 transition-all"
+              >
+                <LuX className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Info Column */}
+            <div className="w-full md:w-[400px] p-10 flex flex-col border-l border-gray-100 dark:border-gray-800 relative">
+              <div className="mb-8">
+                <div className="flex items-center justify-between">
+                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
+                    selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600' :
+                    selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
+                    'bg-violet-50 text-violet-600'
+                  }`}>
+                    {selectedServiceForDetail.category}
+                  </span>
+                  
+                  {(user?.role === 'super_admin' || user?.role === 'admin') && (
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleOpenEditModal(selectedServiceForDetail)}
+                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
+                        title="Edit Service"
+                      >
+                        <LuPencil className="w-4 h-4" />
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteService(selectedServiceForDetail.id)}
+                        className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all"
+                        title="Delete Service"
+                      >
+                        <LuTrash className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-4 leading-tight uppercase tracking-tighter">
+                  {selectedServiceForDetail.name}
+                </h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 custom-scrollbar">
+                <div>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Service Description</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 font-medium leading-relaxed">
+                    {selectedServiceForDetail.description}
+                  </p>
+                </div>
+
+                <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Package Investment</p>
+                  <h4 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
+                    ₱{Number(selectedServiceForDetail.price).toLocaleString()}
+                  </h4>
+                  <p className="text-[10px] text-gray-400 font-medium mt-1">* VAT Inclusive Price</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button 
+                  onClick={() => { addToCart(selectedServiceForDetail); setShowDetailModal(false); }}
+                  className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <LuPlus className="w-5 h-5" /> Add to Current Order
+                </button>
+                <button 
+                  onClick={() => setShowDetailModal(false)}
+                  className="w-full py-5 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-gray-900 dark:hover:text-white transition-all"
+                >
+                  Keep Browsing
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Print Styles */}
-      <style>{`
-        @media print {
-          body * { visibility: hidden; }
-          #printable-invoice, #printable-invoice * { visibility: visible; }
-          #printable-invoice { 
-            position: absolute; 
-            left: 0; 
-            top: 0; 
-            width: 100%; 
-            padding: 2cm !important;
-            box-shadow: none !important;
-          }
-          .no-print { display: none !important; }
-        }
-      `}</style>
+
 
     </div>
   );

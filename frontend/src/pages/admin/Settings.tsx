@@ -1,5 +1,5 @@
 import { useTheme } from '../../context/ThemeContext';
-import { LuSun, LuMoon, LuPalette, LuShield, LuMonitor } from 'react-icons/lu';
+import { LuSun, LuMoon } from 'react-icons/lu';
 
 export default function Settings() {
   const { theme, toggleTheme } = useTheme();
