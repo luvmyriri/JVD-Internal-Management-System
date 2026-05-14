@@ -42,7 +42,7 @@ class UserController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => UserResource::collection($users),
+            'data' => UserResource::collection($users)->resolve(),
             'meta' => [
                 'current_page' => $users->currentPage(),
                 'last_page' => $users->lastPage(),

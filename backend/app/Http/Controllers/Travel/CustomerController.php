@@ -33,7 +33,7 @@ class CustomerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => CustomerResource::collection($customers),
+            'data'    => CustomerResource::collection($customers)->resolve(),
             'meta'    => [
                 'current_page' => $customers->currentPage(),
                 'last_page'    => $customers->lastPage(),

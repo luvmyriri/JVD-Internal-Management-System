@@ -32,7 +32,7 @@ class SupplierController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => SupplierResource::collection($suppliers),
+            'data'    => SupplierResource::collection($suppliers)->resolve(),
             'meta'    => [
                 'current_page' => $suppliers->currentPage(),
                 'last_page'    => $suppliers->lastPage(),

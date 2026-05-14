@@ -52,7 +52,7 @@ class AuditLogController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => AuditLogResource::collection($logs),
+            'data'    => AuditLogResource::collection($logs)->resolve(),
             'meta'    => [
                 'current_page' => $logs->currentPage(),
                 'last_page'    => $logs->lastPage(),

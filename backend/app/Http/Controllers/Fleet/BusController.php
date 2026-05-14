@@ -41,7 +41,7 @@ class BusController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => BusResource::collection($buses),
+            'data'    => BusResource::collection($buses)->resolve(),
             'meta'    => [
                 'current_page' => $buses->currentPage(),
                 'last_page'    => $buses->lastPage(),

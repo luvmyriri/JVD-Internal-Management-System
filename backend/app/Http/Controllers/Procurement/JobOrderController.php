@@ -39,7 +39,7 @@ class JobOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => JobOrderResource::collection($jos),
+            'data'    => JobOrderResource::collection($jos)->resolve(),
             'meta'    => [
                 'current_page' => $jos->currentPage(),
                 'last_page'    => $jos->lastPage(),

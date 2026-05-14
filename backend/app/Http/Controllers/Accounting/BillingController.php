@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
+use App\Http\Resources\InvoiceResource;
+
 class BillingController extends Controller
 {
     /**
@@ -46,7 +48,13 @@ class BillingController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $invoices,
+            'data' => InvoiceResource::collection($invoices)->resolve(),
+            'meta' => [
+                'current_page' => $invoices->currentPage(),
+                'last_page'    => $invoices->lastPage(),
+                'per_page'     => $invoices->perPage(),
+                'total'        => $invoices->total(),
+            ],
             'stats' => $stats
         ]);
     }
@@ -201,7 +209,7 @@ class BillingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => $invoice->load('items.service')
+                'data' => (new InvoiceResource($invoice->load('items.service')))->resolve()
             ], 201);
 
         } catch (\Exception $e) {
@@ -230,7 +238,7 @@ class BillingController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => $invoice
+            'data' => (new InvoiceResource($invoice))->resolve()
         ]);
     }
 

@@ -36,7 +36,7 @@ class PassengerController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => PassengerResource::collection($passengers),
+            'data'    => PassengerResource::collection($passengers)->resolve(),
             'meta'    => [
                 'current_page' => $passengers->currentPage(),
                 'last_page'    => $passengers->lastPage(),

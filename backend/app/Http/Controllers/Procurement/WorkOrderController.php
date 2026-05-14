@@ -42,7 +42,7 @@ class WorkOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => WorkOrderResource::collection($wos),
+            'data'    => WorkOrderResource::collection($wos)->resolve(),
             'meta'    => [
                 'current_page' => $wos->currentPage(),
                 'last_page'    => $wos->lastPage(),

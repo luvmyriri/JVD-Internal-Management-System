@@ -36,7 +36,7 @@ class InventoryController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => InventoryItemResource::collection($items),
+            'data'    => InventoryItemResource::collection($items)->resolve(),
             'meta'    => [
                 'current_page' => $items->currentPage(),
                 'last_page'    => $items->lastPage(),

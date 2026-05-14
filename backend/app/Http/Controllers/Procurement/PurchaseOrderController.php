@@ -38,7 +38,7 @@ class PurchaseOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => PurchaseOrderResource::collection($pos),
+            'data'    => PurchaseOrderResource::collection($pos)->resolve(),
             'meta'    => [
                 'current_page' => $pos->currentPage(),
                 'last_page'    => $pos->lastPage(),

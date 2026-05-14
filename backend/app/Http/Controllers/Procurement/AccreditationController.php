@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Procurement;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AccreditationResource;
 use App\Models\Accreditation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -25,7 +26,18 @@ class AccreditationController extends Controller
             $query->where('entity_name', 'ilike', '%' . $request->search . '%');
         }
 
-        return $query->latest()->paginate(20);
+        $accreditations = $query->latest()->paginate($request->per_page ?? 20);
+
+        return response()->json([
+            'success' => true,
+            'data'    => AccreditationResource::collection($accreditations)->resolve(),
+            'meta'    => [
+                'current_page' => $accreditations->currentPage(),
+                'last_page'    => $accreditations->lastPage(),
+                'per_page'     => $accreditations->perPage(),
+                'total'        => $accreditations->total(),
+            ],
+        ]);
     }
 
     public function store(Request $request)
@@ -47,12 +59,19 @@ class AccreditationController extends Controller
 
         $accreditation = Accreditation::create($validated);
 
-        return response()->json($accreditation, 201);
+        return response()->json([
+            'success' => true,
+            'data'    => new AccreditationResource($accreditation),
+            'message' => 'Accreditation record created.',
+        ], 201);
     }
 
     public function show(Accreditation $accreditation)
     {
-        return $accreditation;
+        return response()->json([
+            'success' => true,
+            'data'    => new AccreditationResource($accreditation),
+        ]);
     }
 
     public function update(Request $request, Accreditation $accreditation)
@@ -66,7 +85,12 @@ class AccreditationController extends Controller
         ]);
 
         $accreditation->update($validated);
-        return $accreditation;
+        
+        return response()->json([
+            'success' => true,
+            'data'    => new AccreditationResource($accreditation),
+            'message' => 'Accreditation record updated.',
+        ]);
     }
 
     public function destroy(Accreditation $accreditation)

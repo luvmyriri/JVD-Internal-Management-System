@@ -54,7 +54,7 @@ class PassportCaseController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => PassportCaseResource::collection($cases),
+            'data'    => PassportCaseResource::collection($cases)->resolve(),
             'meta'    => [
                 'current_page' => $cases->currentPage(),
                 'last_page'    => $cases->lastPage(),
