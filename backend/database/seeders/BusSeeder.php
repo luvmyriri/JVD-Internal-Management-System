@@ -16,7 +16,7 @@ class BusSeeder extends Seeder
                 'seating_capacity' => 45,
                 'status' => 'available',
                 'last_service_date' => now()->subMonths(6),
-                'next_service_due' => now()->addDays(5), // Upcoming
+                'next_service_due' => now()->addDays(5),
                 'total_mileage' => 45000.5,
             ],
             [
@@ -25,7 +25,7 @@ class BusSeeder extends Seeder
                 'seating_capacity' => 49,
                 'status' => 'under_maintenance',
                 'last_service_date' => now()->subMonths(4),
-                'next_service_due' => now()->subDays(2), // Overdue
+                'next_service_due' => now()->subDays(2),
                 'total_mileage' => 82000.0,
             ],
             [
@@ -34,7 +34,7 @@ class BusSeeder extends Seeder
                 'seating_capacity' => 53,
                 'status' => 'in_service',
                 'last_service_date' => now()->subMonths(1),
-                'next_service_due' => now()->addMonths(2), // Healthy
+                'next_service_due' => now()->addMonths(2),
                 'total_mileage' => 12000.8,
             ],
             [
@@ -43,8 +43,18 @@ class BusSeeder extends Seeder
                 'seating_capacity' => 30,
                 'status' => 'available',
                 'last_service_date' => now()->subMonths(8),
-                'next_service_due' => now()->subDays(15), // Very Overdue
+                'next_service_due' => now()->subDays(15),
                 'total_mileage' => 110000.2,
+            ],
+            [
+                'plate_number' => 'ABC 9012',
+                'model' => 'King Long XMQ6127',
+                'seating_capacity' => 51,
+                'status' => 'available',
+                'last_service_date' => now()->subDays(3),
+                'next_service_due' => now()->addMonths(3),
+                'total_mileage' => 5000.0,
+
             ],
         ];
 

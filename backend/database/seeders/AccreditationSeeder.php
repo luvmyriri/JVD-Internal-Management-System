@@ -9,10 +9,13 @@ class AccreditationSeeder extends Seeder
 {
     public function run(): void
     {
-        $data = [
+        $bus = \App\Models\Bus::first();
+        $supplier = \App\Models\Supplier::first();
+
+        $accreditations = [
             [
                 'entity_type' => 'company',
-                'entity_id' => 1,
+                'entity_id' => $supplier?->id ?? 1,
                 'entity_name' => 'Caltex Philippines',
                 'accreditation_type' => 'Fuel Supplier',
                 'issuing_body' => 'DTI',
@@ -23,33 +26,28 @@ class AccreditationSeeder extends Seeder
                 'contact_email' => 'juan@caltex.com',
             ],
             [
-                'entity_type' => 'company',
-                'entity_id' => 2,
-                'entity_name' => 'Victory Liner Parts',
-                'accreditation_type' => 'Parts Supplier',
-                'issuing_body' => 'SEC',
-                'issue_date' => '2023-06-01',
-                'expiry_date' => '2024-06-01',
-                'status' => 'pending_renewal',
-                'contact_person' => 'Maria Santos',
-                'contact_email' => 'maria@victoryparts.com',
+                'entity_type' => 'bus',
+                'entity_id' => $bus?->id ?? 1,
+                'accreditation_type' => 'LTFRB CPC',
+                'issuing_body' => 'LTFRB',
+                'issue_date' => now()->subYear(),
+                'expiry_date' => now()->addYear(),
+                'status' => 'active',
             ],
             [
                 'entity_type' => 'company',
-                'entity_id' => 10,
-                'entity_name' => 'Starlite Ferries',
-                'accreditation_type' => 'Logistics Partner',
-                'issuing_body' => 'MARINA',
-                'issue_date' => '2024-02-10',
-                'expiry_date' => '2025-02-10',
+                'entity_id' => 1, // JVD Company
+                'accreditation_type' => 'Business Permit',
+                'issuing_body' => 'LGU Caloocan',
+                'issue_date' => now()->subMonths(6),
+                'expiry_date' => now()->addMonths(6),
                 'status' => 'active',
-                'contact_person' => 'Ricardo Dalisay',
-                'contact_email' => 'ricardo@starlite.com',
             ],
         ];
 
-        foreach ($data as $item) {
-            Accreditation::create($item);
+        foreach ($accreditations as $acc) {
+            Accreditation::create($acc);
+
         }
     }
 }

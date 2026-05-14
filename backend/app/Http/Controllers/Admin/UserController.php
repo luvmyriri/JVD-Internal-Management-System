@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use App\Http\Services\AuditLogService;
 
 class UserController extends Controller
 {
@@ -85,6 +86,15 @@ class UserController extends Controller
             'created_by' => auth()->id(),
         ]);
 
+        // Explicit Audit Log
+        AuditLogService::log(
+            action: 'CREATE_EMPLOYEE',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id,
+            new: $user->toArray()
+        );
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -107,7 +117,18 @@ class UserController extends Controller
             'department' => ['nullable', 'string', 'max:100'],
         ]);
 
+        $oldValues = $user->getOriginal();
         $user->update($validated);
+
+        // Explicit Audit Log
+        AuditLogService::log(
+            action: 'UPDATE_EMPLOYEE',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id,
+            old: $oldValues,
+            new: $user->fresh()->toArray()
+        );
 
         return response()->json([
             'success' => true,
@@ -134,6 +155,14 @@ class UserController extends Controller
         // Revoke all active tokens
         $user->tokens()->delete();
 
+        // Explicit Audit Log
+        AuditLogService::log(
+            action: 'DEACTIVATE_EMPLOYEE',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id
+        );
+
         return response()->json([
             'success' => true,
             'message' => 'Account deactivated and all sessions revoked.',
@@ -146,6 +175,14 @@ class UserController extends Controller
     public function activate(User $user): JsonResponse
     {
         $user->update(['is_active' => true]);
+
+        // Explicit Audit Log
+        AuditLogService::log(
+            action: 'ACTIVATE_EMPLOYEE',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id
+        );
 
         return response()->json([
             'success' => true,
@@ -167,6 +204,14 @@ class UserController extends Controller
 
         // Revoke all tokens so user must re-login
         $user->tokens()->delete();
+
+        // Explicit Audit Log
+        AuditLogService::log(
+            action: 'RESET_PASSWORD',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id
+        );
 
         return response()->json([
             'success' => true,

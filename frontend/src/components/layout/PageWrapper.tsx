@@ -15,7 +15,7 @@ export default function PageWrapper() {
     }`}>
       <Sidebar />
       <Header />
-      <main className="ml-64 pt-16 px-12 py-12 min-h-screen">
+      <main className="ml-64 pt-24 px-8 py-10 min-h-screen">
         <Outlet />
       </main>
     </div>

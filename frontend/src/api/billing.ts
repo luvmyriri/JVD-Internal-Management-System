@@ -6,6 +6,7 @@ export interface Service {
   description: string;
   category: string;
   price: number;
+  images?: string[];
   is_active: boolean;
 }
 
@@ -56,7 +57,17 @@ export const billingApi = {
     category: string;
     price: number;
     description: string;
+    images?: string[];
   }) => client.post('/billing/services', data),
+  updateService: (id: number, data: {
+    name: string;
+    category: string;
+    price: number;
+    description: string;
+    images?: string[];
+    is_active?: boolean;
+  }) => client.put(`/billing/services/${id}`, data),
+  deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 
     client.patch(`/billing/${id}/status`, { status }),
   getReportsSummary: (range = 'month') => 

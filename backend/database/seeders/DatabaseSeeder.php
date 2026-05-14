@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             SuperAdminSeeder::class,
+            EmployeeSeeder::class,
             CustomerSeeder::class,
             PassengerSeeder::class,
             ServiceSeeder::class,
@@ -21,9 +22,9 @@ class DatabaseSeeder extends Seeder
             BusSeeder::class,
             InventorySeeder::class,
             PurchaseOrderSeeder::class,
-            WorkOrderSeeder::class,
             JobOrderSeeder::class,
-            PassportCaseSeeder::class,
+            WorkOrderSeeder::class,
+            PassportSeeder::class,
             AccreditationSeeder::class,
             InvoiceSeeder::class,
             AuditLogSeeder::class,

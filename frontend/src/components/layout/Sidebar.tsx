@@ -89,7 +89,7 @@ const navigation: NavSection[] = [
     title: 'Administration',
     items: [
       { label: 'Users', path: '/admin/users', icon: <LuUserCog />, roles: ['super_admin', 'admin'] },
-      { label: 'Audit Logs', path: '/admin/audit-logs', icon: <LuScrollText />, roles: ['super_admin', 'admin'] },
+      { label: 'Audit Logs', path: '/admin/audit-logs', icon: <LuScrollText />, roles: ['super_admin', 'admin', 'human_resource'] },
       { label: 'Settings', path: '/admin/settings', icon: <LuSettings />, roles: ['super_admin', 'admin'] },
     ],
   },

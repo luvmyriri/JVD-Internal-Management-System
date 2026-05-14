@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   LuScrollText, 
+  LuSearch, 
   LuFilter, 
   LuCalendar,
   LuChevronLeft,
@@ -16,12 +17,10 @@ import { useAuditLogs, type AuditLog } from '../../hooks/useAuditLogs';
 import { Button, StatusBadge, Modal } from '../../components/ui';
 import { cn, fullName, formatDate, timeAgo } from '../../utils';
 
-export default function AuditLogs() {
+export default function ActivityLogs() {
   const [page, setPage] = useState(1);
   const [module, setModule] = useState('');
   const [action, setAction] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
@@ -29,8 +28,6 @@ export default function AuditLogs() {
     page, 
     module, 
     action,
-    date_from: dateFrom,
-    date_to: dateTo,
     per_page: 20 
   });
 
@@ -56,92 +53,50 @@ export default function AuditLogs() {
         <div>
           <h1 className="text-3xl font-bold text-gray-100 flex items-center gap-3">
             <LuScrollText className="text-indigo-500" size={32} />
-            System Audit Logs
+            System Activity Log
           </h1>
-          <p className="text-gray-400 mt-1">Immutable trail of all administrative and operational actions.</p>
+          <p className="text-gray-400 mt-1">Immutable audit trail of all administrative and operational actions.</p>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm shadow-lg space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Module</label>
-            <div className="relative">
-              <LuActivity className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <select
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
-                value={module}
-                onChange={(e) => setModule(e.target.value)}
-              >
-                <option value="">All Modules</option>
-                <option value="users">Employees</option>
-                <option value="purchase-orders">Purchase Orders</option>
-                <option value="suppliers">Suppliers</option>
-                <option value="billing">Billing/Accounting</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Action</label>
+      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col md:flex-row gap-4 items-end">
+        <div className="flex-1 space-y-1.5 w-full">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Module</label>
+          <div className="relative">
+            <LuActivity className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <select
-              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
+              className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
+              value={module}
+              onChange={(e) => setModule(e.target.value)}
             >
-              <option value="">Any Action</option>
-              <option value="POST">Created</option>
-              <option value="PUT">Updated</option>
-              <option value="DELETE">Deleted</option>
+              <option value="">All Modules</option>
+              <option value="users">Employees</option>
+              <option value="purchase-orders">Purchase Orders</option>
+              <option value="suppliers">Suppliers</option>
+              <option value="billing">Billing/Accounting</option>
             </select>
           </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Date From</label>
-            <div className="relative">
-              <LuCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="date"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Date To</label>
-            <div className="relative">
-              <LuCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="date"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
-            </div>
-          </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button 
-            variant="secondary" 
-            className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-colors"
-            onClick={() => {
-              setModule('');
-              setAction('');
-              setDateFrom('');
-              setDateTo('');
-            }}
+        <div className="w-full md:w-48 space-y-1.5">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Action</label>
+          <select
+            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
           >
-            Reset Filters
-          </Button>
-          <Button className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/20">
-            <LuFilter size={18} />
-            Apply Filters
-          </Button>
+            <option value="">Any Action</option>
+            <option value="POST">Created</option>
+            <option value="PUT">Updated</option>
+            <option value="DELETE">Deleted</option>
+          </select>
         </div>
+
+        <Button variant="secondary" className="px-6 py-2.5 h-[46px] w-full md:w-auto">
+          <LuFilter size={18} />
+          Filter
+        </Button>
       </div>
 
       {/* Logs Table */}

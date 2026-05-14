@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
+
+
 import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
@@ -9,6 +11,8 @@ import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { user, setUser } = useAuth();
+
+
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -136,21 +140,8 @@ export default function Profile() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Account Profile</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your personal information and profile settings.</p>
-        </div>
-        {!isEditing && (
-          <button
-            onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
-          >
-            <LuUser className="w-4 h-4 text-blue-600" />
-            Edit Profile
-          </button>
-        )}
-      </div>
+      {/* Header removed as it is redundant with layout header */}
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left: Avatar Management */}
@@ -204,6 +195,20 @@ export default function Profile() {
         {/* Right: Personal Info Form */}
         <div className="md:col-span-2 space-y-6">
           <form onSubmit={handleUpdateProfile} className="bg-white dark:bg-gray-900 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Personal Information</h3>
+              {!isEditing && (
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-xs font-bold rounded-xl hover:bg-white dark:hover:bg-gray-700 transition shadow-sm"
+                >
+                  <LuUser className="w-3.5 h-3.5 text-blue-600" />
+                  Edit Details
+                </button>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">

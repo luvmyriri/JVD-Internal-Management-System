@@ -14,12 +14,13 @@ class Service extends Model
         'description',
         'category',
         'price',
-        'image_url',
+        'images',
         'is_active',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'images' => 'array',
         'is_active' => 'boolean',
     ];
 }

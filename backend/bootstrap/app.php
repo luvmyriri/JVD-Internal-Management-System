@@ -25,7 +25,8 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\AuditLogger::class,
         ]);
 
-        // NOTE: statefulApi() removed — using Bearer token auth, not SPA cookie auth
+        $middleware->statefulApi();
+        // Apply audit logging to all API routes
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

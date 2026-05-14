@@ -8,6 +8,8 @@ import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 
 export default function Billing() {
+
+
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [pagination, setPagination] = useState<any>(null);

@@ -10,6 +10,7 @@ use App\Http\Services\PurchaseOrderService;
 use App\Models\PurchaseOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use App\Http\Services\AuditLogService;
 
 class PurchaseOrderController extends Controller
 {
@@ -55,6 +56,14 @@ class PurchaseOrderController extends Controller
     {
         $po = $this->service->create($request->validated(), $request->user()->id);
 
+        AuditLogService::log(
+            action: 'CREATE_PO',
+            module: 'purchase-orders',
+            entityType: 'purchase_order',
+            entityId: $po->id,
+            new: $po->toArray()
+        );
+
         return response()->json([
             'success' => true,
             'data'    => new PurchaseOrderResource($po->load(['supplier', 'lineItems'])),
@@ -90,6 +99,14 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->update(['status' => 'pending_accounting_review']);
 
+        AuditLogService::log(
+            action: 'SUBMIT_PO',
+            module: 'purchase-orders',
+            entityType: 'purchase_order',
+            entityId: $purchaseOrder->id,
+            new: ['status' => 'pending_accounting_review']
+        );
+
         return response()->json([
             'success' => true,
             'data'    => new PurchaseOrderResource($purchaseOrder->fresh(['supplier', 'lineItems'])),
@@ -110,11 +127,21 @@ class PurchaseOrderController extends Controller
             ], 422);
         }
 
+        $oldStatus = $purchaseOrder->status;
         $purchaseOrder->update([
             'status'          => $request->approved ? 'verified' : 'rejected',
             'verified_by'     => $request->user()->id,
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
+
+        AuditLogService::log(
+            action: $request->approved ? 'VERIFY_PO' : 'REJECT_PO',
+            module: 'purchase-orders',
+            entityType: 'purchase_order',
+            entityId: $purchaseOrder->id,
+            old: ['status' => $oldStatus],
+            new: ['status' => $purchaseOrder->status, 'verified_by' => $request->user()->id]
+        );
 
         return response()->json([
             'success' => true,
@@ -136,12 +163,22 @@ class PurchaseOrderController extends Controller
             ], 422);
         }
 
+        $oldStatus = $purchaseOrder->status;
         $purchaseOrder->update([
             'status'          => $request->approved ? 'approved' : 'rejected',
             'approved_by'     => $request->user()->id,
             'approved_at'     => $request->approved ? now() : null,
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
+
+        AuditLogService::log(
+            action: $request->approved ? 'APPROVE_PO' : 'REJECT_PO',
+            module: 'purchase-orders',
+            entityType: 'purchase_order',
+            entityId: $purchaseOrder->id,
+            old: ['status' => $oldStatus],
+            new: ['status' => $purchaseOrder->status, 'approved_by' => $request->user()->id]
+        );
 
         return response()->json([
             'success' => true,

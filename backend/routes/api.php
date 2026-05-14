@@ -58,15 +58,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // ADMINISTRATION (Super Admin + Admin)
+    // ADMINISTRATION (Super Admin + Admin + HR)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin')->group(function () {
-
-        // User Management
-        Route::apiResource('users', UserController::class)->except(['destroy']);
-        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
-        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
 
         // Audit Logs (read-only)
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
@@ -155,6 +149,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
+        Route::put('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'updateService'])->name('billing.services.update');
+        Route::delete('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'deleteService'])->name('billing.services.delete');
         Route::patch('/billing/{billing}/status', [App\Http\Controllers\Accounting\BillingController::class, 'updateStatus'])->name('billing.status.update');
         Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
         Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
@@ -165,6 +161,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // HR (Super Admin, Admin, HR)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,human_resource')->group(function () {
-        // Employees — Sprint 6
+        // User/Employee Management
+        Route::apiResource('users', UserController::class)->except(['destroy']);
+        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
+        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     });
 });

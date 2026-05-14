@@ -3,7 +3,7 @@ import type { LoginRequest, LoginResponse, TwoFactorRequest, ConfirmTwoFactorReq
 
 export const authApi = {
   // Initialize CSRF protection for Sanctum
-  getCsrfCookie: () => client.get('/sanctum/csrf-cookie', { baseURL: import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000' }),
+  getCsrfCookie: () => client.get('/sanctum/csrf-cookie', { baseURL: import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://127.0.0.1:8000' }),
 
   login: async (data: LoginRequest) => {
     await authApi.getCsrfCookie();

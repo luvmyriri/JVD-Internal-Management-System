@@ -4,19 +4,21 @@ namespace Database\Seeders;
 
 use App\Models\WorkOrder;
 use App\Models\User;
+
 use Illuminate\Database\Seeder;
 
 class WorkOrderSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('role', 'super_admin')->first();
-        if (!$admin) return;
+        $admin = User::where('role', 'super_admin')->first() ?? User::first();
+        $bus = \App\Models\Bus::first();
+        if (!$admin || !$bus) return;
 
         $orders = [
             [
                 'wo_number' => 'WO-2024-001',
-                'bus_id' => 1,
+                'bus_id' => $bus->id,
                 'created_by' => $admin->id,
                 'description' => 'Engine Overhaul and Preventive Maintenance',
                 'priority' => 'critical',
@@ -24,40 +26,33 @@ class WorkOrderSeeder extends Seeder
             ],
             [
                 'wo_number' => 'WO-2024-002',
-                'bus_id' => 2,
+                'bus_id' => \App\Models\Bus::skip(1)->first()?->id ?? $bus->id,
                 'created_by' => $admin->id,
                 'description' => 'Brake pad replacement and tire rotation',
                 'priority' => 'urgent',
                 'status' => 'open',
             ],
             [
-                'wo_number' => 'WO-2024-003',
-                'bus_id' => 3,
-                'created_by' => $admin->id,
-                'description' => 'Aircon cleaning and filter replacement',
-                'priority' => 'routine',
-                'status' => 'completed',
-            ],
-            [
-                'wo_number' => 'WO-2024-004',
-                'bus_id' => 4,
-                'created_by' => $admin->id,
-                'description' => 'Oil change and fluid check',
-                'priority' => 'routine',
+                'wo_number' => 'WO-2026-001',
+                'bus_id' => $bus->id,
+                'description' => 'Annual safety inspection and fleet-wide checkup.',
                 'status' => 'open',
+                'priority' => 'routine',
+                'created_by' => $admin->id,
             ],
             [
-                'wo_number' => 'WO-2024-005',
-                'bus_id' => 2,
-                'created_by' => $admin->id,
-                'description' => 'Electrical system diagnostic',
+                'wo_number' => 'WO-2026-002',
+                'bus_id' => $bus->id,
+                'description' => 'Urgent engine overheating issue.',
+                'status' => 'in_progress',
                 'priority' => 'critical',
-                'status' => 'pending_approval',
+                'created_by' => $admin->id,
             ],
         ];
 
         foreach ($orders as $order) {
             WorkOrder::create($order);
         }
+
     }
 }

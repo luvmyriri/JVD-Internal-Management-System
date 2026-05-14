@@ -8,6 +8,7 @@ use App\Models\InvoiceItem;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
@@ -69,9 +70,6 @@ class BillingController extends Controller
         ]);
     }
 
-    /**
-     * Store a new service.
-     */
     public function storeService(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -79,11 +77,31 @@ class BillingController extends Controller
             'category' => 'required|string',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
-            'image_url' => 'nullable|string',
+            'images' => 'nullable|array',
+            'images.*' => 'nullable|string', // Base64 strings
         ]);
 
         if ($validator->fails()) {
             return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $imageUrls = [];
+        if ($request->has('images')) {
+            foreach ($request->images as $base64Image) {
+                if (preg_match('/^data:image\/(\w+);base64,/', $base64Image, $type)) {
+                    $image = substr($base64Image, strpos($base64Image, ',') + 1);
+                    $type = strtolower($type[1]); // jpg, png, gif
+
+                    if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
+                        continue;
+                    }
+
+                    $image = str_replace(' ', '+', $image);
+                    $imageName = 'services/' . Str::random(10) . '.' . $type;
+                    Storage::disk('public')->put($imageName, base64_decode($image));
+                    $imageUrls[] = $imageName;
+                }
+            }
         }
 
         $service = Service::create([
@@ -91,7 +109,7 @@ class BillingController extends Controller
             'category' => $request->category,
             'price' => $request->price,
             'description' => $request->description,
-            'image_url' => $request->image_url,
+            'images' => $imageUrls,
             'is_active' => true
         ]);
 
@@ -100,6 +118,85 @@ class BillingController extends Controller
             'message' => 'Service created successfully',
             'data' => $service
         ], 201);
+    }
+
+    /**
+     * Update an existing service.
+     */
+    public function updateService(Request $request, $id)
+    {
+        $service = Service::findOrFail($id);
+        
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'category' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'description' => 'nullable|string',
+            'images' => 'nullable|array',
+            'is_active' => 'nullable|boolean',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $imageUrls = $service->images ?? [];
+        if ($request->has('images')) {
+            // This logic assumes we send the full array of images we want to keep
+            // New images are base64, existing ones are strings (paths)
+            $newImageUrls = [];
+            foreach ($request->images as $img) {
+                if (preg_match('/^data:image\/(\w+);base64,/', $img, $type)) {
+                    $image = substr($img, strpos($img, ',') + 1);
+                    $type = strtolower($type[1]);
+                    $image = str_replace(' ', '+', $image);
+                    $imageName = 'services/' . Str::random(10) . '.' . $type;
+                    Storage::disk('public')->put($imageName, base64_decode($image));
+                    $newImageUrls[] = $imageName;
+                } else {
+                    // Keep existing path if it's already a URL/path
+                    $newImageUrls[] = $img;
+                }
+            }
+            $imageUrls = $newImageUrls;
+        }
+
+        $service->update([
+            'name' => $request->name,
+            'category' => $request->category,
+            'price' => $request->price,
+            'description' => $request->description,
+            'images' => $imageUrls,
+            'is_active' => $request->is_active ?? $service->is_active
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service updated successfully',
+            'data' => $service
+        ]);
+    }
+
+    /**
+     * Delete a service.
+     */
+    public function deleteService($id)
+    {
+        $service = Service::findOrFail($id);
+        
+        // Delete associated images
+        if ($service->images) {
+            foreach ($service->images as $path) {
+                Storage::disk('public')->delete($path);
+            }
+        }
+        
+        $service->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Service deleted successfully'
+        ]);
     }
 
     /**
