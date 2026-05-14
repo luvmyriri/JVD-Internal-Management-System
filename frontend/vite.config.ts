@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+// Triggering reload after installing new dependencies
 export default defineConfig({
   plugins: [
     react(),

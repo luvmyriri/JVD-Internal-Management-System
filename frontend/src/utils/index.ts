@@ -52,3 +52,14 @@ export function getInitials(firstName: string, lastName: string): string {
 export function cn(...classes: (string | boolean | undefined | null)[]): string {
   return classes.filter(Boolean).join(' ');
 }
+
+/**
+ * Get full URL for avatar, prepending backend base if relative.
+ */
+export function getAvatarUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  
+  const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+  return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+}

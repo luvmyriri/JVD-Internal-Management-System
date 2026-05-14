@@ -21,6 +21,7 @@ class User extends Authenticatable
         'password',
         'first_name',
         'last_name',
+        'avatar_url',
         'role',
         'department',
         'totp_secret',

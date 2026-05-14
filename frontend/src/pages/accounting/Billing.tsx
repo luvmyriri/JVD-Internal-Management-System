@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   LuSearch, LuPrinter, LuEye, LuFileCheck, 
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
-  LuTrendingUp, LuActivity
+  LuTrendingUp, LuActivity, LuPhone, LuMail, LuMapPin
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
@@ -330,11 +330,19 @@ export default function Billing() {
             {/* Invoice Content (Scrollable) */}
             <div className="flex-1 overflow-y-auto p-10" id="printable-invoice">
               <div className="flex justify-between items-start mb-12">
-                <div>
-                  <h1 className="text-3xl font-black text-blue-600 tracking-tighter mb-1">JVD EVENTS & TRAVELS</h1>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6">Management System</p>
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-500 font-medium italic">Internal Billing Record</p>
+                <div className="flex flex-col items-start">
+                  <img src="/JVDlogo-removebg-preview.png" alt="JVD Logo" className="h-16 mb-2 object-contain" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
+                  <div className="space-y-1 pl-1">
+                    <p className="text-[11px] text-gray-900 font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City</p>
+                    <div className="flex flex-col gap-0.5 mt-2">
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="text-blue-600">PHONE:</span> 0976 4711294
+                      </p>
+                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                        <span className="text-blue-600">TEL:</span> 02 82938068
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
@@ -345,8 +353,25 @@ export default function Billing() {
 
               <div className="grid grid-cols-2 gap-12 mb-12 border-t border-b border-gray-50 py-8">
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Customer</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
                   <p className="text-lg font-black text-gray-900">{selectedInvoice.customer_name || 'Walk-in Customer'}</p>
+                  <div className="mt-2 space-y-1">
+                    {selectedInvoice.customer_contact && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuPhone className="w-3 h-3 text-blue-600" /> {selectedInvoice.customer_contact}
+                      </p>
+                    )}
+                    {selectedInvoice.customer_email && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuMail className="w-3 h-3 text-blue-600" /> {selectedInvoice.customer_email}
+                      </p>
+                    )}
+                    {selectedInvoice.customer_address && (
+                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                        <LuMapPin className="w-3 h-3 text-blue-600" /> {selectedInvoice.customer_address}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Invoice Meta</p>
