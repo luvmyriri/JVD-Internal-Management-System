@@ -25,6 +25,9 @@ class DatabaseSeeder extends Seeder
             JobOrderSeeder::class,
             PassportCaseSeeder::class,
             AccreditationSeeder::class,
+            InvoiceSeeder::class,
+            AuditLogSeeder::class,
+            LegalDocumentSeeder::class,
         ]);
     }
 }
