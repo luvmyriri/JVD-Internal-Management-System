@@ -7,8 +7,6 @@ import {
   LuMinus, 
   LuTrash2, 
   LuCreditCard, 
-  LuBanknote, 
-  LuSmartphone, 
   LuPrinter,
   LuCheck,
   LuX,
@@ -18,8 +16,6 @@ import {
   LuPackage,
   LuWallet
 } from 'react-icons/lu';
-import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 
@@ -29,9 +25,6 @@ interface CartItem {
 }
 
 export default function POS() {
-  const { user } = useAuth();
-  const { theme } = useTheme();
-  
   // State
   const [services, setServices] = useState<Service[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -217,7 +210,7 @@ export default function POS() {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-3 truncate">{service.category}</p>
-                  <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                 </div>
               </div>
               <h4 className="text-base font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors">{service.name}</h4>
@@ -253,7 +246,7 @@ export default function POS() {
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1 pr-4">
                         <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.service.price).toLocaleString()} / UNIT</p>
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                       </div>
                       <button onClick={() => removeFromCart(item.service.id)} className="text-gray-300 hover:text-rose-500 transition-colors">
                         <LuTrash2 className="w-4 h-4" />
@@ -265,7 +258,7 @@ export default function POS() {
                         <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
                         <button onClick={() => updateQuantity(item.service.id, item.quantity + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                       </div>
-                      <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.service.price) * item.quantity).toLocaleString()}</p>
+                      <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                   </div>
                 ))}
@@ -362,7 +355,7 @@ export default function POS() {
               <div className="flex justify-between items-center px-1">
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</span>
                 <div className={`text-lg font-black tracking-tighter ${Number(amountReceived) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
-                  ₱{change.toLocaleString()}
+                  ₱{change.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                 </div>
               </div>
             </div>
@@ -373,15 +366,15 @@ export default function POS() {
           <div className="space-y-2 mb-6">
             <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
               <span>Subtotal</span>
-              <span className="text-gray-900 dark:text-white">₱{subtotal.toLocaleString()}</span>
+              <span className="text-gray-900 dark:text-white">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
               <span>VAT (12%)</span>
-              <span className="text-gray-900 dark:text-white">₱{tax.toLocaleString()}</span>
+              <span className="text-gray-900 dark:text-white">₱{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
             <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100 dark:border-gray-700">
               <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Total</span>
-              <span className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{total.toLocaleString()}</span>
+              <span className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
             </div>
           </div>
 
@@ -512,8 +505,8 @@ export default function POS() {
                         <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{item.service?.category}</p>
                       </td>
                       <td className="py-5 text-center font-bold text-gray-600">{item.quantity}</td>
-                      <td className="py-5 text-right font-bold text-gray-600">₱{Number(item.unit_price).toLocaleString()}</td>
-                      <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString()}</td>
+                      <td className="py-5 text-right font-bold text-gray-600">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -524,20 +517,20 @@ export default function POS() {
                 <div className="w-64 space-y-3">
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>Subtotal</span>
-                    <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString()}</span>
+                    <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>VAT (12%)</span>
-                    <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString()}</span>
+                    <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
                     <span className="text-sm font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
-                    <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString()}</span>
+                    <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   {lastInvoice?.payment_method === 'Cash' && (
                     <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
                       <span>Change</span>
-                      <span className="text-emerald-600">₱{(Number(amountReceived) - Number(lastInvoice?.total_amount)).toLocaleString()}</span>
+                      <span className="text-emerald-600">₱{(Number(amountReceived) - Number(lastInvoice?.total_amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                   )}
                 </div>

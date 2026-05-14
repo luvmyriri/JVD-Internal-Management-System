@@ -59,7 +59,7 @@ export default function Reports() {
         CUSTOMER: inv.customer_name || 'Walk-in',
         SERVICES: inv.items?.map((i: any, idx: number) => `${idx + 1}. ${i.service?.name} (x${i.quantity})`).join('\n') || 'N/A',
         METHOD: inv.payment_method,
-        AMOUNT: `PHP ${Number(inv.total_amount).toLocaleString()}`
+        AMOUNT: `PHP ${Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
       }));
 
       if (type === 'pdf') {
@@ -332,7 +332,7 @@ export default function Reports() {
             <LuTrendingUp className="text-emerald-500 w-5 h-5" />
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Revenue</p>
-          <h3 className="text-3xl font-black text-gray-900">₱{data?.kpis.revenue.toLocaleString()}</h3>
+          <h3 className="text-3xl font-black text-gray-900">₱{data?.kpis.revenue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
         </div>
 
         <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
@@ -352,7 +352,7 @@ export default function Reports() {
             </div>
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Avg Ticket Size</p>
-          <h3 className="text-2xl font-black text-gray-900">₱{Math.round(data?.kpis.avg_ticket || 0).toLocaleString()}</h3>
+          <h3 className="text-2xl font-black text-gray-900">₱{Math.round(data?.kpis.avg_ticket || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
         </div>
 
         <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
@@ -394,6 +394,7 @@ export default function Reports() {
                 <Tooltip 
                   contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)', padding: '16px' }}
                   labelStyle={{ fontWeight: 800, color: '#111827', marginBottom: '8px' }}
+                  formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
                 />
                 <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
               </AreaChart>
@@ -413,7 +414,11 @@ export default function Reports() {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="category" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={(val) => `₱${val >= 1000 ? val/1000 + 'k' : val}`} />
-                <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }} />
+                <Tooltip 
+                  cursor={{fill: '#f8fafc'}} 
+                  contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }} 
+                  formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Total Revenue']}
+                />
                 <Bar dataKey="total" radius={[15, 15, 0, 0]}>
                   {data?.categories?.map((_entry: any, index: number) => (
                     <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][index % 4]} />
