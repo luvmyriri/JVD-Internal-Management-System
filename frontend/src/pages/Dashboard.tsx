@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import {
   LuUsers,
@@ -118,6 +119,7 @@ const mainChartData = {
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
 
   const [activeFilter, setActiveFilter] = useState<keyof typeof mainChartData>('Month');
@@ -389,7 +391,7 @@ export default function Dashboard() {
       {/* Top Row: Global KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Total Employees */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group relative">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group relative">
           <div className="flex items-start justify-between">
             <div className="w-12 h-12 rounded-2xl bg-blue-500 flex items-center justify-center text-white shadow-lg shadow-blue-200 group-hover:scale-110 transition-transform">
               <LuUsers className="w-6 h-6" />
@@ -404,12 +406,12 @@ export default function Dashboard() {
           </div>
           <div>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Employees</p>
-            <p className="text-3xl font-black text-gray-900">234</p>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">234</p>
           </div>
         </div>
 
         {/* Monthly Revenue */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
           <div className="flex items-start justify-between">
             <div className="w-12 h-12 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 group-hover:scale-110 transition-transform">
               <LuDollarSign className="w-6 h-6" />
@@ -424,12 +426,12 @@ export default function Dashboard() {
           </div>
           <div>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Monthly Revenue</p>
-            <p className="text-3xl font-black text-gray-900">₱2.3M</p>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">₱2.3M</p>
           </div>
         </div>
 
         {/* Active Agents */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
           <div className="flex items-start justify-between">
             <div className="w-12 h-12 rounded-2xl bg-violet-500 flex items-center justify-center text-white shadow-lg shadow-violet-200 group-hover:scale-110 transition-transform">
               <LuActivity className="w-6 h-6" />
@@ -444,12 +446,12 @@ export default function Dashboard() {
           </div>
           <div>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Active Agents</p>
-            <p className="text-3xl font-black text-gray-900">89</p>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">89</p>
           </div>
         </div>
 
         {/* Total Customers */}
-        <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6 flex flex-col gap-4 hover:shadow-xl transition-all group">
           <div className="flex items-start justify-between">
             <div className="w-12 h-12 rounded-2xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-200 group-hover:scale-110 transition-transform">
               <LuGlobe className="w-6 h-6" />
@@ -464,30 +466,30 @@ export default function Dashboard() {
           </div>
           <div>
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Customers</p>
-            <p className="text-3xl font-black text-gray-900">1,456</p>
+            <p className="text-3xl font-black text-gray-900 dark:text-white">1,456</p>
           </div>
         </div>
       </div>
 
       {/* Main Performance Graph */}
-      <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 group">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8 group">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-black text-gray-900 tracking-tight">System Performance</h2>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">System Performance</h2>
               <DownloadActions title="System Performance Summary" data={mainChartData[activeFilter]} />
             </div>
             <p className="text-xs text-gray-400 font-medium mt-1">Consolidated revenue overview in Millions (PHP)</p>
           </div>
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+            <div className="flex bg-slate-50 dark:bg-gray-800/50 p-1.5 rounded-2xl border border-slate-100 dark:border-gray-700/50">
               {(['Day', 'Week', 'Month', 'Year'] as const).map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
                   className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeFilter === filter
-                    ? 'bg-white text-blue-600 shadow-sm ring-1 ring-slate-200/50'
-                    : 'text-gray-400 hover:text-gray-600'
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm ring-1 ring-slate-200/50 dark:ring-gray-600'
+                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
                     }`}
                 >
                   {filter}
@@ -503,19 +505,19 @@ export default function Dashboard() {
 
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mainChartData[activeFilter]} key={activeFilter}>
+            <AreaChart data={mainChartData[activeFilter]} key={activeFilter + theme}>
               <defs>
                 <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
                   <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} dy={10} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }} dy={10} />
               <YAxis
                 axisLine={false}
                 tickLine={false}
-                tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }}
+                tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }}
                 domain={[0, 'auto']}
                 tickFormatter={(value) => {
                   if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
@@ -524,8 +526,15 @@ export default function Dashboard() {
                 }}
               />
               <Tooltip
-                contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)' }}
-                labelStyle={{ fontWeight: 800, color: '#1e293b' }}
+                contentStyle={{ 
+                  borderRadius: '24px', 
+                  border: 'none', 
+                  boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
+                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                  color: theme === 'dark' ? '#ffffff' : '#1e293b'
+                }}
+                itemStyle={{ color: theme === 'dark' ? '#60a5fa' : '#3b82f6' }}
+                labelStyle={{ fontWeight: 800, color: theme === 'dark' ? '#ffffff' : '#1e293b' }}
               />
               <Area
                 type="monotone"
@@ -545,14 +554,14 @@ export default function Dashboard() {
       <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] px-2">Branch Performance Matrix</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Accounting Branch */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/accounting/billing')}>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/accounting/billing')}>
           <div className="flex items-center justify-between mb-6">
-            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-2xl group-hover:scale-110 transition-transform">
               <LuDollarSign className="w-6 h-6" />
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-tighter">Accounting</p>
-              <p className="text-xl font-black text-gray-900">₱4.2M</p>
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tighter">Accounting</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">₱4.2M</p>
               <DownloadActions title="Accounting Branch Report" data={branchData.accounting} />
             </div>
           </div>
@@ -632,10 +641,10 @@ export default function Dashboard() {
       {/* Bottom Section: Recent Activity & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8 group relative">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8 group relative">
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
-              <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">Recent Activity</h3>
+              <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">Recent Activity</h3>
               <DownloadActions
                 title="Recent Operational Activity"
                 data={[
@@ -651,11 +660,11 @@ export default function Dashboard() {
           <div className="space-y-6">
             {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center gap-4 group/item">
-                <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover/item:bg-blue-50 group-hover/item:text-blue-600 transition-colors">
+                <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-gray-800 flex items-center justify-center text-slate-400 dark:text-gray-500 group-hover/item:bg-blue-50 dark:group-hover/item:bg-blue-900/30 group-hover/item:text-blue-600 transition-colors">
                   <LuCircle className="w-2.5 h-2.5 fill-current" />
                 </div>
-                <div className="flex-1 border-b border-gray-50 pb-4 group-last:border-0">
-                  <p className="text-sm font-bold text-gray-800">Operational Update #{1024 + i}</p>
+                <div className="flex-1 border-b border-gray-50 dark:border-gray-800 pb-4 group-last:border-0">
+                  <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Operational Update #{1024 + i}</p>
                   <p className="text-xs text-gray-400 mt-0.5">System synchronized with branch node {i}</p>
                 </div>
                 <span className="text-[10px] font-bold text-gray-300 uppercase tracking-tighter">2 hours ago</span>
@@ -665,11 +674,11 @@ export default function Dashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-[2.5rem] border border-gray-100 shadow-sm p-8">
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest mb-8 text-center">Quick Actions</h3>
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8">
+          <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-8 text-center">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-4">
-            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-blue-200 hover:bg-white hover:shadow-xl transition-all group">
-              <div className="p-3 rounded-xl bg-white shadow-sm text-slate-400 group-hover:text-blue-600 transition-colors">
+            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-xl transition-all group">
+              <div className="p-3 rounded-xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-blue-600 transition-colors">
                 <LuUsers className="w-5 h-5" />
               </div>
               <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">New User</span>

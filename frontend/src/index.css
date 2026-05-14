@@ -6,6 +6,9 @@
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Enable class-based dark mode for Tailwind v4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   /* Aesthetic Scrollbar Styling */
   ::-webkit-scrollbar {
@@ -41,5 +44,11 @@
   * {
     scrollbar-width: thin;
     scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+  }
+
+  /* Global Dark Mode Overrides */
+  .dark body {
+    background-color: #030712; /* gray-950 */
+    color: #f9fafb; /* gray-50 */
   }
 }

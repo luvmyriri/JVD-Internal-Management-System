@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
+import { useTheme } from '../context/ThemeContext';
 import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
@@ -9,6 +10,7 @@ import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { user, setUser } = useAuth();
+  const { theme } = useTheme();
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -138,13 +140,13 @@ export default function Profile() {
     <div className="max-w-4xl mx-auto space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight">Account Profile</h2>
-          <p className="text-sm text-gray-500 mt-1">Manage your personal information and profile settings.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Account Profile</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your personal information and profile settings.</p>
         </div>
         {!isEditing && (
           <button
             onClick={() => setIsEditing(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 text-sm font-bold rounded-xl hover:bg-gray-50 dark:hover:bg-gray-700 transition shadow-sm"
           >
             <LuUser className="w-4 h-4 text-blue-600" />
             Edit Profile
@@ -155,9 +157,9 @@ export default function Profile() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Left: Avatar Management */}
         <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm text-center">
+          <div className="bg-white dark:bg-gray-900 p-6 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm text-center">
             <div className="relative inline-block group">
-              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 border-4 border-white shadow-md ring-1 ring-gray-100 mx-auto">
+              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-800 border-4 border-white dark:border-gray-900 shadow-md ring-1 ring-gray-100 dark:ring-gray-800 mx-auto">
                 {user.avatar_url ? (
                   <img src={getAvatarUrl(user.avatar_url) || ''} alt="Avatar" className="w-full h-full object-cover" />
                 ) : (
@@ -183,8 +185,8 @@ export default function Profile() {
             </div>
             
             <div className="mt-4">
-              <h3 className="font-bold text-gray-900">{user.first_name} {user.last_name}</h3>
-              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-600 rounded-full border border-blue-100">
+              <h3 className="font-bold text-gray-900 dark:text-white">{user.first_name} {user.last_name}</h3>
+              <div className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full border border-blue-100 dark:border-blue-800">
                 <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
                 <p className="text-[10px] font-bold uppercase tracking-widest">
                   {user.role.replace('_', ' ')}
@@ -193,9 +195,9 @@ export default function Profile() {
             </div>
           </div>
 
-          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-            <h4 className="text-xs font-bold text-blue-900 uppercase tracking-wider mb-2">Security Note</h4>
-            <p className="text-[11px] text-blue-700 leading-relaxed">
+          <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800">
+            <h4 className="text-xs font-bold text-blue-900 dark:text-blue-400 uppercase tracking-wider mb-2">Security Note</h4>
+            <p className="text-[11px] text-blue-700 dark:text-blue-500 leading-relaxed">
               Your profile information is visible to administrators. Please ensure your email remains up to date for 2FA purposes.
             </p>
           </div>
@@ -203,10 +205,10 @@ export default function Profile() {
 
         {/* Right: Personal Info Form */}
         <div className="md:col-span-2 space-y-6">
-          <form onSubmit={handleUpdateProfile} className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+          <form onSubmit={handleUpdateProfile} className="bg-white dark:bg-gray-900 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                   <LuUser className="w-3 h-3 text-blue-600" />
                   First Name
                 </label>
@@ -217,15 +219,15 @@ export default function Profile() {
                   disabled={!isEditing}
                   className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${
                     isEditing 
-                      ? 'bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent' 
-                      : 'bg-gray-50 border-gray-100 text-gray-500 cursor-not-allowed'
+                      ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white' 
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-600 cursor-not-allowed'
                   }`}
                   placeholder="Enter first name"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+                <label className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                   <LuUser className="w-3 h-3 text-blue-600" />
                   Last Name
                 </label>
@@ -236,8 +238,8 @@ export default function Profile() {
                   disabled={!isEditing}
                   className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${
                     isEditing 
-                      ? 'bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent' 
-                      : 'bg-gray-50 border-gray-100 text-gray-500 cursor-not-allowed'
+                      ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white' 
+                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-600 cursor-not-allowed'
                   }`}
                   placeholder="Enter last name"
                   required
@@ -246,7 +248,7 @@ export default function Profile() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-xs font-bold text-gray-700 uppercase tracking-wider flex items-center gap-2">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                 <LuMail className="w-3 h-3 text-blue-600" />
                 Email Address
               </label>
@@ -257,8 +259,8 @@ export default function Profile() {
                 disabled={!isEditing}
                 className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${
                   isEditing 
-                    ? 'bg-white border-gray-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent' 
-                    : 'bg-gray-50 border-gray-100 text-gray-500 cursor-not-allowed'
+                    ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white' 
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-600 cursor-not-allowed'
                 }`}
                 placeholder="Enter email address"
                 required
@@ -286,17 +288,17 @@ export default function Profile() {
           </form>
 
           {/* Change Password Section */}
-          <div className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-gray-900 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
             {!isChangingPassword ? (
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-gray-900">Security & Password</h3>
-                  <p className="text-xs text-gray-500 mt-1">Update your account password regularly for security.</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-white">Security & Password</h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Update your account password regularly for security.</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsChangingPassword(true)}
-                  className="px-5 py-2.5 bg-gray-900 text-white text-sm font-bold rounded-xl hover:bg-black transition shadow-md"
+                  className="px-5 py-2.5 bg-gray-900 dark:bg-gray-800 text-white text-sm font-bold rounded-xl hover:bg-black dark:hover:bg-gray-700 transition shadow-md"
                 >
                   Change Password
                 </button>

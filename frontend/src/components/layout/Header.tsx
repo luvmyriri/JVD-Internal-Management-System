@@ -1,11 +1,13 @@
 import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials, getAvatarUrl } from '../../utils';
-import { LuBell, LuChevronDown, LuLogOut, LuUser } from 'react-icons/lu';
+import { LuBell, LuChevronDown, LuLogOut, LuUser, LuSettings } from 'react-icons/lu';
 import { useState } from 'react';
 
 export default function Header() {
   const { user, logout } = useAuth();
+  const { theme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -52,14 +54,22 @@ export default function Header() {
   const { title, subtitle } = getPageContext();
 
   return (
-    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-20">
+    <header className={`h-16 border-b flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-20 transition-colors ${
+      theme === 'dark' 
+        ? 'bg-gray-900 border-gray-800' 
+        : 'bg-white border-gray-200'
+    }`}>
       {/* Left: page context */}
       <div className="flex flex-col">
-        <h1 className="text-lg font-bold text-gray-900 leading-none tracking-tight">
+        <h1 className={`text-lg font-bold leading-none tracking-tight ${
+          theme === 'dark' ? 'text-white' : 'text-gray-900'
+        }`}>
           {title}
         </h1>
         {subtitle && (
-          <p className="text-[11px] text-gray-500 mt-1 font-medium truncate max-w-[400px]">
+          <p className={`text-[11px] mt-1 font-medium truncate max-w-[400px] ${
+            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+          }`}>
             {subtitle}
           </p>
         )}
@@ -82,7 +92,7 @@ export default function Header() {
           <button
             id="header-user-menu"
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-gray-100 transition"
+            className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
             {/* Avatar */}
             <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center shrink-0">
@@ -109,10 +119,14 @@ export default function Header() {
                 className="fixed inset-0 z-10"
                 onClick={() => setDropdownOpen(false)}
               />
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-20 py-1 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-100">
-                  <p className="text-sm font-semibold text-gray-800">{user.first_name} {user.last_name}</p>
-                  <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg border z-20 py-1 overflow-hidden ${
+                theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'
+              }`}>
+                <div className={`px-4 py-3 border-b ${
+                  theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
+                }`}>
+                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.first_name} {user.last_name}</p>
+                  <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{user.email}</p>
                 </div>
                 <button
                   id="header-profile"
@@ -120,10 +134,25 @@ export default function Header() {
                     setDropdownOpen(false);
                     navigate('/profile');
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
                 >
                   <LuUser className="w-4 h-4 text-blue-600" />
                   My Profile
+                </button>
+                <button
+                  id="header-settings"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/admin/settings');
+                  }}
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                    theme === 'dark' 
+                      ? 'text-gray-300 hover:bg-gray-800' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <LuSettings className="w-4 h-4 text-blue-600" />
+                  Settings
                 </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button

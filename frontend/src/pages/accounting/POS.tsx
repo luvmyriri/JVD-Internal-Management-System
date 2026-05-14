@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   LuSearch, 
   LuShoppingCart, 
@@ -14,8 +14,12 @@ import {
   LuX,
   LuMapPin,
   LuPhone,
-  LuMail
+  LuMail,
+  LuPackage,
+  LuWallet
 } from 'react-icons/lu';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 
@@ -25,10 +29,14 @@ interface CartItem {
 }
 
 export default function POS() {
+  const { user } = useAuth();
+  const { theme } = useTheme();
+  
   // State
   const [services, setServices] = useState<Service[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   const [customerName, setCustomerName] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
   const [customerEmail, setCustomerEmail] = useState('');
@@ -86,10 +94,10 @@ export default function POS() {
     setCart(prev => prev.filter(item => item.service.id !== serviceId));
   };
 
-  const updateQuantity = (serviceId: number, delta: number) => {
+  const updateQuantity = (serviceId: number, newQty: number) => {
+    if (newQty < 1) return;
     setCart(prev => prev.map(item => {
       if (item.service.id === serviceId) {
-        const newQty = Math.max(1, item.quantity + delta);
         return { ...item, quantity: newQty };
       }
       return item;
@@ -101,6 +109,14 @@ export default function POS() {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
   const change = typeof amountReceived === 'number' ? Math.max(0, amountReceived - total) : 0;
+
+  const filteredServices = useMemo(() => {
+    return services.filter(s => 
+      (selectedCategory === 'All' || s.category === selectedCategory) &&
+      (s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+       s.category.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+  }, [services, searchTerm, selectedCategory]);
 
   // Checkout
   const handleCheckout = async () => {
@@ -123,7 +139,6 @@ export default function POS() {
       setLastInvoice(response.data.data);
       setShowReceipt(true);
       
-      // Handle PayMongo redirect if applicable
       if (response.data.data.payment_url) {
         window.open(response.data.data.payment_url, '_blank');
       }
@@ -143,11 +158,6 @@ export default function POS() {
     }
   };
 
-  const filteredServices = services.filter(s => 
-    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    s.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -157,251 +167,228 @@ export default function POS() {
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] mt-4 flex flex-col lg:flex-row gap-6">
-      
-      {/* Left Column: Service Catalog */}
-      <div className="flex-1 flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h2 className="text-xl font-black text-gray-900 tracking-tight uppercase">Service Catalog</h2>
-            <p className="text-[11px] text-gray-400 font-bold tracking-widest uppercase">Select items to add to cart</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => setShowAddService(true)}
-              className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all font-bold text-xs uppercase tracking-widest flex items-center gap-2"
-            >
-              <LuPlus className="w-4 h-4" /> Add Service
-            </button>
-            <div className="relative">
-              <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+    <div className="h-[calc(100vh-100px)] gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row">
+      {/* Left Side: Product Grid */}
+      <div className="flex-1 flex flex-col gap-6">
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="relative flex-1">
+              <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input 
                 type="text"
-                placeholder="Search services..."
-                className="pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-blue-600/10 w-full md:w-48 transition-all"
+                placeholder="Search services or categories..."
+                className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <div className="flex bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
+              {['All', 'Documentation', 'Package', 'Transport'].map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    selectedCategory === cat 
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10' 
+                    : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Categories / Grid */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredServices.map((service) => (
-              <button
-                key={service.id}
-                onClick={() => addToCart(service)}
-                className="flex flex-col text-left p-5 bg-white border border-gray-100 rounded-3xl hover:border-blue-200 hover:shadow-xl hover:shadow-blue-600/5 transition-all group"
-              >
-                <div className="flex justify-between items-start mb-3">
-                  <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black rounded-full uppercase tracking-wider">
-                    {service.category}
-                  </span>
-                  <span className="text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <LuPlus className="w-5 h-5" />
-                  </span>
+        <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
+          {filteredServices.map((service) => (
+            <div 
+              key={service.id}
+              onClick={() => addToCart(service)}
+              className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer active:scale-95"
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className={`p-4 rounded-2xl shadow-lg transition-transform group-hover:scale-110 ${
+                  service.category === 'Documentation' ? 'bg-blue-500 shadow-blue-200 dark:shadow-blue-950/40' :
+                  service.category === 'Package' ? 'bg-emerald-500 shadow-emerald-200 dark:shadow-emerald-950/40' :
+                  'bg-violet-500 shadow-violet-200 dark:shadow-violet-950/40'
+                }`}>
+                  <LuPackage className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-black text-gray-900 mb-1 group-hover:text-blue-600 transition-colors tracking-tight">{service.name}</h3>
-                <p className="text-xs text-gray-400 mb-6 line-clamp-2 font-medium">{service.description}</p>
-                <div className="mt-auto pt-4 border-t border-gray-50 flex items-center justify-between">
-                  <span className="text-2xl font-black text-gray-900 tracking-tighter">₱{Number(service.price).toLocaleString()}</span>
+                <div className="text-right">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{service.category}</p>
+                  <p className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
                 </div>
-              </button>
-            ))}
-          </div>
+              </div>
+              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors">{service.name}</h4>
+              <p className="text-[10px] text-gray-400 mt-2 font-medium leading-relaxed line-clamp-2">{service.description}</p>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* Right Column: Cart & Checkout */}
-      <div className="w-full lg:w-[480px] flex flex-col bg-white rounded-[2.5rem] border border-gray-100 shadow-sm overflow-hidden h-full">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-50 bg-gray-50/50 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-600 text-white rounded-xl">
-              <LuShoppingCart className="w-5 h-5" />
+      {/* Right Side: Sidebar */}
+      <div className="w-[450px] bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl flex flex-col overflow-hidden">
+        <div className="p-8 border-b border-gray-50 dark:border-gray-800 shrink-0">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Current Order</h2>
+            <div className="px-3 py-1 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-blue-100 dark:border-blue-800">
+              {cart.reduce((sum, item) => sum + item.quantity, 0)} Items
             </div>
-            <h2 className="text-lg font-black text-gray-900 tracking-tight uppercase">Current Order</h2>
           </div>
         </div>
 
-        {/* Scrollable Area: Cart + Customer Info */}
-        <div className="flex-1 overflow-y-auto">
-          {/* Cart Items */}
-          <div className="p-6 space-y-4 border-b border-gray-50">
+        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+          <div className="space-y-4">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Selected Services</p>
             {cart.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center text-gray-400 py-10">
-                <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                  <LuShoppingCart className="w-8 h-8 opacity-20" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-300">Your cart is empty</p>
-                <p className="text-[8px] font-bold uppercase tracking-widest mt-1 text-gray-300">Add services from the catalog</p>
+              <div className="py-12 flex flex-col items-center justify-center text-gray-300 dark:text-gray-700">
+                <LuShoppingCart className="w-12 h-12 mb-4 opacity-20" />
+                <p className="text-[10px] font-black uppercase tracking-widest">Cart is empty</p>
               </div>
             ) : (
-              cart.map((item) => (
-                <div key={item.service.id} className="flex items-center gap-4 group py-2">
-                  <div className="flex-1">
-                    <h4 className="text-sm font-black text-gray-900 tracking-tight leading-tight">{item.service.name}</h4>
-                    <p className="text-[10px] text-gray-400 font-bold mt-0.5">₱{Number(item.service.price).toLocaleString()}</p>
+              <div className="space-y-3">
+                {cart.map((item) => (
+                  <div key={item.service.id} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1 pr-4">
+                        <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.service.price).toLocaleString()} / UNIT</p>
+                      </div>
+                      <button onClick={() => removeFromCart(item.service.id)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                        <LuTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                      </div>
+                      <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.service.price) * item.quantity).toLocaleString()}</p>
+                    </div>
                   </div>
-                  <div className="flex items-center bg-gray-50 rounded-xl p-1 border border-gray-100">
-                    <button 
-                      onClick={() => updateQuantity(item.service.id, -1)}
-                      className="p-1 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-gray-900"
-                    >
-                      <LuMinus className="w-3 h-3" />
-                    </button>
-                    <span className="w-8 text-center text-xs font-black text-gray-900">{item.quantity}</span>
-                    <button 
-                      onClick={() => updateQuantity(item.service.id, 1)}
-                      className="p-1 hover:bg-white rounded-lg transition-all text-gray-400 hover:text-gray-900"
-                    >
-                      <LuPlus className="w-3 h-3" />
-                    </button>
-                  </div>
-                  <button 
-                    onClick={() => removeFromCart(item.service.id)}
-                    className="p-2 text-gray-300 hover:text-rose-500 transition-all"
-                  >
-                    <LuTrash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
 
-          {/* Customer Info Form */}
-          <div className="p-6 bg-gray-50/30 space-y-6">
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  <LuUser className="w-3 h-3" /> Customer Name
-                </label>
+          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Customer Details</p>
+            <div className="space-y-3">
+              <div className="relative group">
+                <LuUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
                 <input 
-                  type="text"
-                  placeholder="Enter name"
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                  type="text" 
+                  placeholder="Customer Name"
+                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                 />
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    <LuPhone className="w-3 h-3" /> Contact
-                  </label>
-                  <input 
-                    type="text"
-                    placeholder="Number"
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
-                    value={customerContact}
-                    onChange={(e) => setCustomerContact(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                    <LuMail className="w-3 h-3" /> Email
-                  </label>
-                  <input 
-                    type="email"
-                    placeholder="Email address"
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                  <LuMapPin className="w-3 h-3" /> Full Address
-                </label>
+              <div className="relative group">
+                <LuPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
                 <input 
-                  type="text"
-                  placeholder="Street, City, Province"
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 text-sm focus:ring-2 focus:ring-blue-600/10 transition-all shadow-sm"
+                  type="text" 
+                  placeholder="Contact Number"
+                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={customerContact}
+                  onChange={(e) => setCustomerContact(e.target.value)}
+                />
+              </div>
+              <div className="relative group">
+                <LuMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
+                <input 
+                  type="email" 
+                  placeholder="Email Address"
+                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                />
+              </div>
+              <div className="relative group">
+                <LuMapPin className="absolute left-4 top-4 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
+                <textarea 
+                  placeholder="Full Address"
+                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[80px] dark:text-white"
                   value={customerAddress}
                   onChange={(e) => setCustomerAddress(e.target.value)}
                 />
               </div>
             </div>
+          </div>
 
-            {/* Payment Method */}
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
-                <LuCreditCard className="w-3 h-3" /> Payment Method
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { id: 'Cash', icon: <LuBanknote /> },
-                  { id: 'GCash', icon: <LuSmartphone /> },
-                  { id: 'Card', icon: <LuCreditCard /> },
-                ].map((method) => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl border transition-all ${
-                      paymentMethod === method.id 
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                      : 'bg-white border-gray-200 text-gray-400 hover:border-blue-200'
-                    }`}
-                  >
-                    <span className="text-base">{method.icon}</span>
-                    <span className="text-[9px] font-black uppercase tracking-widest">{method.id}</span>
-                  </button>
-                ))}
-              </div>
+          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment Method</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={() => setPaymentMethod('Cash')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
+                  paymentMethod === 'Cash' 
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20' 
+                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                }`}
+              >
+                <LuWallet className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Cash</span>
+              </button>
+              <button 
+                onClick={() => setPaymentMethod('GCash')}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
+                  paymentMethod === 'GCash' 
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20' 
+                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                }`}
+              >
+                <LuCreditCard className="w-5 h-5" />
+                <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
+              </button>
             </div>
           </div>
-        </div>
 
-        {/* Footer: Totals & Button (Fixed) */}
-        <div className="p-6 bg-white border-t border-gray-100 space-y-4 shrink-0">
           {paymentMethod === 'Cash' && cart.length > 0 && (
-            <div className="grid grid-cols-2 gap-4 pb-2">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Received</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-xs">₱</span>
-                  <input 
-                    type="number"
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl py-2 pl-7 pr-3 text-sm font-black text-blue-600 focus:ring-2 focus:ring-blue-600/10"
-                    value={amountReceived}
-                    onChange={(e) => setAmountReceived(e.target.value ? Number(e.target.value) : '')}
-                  />
-                </div>
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-2 duration-300">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Amount Received</p>
+              <div className="relative group">
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-black text-sm">₱</span>
+                <input 
+                  type="number" 
+                  placeholder="0.00"
+                  className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700"
+                  value={amountReceived}
+                  onChange={(e) => setAmountReceived(e.target.value)}
+                />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</label>
-                <div className="w-full bg-emerald-50 border border-emerald-100 rounded-xl py-2 px-3 text-sm font-black text-emerald-600">
+              <div className="flex justify-between items-center px-1">
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</span>
+                <div className={`text-lg font-black tracking-tighter ${Number(amountReceived) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
                   ₱{change.toLocaleString()}
                 </div>
               </div>
             </div>
           )}
+        </div>
 
-          <div className="space-y-2">
+        <div className="p-8 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 shrink-0">
+          <div className="space-y-2 mb-6">
             <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
               <span>Subtotal</span>
-              <span className="text-gray-900">₱{subtotal.toLocaleString()}</span>
+              <span className="text-gray-900 dark:text-white">₱{subtotal.toLocaleString()}</span>
             </div>
             <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
               <span>VAT (12%)</span>
-              <span className="text-gray-900">₱{tax.toLocaleString()}</span>
+              <span className="text-gray-900 dark:text-white">₱{tax.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100">
-              <span className="text-xs font-black text-gray-900 uppercase tracking-widest">Total</span>
-              <span className="text-3xl font-black text-blue-600 tracking-tighter">₱{total.toLocaleString()}</span>
+            <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100 dark:border-gray-700">
+              <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Total</span>
+              <span className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{total.toLocaleString()}</span>
             </div>
           </div>
 
           <button 
             disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total))}
             onClick={handleCheckout}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 disabled:text-gray-400 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 mt-2 active:scale-95"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
           >
             {isProcessing ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -412,7 +399,6 @@ export default function POS() {
         </div>
       </div>
 
-      {/* Formal Invoice Modal */}
       {showReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
           <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
