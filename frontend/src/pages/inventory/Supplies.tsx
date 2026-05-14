@@ -166,7 +166,7 @@ export default function Supplies() {
           {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
         <button onClick={() => setLowStockOnly(!lowStockOnly)}
-          className={`px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 border ${lowStockOnly ? 'bg-amber-50 text-amber-700 border-amber-200 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
+          className={`px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 border ${lowStockOnly ? 'bg-white text-amber-600 border-amber-200 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
           <LuTriangleAlert size={14} className={lowStockOnly ? 'text-amber-600' : 'text-gray-400'} />
           Low Stock Only
         </button>

@@ -179,10 +179,10 @@ export default function Sidebar() {
                       <NavLink
                         to={item.path}
                         className={({ isActive }) =>
-                          `relative flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${
+                          `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ${
                             isActive
-                              ? 'text-blue-700 font-bold'
-                              : 'text-gray-400 hover:bg-gray-800 hover:text-gray-200'
+                              ? 'bg-white text-blue-900 font-black shadow-lg shadow-white/10'
+                              : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
                           }`
                         }
                       >
