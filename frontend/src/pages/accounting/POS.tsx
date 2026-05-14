@@ -170,14 +170,14 @@ export default function POS() {
     <div className="h-[calc(100vh-100px)] gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row">
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="relative flex-1">
               <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
               <input 
                 type="text"
                 placeholder="Search services or categories..."
-                className="w-full pl-12 pr-4 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
+                className="w-full pl-12 pr-4 py-5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -187,7 +187,7 @@ export default function POS() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-5 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                     selectedCategory === cat 
                     ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10' 
                     : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
@@ -205,23 +205,23 @@ export default function POS() {
             <div 
               key={service.id}
               onClick={() => addToCart(service)}
-              className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer active:scale-95"
+              className="bg-white dark:bg-gray-900 p-8 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer active:scale-95"
             >
-              <div className="flex justify-between items-start mb-6">
-                <div className={`p-4 rounded-2xl shadow-lg transition-transform group-hover:scale-110 ${
+              <div className="flex justify-between items-start gap-4 mb-10">
+                <div className={`p-4 rounded-2xl shadow-lg transition-transform group-hover:scale-110 shrink-0 ${
                   service.category === 'Documentation' ? 'bg-blue-500 shadow-blue-200 dark:shadow-blue-950/40' :
                   service.category === 'Package' ? 'bg-emerald-500 shadow-emerald-200 dark:shadow-emerald-950/40' :
                   'bg-violet-500 shadow-violet-200 dark:shadow-violet-950/40'
                 }`}>
-                  <LuPackage className="w-6 h-6 text-white" />
+                  <LuPackage className="w-6 h-6 text-white shrink-0" />
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{service.category}</p>
-                  <p className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-3 truncate">{service.category}</p>
+                  <p className="text-2xl font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
                 </div>
               </div>
-              <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors">{service.name}</h4>
-              <p className="text-[10px] text-gray-400 mt-2 font-medium leading-relaxed line-clamp-2">{service.description}</p>
+              <h4 className="text-base font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors">{service.name}</h4>
+              <p className="text-[11px] text-gray-400 mt-4 font-medium leading-relaxed line-clamp-2">{service.description}</p>
             </div>
           ))}
         </div>

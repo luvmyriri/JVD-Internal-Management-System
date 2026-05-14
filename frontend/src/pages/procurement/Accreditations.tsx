@@ -127,7 +127,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
   });
 
   return (
-    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-lg transition-all p-6 flex flex-col gap-4">
+    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
@@ -141,7 +141,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
         <StatusBadge status={acc.status} />
       </div>
 
-      <div className="space-y-2 pt-2">
+      <div className="space-y-3 pt-2">
         <div className="flex items-center gap-2 text-xs text-gray-600">
           <LuMail size={12} className="text-gray-400" />
           {acc.contact_person} ({acc.contact_email})
@@ -199,7 +199,7 @@ export default function Accreditations() {
   const meta = response?.data?.meta;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -216,7 +216,7 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md">
+      <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md">
         <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
           <LuSearch size={18} />
         </div>
@@ -243,7 +243,7 @@ export default function Accreditations() {
           <p className="text-sm text-gray-500 max-w-sm">You haven't added any accreditations or no records match your search criteria.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
           {accreditations.map(acc => <AccreditationCard key={acc.id} acc={acc} />)}
         </div>
       )}

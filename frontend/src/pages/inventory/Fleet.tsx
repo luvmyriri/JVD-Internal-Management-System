@@ -169,7 +169,7 @@ export default function Fleet() {
   const meta = data?.data?.meta;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -186,7 +186,7 @@ export default function Fleet() {
         </button>
       </div>
 
-      <div className="flex flex-wrap gap-3 items-center">
+      <div className="flex flex-wrap gap-4 items-center">
         <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
@@ -212,14 +212,14 @@ export default function Fleet() {
       <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-500 font-semibold border-b border-gray-100">
+            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
               <tr>
-                <th className="px-6 py-4">Plate & Model</th>
-                <th className="px-6 py-4">Capacity</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Driver</th>
-                <th className="px-6 py-4 text-right">Mileage</th>
-                <th className="px-6 py-4 text-center">Actions</th>
+                <th className="px-8 py-5">Plate & Model</th>
+                <th className="px-8 py-5">Capacity</th>
+                <th className="px-8 py-5">Status</th>
+                <th className="px-8 py-5">Driver</th>
+                <th className="px-8 py-5 text-right">Mileage</th>
+                <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
@@ -239,39 +239,42 @@ export default function Fleet() {
                 </tr>
               ) : (
                 buses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{bus.plate_number}</div>
-                      <div className="text-xs text-gray-500 mt-0.5">{bus.model}</div>
+                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50/50 last:border-0">
+                    <td className="px-8 py-6">
+                      <div className="font-bold text-gray-900 text-base">{bus.plate_number}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
                     </td>
-                    <td className="px-6 py-4 font-medium text-gray-600">{bus.seating_capacity} pax</td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-6 font-medium text-gray-600">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-bold tracking-widest uppercase border border-gray-100">{bus.seating_capacity} pax</span>
+                    </td>
+                    <td className="px-8 py-6">
                       <StatusBadge status={bus.status} />
                       {bus.is_service_overdue && (
-                        <div className="flex items-center gap-1 text-[10px] text-red-500 font-bold mt-1 uppercase tracking-wider">
+                        <div className="flex items-center gap-1 text-[10px] text-red-500 font-black mt-2 uppercase tracking-[0.15em]">
                           <LuTriangleAlert size={10} /> Overdue PMS
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-6">
                       {bus.driver ? (
-                        <div className="flex items-center gap-2 text-gray-700 font-medium">
-                          <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs">
-                            <LuUser size={12} />
+                        <div className="flex items-center gap-3 text-gray-800 font-bold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs border border-blue-100 shadow-sm shadow-blue-200/50">
+                            <LuUser size={14} />
                           </div>
                           {bus.driver.first_name} {bus.driver.last_name}
                         </div>
                       ) : (
-                        <span className="text-xs text-gray-400 font-medium">Unassigned</span>
+                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Unassigned</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-700">
-                      {bus.total_mileage.toLocaleString()} km
+                    <td className="px-8 py-6 text-right">
+                      <div className="text-gray-900 font-black text-base">{bus.total_mileage.toLocaleString()}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
                     </td>
-                    <td className="px-6 py-4 text-center">
+                    <td className="px-8 py-6 text-center">
                       <button onClick={() => { setEditingBus(bus); setShowModal(true); }}
-                        className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition">
-                        <LuSettings size={18} />
+                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
+                        <LuSettings size={20} />
                       </button>
                     </td>
                   </tr>

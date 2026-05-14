@@ -37,11 +37,11 @@ const revenueData = [
 
 export default function AccountingOverview() {
   return (
-    <div className="space-y-8">
+    <div className="space-y-10 pb-12">
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+          <div key={stat.label} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110`}>
                 <span className="text-xl">{stat.icon}</span>
@@ -61,8 +61,8 @@ export default function AccountingOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Revenue vs Expenses Chart */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
+        <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Financial Pulse</h2>
               <p className="text-[11px] text-gray-400 font-medium">Daily revenue vs operational expenses</p>
@@ -96,8 +96,8 @@ export default function AccountingOverview() {
         </div>
 
         {/* Category Breakdown */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <div className="flex items-center justify-between mb-8">
+        <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm">
+          <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Invoice Status</h2>
               <p className="text-[11px] text-gray-400 font-medium">Distribution of billing by department</p>
