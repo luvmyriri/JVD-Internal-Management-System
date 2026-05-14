@@ -12,8 +12,9 @@ class POLineItem extends Model
     protected $table = 'po_line_items';
 
     protected $fillable = [
-        'purchase_order_id', 'item_name', 'description',
-        'quantity', 'unit_price', 'total_price',
+        'purchase_order_id', 'item_name', 'part_number', 'description',
+        'quantity', 'unit_of_measure', 'unit_price', 'total_price',
+        'receipt_number', 'item_notes',
     ];
 
     protected function casts(): array

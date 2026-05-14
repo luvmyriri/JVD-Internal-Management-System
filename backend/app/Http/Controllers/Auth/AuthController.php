@@ -59,6 +59,23 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
 
+        // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
+        if (env('REQUIRE_2FA', true) === false) {
+            $token = $user->createToken('auth-token')->plainTextToken;
+            $user->update(['last_login' => now()]);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'user' => new UserResource($user),
+                    'token' => $token,
+                    'requires_2fa' => false,
+                    'requires_password_change' => $user->must_change_password,
+                ],
+                'message' => 'Authentication successful (2FA Bypassed).',
+            ]);
+        }
+
         // If user has 2FA set up, require TOTP verification
         if ($user->totp_secret) {
             return response()->json([
@@ -197,6 +214,40 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Logged out successfully.',
+        ]);
+    }
+
+    /**
+     * Change password — clears the must_change_password gate.
+     * Available to all authenticated users (bypasses EnforcePasswordChange middleware).
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'current_password' => ['required', 'string'],
+            'password'         => ['required', 'string', 'min:8', 'confirmed',
+                                   'regex:/[A-Z]/', 'regex:/[0-9]/', 'regex:/[@$!%*?&]/'],
+        ], [
+            'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character.',
+        ]);
+
+        $user = $request->user();
+
+        if (!\Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect.',
+            ], 422);
+        }
+
+        $user->update([
+            'password'             => \Hash::make($request->password),
+            'must_change_password' => false,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully.',
         ]);
     }
 }

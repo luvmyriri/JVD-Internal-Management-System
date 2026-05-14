@@ -1,8 +1,298 @@
-export default function WorkOrders() {
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
+  LuCheck, LuBan, LuTriangleAlert, LuArrowRight, LuClock,
+  LuShieldCheck, LuClipboardList,
+} from 'react-icons/lu';
+import { workOrderApi } from '../../api/workOrders';
+import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
+import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+const statusStyles: Record<string, string> = {
+  pending_approval: 'bg-amber-100 text-amber-700',
+  open:             'bg-blue-100 text-blue-700',
+  in_progress:      'bg-purple-100 text-purple-700',
+  completed:        'bg-emerald-100 text-emerald-700',
+  cancelled:        'bg-gray-100 text-gray-500',
+};
+
+const priorityStyles: Record<string, string> = {
+  routine:  'bg-gray-50 text-gray-500 border border-gray-200',
+  urgent:   'bg-orange-50 text-orange-600 border border-orange-200',
+  critical: 'bg-red-50 text-red-600 border border-red-200',
+};
+
+function StatusBadge({ status }: { status: string }) {
   return (
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+      {WO_STATUS_LABELS[status] ?? status}
+    </span>
+  );
+}
+
+function PriorityBadge({ priority }: { priority: string }) {
+  return (
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${priorityStyles[priority] ?? ''}`}>
+      {WO_PRIORITY_LABELS[priority] ?? priority}
+    </span>
+  );
+}
+
+// ── Approve / Reject Modal ───────────────────────────────────────────────────
+
+function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [action, setAction] = useState<'approve' | 'reject'>('approve');
+  const [notes, setNotes] = useState('');
+
+  const approveMutation = useMutation({
+    mutationFn: () => workOrderApi.approve(wo.id, { notes }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
+  });
+  const rejectMutation = useMutation({
+    mutationFn: () => workOrderApi.reject(wo.id, notes),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
+  });
+
+  const isPending = approveMutation.isPending || rejectMutation.isPending;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-black text-gray-900">Review Work Order</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{wo.wo_number} · Auto-generated PMS</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={18} /></button>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 mb-5">
+          <div className="flex items-center gap-2 text-amber-700 text-xs font-bold mb-1"><LuTriangleAlert size={13} /> Auto-Generated Work Order</div>
+          <p className="text-xs text-amber-800">{wo.description}</p>
+          <div className="flex items-center gap-2 mt-2">
+            <PriorityBadge priority={wo.priority} />
+            <span className="text-xs text-amber-700">Bus: {wo.bus?.plate_number ?? `#${wo.bus_id}`}</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mb-4">
+          {(['approve', 'reject'] as const).map(a => (
+            <button key={a} type="button" onClick={() => setAction(a)}
+              className={`flex-1 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition ${action === a
+                ? a === 'approve' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
+              {a === 'approve' ? 'Approve' : 'Reject'}
+            </button>
+          ))}
+        </div>
+
+        <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+          placeholder={action === 'reject' ? 'Required: reason for rejection...' : 'Optional approval notes...'}
+          className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" />
+
+        <div className="flex justify-end gap-3">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+          {action === 'approve' ? (
+            <button onClick={() => approveMutation.mutate()} disabled={isPending}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
+              {isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuCheck size={14} />} Approve
+            </button>
+          ) : (
+            <button onClick={() => rejectMutation.mutate()} disabled={isPending || !notes.trim()}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-60 transition">
+              {isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuBan size={14} />} Reject
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Create WO Modal ──────────────────────────────────────────────────────────
+
+function CreateWOModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<WorkOrderFormData>({ bus_id: 0, assigned_to: 0, priority: 'routine', description: '' });
+  const mutation = useMutation({
+    mutationFn: () => workOrderApi.create(form),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
+  });
+  const f = (label: string, key: keyof WorkOrderFormData, type = 'text') => (
     <div>
-      <h1 className="text-2xl font-bold text-gray-100">Work Orders</h1>
-      <p className="text-gray-400 mt-2">W.O. list, creation, and management — under development.</p>
+      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{label}</label>
+      <input type={type} value={(form[key] as string | number) ?? ''} onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+    </div>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-black text-gray-900">Request Work Order</h2>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={18} /></button>
+        </div>
+        <form onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-4">
+          {f('Bus ID *', 'bus_id', 'number')}
+          {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Priority</label>
+            <div className="relative">
+              <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as WorkOrderFormData['priority'] }))}
+                className="w-full px-4 py-2.5 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="routine">Routine</option>
+                <option value="urgent">Urgent</option>
+                <option value="critical">Critical</option>
+              </select>
+              <LuChevronDown size={13} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Description *</label>
+            <textarea rows={3} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <button type="button" onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+            <button type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
+              className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition">
+              {mutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />} Submit Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── WO Row ───────────────────────────────────────────────────────────────────
+
+function WORow({ wo, onReview }: { wo: WorkOrder; onReview: (wo: WorkOrder) => void }) {
+  return (
+    <tr className="hover:bg-gray-50/60 transition-colors">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
+            <LuWrench size={14} />
+          </div>
+          <div>
+            <p className="font-mono text-sm font-bold text-gray-900">{wo.wo_number}</p>
+            {wo.auto_generated && (
+              <span className="text-[10px] text-purple-500 font-semibold">Auto-generated (PMS)</span>
+            )}
+          </div>
+        </div>
+      </td>
+      <td className="px-6 py-4 text-sm text-gray-700">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</td>
+      <td className="px-6 py-4"><PriorityBadge priority={wo.priority} /></td>
+      <td className="px-6 py-4"><StatusBadge status={wo.status} /></td>
+      <td className="px-6 py-4 text-xs text-gray-500 max-w-[200px] truncate">{wo.description}</td>
+      <td className="px-6 py-4">
+        {wo.status === 'pending_approval' ? (
+          <button onClick={() => onReview(wo)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 text-amber-700 text-xs font-bold hover:bg-amber-200 transition">
+            <LuShieldCheck size={12} /> Review
+          </button>
+        ) : wo.approved_by ? (
+          <div className="flex items-center gap-1 text-xs text-emerald-600 font-semibold"><LuCheck size={12} /> Approved</div>
+        ) : (
+          <div className="flex items-center gap-1 text-xs text-gray-400"><LuArrowRight size={12} /></div>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function WorkOrders() {
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [showCreate, setShowCreate] = useState(false);
+  const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['work-orders', search, status],
+    queryFn: () => workOrderApi.list({ search: search || undefined, status: status || undefined }),
+    staleTime: 30_000,
+  });
+
+  const wos = data?.data?.data ?? [];
+  const meta = data?.data?.meta;
+  const pendingCount = wos.filter(w => w.status === 'pending_approval').length;
+
+  return (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Work Orders</h1>
+          <p className="text-sm text-gray-500 mt-0.5">Vehicle maintenance & mechanic requests · {meta?.total ?? '—'} total</p>
+        </div>
+        <button onClick={() => setShowCreate(true)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+          <LuPlus size={16} /> Request W.O.
+        </button>
+      </div>
+
+      {/* Pending approval banner */}
+      {pendingCount > 0 && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-3">
+          <LuClock size={16} className="text-amber-600 shrink-0" />
+          <p className="text-sm font-semibold text-amber-800">
+            <strong>{pendingCount}</strong> auto-generated work order{pendingCount > 1 ? 's' : ''} pending your approval.
+          </p>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[180px] max-w-sm">
+          <LuSearch size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search work orders..."
+            className="w-full pl-9 pr-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        </div>
+        <div className="relative">
+          <select value={status} onChange={e => setStatus(e.target.value)}
+            className="pl-4 pr-9 py-2.5 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700">
+            <option value="">All Statuses</option>
+            {Object.entries(WO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <LuChevronDown size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
+        ) : wos.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
+            <LuClipboardList size={40} strokeWidth={1} />
+            <p className="text-sm font-medium">No work orders found</p>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead className="bg-gray-50 border-b border-gray-100">
+              <tr>
+                {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
+                  <th key={h} className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {wos.map(wo => <WORow key={wo.id} wo={wo} onReview={setReviewWO} />)}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
+      {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
     </div>
   );
 }

@@ -27,11 +27,15 @@ class PurchaseOrderService
                 $lineTotal = $item['quantity'] * $item['unit_price'];
                 POLineItem::create([
                     'purchase_order_id' => $po->id,
-                    'item_name' => $item['item_name'],
-                    'description' => $item['description'] ?? '',
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $item['unit_price'],
-                    'total_price' => $lineTotal,
+                    'item_name'         => $item['item_name'],
+                    'part_number'       => $item['part_number'] ?? null,       // boss-mandated
+                    'description'       => $item['description'] ?? null,
+                    'quantity'          => $item['quantity'],
+                    'unit_of_measure'   => $item['unit_of_measure'] ?? 'pcs',
+                    'unit_price'        => $item['unit_price'],
+                    'total_price'       => $lineTotal,
+                    'receipt_number'    => $item['receipt_number'] ?? null,
+                    'item_notes'        => $item['item_notes'] ?? null,
                 ]);
                 $total += $lineTotal;
             }

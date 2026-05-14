@@ -1,13 +1,10 @@
-// ──────────────────────────────────────────
-// Role Constants
-// ──────────────────────────────────────────
-
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
   ADMIN: 'admin',
   HUMAN_RESOURCE: 'human_resource',
   ACCOUNTING: 'accounting',
   AGENT: 'agent',
+  MECHANIC: 'mechanic',
 } as const;
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -16,6 +13,7 @@ export const ROLE_LABELS: Record<string, string> = {
   human_resource: 'Human Resource',
   accounting: 'Accounting',
   agent: 'Agent / Staff',
+  mechanic: 'Mechanic',
 };
 
 // ──────────────────────────────────────────
@@ -25,6 +23,7 @@ export const ROLE_LABELS: Record<string, string> = {
 export const PO_STATUS = {
   DRAFT: 'draft',
   PENDING_ACCOUNTING: 'pending_accounting_review',
+  VERIFIED: 'verified',
   PENDING_CEO: 'pending_ceo_approval',
   APPROVED: 'approved',
   REJECTED: 'rejected',
@@ -32,7 +31,8 @@ export const PO_STATUS = {
 
 export const PO_STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
-  pending_accounting_review: 'Pending Accounting Review',
+  pending_accounting_review: 'Pending Accounting',
+  verified: 'Verified',
   pending_ceo_approval: 'Pending CEO Approval',
   approved: 'Approved',
   rejected: 'Rejected',
@@ -55,15 +55,19 @@ export const JO_STATUS_LABELS: Record<string, string> = {
 };
 
 export const WO_STATUS = {
+  PENDING_APPROVAL: 'pending_approval',
   OPEN: 'open',
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
+  CANCELLED: 'cancelled',
 } as const;
 
 export const WO_STATUS_LABELS: Record<string, string> = {
+  pending_approval: 'Pending Approval',
   open: 'Open',
   in_progress: 'In Progress',
   completed: 'Completed',
+  cancelled: 'Cancelled',
 };
 
 export const WO_PRIORITY = {
@@ -76,6 +80,20 @@ export const WO_PRIORITY_LABELS: Record<string, string> = {
   routine: 'Routine',
   urgent: 'Urgent',
   critical: 'Critical',
+};
+
+export const SUPPLIER_ACCREDITATION_STATUS = {
+  PENDING: 'pending',
+  ACCREDITED: 'accredited',
+  SUSPENDED: 'suspended',
+  BLACKLISTED: 'blacklisted',
+} as const;
+
+export const SUPPLIER_ACCREDITATION_LABELS: Record<string, string> = {
+  pending: 'Pending',
+  accredited: 'Accredited',
+  suspended: 'Suspended',
+  blacklisted: 'Blacklisted',
 };
 
 export const PASSPORT_CASE_STATUS = {

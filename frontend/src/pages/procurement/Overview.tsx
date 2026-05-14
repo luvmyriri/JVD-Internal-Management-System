@@ -1,9 +1,10 @@
 import {
   LuShoppingCart,
   LuTruck,
-  LuCheck,
   LuClock,
   LuArrowUpRight,
+  LuShieldCheck,
+  LuShieldAlert,
 } from 'react-icons/lu';
 import {
   BarChart,
@@ -21,8 +22,9 @@ import {
 const stats = [
   { label: 'Active POs', value: '142', change: '+8', positive: true, icon: <LuShoppingCart />, color: 'text-blue-600', bg: 'bg-blue-50' },
   { label: 'Total Suppliers', value: '48', change: '+2', positive: true, icon: <LuTruck />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-  { label: 'Pending Approval', value: '12', change: '-3', positive: true, icon: <LuClock />, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Items Received', value: '1.2K', change: '+15%', positive: true, icon: <LuCheck />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+  { label: 'Pending POs', value: '12', change: '-3', positive: true, icon: <LuClock />, color: 'text-amber-600', bg: 'bg-amber-50' },
+  { label: 'Pending KYC / Accreditations', value: '8', change: '+2', positive: false, icon: <LuShieldAlert />, color: 'text-red-600', bg: 'bg-red-50' },
+  { label: 'Active Accreditations', value: '40', change: '+5', positive: true, icon: <LuShieldCheck />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
 ];
 
 const categoryData = [
@@ -38,7 +40,7 @@ export default function ProcurementOverview() {
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
         {stats.map((stat) => (
           <div key={stat.label} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between mb-4">

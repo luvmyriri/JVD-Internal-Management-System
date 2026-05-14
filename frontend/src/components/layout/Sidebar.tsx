@@ -54,11 +54,11 @@ const navigation: NavSection[] = [
   {
     title: 'Procurement',
     items: [
-      { label: 'Purchase Orders', path: '/procurement/purchase-orders', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
-      { label: 'Job Orders', path: '/procurement/job-orders', icon: <LuClipboardList />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
       { label: 'Work Orders', path: '/procurement/work-orders', icon: <LuWrench />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
-      { label: 'Accreditations', path: '/procurement/accreditations', icon: <LuShieldCheck />, roles: ['super_admin', 'admin', 'agent'] },
+      { label: 'Job Orders', path: '/procurement/job-orders', icon: <LuClipboardList />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
+      { label: 'Purchase Orders', path: '/procurement/purchase-orders', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
       { label: 'Suppliers', path: '/procurement/suppliers', icon: <LuTruck />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
+      { label: 'Accreditations', path: '/procurement/accreditations', icon: <LuShieldCheck />, roles: ['super_admin', 'admin', 'agent'] },
     ],
   },
   {
