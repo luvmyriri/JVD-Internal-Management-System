@@ -79,6 +79,7 @@ class BillingController extends Controller
             'category' => 'required|string',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string',
+            'image_url' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -90,6 +91,7 @@ class BillingController extends Controller
             'category' => $request->category,
             'price' => $request->price,
             'description' => $request->description,
+            'image_url' => $request->image_url,
             'is_active' => true
         ]);
 

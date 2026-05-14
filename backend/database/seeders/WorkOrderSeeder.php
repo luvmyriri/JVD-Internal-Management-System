@@ -30,6 +30,30 @@ class WorkOrderSeeder extends Seeder
                 'priority' => 'urgent',
                 'status' => 'open',
             ],
+            [
+                'wo_number' => 'WO-2024-003',
+                'bus_id' => 3,
+                'created_by' => $admin->id,
+                'description' => 'Aircon cleaning and filter replacement',
+                'priority' => 'routine',
+                'status' => 'completed',
+            ],
+            [
+                'wo_number' => 'WO-2024-004',
+                'bus_id' => 4,
+                'created_by' => $admin->id,
+                'description' => 'Oil change and fluid check',
+                'priority' => 'routine',
+                'status' => 'open',
+            ],
+            [
+                'wo_number' => 'WO-2024-005',
+                'bus_id' => 2,
+                'created_by' => $admin->id,
+                'description' => 'Electrical system diagnostic',
+                'priority' => 'critical',
+                'status' => 'pending_approval',
+            ],
         ];
 
         foreach ($orders as $order) {
