@@ -32,7 +32,7 @@ class ServiceSeeder extends Seeder
                 'category' => 'Package', 
                 'price' => 12000.00, 
                 'description' => '3 days 2 nights Boracay package per person',
-                'images' => ['https://images.unsplash.com/photo-1589197331516-4d8393040418?auto=format&fit=crop&q=80&w=800']
+                'images' => ['https://images.unsplash.com/photo-1552074284-5e88ef1aef18?auto=format&fit=crop&q=80&w=800']
             ],
             [
                 'name' => 'Travel Package - Palawan', 

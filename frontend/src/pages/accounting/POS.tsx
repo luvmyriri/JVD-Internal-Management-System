@@ -262,7 +262,7 @@ export default function POS() {
               <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
                 {service.images && service.images.length > 0 ? (
                   <img 
-                    src={service.images[0]?.startsWith('http') ? service.images[0] : `http://localhost:8000/storage/${service.images[0]}`} 
+                    src={service.images[0]?.startsWith('http') ? service.images[0] : `/storage/${service.images[0]}`} 
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     alt={service.name}
                   />
@@ -291,8 +291,6 @@ export default function POS() {
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                     <p className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-sm">View</p>
                   </div>
-                </div>
-              </div>
                 </div>
               </div>
 
