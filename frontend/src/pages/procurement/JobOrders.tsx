@@ -2,12 +2,25 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
-  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers,
+  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuDollarSign, LuUser
 } from 'react-icons/lu';
+import { 
+  Eye, 
+  CheckCircle, 
+  FileEdit, 
+  Trash2, 
+  MoreHorizontal,
+  ChevronRight,
+  Info,
+  Send,
+  Calendar,
+  MapPin,
+  CircleDollarSign
+} from 'lucide-react';
 import { jobOrderApi } from '../../api/jobOrders';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
-import { Pagination } from '../../components/ui';
+import { Pagination, Dropdown } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -160,9 +173,105 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Detail Modal ─────────────────────────────────────────────────────────────
+
+function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-[1.5rem] bg-sky-50 flex items-center justify-center text-sky-600 shadow-sm">
+              <LuClipboardList size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">{jo.jo_number}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <StatusBadge status={jo.status} />
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                  {SERVICE_TYPE_LABELS[jo.service_type] ?? jo.service_type}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-900 transition-all active:scale-95">
+            <LuX size={20} />
+          </button>
+        </div>
+
+        <div className="p-10 overflow-y-auto space-y-10 custom-scrollbar">
+          {/* Main Info */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</p>
+              <h3 className="text-lg font-bold text-gray-900">
+                {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
+              </h3>
+              {jo.customer && <p className="text-xs text-gray-500">{jo.customer.email || 'No email provided'}</p>}
+            </div>
+            <div className="space-y-1 text-right">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Investment</p>
+              <h3 className="text-2xl font-black text-gray-900">
+                {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}
+              </h3>
+            </div>
+          </div>
+
+          <div className="p-8 bg-gray-50 rounded-[2rem] border border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <LuMapPin size={14} /> Destination / Work Summary
+            </p>
+            <p className="text-sm text-gray-600 font-bold leading-relaxed">
+              {jo.destination}
+            </p>
+            {jo.notes && (
+              <p className="text-xs text-gray-400 mt-3 leading-relaxed italic">
+                "{jo.notes}"
+              </p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Schedule Date</p>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                <LuCalendar size={16} className="text-blue-500" />
+                {new Date(jo.service_date).toLocaleDateString(undefined, { dateStyle: 'long' })}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Vehicle</p>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                <LuArrowRight size={16} className="text-sky-500" />
+                {jo.bus?.plate_number ?? `Bus #${jo.bus_id}`}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 px-10 border-t border-gray-100 bg-white flex justify-end">
+          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all active:scale-95">
+            Close View
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── JO Row ───────────────────────────────────────────────────────────────────
 
-function JORow({ jo }: { jo: JobOrder }) {
+function JORow({ 
+  jo, 
+  onDetail, 
+  onConfirm, 
+  onComplete 
+}: { 
+  jo: JobOrder; 
+  onDetail: (jo: JobOrder) => void;
+  onConfirm: (id: number) => void;
+  onComplete: (id: number) => void;
+}) {
   return (
     <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
@@ -195,7 +304,30 @@ function JORow({ jo }: { jo: JobOrder }) {
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
       <td className="px-8 py-6">
-        <div className="flex items-center justify-end gap-2 text-gray-400 group-hover:text-blue-600 text-[10px] font-black uppercase tracking-widest transition-all">View <LuArrowRight size={14} /></div>
+        <Dropdown 
+          items={[
+            { 
+              label: 'View Details', 
+              icon: <Eye size={14} />, 
+              onClick: () => onDetail(jo) 
+            },
+            ...(jo.status === 'created' ? [{ 
+              label: 'Confirm Order', 
+              icon: <Send size={14} />, 
+              onClick: () => onConfirm(jo.id) 
+            }] : []),
+            ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{ 
+              label: 'Mark Completed', 
+              icon: <CheckCircle size={14} />, 
+              onClick: () => onComplete(jo.id) 
+            }] : []),
+            ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{ 
+              label: 'Edit Order', 
+              icon: <FileEdit size={14} />, 
+              onClick: () => alert('Edit feature coming soon') 
+            }] : []),
+          ]}
+        />
       </td>
     </tr>
   );
@@ -208,6 +340,7 @@ export default function JobOrders() {
   const [status, setStatus] = useState('');
   const [serviceType, setServiceType] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [detailJO, setDetailJO] = useState<JobOrder | null>(null);
 
   const [page, setPage] = useState(1);
 
@@ -221,6 +354,22 @@ export default function JobOrders() {
       per_page: 10
     }),
     staleTime: 30_000,
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: (id: number) => jobOrderApi.confirm(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
+      alert('Job order confirmed successfully!');
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: number) => jobOrderApi.complete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
+      alert('Job order marked as completed!');
+    },
   });
 
   const jos = data?.data?.data ?? [];
@@ -297,7 +446,15 @@ export default function JobOrders() {
                   </tr>
                 </thead>
               <tbody className="divide-y divide-gray-50">
-                {jos.map(jo => <JORow key={jo.id} jo={jo} />)}
+                {jos.map(jo => (
+                  <JORow 
+                    key={jo.id} 
+                    jo={jo} 
+                    onDetail={setDetailJO}
+                    onConfirm={(id) => confirmMutation.mutate(id)}
+                    onComplete={(id) => completeMutation.mutate(id)}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
@@ -305,6 +462,7 @@ export default function JobOrders() {
       </div>
 
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}
+      {detailJO && <JODetailModal jo={detailJO} onClose={() => setDetailJO(null)} />}
 
       {meta && meta.last_page > 1 && (
         <Pagination
