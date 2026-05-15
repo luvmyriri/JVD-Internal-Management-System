@@ -1,14 +1,25 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
+import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCheck, LuBan, LuTriangleAlert, LuArrowRight, LuClock,
   LuShieldCheck, LuClipboardList,
 } from 'react-icons/lu';
+import { 
+  Eye, 
+  CheckCircle, 
+  FileEdit, 
+  Trash2, 
+  ShieldCheck, 
+  Wrench,
+  MoreHorizontal,
+  ChevronRight,
+  Info
+} from 'lucide-react';
 import { workOrderApi } from '../../api/workOrders';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
-import { Pagination } from '../../components/ui';
+import { Pagination, Dropdown } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -114,6 +125,85 @@ function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
   );
 }
 
+// ── Detail Modal ─────────────────────────────────────────────────────────────
+
+function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-[1.5rem] bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
+              <LuWrench size={24} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-black text-gray-900 tracking-tight">{wo.wo_number}</h2>
+              <div className="flex items-center gap-2 mt-1">
+                <StatusBadge status={wo.status} />
+                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                  {wo.auto_generated ? 'PMS Auto-System' : 'Manual Request'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-900 transition-all active:scale-95">
+            <LuX size={20} />
+          </button>
+        </div>
+
+        <div className="p-10 overflow-y-auto space-y-10 custom-scrollbar">
+          {/* Main Info */}
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Vehicle</p>
+              <h3 className="text-lg font-bold text-gray-900">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</h3>
+              <p className="text-xs text-gray-500">{wo.bus?.model ?? 'Vehicle Model Details'}</p>
+            </div>
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Priority Level</p>
+              <div className="pt-1"><PriorityBadge priority={wo.priority} /></div>
+            </div>
+          </div>
+
+          <div className="p-8 bg-gray-50 rounded-[2rem] border border-gray-100">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+              <LuClipboardList size={14} /> Work Description
+            </p>
+            <p className="text-sm text-gray-600 font-medium leading-relaxed italic">
+              "{wo.description}"
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Created Date</p>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                <LuClock size={16} className="text-blue-500" />
+                {new Date(wo.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned To</p>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+                <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-[10px]">
+                  {wo.assigned_to_user ? wo.assigned_to_user.first_name.charAt(0) : '?'}
+                </div>
+                {wo.assigned_to_user ? `${wo.assigned_to_user.first_name} ${wo.assigned_to_user.last_name}` : 'Unassigned'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-8 px-10 border-t border-gray-100 bg-white flex justify-end">
+          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all active:scale-95">
+            Close View
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Create WO Modal ──────────────────────────────────────────────────────────
 
 function CreateWOModal({ onClose }: { onClose: () => void }) {
@@ -184,7 +274,17 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
 
 // ── WO Row ───────────────────────────────────────────────────────────────────
 
-function WORow({ wo, onReview }: { wo: WorkOrder; onReview: (wo: WorkOrder) => void }) {
+function WORow({ 
+  wo, 
+  onReview, 
+  onDetail, 
+  onComplete 
+}: { 
+  wo: WorkOrder; 
+  onReview: (wo: WorkOrder) => void;
+  onDetail: (wo: WorkOrder) => void;
+  onComplete: (id: number) => void;
+}) {
   return (
     <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
@@ -208,16 +308,34 @@ function WORow({ wo, onReview }: { wo: WorkOrder; onReview: (wo: WorkOrder) => v
       <td className="px-8 py-6"><StatusBadge status={wo.status} /></td>
       <td className="px-8 py-6 text-xs text-gray-500 max-w-[200px] truncate leading-relaxed">{wo.description}</td>
       <td className="px-8 py-6">
-        {wo.status === 'pending_approval' ? (
-          <button onClick={() => onReview(wo)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-widest hover:bg-amber-100 transition border border-amber-100 shadow-sm shadow-amber-200/20">
-            <LuShieldCheck size={14} /> Review
-          </button>
-        ) : wo.approved_by ? (
-          <div className="flex items-center gap-2 text-[10px] text-emerald-600 font-black uppercase tracking-widest"><LuCheck size={14} /> Approved</div>
-        ) : (
-          <div className="flex items-center justify-center text-gray-300"><LuArrowRight size={14} /></div>
-        )}
+        <Dropdown 
+          items={[
+            { 
+              label: 'View Details', 
+              icon: <Eye size={14} />, 
+              onClick: () => onDetail(wo) 
+            },
+            ...(wo.status === 'pending_approval' ? [{ 
+              label: 'Review Order', 
+              icon: <ShieldCheck size={14} />, 
+              onClick: () => onReview(wo) 
+            }] : []),
+            ...(wo.status === 'in_progress' ? [{ 
+              label: 'Mark Completed', 
+              icon: <CheckCircle size={14} />, 
+              onClick: () => {
+                if (confirm('Are you sure you want to mark this work order as completed?')) {
+                  onComplete(wo.id);
+                }
+              }
+            }] : []),
+            ...(wo.status !== 'completed' && wo.status !== 'cancelled' ? [{ 
+              label: 'Edit Request', 
+              icon: <FileEdit size={14} />, 
+              onClick: () => alert('Edit feature coming soon') 
+            }] : []),
+          ]}
+        />
       </td>
     </tr>
   );
@@ -230,6 +348,7 @@ export default function WorkOrders() {
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
+  const [detailWO, setDetailWO] = useState<WorkOrder | null>(null);
 
   const [page, setPage] = useState(1);
 
@@ -242,6 +361,14 @@ export default function WorkOrders() {
       per_page: 10
     }),
     staleTime: 30_000,
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: number) => workOrderApi.complete(id, {}),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      alert('Work order marked as completed!');
+    },
   });
 
   const wos = data?.data?.data ?? [];
@@ -319,7 +446,15 @@ export default function WorkOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50">
-              {wos.map(wo => <WORow key={wo.id} wo={wo} onReview={setReviewWO} />)}
+              {wos.map(wo => (
+                <WORow 
+                  key={wo.id} 
+                  wo={wo} 
+                  onReview={setReviewWO} 
+                  onDetail={setDetailWO}
+                  onComplete={(id) => completeMutation.mutate(id)}
+                />
+              ))}
             </tbody>
           </table>
         )}
@@ -327,6 +462,7 @@ export default function WorkOrders() {
 
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
       {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
+      {detailWO && <WODetailModal wo={detailWO} onClose={() => setDetailWO(null)} />}
 
       {meta && meta.last_page > 1 && (
         <Pagination
