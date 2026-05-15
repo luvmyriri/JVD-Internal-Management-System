@@ -263,7 +263,15 @@ export default function Reports() {
 
     // 6. Save
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `jvd_financial_report_${range}.xlsx`);
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `jvd_financial_report_${range}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   if (isLoading && !data) {

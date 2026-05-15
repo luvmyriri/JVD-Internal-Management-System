@@ -341,7 +341,15 @@ export default function Dashboard() {
 
     // 8. Generate and Save
     const buffer = await workbook.xlsx.writeBuffer();
-    saveAs(new Blob([buffer]), `${title.toLowerCase().replace(/\s+/g, '_')}_report.xlsx`);
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${title.toLowerCase().replace(/\s+/g, '_')}_report.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   };
 
   if (!user) return null;
