@@ -33,7 +33,6 @@ import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../componen
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import ExcelJS from 'exceljs';
-import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
 
 interface User {
