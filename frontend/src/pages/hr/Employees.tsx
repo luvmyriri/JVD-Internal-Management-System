@@ -74,6 +74,8 @@ export default function Employees() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = useHasRole(['super_admin', 'admin']);
@@ -108,6 +110,7 @@ export default function Employees() {
       reset({
         role: 'agent',
         department: 'Operations',
+        send_invitation: true,
         employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
       });
     }
@@ -282,11 +285,18 @@ export default function Employees() {
         }
 
         // Validation: Role and Department
-        if (!ROLES.some(r => r.value === role)) {
-          errors_list.push(`Row ${rowNumber}: Invalid Role "${role}".`);
+        if (!role) {
+          errors_list.push(`Row ${rowNumber}: Invalid Role "${roleLabel}".`);
           return;
         }
-        if (!DEPARTMENTS.includes(department)) {
+
+        // Robust Department Matching (handles case and common typos like Logistic vs Logistics)
+        const matchedDept = DEPARTMENTS.find(d => 
+          d.toLowerCase() === department.toLowerCase() || 
+          (d === 'Logistics' && (department.toLowerCase() === 'logistic' || department.toLowerCase() === 'logistics'))
+        );
+
+        if (!matchedDept) {
           errors_list.push(`Row ${rowNumber}: Invalid Dept "${department}".`);
           return;
         }
@@ -296,7 +306,7 @@ export default function Employees() {
           last_name,
           email,
           role,
-          department,
+          department: matchedDept,
           employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
         });
       });
@@ -321,30 +331,41 @@ export default function Employees() {
         return;
       }
 
-      const uploadToast = toast.loading(`Registering ${employees.length} personnel...`);
-      let successCount = 0;
-      
-      for (const emp of employees) {
-        try {
-          await createUserMutation.mutateAsync(emp);
-          successCount++;
-        } catch (err: any) {
-          console.error(`Upload error for ${emp.email}:`, err);
-        }
-      }
-
-      toast.dismiss(uploadToast);
-      if (successCount === employees.length) {
-        toast.success(`Successfully registered ${successCount} personnel!`);
-      } else {
-        toast.success(`Completed with partial success: ${successCount}/${employees.length} registered.`);
-      }
-      
+      setPendingUploads(employees);
+      setIsPreviewModalOpen(true);
       e.target.value = '';
     } catch (err) {
       toast.error('Failed to parse Excel file. Please use the provided template.');
       console.error(err);
       e.target.value = '';
+    }
+  };
+
+  const handleBulkUploadConfirm = async () => {
+    if (!pendingUploads || pendingUploads.length === 0) return;
+
+    const employees = [...pendingUploads];
+    setPendingUploads(null);
+    setIsPreviewModalOpen(false);
+
+    const uploadToast = toast.loading(`Registering ${employees.length} personnel...`);
+    let successCount = 0;
+    
+    for (const emp of employees) {
+      try {
+        // Bulk uploads always send invitations for better security
+        await createUserMutation.mutateAsync({ ...emp, send_invitation: true });
+        successCount++;
+      } catch (err: any) {
+        console.error(`Upload error for ${emp.email}:`, err);
+      }
+    }
+
+    toast.dismiss(uploadToast);
+    if (successCount === employees.length) {
+      toast.success(`Successfully registered ${successCount} personnel!`);
+    } else {
+      toast.success(`Completed with partial success: ${successCount}/${employees.length} registered.`);
     }
   };
 
@@ -806,11 +827,33 @@ export default function Employees() {
           </div>
 
           {!selectedUser && (
-            <div className="p-4 bg-blue-50 border border-blue-100 rounded-[1.5rem] flex items-start gap-3">
-              <LuTriangleAlert size={18} className="text-blue-500 mt-0.5" />
-              <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                System will generate a unique entry and send secure onboarding credentials to the specified email address.
-              </p>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    {...register('send_invitation')}
+                    id="send_invitation"
+                    className="w-5 h-5 rounded-lg border-gray-200 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                    defaultChecked={true}
+                  />
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 uppercase tracking-widest cursor-pointer">
+                    Send Account Invitation
+                  </label>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                    Invite employee via email to set their own password
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-[1.5rem] flex items-start gap-3">
+                <LuTriangleAlert size={18} className="text-blue-500 mt-0.5" />
+                <p className="text-xs text-blue-700 leading-relaxed font-medium">
+                  System will generate a unique entry and send secure onboarding credentials to the specified email address.
+                </p>
+              </div>
             </div>
           )}
 
@@ -829,6 +872,75 @@ export default function Employees() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Bulk Upload Preview Modal */}
+      <Modal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => setIsPreviewModalOpen(false)}
+        title="Bulk Registration Preview"
+        size="xl"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-amber-50 border border-amber-100 rounded-[1.5rem] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <LuTriangleAlert size={20} className="text-amber-500" />
+              <p className="text-xs text-amber-700 font-bold uppercase tracking-tight">
+                Review Data: {pendingUploads?.length} personnel detected.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl border border-amber-200 shadow-sm">
+              <LuMail size={14} className="text-blue-500" />
+              <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Invitations Enabled</span>
+            </div>
+          </div>
+
+          <div className="border border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+            <div className="max-h-[400px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Personnel</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email Address</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Role & Dept</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {pendingUploads?.map((emp, i) => (
+                    <tr key={i} className="hover:bg-gray-50/50 transition">
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-black text-gray-900">{emp.first_name} {emp.last_name}</p>
+                        <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{emp.employee_id}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-gray-600">{emp.email}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase border border-blue-100">
+                            {emp.role}
+                          </span>
+                          <span className="text-[10px] font-bold text-gray-400 uppercase ml-0.5">
+                            {emp.department}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+            <Button variant="secondary" onClick={() => setIsPreviewModalOpen(false)}>
+              Abort Upload
+            </Button>
+            <Button onClick={handleBulkUploadConfirm} className="px-8 shadow-lg shadow-blue-200">
+              Confirm & Register All
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   );

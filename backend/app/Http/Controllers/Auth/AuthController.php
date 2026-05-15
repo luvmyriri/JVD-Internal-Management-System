@@ -8,7 +8,10 @@ use App\Http\Requests\Verify2FARequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\RateLimiter;
 use PragmaRX\Google2FA\Google2FA;
 use chillerlan\QRCode\QRCode;
@@ -249,5 +252,43 @@ class AuthController extends Controller
             'success' => true,
             'message' => 'Password changed successfully.',
         ]);
+    }
+
+    /**
+     * Set password for new users (Invitation Flow).
+     */
+    public function setPassword(Request $request): JsonResponse
+    {
+        $request->validate([
+            'token'    => ['required'],
+            'email'    => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed',
+                           'regex:/[A-Z]/', 'regex:/[0-9]/', 'regex:/[@$!%*?&]/'],
+        ], [
+            'password.regex' => 'Password must contain at least one uppercase letter, one number, and one special character.',
+        ]);
+
+        $status = Password::broker()->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function ($user, $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'must_change_password' => false,
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        if ($status === Password::PASSWORD_RESET) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Password has been set successfully. You can now log in.',
+            ]);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => __($status),
+        ], 422);
     }
 }

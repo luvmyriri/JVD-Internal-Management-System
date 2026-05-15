@@ -35,6 +35,7 @@ Route::prefix('auth')->group(function () {
     Route::post('/login',      [AuthController::class, 'login'])->name('auth.login');
     Route::post('/2fa/verify', [AuthController::class, 'verify2FA'])->name('auth.2fa.verify');
     Route::post('/2fa/setup',  [AuthController::class, 'confirmSetup'])->name('auth.2fa.setup');
+    Route::post('/set-password', [AuthController::class, 'setPassword'])->name('auth.set-password');
 });
 
 // Public KYC route

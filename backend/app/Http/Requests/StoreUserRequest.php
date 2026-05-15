@@ -20,7 +20,7 @@ class StoreUserRequest extends FormRequest
             'email' => ['required', 'email', 'unique:users,email'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
-            'role' => ['required', 'in:admin,human_resource,accounting,agent'],
+            'role' => ['required', 'in:admin,human_resource,accounting,agent,driver'],
             'department' => ['nullable', 'string', 'max:100'],
         ];
     }
