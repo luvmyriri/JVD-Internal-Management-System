@@ -29,7 +29,7 @@ import {
   useActivateUser 
 } from '../../hooks/useUsers';
 import { useHasRole } from '../../hooks/useHasRole';
-import { Modal, StatusBadge, Pagination, Button } from '../../components/ui';
+import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import ExcelJS from 'exceljs';
@@ -525,40 +525,28 @@ export default function Employees() {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center justify-center gap-2">
-                          <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleViewProfile(user)}
-                            className="p-3"
-                            title="View Profile"
-                          >
-                            <LuEye size={18} />
-                          </Button>
-                          {canManage && (
-                            <>
-                              <Button 
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleOpenModal(user)}
-                                className="p-3 hover:text-indigo-600 hover:border-indigo-100"
-                                title="Edit"
-                              >
-                                <LuPencil size={18} />
-                              </Button>
-                              <Button 
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toggleStatus(user)}
-                                className={cn(
-                                  "p-3",
-                                  user.is_active ? "hover:text-red-600 hover:border-red-100" : "hover:text-emerald-600 hover:border-emerald-100"
-                                )}
-                                title={user.is_active ? "Deactivate" : "Activate"}
-                              >
-                                {user.is_active ? <LuUserX size={18} /> : <LuUserCheck size={18} />}
-                              </Button>
-                            </>
-                          )}
+                          <Dropdown 
+                            items={[
+                              { 
+                                label: 'View Profile', 
+                                icon: <LuEye size={16} />, 
+                                onClick: () => handleViewProfile(user) 
+                              },
+                              ...(canManage ? [
+                                { 
+                                  label: 'Edit Employee', 
+                                  icon: <LuPencil size={16} />, 
+                                  onClick: () => handleOpenModal(user) 
+                                },
+                                { 
+                                  label: user.is_active ? 'Deactivate' : 'Activate', 
+                                  icon: user.is_active ? <LuUserX size={16} /> : <LuUserCheck size={16} />, 
+                                  onClick: () => toggleStatus(user),
+                                  variant: user.is_active ? 'danger' as const : 'default' as const
+                                }
+                              ] : [])
+                            ]}
+                          />
                         </div>
                       </td>
                     </tr>
@@ -568,6 +556,7 @@ export default function Employees() {
             </table>
           </div>
         </div>
+      </div>
 
         {usersData?.meta?.last_page > 1 && (
           <Pagination
@@ -578,7 +567,6 @@ export default function Employees() {
             onPageChange={setPage}
           />
         )}
-      </div>
 
       {/* Profile Detail Modal */}
       <Modal

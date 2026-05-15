@@ -44,9 +44,15 @@ export default function Login() {
         login(data.token, data.user);
         navigate('/dashboard');
       }
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Invalid credentials');
+    } catch (err: any) {
+      console.error('Login error:', err);
+      if (err.response) {
+        setError(err.response.data?.message || 'Invalid credentials');
+      } else if (err.request) {
+        setError('Cannot connect to the server. Please ensure the backend is running.');
+      } else {
+        setError('An unexpected error occurred.');
+      }
     } finally {
       setIsLoading(false);
     }
