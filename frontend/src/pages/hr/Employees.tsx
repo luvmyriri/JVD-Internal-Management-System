@@ -146,7 +146,8 @@ export default function Employees() {
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
     // Setup Data for Dropdowns in hidden sheet
-    dataSheet.getColumn(1).values = ['ROLES', ...ROLES.map(r => r.value)];
+    // We'll use Labels for the dropdown to be user-friendly, but map them back in parsing
+    dataSheet.getColumn(1).values = ['ROLES', ...ROLES.map(r => r.label)];
     dataSheet.getColumn(2).values = ['DEPARTMENTS', ...DEPARTMENTS];
 
     // Header row (Now row 1 for cleaner editing)
@@ -214,12 +215,20 @@ export default function Employees() {
     helpSheet.getColumn(2).width = 60;
 
     // Add example in Employees sheet
-    worksheet.addRow(['Michael', 'Scofield', 'm.scofield@jvd-logistics.com', 'agent', 'Operations']);
+    worksheet.addRow(['Michael', 'Scofield', 'm.scofield@jvd-logistics.com', 'Agent', 'Operations']);
+
+    // Set Employees as the active sheet
+    workbook.views = [
+      {
+        x: 0, y: 0, width: 10000, height: 20000,
+        firstSheet: 0, activeTab: 0, visibility: 'visible'
+      }
+    ];
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
     saveAs(blob, 'JVD_Personnel_Bulk_Template.xlsx');
-    toast.success('Professional template downloaded! (Check Instructions tab)');
+    toast.success('Professional template downloaded! (Enable Editing if prompted)');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,8 +249,11 @@ export default function Employees() {
         const first_name = row.getCell(1).text?.trim();
         const last_name = row.getCell(2).text?.trim();
         const email = row.getCell(3).text?.trim();
-        const role = row.getCell(4).text?.trim().toLowerCase();
+        const roleLabel = row.getCell(4).text?.trim();
         const department = row.getCell(5).text?.trim();
+
+        // Map role label back to value
+        const role = ROLES.find(r => r.label === roleLabel || r.value === roleLabel.toLowerCase())?.value;
 
         // Skip empty rows
         if (!first_name && !last_name && !email) return;

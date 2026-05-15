@@ -44,13 +44,18 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['accreditations'] }); onClose(); },
   });
 
-  const field = (label: string, key: keyof Accreditation, type = 'text', placeholder = '') => (
+  const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
+
+  const field = (label: string, key: keyof Accreditation, type = 'text', placeholder = '', customOnChange?: (val: string) => void) => (
     <div>
       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
       <input
         type={type}
         value={form[key] as string ?? ''}
-        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+        onChange={e => {
+          if (customOnChange) customOnChange(e.target.value);
+          else setForm(p => ({ ...p, [key]: e.target.value }));
+        }}
         placeholder={placeholder}
         className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
@@ -84,9 +89,9 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
                   <option value="bus">Bus</option>
                 </select>
               </div>
-              {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name')}
+              {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name', val => setForm(p => ({ ...p, entity_name: formatName(val) })))}
               {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
-              {field('Contact Person', 'contact_person', 'text', 'Primary Contact')}
+              {field('Contact Person', 'contact_person', 'text', 'Primary Contact', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
               {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
             </div>
 

@@ -104,7 +104,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
         <div className="p-8 overflow-y-auto">
           <form id="supplier-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.')}
+              {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.', val => setForm(p => ({ ...p, company_name: formatName(val) })))}
               {field('Contact Person', 'contact_person', 'text', 'Juan Dela Cruz', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
               {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX', val => setForm(p => ({ ...p, phone: formatPhone(val) })))}
               {field('Email', 'email', 'email', 'supplier@example.com', val => setForm(p => ({ ...p, email: formatEmail(val) })))}
