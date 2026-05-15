@@ -218,7 +218,7 @@ export default function Profile() {
                 <input
                   type="text"
                   value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value.replace(/[^A-Za-z\s-']/g, '') })}
                   disabled={!isEditing}
                   className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${
                     isEditing 
@@ -237,7 +237,7 @@ export default function Profile() {
                 <input
                   type="text"
                   value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value.replace(/[^A-Za-z\s-']/g, '') })}
                   disabled={!isEditing}
                   className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${
                     isEditing 

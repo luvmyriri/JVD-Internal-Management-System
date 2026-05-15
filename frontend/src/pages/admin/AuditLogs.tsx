@@ -1,20 +1,28 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
 import { 
   LuScrollText, 
-  LuFilter, 
   LuCalendar,
-  LuChevronLeft,
-  LuChevronRight,
   LuEye,
   LuUser,
   LuGlobe,
   LuActivity,
-  LuShieldAlert
+  LuLoaderCircle,
+  LuSearch,
+  LuRefreshCcw
 } from 'react-icons/lu';
 import { useAuditLogs, type AuditLog } from '../../hooks/useAuditLogs';
-import { Button, StatusBadge, Modal } from '../../components/ui';
-import { cn, fullName, formatDate, timeAgo } from '../../utils';
+import { StatusBadge, Modal, Pagination, Button } from '../../components/ui';
+import { formatDate, timeAgo } from '../../utils';
+
+const getActionVariant = (action: string): 'success' | 'info' | 'danger' | 'neutral' => {
+  switch (action.toUpperCase()) {
+    case 'POST': return 'success';
+    case 'PUT': 
+    case 'PATCH': return 'info';
+    case 'DELETE': return 'danger';
+    default: return 'neutral';
+  }
+};
 
 export default function AuditLogs() {
   const [page, setPage] = useState(1);
@@ -39,276 +47,283 @@ export default function AuditLogs() {
     setIsDetailModalOpen(true);
   };
 
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'POST': return 'emerald';
-      case 'PUT': 
-      case 'PATCH': return 'amber';
-      case 'DELETE': return 'rose';
-      default: return 'indigo';
-    }
+  const resetFilters = () => {
+    setModule('');
+    setAction('');
+    setDateFrom('');
+    setDateTo('');
+    setPage(1);
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-100 flex items-center gap-3">
-            <LuScrollText className="text-indigo-500" size={32} />
-            System Audit Logs
-          </h1>
-          <p className="text-gray-400 mt-1">Immutable trail of all administrative and operational actions.</p>
+    <div className="space-y-10 pb-12">
+      {/* Header Actions */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+            {logsData?.meta?.total ?? '0'} Events
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
+            System Audit Trail
+          </p>
         </div>
+        <Button 
+          variant="secondary"
+          onClick={resetFilters}
+          className="flex items-center gap-2 px-6"
+        >
+          <LuRefreshCcw size={18} /> Reset Filters
+        </Button>
       </div>
 
-      {/* Filters */}
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm shadow-lg space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Module</label>
-            <div className="relative">
-              <LuActivity className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <select
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
-                value={module}
-                onChange={(e) => setModule(e.target.value)}
-              >
-                <option value="">All Modules</option>
-                <option value="users">Employees</option>
-                <option value="purchase-orders">Purchase Orders</option>
-                <option value="suppliers">Suppliers</option>
-                <option value="billing">Billing/Accounting</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Action</label>
+      {/* Advanced Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Module</label>
+          <div className="relative">
             <select
-              className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-              value={action}
-              onChange={(e) => setAction(e.target.value)}
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
+              value={module}
+              onChange={(e) => setModule(e.target.value)}
             >
-              <option value="">Any Action</option>
-              <option value="POST">Created</option>
-              <option value="PUT">Updated</option>
-              <option value="DELETE">Deleted</option>
+              <option value="">All Modules</option>
+              <option value="users">Employees</option>
+              <option value="purchase-orders">Purchase Orders</option>
+              <option value="suppliers">Suppliers</option>
+              <option value="billing">Billing/Accounting</option>
             </select>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Date From</label>
-            <div className="relative">
-              <LuCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="date"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Date To</label>
-            <div className="relative">
-              <LuCalendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-              <input
-                type="date"
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-              />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+              <LuActivity size={14} />
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end gap-2">
-          <Button 
-            variant="secondary" 
-            className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-colors"
-            onClick={() => {
-              setModule('');
-              setAction('');
-              setDateFrom('');
-              setDateTo('');
-            }}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Action Type</label>
+          <select
+            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
+            value={action}
+            onChange={(e) => setAction(e.target.value)}
           >
-            Reset Filters
-          </Button>
-          <Button className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-500/20">
-            <LuFilter size={18} />
-            Apply Filters
-          </Button>
+            <option value="">Any Action</option>
+            <option value="POST">Created (POST)</option>
+            <option value="PUT">Updated (PUT)</option>
+            <option value="PATCH">Modified (PATCH)</option>
+            <option value="DELETE">Deleted (DELETE)</option>
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Date From</label>
+          <div className="relative">
+            <input
+              type="date"
+              className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider ml-1">Date To</label>
+          <input
+            type="date"
+            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+          />
         </div>
       </div>
 
       {/* Logs Table */}
-      <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
+      <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-800/30 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-black border-b border-gray-800">
-                <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Action</th>
-                <th className="px-6 py-4">Module</th>
-                <th className="px-6 py-4">IP Address</th>
-                <th className="px-6 py-4 text-right">Details</th>
+              <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
+                <th className="px-8 py-5">Timestamp & User</th>
+                <th className="px-8 py-5">Action</th>
+                <th className="px-8 py-5">Module</th>
+                <th className="px-8 py-5 text-right">Origin</th>
+                <th className="px-8 py-5 text-center">Details</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-800/50">
+            <tbody className="divide-y divide-gray-50">
               {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8 bg-gray-900/20" />
-                  </tr>
-                ))
+                <tr>
+                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
+                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm font-medium">Retrieving audit trail...</p>
+                  </td>
+                </tr>
+              ) : logsData?.data?.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
+                    <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
+                    <p className="text-sm font-medium">No logs found matching filters.</p>
+                  </td>
+                </tr>
               ) : (
-                logsData?.data?.map((log, i) => (
-                  <motion.tr 
-                    key={log.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="hover:bg-white/5 transition-colors group"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-gray-300">{formatDate(log.created_at)}</span>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                          <LuCalendar size={10} />
-                          {timeAgo(log.created_at)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                          <LuUser size={16} />
+                logsData?.data?.map((log) => (
+                  <tr key={log.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50 last:border-0">
+                    <td className="px-8 py-6">
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100 shadow-sm group-hover:scale-110 transition-transform">
+                          <LuUser size={18} />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-gray-200">
-                            {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System'}
-                          </p>
-                          <p className="text-[10px] text-gray-500 font-mono tracking-tighter uppercase">{log.performed_by?.role || 'SYSTEM'}</p>
+                          <div className="font-bold text-gray-900 text-base">
+                            {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System Process'}
+                          </div>
+                          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
+                            {formatDate(log.created_at, 'MMM dd, yyyy HH:mm')}
+                            <span className="w-1 h-1 rounded-full bg-gray-300" />
+                            {timeAgo(log.created_at)}
+                          </div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-8 py-6">
                       <StatusBadge 
-                        status={log.action} 
-                        variant={getActionColor(log.action) as any} 
-                        className="font-mono text-[10px]"
+                        status={log.action}
+                        variant={getActionVariant(log.action)}
                       />
                     </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded capitalize tracking-tight">
+                    <td className="px-8 py-6">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-black tracking-widest uppercase border border-gray-100">
                         {log.module.replace('-', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-gray-500 font-mono text-xs">
-                        <LuGlobe size={12} />
-                        {log.ip_address}
-                      </div>
+                    <td className="px-8 py-6 text-right">
+                      <div className="text-gray-900 font-black text-base tracking-tight">{log.ip_address}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">IPv4 Address</div>
                     </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
+                    <td className="px-8 py-6 text-center">
+                      <Button 
+                        variant="ghost"
+                        size="sm"
                         onClick={() => handleViewDetails(log)}
-                        className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-xl transition-all"
+                        className="p-3"
                       >
-                        <LuEye size={18} />
-                      </button>
+                        <LuEye size={20} />
+                      </Button>
                     </td>
-                  </motion.tr>
+                  </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-
-        {/* Pagination */}
-        <div className="p-4 border-t border-gray-800 flex items-center justify-between">
-          <p className="text-xs text-gray-500">
-            Showing <span className="text-gray-300">{(page - 1) * 20 + 1}</span> to <span className="text-gray-300">{Math.min(page * 20, logsData?.meta?.total || 0)}</span> of <span className="text-gray-300">{logsData?.meta?.total || 0}</span> logs
-          </p>
-          <div className="flex gap-2">
-            <Button 
-              variant="secondary" 
-              className="p-2 h-9 w-9 rounded-lg"
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              <LuChevronLeft size={16} />
-            </Button>
-            <Button 
-              variant="secondary" 
-              className="p-2 h-9 w-9 rounded-lg"
-              disabled={page >= (logsData?.meta?.last_page || 1)}
-              onClick={() => setPage(p => p + 1)}
-            >
-              <LuChevronRight size={16} />
-            </Button>
-          </div>
-        </div>
       </div>
+
+      {/* Pagination */}
+      {logsData?.meta && logsData.meta.last_page > 1 && (
+        <Pagination
+          currentPage={page}
+          lastPage={logsData.meta.last_page}
+          total={logsData.meta.total}
+          perPage={logsData.meta.per_page}
+          onPageChange={setPage}
+        />
+      )}
 
       {/* Details Modal */}
       <Modal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        title="Log Event Details"
+        title="Event Intelligence"
         size="lg"
       >
         {selectedLog && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Action Performed</p>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={selectedLog.action} variant={getActionColor(selectedLog.action) as any} />
-                  <span className="text-lg font-bold text-gray-200 capitalize">{selectedLog.module.replace('-', ' ')}</span>
+          <div className="space-y-8 p-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 rounded-full blur-2xl group-hover:bg-blue-500/10 transition-colors" />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Transaction Context</p>
+                <div className="flex items-center gap-4">
+                  <StatusBadge 
+                    status={selectedLog.action}
+                    variant={getActionVariant(selectedLog.action)}
+                  />
+                  <div className="text-xl font-black text-gray-900 capitalize tracking-tight">
+                    {selectedLog.module.replace('-', ' ')}
+                  </div>
                 </div>
               </div>
-              <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Performed By</p>
-                <p className="text-lg font-bold text-gray-200">
-                  {selectedLog.performed_by ? `${selectedLog.performed_by.first_name} ${selectedLog.performed_by.last_name}` : 'System'}
-                </p>
-                <p className="text-xs text-gray-500">{selectedLog.performed_by?.employee_id || 'SYSTEM_PROCESS'}</p>
+
+              <div className="p-6 bg-gray-50 rounded-[2rem] border border-gray-100 relative overflow-hidden group">
+                <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-colors" />
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4">Identity Matrix</p>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-blue-500 shadow-sm border border-gray-100">
+                    <LuUser size={24} />
+                  </div>
+                  <div>
+                    <p className="text-lg font-black text-gray-900 leading-tight">
+                      {selectedLog.performed_by ? `${selectedLog.performed_by.first_name} ${selectedLog.performed_by.last_name}` : 'System'}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                      {selectedLog.performed_by?.employee_id || 'SYSTEM_PROCESS'}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2">
-                <LuShieldAlert size={16} className="text-amber-500" />
-                State Changes
-              </h3>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-2">
+                <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shadow-sm">
+                  <LuSearch size={16} />
+                </div>
+                <h3 className="text-sm font-black text-gray-900 uppercase tracking-widest">State Delta Analysis</h3>
+              </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase ml-1">Previous Values</p>
-                  <pre className="p-4 bg-gray-950 rounded-xl border border-gray-800 text-[10px] font-mono text-gray-400 overflow-auto max-h-[300px]">
-                    {selectedLog.old_values ? JSON.stringify(selectedLog.old_values, null, 2) : '// No previous state'}
-                  </pre>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-2">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Baseline State</p>
+                    <span className="text-[10px] font-bold text-gray-300">PRE-EVENT</span>
+                  </div>
+                  <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-inner overflow-hidden relative">
+                    <pre className="text-[11px] font-mono text-gray-400 overflow-auto max-h-[300px] leading-relaxed custom-scrollbar">
+                      {selectedLog.old_values ? JSON.stringify(selectedLog.old_values, null, 2) : '// No previous state recorded'}
+                    </pre>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase ml-1">New Values</p>
-                  <pre className="p-4 bg-indigo-950/20 rounded-xl border border-indigo-500/20 text-[10px] font-mono text-indigo-300/80 overflow-auto max-h-[300px]">
-                    {selectedLog.new_values ? JSON.stringify(selectedLog.new_values, null, 2) : '// No new state'}
-                  </pre>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-2">
+                    <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Resultant State</p>
+                    <span className="text-[10px] font-bold text-blue-200 font-mono italic">UPDATED</span>
+                  </div>
+                  <div className="p-6 bg-blue-50/30 rounded-[2rem] border border-blue-100 shadow-inner overflow-hidden relative">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl" />
+                    <pre className="text-[11px] font-mono text-blue-700/80 overflow-auto max-h-[300px] leading-relaxed relative z-10 custom-scrollbar">
+                      {selectedLog.new_values ? JSON.stringify(selectedLog.new_values, null, 2) : '// No changes applied'}
+                    </pre>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-800 mt-6">
-              <div className="flex items-center gap-4 text-xs text-gray-500">
-                <span className="flex items-center gap-1.5"><LuGlobe size={14} /> {selectedLog.ip_address}</span>
-                <span className="flex items-center gap-1.5"><LuCalendar size={14} /> {formatDate(selectedLog.created_at)}</span>
+            <div className="flex items-center justify-between p-6 bg-gray-50 rounded-[2.5rem] border border-gray-100 mt-8">
+              <div className="flex items-center gap-8">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Source IP</span>
+                  <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><LuGlobe size={14} className="text-blue-500" /> {selectedLog.ip_address}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Execution Time</span>
+                  <span className="text-sm font-bold text-gray-700 flex items-center gap-2"><LuCalendar size={14} className="text-blue-500" /> {formatDate(selectedLog.created_at)}</span>
+                </div>
               </div>
-              <Button variant="secondary" onClick={() => setIsDetailModalOpen(false)}>Close</Button>
+              <Button 
+                variant="secondary"
+                onClick={() => setIsDetailModalOpen(false)}
+                className="px-8"
+              >
+                Close Trace
+              </Button>
             </div>
           </div>
         )}

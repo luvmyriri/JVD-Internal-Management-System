@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X } from 'lucide-react';
+import { LuX } from 'react-icons/lu';
 import { cn } from '../../utils';
 
 interface ModalProps {
@@ -9,9 +9,19 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   className?: string;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
 }
 
-export default function Modal({ isOpen, onClose, title, children, className }: ModalProps) {
+const sizeClasses = {
+  sm: 'max-w-md',
+  md: 'max-w-xl',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
+  '2xl': 'max-w-6xl',
+  full: 'max-w-[95vw]',
+};
+
+export default function Modal({ isOpen, onClose, title, children, className, size = 'md' }: ModalProps) {
   // Close on ESC key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -36,40 +46,44 @@ export default function Modal({ isOpen, onClose, title, children, className }: M
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-gray-950/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-gray-950/40 backdrop-blur-sm"
           />
 
           {/* Modal Container */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.9, y: 30 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: 'spring', duration: 0.5, bounce: 0.3 }}
+            exit={{ opacity: 0, scale: 0.9, y: 30 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={cn(
-              'relative w-full max-w-2xl bg-gray-900 border border-gray-800 rounded-2xl shadow-2xl overflow-hidden',
+              'relative w-full bg-white rounded-[2.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.15)] overflow-hidden flex flex-col max-h-[90vh] border border-white/50',
+              sizeClasses[size],
               className
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-800 bg-gray-900/50">
-              <h3 className="text-lg font-semibold text-gray-100">{title}</h3>
+            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 bg-white shrink-0">
+              <div>
+                <h3 className="text-xl font-black text-gray-900 tracking-tight">{title}</h3>
+                <div className="w-8 h-1 bg-blue-600 rounded-full mt-1 opacity-20" />
+              </div>
               <button
                 onClick={onClose}
-                className="p-1 text-gray-400 hover:text-gray-100 transition-colors rounded-lg hover:bg-gray-800"
+                className="p-2.5 text-gray-400 hover:text-gray-900 transition-all rounded-2xl bg-gray-50 hover:bg-gray-100 active:scale-90"
               >
-                <X size={20} />
+                <LuX size={20} />
               </button>
             </div>
 
             {/* Content */}
-            <div className="p-6 max-h-[80vh] overflow-y-auto custom-scrollbar">
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
               {children}
             </div>
           </motion.div>

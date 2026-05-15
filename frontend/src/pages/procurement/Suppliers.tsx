@@ -71,7 +71,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
     return `+63 ${digits.slice(0, 3)} ${digits.slice(3, 6)} ${digits.slice(6)}`;
   };
 
-  const formatName = (val: string) => val.replace(/[^a-zA-Z\s.,'-]/g, '');
+  const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
   
   const formatEmail = (val: string) => val.replace(/\s/g, '').toLowerCase();
 

@@ -1,35 +1,31 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuUser
+  LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuLoaderCircle, LuUser
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
-import { Pagination } from '../../components/ui';
+import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
 import type { Bus, BusFormData } from '../../types/inventory';
-import { userApi } from '../../api/users'; // To get drivers
+import { userApi } from '../../api/users';
 
-const statusStyles: Record<string, string> = {
-  available: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  in_service: 'bg-blue-50 text-blue-700 border border-blue-200',
-  under_maintenance: 'bg-amber-50 text-amber-700 border border-amber-200',
-  decommissioned: 'bg-red-50 text-red-700 border border-red-200',
+const getStatusVariant = (status: string): 'success' | 'info' | 'warning' | 'danger' | 'neutral' => {
+  switch (status) {
+    case 'available': return 'success';
+    case 'in_service': return 'info';
+    case 'under_maintenance': return 'warning';
+    case 'decommissioned': return 'danger';
+    default: return 'neutral';
+  }
 };
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
-      {status.replace('_', ' ')}
-    </span>
-  );
-}
 
 // ── Add/Edit Bus Modal ────────────────────────────────────────────────────────
 interface BusModalProps {
   bus?: Bus;
+  isOpen: boolean;
   onClose: () => void;
 }
 
-function BusModal({ bus, onClose }: BusModalProps) {
+function BusModal({ bus, isOpen, onClose }: BusModalProps) {
   const qc = useQueryClient();
   const [form, setForm] = useState<Partial<BusFormData>>(
     bus ? {
@@ -58,8 +54,8 @@ function BusModal({ bus, onClose }: BusModalProps) {
   const formatMileage = (val: string) => val.replace(/\D/g, '');
 
   const field = (label: string, key: keyof BusFormData, type = 'text', placeholder = '', customOnChange?: (val: string) => void) => (
-    <div>
-      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
+    <div className="space-y-2">
+      <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">{label}</label>
       <input
         type={type}
         value={form[key] as string ?? ''}
@@ -68,80 +64,82 @@ function BusModal({ bus, onClose }: BusModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white"
+        className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
       />
     </div>
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{bus ? 'Edit Bus' : 'Add New Bus'}</h2>
-            <p className="text-sm text-gray-500 mt-1">{bus ? 'Update fleet vehicle details.' : 'Register a new vehicle into the fleet.'}</p>
-          </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
-        </div>
-        
-        <div className="p-8 overflow-y-auto">
-          <form id="bus-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
-              {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
-              
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Capacity</label>
-                <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white" />
-              </div>
-              
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Status</label>
-                <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white">
-                  <option value="available">Available</option>
-                  <option value="in_service">In Service</option>
-                  <option value="under_maintenance">Under Maintenance</option>
-                  <option value="decommissioned">Decommissioned</option>
-                </select>
-              </div>
-
-              {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: parseInt(formatMileage(val)) || 0 })))}
-              
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Assigned Driver</label>
-                <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white">
-                  <option value="">-- No Driver Assigned --</option>
-                  {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
-                </select>
-              </div>
-
-              {field('Last Service Date', 'last_service_date', 'date')}
-              {field('Next Service Due', 'next_service_due', 'date')}
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={bus ? 'Refine Vehicle Specs' : 'Fleet Registration'}
+      size="lg"
+    >
+      <div className="space-y-8 p-2">
+        <form id="bus-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
+            {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
+            
+            <div className="space-y-2">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
+              <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white" />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Status</label>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white">
+                <option value="available">Available</option>
+                <option value="in_service">In Service</option>
+                <option value="under_maintenance">Under Maintenance</option>
+                <option value="decommissioned">Decommissioned</option>
+              </select>
             </div>
 
-            {mutation.isError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">
-                Failed to save bus details. Please check the plate number and required fields.
-              </p>
-            )}
-          </form>
-        </div>
+            {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: parseInt(formatMileage(val)) || 0 })))}
+            
+            <div className="space-y-2">
+              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>
+              <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white">
+                <option value="">-- No Driver Assigned --</option>
+                {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
+              </select>
+            </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+            {field('Last Service Date', 'last_service_date', 'date')}
+            {field('Next Service Due', 'next_service_due', 'date')}
+          </div>
+
+          {mutation.isError && (
+            <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">
+              <LuTriangleAlert size={18} className="text-red-500 shrink-0" />
+              <p className="text-xs text-red-700 font-medium leading-relaxed">
+                Failed to commit vehicle data. Ensure the plate number is unique and all required metrics are provided.
+              </p>
+            </div>
+          )}
+        </form>
+
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+          <Button variant="secondary" onClick={onClose} className="px-8">
             Cancel
-          </button>
-          <button form="bus-form" type="submit" disabled={!form.plate_number || !form.model || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
-            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
-            {bus ? 'Update Bus' : 'Register Bus'}
-          </button>
+          </Button>
+          <Button 
+            form="bus-form" 
+            type="submit" 
+            isLoading={mutation.isPending}
+            disabled={!form.plate_number || !form.model}
+            className="px-8"
+          >
+            {bus ? 'Commit Updates' : 'Register Vehicle'}
+          </Button>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -151,7 +149,6 @@ export default function Fleet() {
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingBus, setEditingBus] = useState<Bus | undefined>();
-
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery({
@@ -168,6 +165,16 @@ export default function Fleet() {
   const buses = data?.data?.data ?? [];
   const meta = data?.data?.meta;
 
+  const handleEdit = (bus: Bus) => {
+    setEditingBus(bus);
+    setShowModal(true);
+  };
+
+  const handleAdd = () => {
+    setEditingBus(undefined);
+    setShowModal(true);
+  };
+
   return (
     <div className="space-y-10 pb-12">
       {/* Header Actions */}
@@ -180,10 +187,9 @@ export default function Fleet() {
             Company Fleet Registry
           </p>
         </div>
-        <button onClick={() => { setEditingBus(undefined); setShowModal(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+        <Button onClick={handleAdd} className="flex items-center gap-2">
           <LuPlus size={16} /> Register Bus
-        </button>
+        </Button>
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
@@ -194,13 +200,13 @@ export default function Fleet() {
           <input
             type="text"
             placeholder="Search plate or model..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium text-gray-600">
+          className="px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white font-medium text-gray-600 appearance-none min-w-[150px]">
           <option value="">All Statuses</option>
           <option value="available">Available</option>
           <option value="in_service">In Service</option>
@@ -209,11 +215,11 @@ export default function Fleet() {
         </select>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
+      <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
-              <tr>
+          <table className="w-full text-left">
+            <thead>
+              <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
                 <th className="px-8 py-5">Plate & Model</th>
                 <th className="px-8 py-5">Capacity</th>
                 <th className="px-8 py-5">Status</th>
@@ -225,46 +231,55 @@ export default function Fleet() {
             <tbody className="divide-y divide-gray-50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2" />
-                    Loading fleet data...
+                  <td colSpan={6} className="px-8 py-20 text-center text-gray-400">
+                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm font-medium">Retrieving fleet data...</p>
                   </td>
                 </tr>
               ) : buses.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-8 py-20 text-center text-gray-400">
                     <LuBus size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                    No buses found matching your criteria.
+                    <p className="text-sm font-medium">No vehicles found matching criteria.</p>
                   </td>
                 </tr>
               ) : (
                 buses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50/50 last:border-0">
+                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50 last:border-0">
                     <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 text-base">{bus.plate_number}</div>
+                      <div className="font-bold text-gray-900 text-base leading-tight">{bus.plate_number}</div>
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
                     </td>
-                    <td className="px-8 py-6 font-medium text-gray-600">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-bold tracking-widest uppercase border border-gray-100">{bus.seating_capacity} pax</span>
+                    <td className="px-8 py-6">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-black tracking-widest uppercase border border-gray-100">
+                        {bus.seating_capacity} pax
+                      </span>
                     </td>
                     <td className="px-8 py-6">
-                      <StatusBadge status={bus.status} />
-                      {bus.is_service_overdue && (
-                        <div className="flex items-center gap-1 text-[10px] text-red-500 font-black mt-2 uppercase tracking-[0.15em]">
-                          <LuTriangleAlert size={10} /> Overdue PMS
-                        </div>
-                      )}
+                      <div className="flex flex-col gap-2">
+                        <StatusBadge 
+                          status={bus.status.replace('_', ' ')} 
+                          variant={getStatusVariant(bus.status)} 
+                        />
+                        {bus.is_service_overdue && (
+                          <div className="flex items-center gap-1.5 text-[9px] text-red-500 font-black uppercase tracking-widest mt-1">
+                            <LuTriangleAlert size={12} /> Overdue PMS
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-8 py-6">
                       {bus.driver ? (
-                        <div className="flex items-center gap-3 text-gray-800 font-bold text-sm">
-                          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs border border-blue-100 shadow-sm shadow-blue-200/50">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
                             <LuUser size={14} />
                           </div>
-                          {bus.driver.first_name} {bus.driver.last_name}
+                          <div className="text-sm font-bold text-gray-700">
+                            {bus.driver.first_name} {bus.driver.last_name}
+                          </div>
                         </div>
                       ) : (
-                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Unassigned</span>
+                        <span className="text-[10px] text-gray-300 font-black uppercase tracking-widest italic">Unassigned</span>
                       )}
                     </td>
                     <td className="px-8 py-6 text-right">
@@ -272,10 +287,14 @@ export default function Fleet() {
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <button onClick={() => { setEditingBus(bus); setShowModal(true); }}
-                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEdit(bus)}
+                        className="p-3"
+                      >
                         <LuSettings size={20} />
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 ))
@@ -285,7 +304,11 @@ export default function Fleet() {
         </div>
       </div>
 
-      {showModal && <BusModal bus={editingBus} onClose={() => setShowModal(false)} />}
+      <BusModal 
+        bus={editingBus} 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+      />
 
       {meta && meta.last_page > 1 && (
         <Pagination

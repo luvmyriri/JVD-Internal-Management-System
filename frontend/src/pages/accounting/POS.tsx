@@ -122,6 +122,8 @@ export default function POS() {
   const total = subtotal + tax;
   const change = typeof amountReceived === 'number' ? Math.max(0, amountReceived - total) : 0;
 
+  const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
+
   const filteredServices = useMemo(() => {
     return services.filter(service => {
       const matchesSearch = (service.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -188,7 +190,8 @@ export default function POS() {
       name: service.name,
       category: service.category,
       description: service.description,
-      price: Number(service.price)
+      price: Number(service.price),
+      image_url: '' // Placeholder to satisfy TS, actual images are handled separately
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
@@ -242,7 +245,13 @@ export default function POS() {
             </div>
             {(user?.role === 'super_admin' || user?.role === 'admin') && (
               <button 
-                onClick={() => setShowAddService(true)}
+                onClick={() => {
+                  setEditingServiceId(null);
+                  setIsEditingService(false);
+                  setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
+                  setServiceImages([]);
+                  setShowAddService(true);
+                }}
                 className="px-6 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2"
               >
                 <LuPlus className="w-4 h-4" /> Add Service
@@ -374,7 +383,7 @@ export default function POS() {
                   placeholder="Customer Name"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
+                  onChange={(e) => setCustomerName(formatName(e.target.value))}
                 />
               </div>
               <div className="relative group">
@@ -801,7 +810,7 @@ export default function POS() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Travel', description: '', price: 0 });
+                    setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');

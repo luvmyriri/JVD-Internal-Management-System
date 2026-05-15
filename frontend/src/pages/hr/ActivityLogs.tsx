@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   LuScrollText, 
-  LuSearch, 
   LuFilter, 
   LuCalendar,
   LuChevronLeft,
@@ -15,7 +14,7 @@ import {
 } from 'react-icons/lu';
 import { useAuditLogs, type AuditLog } from '../../hooks/useAuditLogs';
 import { Button, StatusBadge, Modal } from '../../components/ui';
-import { cn, fullName, formatDate, timeAgo } from '../../utils';
+import { formatDate, timeAgo } from '../../utils';
 
 export default function ActivityLogs() {
   const [page, setPage] = useState(1);
