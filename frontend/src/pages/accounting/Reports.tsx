@@ -11,6 +11,7 @@ import { billingApi } from '../../api/billing';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { LoadingScreen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 
 export default function Reports() {
@@ -274,11 +275,7 @@ export default function Reports() {
   };
 
   if (isLoading && !data) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (

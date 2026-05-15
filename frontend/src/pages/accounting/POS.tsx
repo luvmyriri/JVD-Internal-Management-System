@@ -25,7 +25,7 @@ import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { Dropdown } from '../../components/ui';
+import { LoadingScreen, Dropdown } from '../../components/ui';
 
 interface CartItem {
   service: Service;
@@ -205,11 +205,7 @@ export default function POS() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
