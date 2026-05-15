@@ -27,7 +27,7 @@ import {
   useActivateUser 
 } from '../../hooks/useUsers';
 import { useHasRole } from '../../hooks/useHasRole';
-import { Button, Modal, StatusBadge, Pagination } from '../../components/ui';
+import { Button, Modal, StatusBadge, Pagination, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate, timeAgo } from '../../utils';
 import { useForm } from 'react-hook-form';
 
@@ -263,39 +263,28 @@ export default function Employees() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => handleViewProfile(user)}
-                          className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-400/10 rounded-lg"
-                          title="View Details"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        {canManage && (
-                          <>
-                            <button 
-                              onClick={() => handleOpenModal(user)}
-                              className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-lg"
-                              title="Edit"
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button 
-                              onClick={() => toggleStatus(user)}
-                              className={cn(
-                                "p-2 rounded-lg transition-colors",
-                                user.is_active 
-                                  ? "text-gray-400 hover:text-red-400 hover:bg-red-400/10" 
-                                  : "text-gray-400 hover:text-emerald-400 hover:bg-emerald-400/10"
-                              )}
-                              title={user.is_active ? "Deactivate" : "Activate"}
-                            >
-                              {user.is_active ? <UserX size={16} /> : <UserCheck size={16} />}
-                            </button>
-                          </>
-                        )}
-                        <button className="p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700 rounded-lg">
-                          <MoreVertical size={16} />
-                        </button>
+                        <Dropdown 
+                          items={[
+                            { 
+                              label: 'View Profile', 
+                              icon: <Eye size={16} />, 
+                              onClick: () => handleViewProfile(user) 
+                            },
+                            ...(canManage ? [
+                              { 
+                                label: 'Edit Employee', 
+                                icon: <Edit2 size={16} />, 
+                                onClick: () => handleOpenModal(user) 
+                              },
+                              { 
+                                label: user.is_active ? 'Deactivate' : 'Activate', 
+                                icon: user.is_active ? <UserX size={16} /> : <UserCheck size={16} />, 
+                                onClick: () => toggleStatus(user),
+                                variant: user.is_active ? 'danger' as const : 'default' as const
+                              }
+                            ] : [])
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>

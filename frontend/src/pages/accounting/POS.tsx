@@ -17,15 +17,15 @@ import {
   LuCamera,
   LuChevronLeft,
   LuChevronRight,
-  LuImage,
-  LuPencil,
-  LuTrash
+  LuImage
 } from 'react-icons/lu';
+import { Pencil, Trash2 } from 'lucide-react';
 
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { Dropdown } from '../../components/ui';
 
 interface CartItem {
   service: Service;
@@ -188,7 +188,8 @@ export default function POS() {
       name: service.name,
       category: service.category,
       description: service.description,
-      price: Number(service.price)
+      price: Number(service.price),
+      image_url: ''
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
@@ -277,12 +278,21 @@ export default function POS() {
                       <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
                    </div>
                    {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                     <button 
-                       onClick={(e) => { e.stopPropagation(); handleDeleteService(service.id); }}
-                       className="p-2 bg-rose-500 text-white rounded-xl shadow-lg hover:bg-rose-600 transition-all"
-                     >
-                       <LuTrash className="w-3.5 h-3.5" />
-                     </button>
+                     <Dropdown 
+                       items={[
+                         { 
+                           label: 'Edit Service', 
+                           icon: <Pencil size={14} />, 
+                           onClick: () => handleOpenEditModal(service) 
+                         },
+                         { 
+                           label: 'Delete', 
+                           icon: <Trash2 size={14} />, 
+                           onClick: () => handleDeleteService(service.id),
+                           variant: 'danger' 
+                         },
+                       ]}
+                     />
                    )}
                 </div>
 
@@ -801,7 +811,7 @@ export default function POS() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Travel', description: '', price: 0 });
+                    setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -876,22 +886,21 @@ export default function POS() {
                   </span>
                   
                   {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleOpenEditModal(selectedServiceForDetail)}
-                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all"
-                        title="Edit Service"
-                      >
-                        <LuPencil className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteService(selectedServiceForDetail.id)}
-                        className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all"
-                        title="Delete Service"
-                      >
-                        <LuTrash className="w-4 h-4" />
-                      </button>
-                    </div>
+                    <Dropdown 
+                      items={[
+                        { 
+                          label: 'Edit Service', 
+                          icon: <Pencil size={16} />, 
+                          onClick: () => handleOpenEditModal(selectedServiceForDetail) 
+                        },
+                        { 
+                          label: 'Delete Service', 
+                          icon: <Trash2 size={16} />, 
+                          onClick: () => handleDeleteService(selectedServiceForDetail.id),
+                          variant: 'danger' 
+                        },
+                      ]}
+                    />
                   )}
                 </div>
                 <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-4 leading-tight uppercase tracking-tighter">

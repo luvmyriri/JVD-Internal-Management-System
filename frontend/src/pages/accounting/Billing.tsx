@@ -6,6 +6,7 @@ import {
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
+import { Dropdown } from '../../components/ui';
 
 export default function Billing() {
 
@@ -226,21 +227,21 @@ export default function Billing() {
                       <StatusBadge status={invoice.status} />
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button 
-                          onClick={() => { setSelectedInvoice(invoice); setShowModal(true); }}
-                          className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-blue-600 hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all shadow-sm"
-                        >
-                          <LuEye className="w-4 h-4" />
-                        </button>
-                        {invoice.status === 'pending_payment' && (
-                          <button 
-                            onClick={() => handleMarkAsPaid(invoice.id)}
-                            className="p-3 bg-white border border-gray-100 rounded-2xl text-emerald-600 hover:bg-emerald-600 hover:text-white hover:border-emerald-600 transition-all shadow-sm"
-                          >
-                            <LuFileCheck className="w-4 h-4" />
-                          </button>
-                        )}
+                      <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Dropdown 
+                          items={[
+                            { 
+                              label: 'View Invoice', 
+                              icon: <LuEye className="w-4 h-4" />, 
+                              onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } 
+                            },
+                            ...(invoice.status === 'pending_payment' ? [{ 
+                              label: 'Mark as Paid', 
+                              icon: <LuFileCheck className="w-4 h-4" />, 
+                              onClick: () => handleMarkAsPaid(invoice.id) 
+                            }] : [])
+                          ]}
+                        />
                       </div>
                     </td>
                   </tr>
