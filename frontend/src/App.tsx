@@ -32,6 +32,7 @@ import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
 import KycSubmission from './pages/KycSubmission';
 import Profile from './pages/Profile';
+import SetPassword from './pages/SetPassword';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +53,7 @@ export default function App() {
             <Routes>
               {/* Public */}
               <Route path="/login" element={<Login />} />
+              <Route path="/set-password" element={<SetPassword />} />
               <Route path="/kyc-submission" element={<KycSubmission />} />
 
               {/* Authenticated */}

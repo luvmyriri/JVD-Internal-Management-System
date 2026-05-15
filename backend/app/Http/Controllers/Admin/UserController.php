@@ -10,7 +10,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use App\Http\Services\AuditLogService;
+use App\Notifications\AccountInvitation;
 
 class UserController extends Controller
 {
@@ -71,20 +73,33 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $tempPassword = Str::random(16);
+        $sendInvitation = $request->boolean('send_invitation');
+        $tempPassword = null;
 
-        $user = User::create([
+        $userData = [
             'employee_id' => $request->employee_id,
             'email' => $request->email,
-            'password' => Hash::make($tempPassword),
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'role' => $request->role,
             'department' => $request->department,
             'is_active' => true,
-            'must_change_password' => true,
+            'must_change_password' => !$sendInvitation,
             'created_by' => auth()->id(),
-        ]);
+        ];
+
+        if (!$sendInvitation) {
+            $tempPassword = Str::random(16);
+            $userData['password'] = Hash::make($tempPassword);
+        }
+
+        $user = User::create($userData);
+
+        if ($sendInvitation) {
+            // Generate password reset token for the new user
+            $token = Password::broker()->createToken($user);
+            $user->notify(new AccountInvitation($token, $user->email));
+        }
 
         // Explicit Audit Log
         AuditLogService::log(
@@ -99,9 +114,12 @@ class UserController extends Controller
             'success' => true,
             'data' => [
                 'user' => new UserResource($user),
-                'temporary_password' => $tempPassword,  // Display once, never stored in plaintext
+                'temporary_password' => $tempPassword,
+                'invitation_sent' => $sendInvitation,
             ],
-            'message' => 'Account created. Provide the temporary password to the employee securely.',
+            'message' => $sendInvitation 
+                ? 'Account created and invitation email sent to ' . $user->email 
+                : 'Account created. Provide the temporary password to the employee securely.',
         ], 201);
     }
 
@@ -113,7 +131,7 @@ class UserController extends Controller
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],
-            'role' => ['sometimes', 'in:admin,human_resource,accounting,agent'],
+            'role' => ['sometimes', 'in:admin,human_resource,accounting,agent,driver'],
             'department' => ['nullable', 'string', 'max:100'],
         ]);
 

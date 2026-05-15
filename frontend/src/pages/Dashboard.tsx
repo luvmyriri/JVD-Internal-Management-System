@@ -11,10 +11,15 @@ import {
   LuArrowUpRight,
   LuActivity,
   LuCircle,
-  LuDownload,
   LuFileText,
+  LuClipboardList,
+  LuWrench,
+  LuTruck,
+  LuBus,
+  LuCircleUser,
+  LuReceipt,
+  LuDownload,
   LuFileSpreadsheet,
-  LuSettings,
 } from 'react-icons/lu';
 import {
   AreaChart,
@@ -679,33 +684,71 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Quick Actions */}
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8">
-          <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest mb-8 text-center">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-xl transition-all group">
-              <div className="p-3 rounded-xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-blue-600 transition-colors">
-                <LuUsers className="w-5 h-5" />
-              </div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">New User</span>
-            </button>
-            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-emerald-200 hover:bg-white hover:shadow-xl transition-all group">
-              <div className="p-3 rounded-xl bg-white shadow-sm text-slate-400 group-hover:text-emerald-600 transition-colors">
+          <div className="flex items-center justify-between mb-8 px-2">
+            <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">Quick Actions</h3>
+            <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg uppercase tracking-tighter">System Fundamentals</span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <button 
+              onClick={() => navigate('/procurement/purchase-orders')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-blue-600 transition-colors">
                 <LuFileText className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Report</span>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">New PO</span>
             </button>
-            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-violet-200 hover:bg-white hover:shadow-xl transition-all group">
-              <div className="p-3 rounded-xl bg-white shadow-sm text-slate-400 group-hover:text-violet-600 transition-colors">
-                <LuActivity className="w-5 h-5" />
+
+            <button 
+              onClick={() => navigate('/procurement/job-orders')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-emerald-200 dark:hover:border-emerald-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-emerald-600 transition-colors">
+                <LuClipboardList className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Analytics</span>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">Job Order</span>
             </button>
-            <button className="flex flex-col items-center justify-center gap-3 p-6 rounded-[2rem] bg-slate-50 border border-slate-100 hover:border-orange-200 hover:bg-white hover:shadow-xl transition-all group">
-              <div className="p-3 rounded-xl bg-white shadow-sm text-slate-400 group-hover:text-orange-600 transition-colors">
-                <LuSettings className="w-5 h-5" />
+
+            <button 
+              onClick={() => navigate('/accounting/pos')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-pink-200 dark:hover:border-pink-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-pink-600 transition-colors">
+                <LuReceipt className="w-5 h-5" />
               </div>
-              <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Settings</span>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">POS</span>
+            </button>
+
+            <button 
+              onClick={() => navigate('/travel/customers')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-blue-200 dark:hover:border-blue-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-blue-600 transition-colors">
+                <LuUsers className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">Customers</span>
+            </button>
+
+            <button 
+              onClick={() => navigate('/hr/employees')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-purple-200 dark:hover:border-purple-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-purple-600 transition-colors">
+                <LuCircleUser className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">Employees</span>
+            </button>
+
+            <button 
+              onClick={() => navigate('/inventory/fleet')}
+              className="flex flex-col items-center justify-center gap-3 p-4 rounded-3xl bg-slate-50 dark:bg-gray-800 border border-slate-100 dark:border-gray-700 hover:border-indigo-200 dark:hover:border-indigo-800 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg transition-all group"
+            >
+              <div className="p-3 rounded-2xl bg-white dark:bg-gray-700 shadow-sm text-slate-400 group-hover:text-indigo-600 transition-colors">
+                <LuBus className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-bold text-gray-500 uppercase tracking-wider text-center">Fleet</span>
             </button>
           </div>
         </div>

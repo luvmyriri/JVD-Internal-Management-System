@@ -24,4 +24,7 @@ export const authApi = {
 
   me: () =>
     client.get('/auth/me'),
+
+  setPassword: (data: any) =>
+    client.post('/auth/set-password', data),
 };
