@@ -143,18 +143,15 @@ export default function Employees() {
   const downloadTemplate = async () => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Employees');
+    const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
-    // Add Branding Header
-    worksheet.mergeCells('A1:E1');
-    const headerCell = worksheet.getCell('A1');
-    headerCell.value = 'JVD INTERNAL MANAGEMENT SYSTEM - PERSONNEL REGISTRATION';
-    headerCell.font = { name: 'Arial Black', size: 14, color: { argb: 'FFFFFFFF' }, bold: true };
-    headerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }; // Slate-800
-    headerCell.alignment = { horizontal: 'center', vertical: 'middle' };
-    worksheet.getRow(1).height = 40;
+    // Setup Data for Dropdowns in hidden sheet
+    // We'll use Labels for the dropdown to be user-friendly, but map them back in parsing
+    dataSheet.getColumn(1).values = ['ROLES', ...ROLES.map(r => r.label)];
+    dataSheet.getColumn(2).values = ['DEPARTMENTS', ...DEPARTMENTS];
 
-    // Header row (moved to row 2)
-    const headerRow = worksheet.getRow(2);
+    // Header row (Now row 1 for cleaner editing)
+    const headerRow = worksheet.getRow(1);
     headerRow.values = ['First Name', 'Last Name', 'Email', 'Role', 'Department'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = {
@@ -163,6 +160,7 @@ export default function Employees() {
       fgColor: { argb: 'FF3B82F6' } // Blue-500
     };
     headerRow.height = 25;
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
     
     worksheet.columns = [
       { key: 'first_name', width: 25 },
@@ -172,48 +170,60 @@ export default function Employees() {
       { key: 'department', width: 25 },
     ];
 
-    // Set Data Validations (Dropdowns)
-    const roleList = ROLES.map(r => r.value).join(',');
-    const deptList = DEPARTMENTS.join(',');
-
-    for (let i = 3; i <= 100; i++) {
+    // Set Data Validations using named ranges/cell references from hidden sheet
+    // Role validation (D2:D500)
+    const roleCount = ROLES.length;
+    for (let i = 2; i <= 500; i++) {
       worksheet.getCell(`D${i}`).dataValidation = {
         type: 'list',
         allowBlank: true,
-        formulae: [`"${roleList}"`],
+        formulae: [`Data!$A$2:$A$${roleCount + 1}`],
         showErrorMessage: true,
         errorTitle: 'Invalid Role',
-        error: `Please select from: ${roleList}`
+        error: 'Please select a role from the dropdown menu.'
       };
+      
       worksheet.getCell(`E${i}`).dataValidation = {
         type: 'list',
         allowBlank: true,
-        formulae: [`"${deptList}"`],
+        formulae: [`Data!$B$2:$B$${DEPARTMENTS.length + 1}`],
         showErrorMessage: true,
         errorTitle: 'Invalid Department',
-        error: `Please select from: ${deptList}`
+        error: 'Please select a department from the dropdown menu.'
       };
     }
 
-    // Add examples
-    worksheet.addRow(['Michael', 'Scofield', 'm.scofield@jvd-logistics.com', 'agent', 'Operations']);
-    worksheet.addRow(['Lincoln', 'Burrows', 'l.burrows@jvd-logistics.com', 'driver', 'Logistics']);
-
-    // Instructions sheet
+    // Instructions sheet (Branding moved here)
     const helpSheet = workbook.addWorksheet('Instructions');
-    helpSheet.addRow(['JVD PERSONNEL UPLOAD GUIDE']);
-    helpSheet.getRow(1).font = { bold: true, size: 12 };
-    helpSheet.addRow(['1. Do not modify the header rows in the "Employees" sheet.']);
-    helpSheet.addRow(['2. Select Role and Department from the dropdown menus.']);
-    helpSheet.addRow(['3. Emails must be unique and valid.']);
-    helpSheet.addRow(['4. Names should not contain numbers or special characters.']);
+    helpSheet.mergeCells('A1:B1');
+    const brandCell = helpSheet.getCell('A1');
+    brandCell.value = 'JVD INTERNAL MANAGEMENT SYSTEM';
+    brandCell.font = { name: 'Arial Black', size: 14, color: { argb: 'FF1E293B' } };
+    brandCell.alignment = { horizontal: 'center' };
+
+    helpSheet.addRow(['BULK PERSONNEL REGISTRATION GUIDE']);
+    helpSheet.getRow(2).font = { bold: true, size: 12, color: { argb: 'FF3B82F6' } };
     helpSheet.addRow(['']);
-    helpSheet.addRow(['ALLOWED VALUES:']);
-    helpSheet.addRow(['Roles:', ROLES.map(r => r.value).join(', ')]);
-    helpSheet.addRow(['Departments:', DEPARTMENTS.join(', ')]);
+    helpSheet.addRow(['1. Fill in the "Employees" sheet starting from row 2.']);
+    helpSheet.addRow(['2. Do not modify or delete the header row (Row 1).']);
+    helpSheet.addRow(['3. Use the dropdown menus for Role and Department columns.']);
+    helpSheet.addRow(['4. Ensure emails are unique and correctly formatted.']);
+    helpSheet.addRow(['5. Names should only contain letters (no numbers allowed).']);
+    helpSheet.addRow(['6. If "Protected View" appears, click "Enable Editing" to use dropdowns.']);
     
-    helpSheet.getColumn(1).width = 25;
-    helpSheet.getColumn(2).width = 100;
+    helpSheet.getColumn(1).width = 40;
+    helpSheet.getColumn(2).width = 60;
+
+    // Add example in Employees sheet
+    worksheet.addRow(['Michael', 'Scofield', 'm.scofield@jvd-logistics.com', 'Agent', 'Operations']);
+
+    // Set Employees as the active sheet
+    workbook.views = [
+      {
+        x: 0, y: 0, width: 10000, height: 20000,
+        firstSheet: 0, activeTab: 0, visibility: 'visible'
+      }
+    ];
 
     const buffer = await workbook.xlsx.writeBuffer();
     const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
@@ -241,13 +251,16 @@ export default function Employees() {
       const errors_list: string[] = [];
 
       worksheet?.eachRow((row, rowNumber) => {
-        if (rowNumber <= 2) return; // Skip branding and header
+        if (rowNumber === 1) return; // Skip only header now
 
         const first_name = row.getCell(1).text?.trim();
         const last_name = row.getCell(2).text?.trim();
         const email = row.getCell(3).text?.trim();
-        const role = row.getCell(4).text?.trim().toLowerCase();
+        const roleLabel = row.getCell(4).text?.trim();
         const department = row.getCell(5).text?.trim();
+
+        // Map role label back to value
+        const role = ROLES.find(r => r.label === roleLabel || r.value === roleLabel.toLowerCase())?.value;
 
         // Skip empty rows
         if (!first_name && !last_name && !email) return;
