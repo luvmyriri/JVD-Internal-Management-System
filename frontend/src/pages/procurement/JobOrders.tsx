@@ -2,20 +2,13 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
-  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuDollarSign, LuUser
+  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers
 } from 'react-icons/lu';
 import { 
   Eye, 
   CheckCircle, 
   FileEdit, 
-  Trash2, 
-  MoreHorizontal,
-  ChevronRight,
-  Info,
-  Send,
-  Calendar,
-  MapPin,
-  CircleDollarSign
+  Send
 } from 'lucide-react';
 import { jobOrderApi } from '../../api/jobOrders';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
@@ -336,6 +329,7 @@ function JORow({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function JobOrders() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [serviceType, setServiceType] = useState('');

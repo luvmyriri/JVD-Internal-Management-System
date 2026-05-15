@@ -2,19 +2,14 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
-  LuCheck, LuBan, LuTriangleAlert, LuArrowRight, LuClock,
-  LuShieldCheck, LuClipboardList,
+  LuCheck, LuBan, LuTriangleAlert, LuClock,
+  LuClipboardList,
 } from 'react-icons/lu';
 import { 
   Eye, 
   CheckCircle, 
   FileEdit, 
-  Trash2, 
-  ShieldCheck, 
-  Wrench,
-  MoreHorizontal,
-  ChevronRight,
-  Info
+  ShieldCheck
 } from 'lucide-react';
 import { workOrderApi } from '../../api/workOrders';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
@@ -186,9 +181,9 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned To</p>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
                 <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-[10px]">
-                  {wo.assigned_to_user ? wo.assigned_to_user.first_name.charAt(0) : '?'}
+                  {wo.assignee ? wo.assignee.first_name.charAt(0) : '?'}
                 </div>
-                {wo.assigned_to_user ? `${wo.assigned_to_user.first_name} ${wo.assigned_to_user.last_name}` : 'Unassigned'}
+                {wo.assignee ? `${wo.assignee.first_name} ${wo.assignee.last_name}` : 'Unassigned'}
               </div>
             </div>
           </div>
@@ -344,6 +339,7 @@ function WORow({
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function WorkOrders() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
