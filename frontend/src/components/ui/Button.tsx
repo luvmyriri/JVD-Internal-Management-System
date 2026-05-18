@@ -8,12 +8,12 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses = {
-  primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50',
-  secondary: 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm',
-  success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200/50',
-  warning: 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200/50',
-  danger: 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200/50',
-  ghost: 'bg-transparent hover:bg-gray-100 text-gray-500 hover:text-gray-900',
+  primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-200/50 dark:shadow-none',
+  secondary: 'bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 shadow-sm',
+  success: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200/50 dark:shadow-none',
+  warning: 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-200/50 dark:shadow-none',
+  danger: 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-200/50 dark:shadow-none',
+  ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white',
 };
 
 const sizeClasses = {

@@ -44,6 +44,11 @@ const queryClient = new QueryClient({
   },
 });
 
+const DefaultRedirect = () => {
+  const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+  return <Navigate to={defaultLandingPage} replace />;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -103,7 +108,7 @@ export default function App() {
                 <Route path="/admin/settings" element={<Settings />} />
               </Route>
 
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<DefaultRedirect />} />
             </Routes>
             <Toaster position="top-right" />
           </AuthProvider>

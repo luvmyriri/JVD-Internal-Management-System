@@ -10,7 +10,8 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
+      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+      navigate(defaultLandingPage, { replace: true });
     }
   }, [isAuthenticated, navigate]);
 
@@ -42,7 +43,8 @@ export default function Login() {
         setStep('2fa');
       } else {
         login(data.token, data.user);
-        navigate('/dashboard');
+        const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+        navigate(defaultLandingPage);
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -70,7 +72,8 @@ export default function Login() {
       });
       const { data } = response.data;
       login(data.token, data.user);
-      navigate('/dashboard');
+      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+      navigate(defaultLandingPage);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Invalid code');
@@ -92,7 +95,8 @@ export default function Login() {
       });
       const { data } = response.data;
       login(data.token, data.user);
-      navigate('/dashboard');
+      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+      navigate(defaultLandingPage);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Invalid code');

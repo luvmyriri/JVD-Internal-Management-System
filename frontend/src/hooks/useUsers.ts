@@ -73,3 +73,18 @@ export function useActivateUser() {
     },
   });
 }
+export function useToggleStatus() {
+  const deactivate = useDeactivateUser();
+  const activate = useActivateUser();
+
+  return {
+    mutate: ({ id, currentStatus }: { id: number; currentStatus: boolean }) => {
+      if (currentStatus) {
+        deactivate.mutate(id);
+      } else {
+        activate.mutate(id);
+      }
+    },
+    isLoading: deactivate.isPending || activate.isPending,
+  };
+}

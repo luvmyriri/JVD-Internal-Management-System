@@ -367,24 +367,24 @@ export default function Dashboard() {
       >
         <button
           onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-          className="p-2 hover:bg-slate-50 text-gray-400 hover:text-blue-600 rounded-xl transition-all opacity-0 group-hover:opacity-100"
+          className="p-2 hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 rounded-xl transition-all opacity-0 group-hover:opacity-100"
         >
           <LuDownload className="w-4 h-4" />
         </button>
 
         {isOpen && (
           <div className="absolute top-full right-0 pt-2 z-[100]">
-            <div className="w-32 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2">
+            <div className="w-32 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
               <button
                 onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 hover:bg-red-50 hover:text-red-600 flex items-center gap-2 transition-colors"
+                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
               >
                 <LuFileText className="w-3.5 h-3.5" />
                 Export PDF
               </button>
               <button
                 onClick={(e) => { e.stopPropagation(); exportToExcel(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 hover:bg-emerald-50 hover:text-emerald-600 flex items-center gap-2 transition-colors"
+                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
               >
                 <LuFileSpreadsheet className="w-3.5 h-3.5" />
                 Export Excel
@@ -584,14 +584,14 @@ export default function Dashboard() {
         </div>
 
         {/* Procurement Branch */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/procurement/purchase-orders')}>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/procurement/purchase-orders')}>
           <div className="flex items-center justify-between mb-6">
-            <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-2xl group-hover:scale-110 transition-transform">
               <LuShoppingCart className="w-6 h-6" />
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-black text-blue-600 uppercase tracking-tighter">Procurement</p>
-              <p className="text-xl font-black text-gray-900">142 POs</p>
+              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-tighter">Procurement</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">142 POs</p>
               <DownloadActions title="Procurement Branch Report" data={branchData.procurement} />
             </div>
           </div>
@@ -605,14 +605,14 @@ export default function Dashboard() {
         </div>
 
         {/* Inventory Branch */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/inventory/supplies')}>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/inventory/supplies')}>
           <div className="flex items-center justify-between mb-6">
-            <div className="p-3 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 rounded-2xl group-hover:scale-110 transition-transform">
               <LuPackage className="w-6 h-6" />
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-black text-indigo-600 uppercase tracking-tighter">Inventory</p>
-              <p className="text-xl font-black text-gray-900">92% Stock</p>
+              <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter">Inventory</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">92% Stock</p>
               <DownloadActions title="Inventory Branch Report" data={branchData.inventory} />
             </div>
           </div>
@@ -626,14 +626,14 @@ export default function Dashboard() {
         </div>
 
         {/* Travel Branch */}
-        <div className="bg-white p-6 rounded-[2.5rem] border border-gray-100 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/travel/customers')}>
+        <div className="bg-white dark:bg-gray-900 p-6 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl transition-all group cursor-pointer relative" onClick={() => navigate('/travel/customers')}>
           <div className="flex items-center justify-between mb-6">
-            <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-2xl group-hover:scale-110 transition-transform">
               <LuGlobe className="w-6 h-6" />
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-[10px] font-black text-rose-600 uppercase tracking-tighter">Travel</p>
-              <p className="text-xl font-black text-gray-900">24 Bookings</p>
+              <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-tighter">Travel</p>
+              <p className="text-xl font-black text-gray-900 dark:text-white">24 Bookings</p>
               <DownloadActions title="Travel Branch Report" data={branchData.travel} />
             </div>
           </div>

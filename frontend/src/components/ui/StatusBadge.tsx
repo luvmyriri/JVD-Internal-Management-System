@@ -7,11 +7,11 @@ interface StatusBadgeProps {
 }
 
 const variantClasses = {
-  success: 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100',
-  warning: 'bg-amber-50 text-amber-700 border-amber-200 shadow-sm shadow-amber-100',
-  danger: 'bg-red-50 text-red-700 border-red-200 shadow-sm shadow-red-100',
-  info: 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-100',
-  neutral: 'bg-gray-50 text-gray-700 border-gray-200 shadow-sm shadow-gray-100',
+  success: 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20 shadow-sm shadow-emerald-100 dark:shadow-none',
+  warning: 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-500/20 shadow-sm shadow-amber-100 dark:shadow-none',
+  danger: 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/20 shadow-sm shadow-red-100 dark:shadow-none',
+  info: 'bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20 shadow-sm shadow-blue-100 dark:shadow-none',
+  neutral: 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-200 dark:border-slate-700 shadow-sm shadow-gray-100 dark:shadow-none',
 };
 
 export default function StatusBadge({ status, variant = 'neutral', className }: StatusBadgeProps) {
