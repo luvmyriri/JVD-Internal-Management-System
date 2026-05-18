@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPlus, LuSearch, LuLoaderCircle, LuX,
@@ -41,44 +41,44 @@ function LineItemRow({
 }: { item: DraftLineItem; index: number; onChange: (i: number, v: Partial<DraftLineItem>) => void; onRemove: (i: number) => void }) {
   const set = (key: keyof DraftLineItem, value: string | number) => onChange(index, { [key]: value });
   return (
-    <div className="bg-gray-50 rounded-2xl p-4 space-y-3">
+    <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Item {index + 1}</p>
+        <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Item {index + 1}</p>
         <button type="button" onClick={() => onRemove(index)} className="text-gray-400 hover:text-red-500 transition"><LuTrash2 size={14} /></button>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Item Name *</label>
           <input value={item.item_name} onChange={e => set('item_name', e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Part Number</label>
           <input value={item.part_number ?? ''} onChange={e => set('part_number', e.target.value)} placeholder="e.g. BRK-2024-001"
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qty *</label>
           <input type="number" min={1} value={item.quantity} onChange={e => set('quantity', Number(e.target.value))}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit</label>
           <select value={item.unit_of_measure ?? 'pcs'} onChange={e => set('unit_of_measure', e.target.value)}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
             {['pcs', 'set', 'ltr', 'kg', 'box', 'roll', 'm', 'pair'].map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit Price (₱) *</label>
           <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => set('unit_price', Number(e.target.value))}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         {item.part_number && (
           <div className="col-span-2">
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notes</label>
             <input value={item.item_notes ?? ''} onChange={e => set('item_notes', e.target.value)} placeholder="Optional notes"
-              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         )}
       </div>
@@ -118,13 +118,13 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Create Purchase Order</h2>
-            <p className="text-sm text-gray-500 mt-1">Only accredited suppliers are available for selection.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Create Purchase Order</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Only accredited suppliers are available for selection.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
 
         <div className="p-8 overflow-y-auto">
@@ -134,7 +134,7 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Supplier *</label>
               <div className="relative">
                 <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
                   <option value="">Select accredited supplier...</option>
                   {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
                 </select>
@@ -160,7 +160,7 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
               <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional instructions or notes..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
             </div>
 
             {/* Total */}
@@ -175,8 +175,8 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="po-form" type="submit" disabled={!canSubmit || mutation.isPending}
@@ -204,14 +204,14 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-100 sticky top-0 bg-white z-10 rounded-t-[2rem]">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-8 pb-4 border-b border-gray-100 dark:border-gray-800 sticky top-0 bg-white dark:bg-gray-900 z-10 rounded-t-[2rem]">
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-black text-gray-900">{po.po_number}</h2>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white">{po.po_number}</h2>
               <StatusBadge status={po.status} />
             </div>
-            <p className="text-xs text-gray-500 mt-1">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={20} /></button>
         </div>
@@ -220,18 +220,18 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
           {/* Line Items */}
           <div>
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Line Items</p>
-            <div className="border border-gray-100 rounded-2xl overflow-hidden">
+            <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50">
+                <thead className="bg-gray-50 dark:bg-gray-800">
                   <tr>
                     {['Item', 'Part No.', 'Qty', 'Unit', 'Unit Price', 'Total'].map(h => (
-                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500">{h}</th>
+                      <th key={h} className="px-4 py-3 text-left text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">{h}</th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {(po.line_items ?? []).map((li: POLineItem) => (
-                    <tr key={li.id} className="hover:bg-gray-50/50">
+                    <tr key={li.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                       <td className="px-4 py-3 font-medium text-gray-800">{li.item_name}</td>
                       <td className="px-4 py-3">
                         {li.part_number ? (
@@ -240,10 +240,10 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
                           </span>
                         ) : <span className="text-gray-300 text-xs">—</span>}
                       </td>
-                      <td className="px-4 py-3 text-gray-600">{li.quantity}</td>
-                      <td className="px-4 py-3 text-gray-500 text-xs">{li.unit_of_measure}</td>
-                      <td className="px-4 py-3 text-gray-600">{fmt(li.unit_price)}</td>
-                      <td className="px-4 py-3 font-bold text-gray-900">{fmt(li.total_price)}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{li.quantity}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{li.unit_of_measure}</td>
+                      <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{fmt(li.unit_price)}</td>
+                      <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">{fmt(li.total_price)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -292,21 +292,21 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
 function PORow({ po, onClick }: { po: PurchaseOrder; onClick: () => void }) {
   return (
-    <tr onClick={onClick} className="cursor-pointer hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+    <tr onClick={onClick} className="cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-blue-200/20 group-hover:bg-white group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
-          <span className="font-black text-gray-900 tracking-tight">{po.po_number}</span>
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-blue-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
+          <span className="font-black text-gray-900 dark:text-white tracking-tight">{po.po_number}</span>
         </div>
       </td>
-      <td className="px-8 py-6 text-sm font-bold text-gray-700">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</td>
+      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</td>
       <td className="px-8 py-6"><StatusBadge status={po.status} /></td>
       <td className="px-8 py-6">
-        <div className="text-gray-900 font-black text-base">{fmt(po.total_amount)}</div>
+        <div className="text-gray-900 dark:text-white font-black text-base">{fmt(po.total_amount)}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
       <td className="px-8 py-6">
-        <div className="text-gray-700 font-medium text-xs">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+        <div className="text-gray-700 dark:text-gray-200 font-medium text-xs">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Date Issued</div>
       </td>
       <td className="px-8 py-6">
@@ -346,7 +346,7 @@ export default function PurchaseOrders() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Records
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -371,8 +371,8 @@ export default function PurchaseOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
@@ -385,7 +385,7 @@ export default function PurchaseOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-white font-bold">
             {statuses.map(s => <option key={s} value={s}>{s ? PO_STATUS_LABELS[s] : 'All Statuses'}</option>)}
           </select>
           <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -393,7 +393,7 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : pos.length === 0 ? (
@@ -403,14 +403,14 @@ export default function PurchaseOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100">
+            <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800">
               <tr>
                 {['PO Number', 'Supplier', 'Status', 'Amount', 'Date', ''].map(h => (
                   <th key={h} className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {pos.map(po => <PORow key={po.id} po={po} onClick={() => setSelectedPO(po)} />)}
             </tbody>
           </table>

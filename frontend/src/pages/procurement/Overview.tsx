@@ -1,4 +1,4 @@
-import {
+﻿import {
   LuShoppingCart,
   LuTruck,
   LuClock,
@@ -42,19 +42,19 @@ export default function ProcurementOverview() {
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all group">
+          <div key={stat.label} className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between mb-4">
               <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110`}>
                 <span className="text-xl">{stat.icon}</span>
               </div>
-              <div className="px-2 py-1 bg-gray-50 rounded-full text-[10px] font-bold text-gray-500 flex items-center gap-1">
+              <div className="px-2 py-1 bg-gray-50 dark:bg-gray-800/60 rounded-full text-[10px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
                 <LuArrowUpRight />
                 {stat.change}
               </div>
             </div>
             <div>
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-black text-gray-900 tracking-tight">{stat.value}</h3>
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{stat.value}</h3>
             </div>
           </div>
         ))}
@@ -62,8 +62,8 @@ export default function ProcurementOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* PO Volume Chart */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-8">Order Volume</h2>
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+          <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8">Order Volume</h2>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={[
@@ -83,8 +83,8 @@ export default function ProcurementOverview() {
         </div>
 
         {/* Category Distribution */}
-        <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-          <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight mb-8">Expense Distribution</h2>
+        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm">
+          <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight mb-8">Expense Distribution</h2>
           <div className="h-[300px] w-full flex items-center">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
@@ -108,7 +108,7 @@ export default function ProcurementOverview() {
               {categoryData.map((item, index) => (
                 <div key={item.name} className="flex items-center gap-2">
                   <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index] }} />
-                  <span className="text-[10px] font-bold text-gray-600 uppercase">{item.name}</span>
+                  <span className="text-[10px] font-bold text-gray-600 dark:text-gray-300 uppercase">{item.name}</span>
                 </div>
               ))}
             </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuTruck, LuPlus, LuSearch, LuShieldCheck, LuShieldX,
@@ -86,20 +86,20 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Supplier</h2>
-            <p className="text-sm text-gray-500 mt-1">All suppliers undergo cross-verification before PO issuance.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">New Supplier</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">All suppliers undergo cross-verification before PO issuance.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
         <div className="p-8 overflow-y-auto">
           <form id="supplier-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
@@ -111,7 +111,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
             </div>
 
             {/* Address — PSGC cascading */}
-            <div className="pt-4 mt-2 border-t border-gray-100">
+            <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Address</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <AddressSelector
@@ -124,7 +124,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
               </div>
             </div>
 
-            <div className="pt-6 mt-4 border-t border-gray-100">
+            <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Financial / Compliance</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 {field('TIN Number', 'tin_number', 'text', '000-000-000-000', val => setForm(p => ({ ...p, tin_number: formatTIN(val) })))}
@@ -136,7 +136,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
                     <select
                       value={form.payment_terms}
                       onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white dark:bg-gray-900"
                     >
                       <option value="">Select Terms...</option>
                       <option value="COD">COD (Cash on Delivery)</option>
@@ -166,8 +166,8 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
           </form>
         </div>
         
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="supplier-form" type="submit" disabled={!form.company_name || mutation.isPending}
@@ -193,19 +193,19 @@ function BlacklistModal({ supplier, onClose }: BlacklistModalProps) {
   });
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-md p-8">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><LuBan size={18} /></div>
           <div>
-            <h2 className="font-black text-gray-900">Blacklist Supplier</h2>
-            <p className="text-xs text-gray-500">{supplier.company_name}</p>
+            <h2 className="font-black text-gray-900 dark:text-white">Blacklist Supplier</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{supplier.company_name}</p>
           </div>
         </div>
-        <p className="text-sm text-gray-600 mb-4">This will block all future Purchase Orders from being issued to this supplier.</p>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">This will block all future Purchase Orders from being issued to this supplier.</p>
         <textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Required: State reason for blacklisting..."
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500" />
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500" />
         <div className="flex justify-end gap-3 mt-4">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 transition">Cancel</button>
           <button onClick={() => mutation.mutate()} disabled={!reason.trim() || mutation.isPending}
             className="px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-60 flex items-center gap-2 transition">
             {mutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />}
@@ -229,15 +229,15 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
 
   return (
     <>
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
               <LuBuilding2 size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-sm leading-tight">{supplier.company_name}</h3>
-              {supplier.contact_person && <p className="text-xs text-gray-500 mt-0.5">{supplier.contact_person}</p>}
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{supplier.company_name}</h3>
+              {supplier.contact_person && <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{supplier.contact_person}</p>}
             </div>
           </div>
           <AccreditationBadge status={supplier.accreditation_status} />
@@ -245,22 +245,22 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
 
         <div className="space-y-2.5">
           {supplier.phone && (
-            <div className="flex items-center gap-2 text-xs text-gray-600"><LuPhone size={12} className="text-gray-400" />{supplier.phone}</div>
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><LuPhone size={12} className="text-gray-400" />{supplier.phone}</div>
           )}
           {supplier.email && (
-            <div className="flex items-center gap-2 text-xs text-gray-600"><LuMail size={12} className="text-gray-400" />{supplier.email}</div>
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><LuMail size={12} className="text-gray-400" />{supplier.email}</div>
           )}
           {supplier.address && (
-            <div className="flex items-center gap-2 text-xs text-gray-600"><LuMapPin size={12} className="text-gray-400" />{supplier.address}</div>
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><LuMapPin size={12} className="text-gray-400" />{supplier.address}</div>
           )}
           {supplier.tin_number && (
-            <div className="flex items-center gap-2 text-xs text-gray-600"><LuHash size={12} className="text-gray-400" />TIN: {supplier.tin_number}</div>
+            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300"><LuHash size={12} className="text-gray-400" />TIN: {supplier.tin_number}</div>
           )}
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 flex-wrap">
+        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-800 flex-wrap">
           {supplier.payment_terms && (
-            <span className="px-2.5 py-1 rounded-full bg-gray-50 border border-gray-200 text-[10px] font-semibold text-gray-600">{supplier.payment_terms}</span>
+            <span className="px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[10px] font-semibold text-gray-600 dark:text-gray-300">{supplier.payment_terms}</span>
           )}
           {supplier.is_consignment && (
             <span className="px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-[10px] font-semibold text-purple-600">Consignment</span>
@@ -329,7 +329,7 @@ export default function Suppliers() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Suppliers
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -344,8 +344,8 @@ export default function Suppliers() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
@@ -356,7 +356,7 @@ export default function Suppliers() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 bg-gray-100/50 p-1.5 rounded-[1.5rem] border border-gray-100">
+        <div className="flex gap-1.5 bg-gray-100/50 p-1.5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800">
           {(['all', 'accredited', 'pending', 'blacklisted'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
               className={`px-5 py-2 rounded-[1rem] text-[10px] font-black uppercase tracking-widest transition-all ${

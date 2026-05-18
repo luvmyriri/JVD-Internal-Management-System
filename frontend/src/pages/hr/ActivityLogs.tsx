@@ -61,9 +61,9 @@ export default function ActivityLogs() {
       {/* Filters */}
       <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-4 backdrop-blur-sm flex flex-col md:flex-row gap-4 items-end">
         <div className="flex-1 space-y-1.5 w-full">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Module</label>
+          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Module</label>
           <div className="relative">
-            <LuActivity className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
+            <LuActivity className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400" size={18} />
             <select
               className="w-full pl-10 pr-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all appearance-none"
               value={module}
@@ -79,7 +79,7 @@ export default function ActivityLogs() {
         </div>
 
         <div className="w-full md:w-48 space-y-1.5">
-          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Action</label>
+          <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Action</label>
           <select
             className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
             value={action}
@@ -126,12 +126,12 @@ export default function ActivityLogs() {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
-                    className="hover:bg-white/5 transition-colors group"
+                    className="hover:bg-white dark:bg-gray-900/5 transition-colors group"
                   >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-gray-300">{formatDate(log.created_at)}</span>
-                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                        <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                           <LuCalendar size={10} />
                           {timeAgo(log.created_at)}
                         </span>
@@ -146,7 +146,7 @@ export default function ActivityLogs() {
                           <p className="text-sm font-bold text-gray-200">
                             {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System'}
                           </p>
-                          <p className="text-[10px] text-gray-500 font-mono tracking-tighter uppercase">{log.performed_by?.role || 'SYSTEM'}</p>
+                          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono tracking-tighter uppercase">{log.performed_by?.role || 'SYSTEM'}</p>
                         </div>
                       </div>
                     </td>
@@ -163,7 +163,7 @@ export default function ActivityLogs() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-gray-500 font-mono text-xs">
+                      <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-mono text-xs">
                         <LuGlobe size={12} />
                         {log.ip_address}
                       </div>
@@ -185,7 +185,7 @@ export default function ActivityLogs() {
 
         {/* Pagination */}
         <div className="p-4 border-t border-gray-800 flex items-center justify-between">
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Showing <span className="text-gray-300">{(page - 1) * 20 + 1}</span> to <span className="text-gray-300">{Math.min(page * 20, logsData?.meta?.total || 0)}</span> of <span className="text-gray-300">{logsData?.meta?.total || 0}</span> logs
           </p>
           <div className="flex gap-2">
@@ -220,18 +220,18 @@ export default function ActivityLogs() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Action Performed</p>
+                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">Action Performed</p>
                 <div className="flex items-center gap-2">
                   <StatusBadge status={selectedLog.action} variant={getActionColor(selectedLog.action) as any} />
                   <span className="text-lg font-bold text-gray-200 capitalize">{selectedLog.module.replace('-', ' ')}</span>
                 </div>
               </div>
               <div className="p-4 bg-gray-800/50 rounded-xl border border-gray-700">
-                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Performed By</p>
+                <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">Performed By</p>
                 <p className="text-lg font-bold text-gray-200">
                   {selectedLog.performed_by ? `${selectedLog.performed_by.first_name} ${selectedLog.performed_by.last_name}` : 'System'}
                 </p>
-                <p className="text-xs text-gray-500">{selectedLog.performed_by?.employee_id || 'SYSTEM_PROCESS'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{selectedLog.performed_by?.employee_id || 'SYSTEM_PROCESS'}</p>
               </div>
             </div>
 
@@ -243,13 +243,13 @@ export default function ActivityLogs() {
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase ml-1">Previous Values</p>
+                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1">Previous Values</p>
                   <pre className="p-4 bg-gray-950 rounded-xl border border-gray-800 text-[10px] font-mono text-gray-400 overflow-auto max-h-[300px]">
                     {selectedLog.old_values ? JSON.stringify(selectedLog.old_values, null, 2) : '// No previous state'}
                   </pre>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase ml-1">New Values</p>
+                  <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase ml-1">New Values</p>
                   <pre className="p-4 bg-indigo-950/20 rounded-xl border border-indigo-500/20 text-[10px] font-mono text-indigo-300/80 overflow-auto max-h-[300px]">
                     {selectedLog.new_values ? JSON.stringify(selectedLog.new_values, null, 2) : '// No new state'}
                   </pre>
@@ -258,7 +258,7 @@ export default function ActivityLogs() {
             </div>
 
             <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-xl border border-gray-800 mt-6">
-              <div className="flex items-center gap-4 text-xs text-gray-500">
+              <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
                 <span className="flex items-center gap-1.5"><LuGlobe size={14} /> {selectedLog.ip_address}</span>
                 <span className="flex items-center gap-1.5"><LuCalendar size={14} /> {formatDate(selectedLog.created_at)}</span>
               </div>

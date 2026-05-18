@@ -272,13 +272,13 @@ export default function POS() {
                     alt={service.name}
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600">
+                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
                     <LuImage className="w-12 h-12 opacity-20" />
                   </div>
                 )}
 
                 <div className="absolute top-4 right-4 flex gap-2 z-20">
-                   <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
+                   <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
                       <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
                    </div>
                    {(user?.role === 'super_admin' || user?.role === 'admin') && (
@@ -302,7 +302,7 @@ export default function POS() {
 
                 {/* View Overlay */}
                 <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                  <div className="bg-white/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+                  <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
                     <p className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-sm">View</p>
                   </div>
                 </div>
@@ -347,7 +347,7 @@ export default function POS() {
           <div className="space-y-4">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Selected Services</p>
             {cart.length === 0 ? (
-              <div className="py-12 flex flex-col items-center justify-center text-gray-300 dark:text-gray-700">
+              <div className="py-12 flex flex-col items-center justify-center text-gray-300 dark:text-gray-700 dark:text-gray-200">
                 <LuShoppingCart className="w-12 h-12 mb-4 opacity-20" />
                 <p className="text-[10px] font-black uppercase tracking-widest">Cart is empty</p>
               </div>
@@ -365,10 +365,10 @@ export default function POS() {
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
                         <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                       </div>
                       <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
@@ -459,7 +459,7 @@ export default function POS() {
                 <input 
                   type="number" 
                   placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700"
+                  className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 dark:text-gray-200"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
                 />
@@ -493,7 +493,7 @@ export default function POS() {
           <button 
             disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total))}
             onClick={handleCheckout}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
           >
             {isProcessing ? (
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
@@ -506,16 +506,16 @@ export default function POS() {
 
       {showReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 no-print">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
                   <LuCheck className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Payment Received</h3>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Payment Received</h3>
                   <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Transaction Successfully Processed</p>
                 </div>
               </div>
@@ -528,7 +528,7 @@ export default function POS() {
                 </button>
                 <button 
                   onClick={() => setShowReceipt(false)}
-                  className="p-3 hover:bg-gray-100 rounded-2xl transition-all text-gray-400 hover:text-gray-900"
+                  className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-800 rounded-2xl transition-all text-gray-400 hover:text-gray-900 dark:text-white"
                 >
                   <LuX className="w-5 h-5" />
                 </button>
@@ -545,12 +545,12 @@ export default function POS() {
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
                   
                   <div className="space-y-1 pl-1">
-                    <p className="text-[11px] text-gray-900 font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City</p>
+                    <p className="text-[11px] text-gray-900 dark:text-white font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City</p>
                     <div className="flex flex-col gap-0.5 mt-2">
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
                         <span className="text-blue-600">PHONE:</span> 0976 4711294
                       </p>
-                      <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
                         <span className="text-blue-600">TEL:</span> 02 82938068
                       </p>
                     </div>
@@ -558,7 +558,7 @@ export default function POS() {
                 </div>
                 </div>
                 <div className="text-right">
-                  <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-2">INVOICE</h2>
+                  <h2 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-2">INVOICE</h2>
                   <p className="text-sm font-black text-blue-600">#{lastInvoice?.invoice_number}</p>
                   <p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-widest">
                     {new Date(lastInvoice?.created_at).toLocaleDateString('en-US', { 
@@ -572,20 +572,20 @@ export default function POS() {
               <div className="grid grid-cols-2 gap-12 mb-12 border-t border-b border-gray-50 py-8">
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
-                  <p className="text-lg font-black text-gray-900">{lastInvoice?.customer_name || 'Walk-in Customer'}</p>
+                  <p className="text-lg font-black text-gray-900 dark:text-white">{lastInvoice?.customer_name || 'Walk-in Customer'}</p>
                   <div className="mt-2 space-y-1">
                     {lastInvoice?.customer_contact && (
-                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
                         <LuPhone className="w-3 h-3" /> {lastInvoice.customer_contact}
                       </p>
                     )}
                     {lastInvoice?.customer_email && (
-                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
                         <LuMail className="w-3 h-3" /> {lastInvoice.customer_email}
                       </p>
                     )}
                     {lastInvoice?.customer_address && (
-                      <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
                         <LuMapPin className="w-3 h-3" /> {lastInvoice.customer_address}
                       </p>
                     )}
@@ -594,7 +594,7 @@ export default function POS() {
                 </div>
                 <div className="text-right">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>
-                  <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{lastInvoice?.payment_method}</p>
+                  <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{lastInvoice?.payment_method}</p>
                   <p className="text-xs text-emerald-600 mt-1 font-bold uppercase">Status: {lastInvoice?.status}</p>
                 </div>
               </div>
@@ -609,16 +609,16 @@ export default function POS() {
                     <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {lastInvoice?.items?.map((item: any) => (
                     <tr key={item.id}>
                       <td className="py-5">
-                        <p className="font-black text-gray-900">{item.service?.name}</p>
+                        <p className="font-black text-gray-900 dark:text-white">{item.service?.name}</p>
                         <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{item.service?.category}</p>
                       </td>
-                      <td className="py-5 text-center font-bold text-gray-600">{item.quantity}</td>
-                      <td className="py-5 text-right font-bold text-gray-600">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="py-5 text-center font-bold text-gray-600 dark:text-gray-300">{item.quantity}</td>
+                      <td className="py-5 text-right font-bold text-gray-600 dark:text-gray-300">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="py-5 text-right font-black text-gray-900 dark:text-white">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -629,14 +629,14 @@ export default function POS() {
                 <div className="w-64 space-y-3">
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>Subtotal</span>
-                    <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-gray-900 dark:text-white">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
                     <span>VAT (12%)</span>
-                    <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-gray-900 dark:text-white">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
-                    <span className="text-sm font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                    <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tighter">Total Amount</span>
                     <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   {lastInvoice?.payment_method === 'Cash' && (
@@ -656,10 +656,10 @@ export default function POS() {
             </div>
 
             {/* Modal Footer (Not Printed) */}
-            <div className="p-8 border-t border-gray-100 bg-gray-50/50 flex gap-4 shrink-0 no-print">
+            <div className="p-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 flex gap-4 shrink-0 no-print">
               <button 
                 onClick={() => window.print()}
-                className="flex-1 flex items-center justify-center gap-3 py-5 bg-white border border-gray-200 hover:border-blue-600 hover:text-blue-600 text-gray-900 rounded-[2rem] font-black text-xs uppercase transition-all shadow-sm active:scale-95"
+                className="flex-1 flex items-center justify-center gap-3 py-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-600 hover:text-blue-600 text-gray-900 dark:text-white rounded-[2rem] font-black text-xs uppercase transition-all shadow-sm active:scale-95"
               >
                 <LuPrinter className="w-5 h-5" /> Print or Save as PDF
               </button>
@@ -683,7 +683,7 @@ export default function POS() {
                 <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Register New Service</h3>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Create a new item in the catalog</p>
               </div>
-              <button onClick={() => { setShowAddService(false); setServiceImages([]); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-colors">
+              <button onClick={() => { setShowAddService(false); setServiceImages([]); }} className="p-2 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-colors">
                 <LuX className="w-6 h-6" />
               </button>
             </div>
@@ -784,7 +784,7 @@ export default function POS() {
                 <input 
                   type="text" 
                   placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-gray-50 border-none rounded-2xl py-3 px-4 text-sm font-bold"
+                  className="w-full bg-gray-50 dark:bg-gray-800/60 border-none rounded-2xl py-3 px-4 text-sm font-bold"
                   value={newService.image_url}
                   onChange={e => setNewService({...newService, image_url: e.target.value})}
                 />
@@ -794,7 +794,7 @@ export default function POS() {
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button 
                 onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); }}
-                className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all"
+                className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
               </button>
@@ -858,20 +858,20 @@ export default function POS() {
                   )}
                   {selectedServiceForDetail.images.length > 1 && (
                     <div className="absolute inset-y-0 inset-x-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
-                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white/40 transition-all"><LuChevronRight className="w-6 h-6" /></button>
+                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-white hover:bg-white dark:bg-gray-900/40 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
+                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-white hover:bg-white dark:bg-gray-900/40 transition-all"><LuChevronRight className="w-6 h-6" /></button>
                     </div>
                   )}
                 </>
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 gap-4">
+                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300 gap-4">
                   <LuImage className="w-20 h-20 opacity-10" />
                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Preview Available</p>
                 </div>
               )}
               <button 
                 onClick={() => setShowDetailModal(false)}
-                className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md border border-white/20 rounded-2xl text-white hover:bg-white hover:text-gray-900 transition-all"
+                className="absolute top-6 right-6 p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md border border-white/20 rounded-2xl text-white hover:bg-white dark:bg-gray-900 hover:text-gray-900 dark:text-white transition-all"
               >
                 <LuX className="w-5 h-5" />
               </button>
@@ -938,7 +938,7 @@ export default function POS() {
                 </button>
                 <button 
                   onClick={() => setShowDetailModal(false)}
-                  className="w-full py-5 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-gray-900 dark:hover:text-white transition-all"
+                  className="w-full py-5 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
                 >
                   Keep Browsing
                 </button>

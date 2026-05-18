@@ -20,7 +20,7 @@ export default function Settings() {
   };
 
   return (
-    <div className="p-8 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl max-w-2xl mx-auto">
+    <div className="p-8 bg-white dark:bg-gray-800 rounded-3xl border border-gray-100 dark:border-gray-800 shadow-xl max-w-2xl mx-auto">
       <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 uppercase tracking-tighter">System Settings</h1>
       <p className="text-sm text-gray-500 dark:text-gray-400 mb-8 font-medium">Manage your portal appearance and theme settings here.</p>
 
@@ -59,7 +59,7 @@ export default function Settings() {
             <select
               value={landingPage}
               onChange={handleLandingPageChange}
-              className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm font-medium rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-10 py-2 transition-colors cursor-pointer outline-none"
+              className="appearance-none bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm font-medium rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-10 py-2 transition-colors cursor-pointer outline-none"
             >
               <option value="/dashboard">Dashboard</option>
               <option value="/accounting/billing">Accounting / Billing</option>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuShieldCheck, LuPlus, LuSearch, LuLoaderCircle, LuUserCheck,
@@ -57,20 +57,20 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Accreditation</h2>
-            <p className="text-sm text-gray-500 mt-1">Initialize a new entity accreditation process.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">New Accreditation</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Initialize a new entity accreditation process.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
         <div className="p-8 overflow-y-auto">
           <form id="accreditation-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
@@ -80,7 +80,7 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
                 <select
                   value={form.entity_type}
                   onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
                 >
                   <option value="supplier">Supplier</option>
                   <option value="partner">Partner</option>
@@ -103,8 +103,8 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="accreditation-form" type="submit" disabled={!form.entity_name || !form.contact_email || mutation.isPending}
@@ -132,34 +132,34 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
   });
 
   return (
-    <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
+    <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
             {ENTITY_ICONS[acc.entity_type] ?? <LuShieldCheck size={20} />}
           </div>
           <div>
-            <h3 className="font-bold text-gray-900 text-sm leading-tight">{acc.entity_name}</h3>
-            <p className="text-xs text-gray-500 mt-0.5 capitalize">{acc.entity_type} • {acc.accreditation_type}</p>
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm leading-tight">{acc.entity_name}</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 capitalize">{acc.entity_type} • {acc.accreditation_type}</p>
           </div>
         </div>
         <StatusBadge status={acc.status} />
       </div>
 
       <div className="space-y-3 pt-2">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
+        <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
           <LuMail size={12} className="text-gray-400" />
           {acc.contact_person} ({acc.contact_email})
         </div>
         {acc.expiry_date && (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
+          <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
             <LuClock size={12} className="text-gray-400" />
             Expires: {new Date(acc.expiry_date).toLocaleDateString()}
           </div>
         )}
       </div>
 
-      <div className="flex items-center gap-3 pt-4 border-t border-gray-100">
+      <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
         <div className="flex-1 grid grid-cols-3 gap-2">
           {['NDA', 'Terms', 'KYC'].map(doc => {
             const hasDoc = acc[`${doc.toLowerCase()}_document_url` as keyof Accreditation];
@@ -208,7 +208,7 @@ export default function Accreditations() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Records
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -221,8 +221,8 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md">
-        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+      <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md">
+        <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
           <LuSearch size={18} />
         </div>
         <input
@@ -237,15 +237,15 @@ export default function Accreditations() {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <LuLoaderCircle size={32} className="animate-spin text-blue-600" />
-          <p className="text-sm text-gray-500 font-medium">Loading accreditations...</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 font-medium">Loading accreditations...</p>
         </div>
       ) : accreditations.length === 0 ? (
-        <div className="bg-white rounded-[2rem] border border-gray-100 border-dashed flex flex-col items-center justify-center py-24 text-center px-4">
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 border-dashed flex flex-col items-center justify-center py-24 text-center px-4">
           <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-4">
             <LuShieldCheck size={28} />
           </div>
-          <h3 className="text-gray-900 font-bold mb-1">No accreditations found</h3>
-          <p className="text-sm text-gray-500 max-w-sm">You haven't added any accreditations or no records match your search criteria.</p>
+          <h3 className="text-gray-900 dark:text-white font-bold mb-1">No accreditations found</h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">You haven't added any accreditations or no records match your search criteria.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">

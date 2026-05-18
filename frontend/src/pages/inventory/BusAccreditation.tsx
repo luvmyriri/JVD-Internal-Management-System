@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPlus, LuSearch, LuSettings, LuX, LuLoaderCircle, LuSend
@@ -50,20 +50,20 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
         value={form[key] as string ?? ''}
         onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{accreditation ? 'Edit Compliance Record' : 'New Compliance Record'}</h2>
-            <p className="text-sm text-gray-500 mt-1">Manage LTFRB, LTO, and other bus compliance documents.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{accreditation ? 'Edit Compliance Record' : 'New Compliance Record'}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage LTFRB, LTO, and other bus compliance documents.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
         
         <div className="p-8 overflow-y-auto">
@@ -73,7 +73,7 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Select Bus *</label>
                   <select value={form.entity_name ?? ''} onChange={e => setForm(p => ({ ...p, entity_name: e.target.value }))} required
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white">
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900">
                     <option value="">-- Choose Bus --</option>
                     {buses.map((b: any) => <option key={b.id} value={b.plate_number}>{b.plate_number} ({b.model})</option>)}
                   </select>
@@ -84,7 +84,7 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Record Type *</label>
                 <select value={form.accreditation_type ?? ''} onChange={e => setForm(p => ({ ...p, accreditation_type: e.target.value }))} required
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white">
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900">
                   <option value="">-- Select Type --</option>
                   <option value="LTFRB Franchise">LTFRB Franchise</option>
                   <option value="LTO Registration">LTO Registration</option>
@@ -101,7 +101,7 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Status *</label>
                 <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white">
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900">
                   <option value="active">Active</option>
                   <option value="pending_renewal">Pending Renewal</option>
                   <option value="expired">Expired</option>
@@ -115,8 +115,8 @@ function BusAccreditationModal({ accreditation, onClose }: BusAccreditationModal
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="acc-form" type="submit" disabled={!form.entity_name || !form.accreditation_type || mutation.isPending}
@@ -155,7 +155,7 @@ export default function BusAccreditation() {
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Records
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -168,8 +168,8 @@ export default function BusAccreditation() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md">
-        <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+      <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md">
+        <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
           <LuSearch size={18} />
         </div>
         <input
@@ -181,10 +181,10 @@ export default function BusAccreditation() {
         />
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-500 font-semibold border-b border-gray-100">
+            <thead className="bg-gray-50/50 text-gray-500 dark:text-gray-400 font-semibold border-b border-gray-100 dark:border-gray-800">
               <tr>
                 <th className="px-6 py-4">Bus / Plate</th>
                 <th className="px-6 py-4">Record Type</th>
@@ -194,7 +194,7 @@ export default function BusAccreditation() {
                 <th className="px-6 py-4 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
@@ -205,9 +205,9 @@ export default function BusAccreditation() {
               ) : (
                 busAccreditations.map(acc => (
                   <tr key={acc.id} className="transition-colors border-b border-gray-50/50">
-                    <td className="px-6 py-4 font-bold text-gray-900">{acc.entity_name}</td>
-                    <td className="px-6 py-4 font-medium text-gray-600">{acc.accreditation_type}</td>
-                    <td className="px-6 py-4 text-gray-500">{acc.issuing_body || '—'}</td>
+                    <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{acc.entity_name}</td>
+                    <td className="px-6 py-4 font-medium text-gray-600 dark:text-gray-300">{acc.accreditation_type}</td>
+                    <td className="px-6 py-4 text-gray-500 dark:text-gray-400">{acc.issuing_body || '—'}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                         acc.status === 'active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :

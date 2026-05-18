@@ -329,7 +329,7 @@ export default function Users() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800/50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800/50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {usersData?.meta?.total ?? '0'} Users
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -341,16 +341,16 @@ export default function Users() {
             <div className="flex bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[1.5rem] p-1 shadow-sm overflow-hidden">
                <button 
                  onClick={downloadTemplate}
-                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 text-gray-500 dark:text-gray-400 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
                  title="Download Template"
                >
-                 <LuFileDown size={18} className="text-gray-400 dark:text-gray-500" />
+                 <LuFileDown size={18} className="text-gray-400 dark:text-gray-500 dark:text-gray-400" />
                  <span className="hidden lg:inline">Format</span>
                </button>
                <div className="w-px h-6 bg-gray-100 dark:bg-gray-800 self-center" />
                 <button 
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-500 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                  className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 text-blue-600 dark:text-blue-500 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
                   title="Upload Excel"
                 >
                   <LuFileUp size={18} />
@@ -376,32 +376,28 @@ export default function Users() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Users', value: usersData?.meta?.total || 0, icon: LuUsers, color: 'blue' },
-          { label: 'Active Now', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, color: 'emerald' },
-          { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, color: 'purple' },
-          { label: 'Access Control', value: ROLES.length, icon: LuLock, color: 'amber' },
+          { label: 'Total Users', value: usersData?.meta?.total || 0, icon: LuUsers, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-300/40 dark:shadow-blue-900/40' },
+          { label: 'Active Now', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/40 dark:shadow-emerald-900/40' },
+          { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, from: 'from-violet-500', to: 'to-purple-700', shadow: 'shadow-violet-300/40 dark:shadow-violet-900/40' },
+          { label: 'Access Control', value: ROLES.length, icon: LuLock, from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-amber-300/40 dark:shadow-amber-900/40' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="p-6 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm relative overflow-hidden group"
+            className={`relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br ${stat.from} ${stat.to} text-white shadow-xl ${stat.shadow} flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default`}
           >
-            <div className="absolute -right-4 -top-4 w-20 h-20 bg-gray-50 dark:bg-gray-800 rounded-full group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{stat.value}</p>
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
+            <div className="flex items-start justify-between relative z-10">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                <stat.icon size={22} className="text-white" />
               </div>
-              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border", {
-                'bg-blue-50 dark:bg-blue-500/10 text-blue-500 border-blue-100 dark:border-blue-500/20': stat.color === 'blue',
-                'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 border-emerald-100 dark:border-emerald-500/20': stat.color === 'emerald',
-                'bg-purple-50 dark:bg-purple-500/10 text-purple-500 border-purple-100 dark:border-purple-500/20': stat.color === 'purple',
-                'bg-amber-50 dark:bg-amber-500/10 text-amber-500 border-amber-100 dark:border-amber-500/20': stat.color === 'amber',
-              })}>
-                <stat.icon size={22} />
-              </div>
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">{stat.label}</p>
+              <p className="text-3xl font-black tracking-tight">{stat.value}</p>
             </div>
           </motion.div>
         ))}
@@ -410,8 +406,8 @@ export default function Users() {
       {/* Filters & Search */}
       <div className="space-y-4">
         <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-4 bg-white dark:bg-gray-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 max-w-md flex-1">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500">
+          <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 max-w-md flex-1">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
               <LuSearch size={18} />
             </div>
             <input
@@ -425,7 +421,7 @@ export default function Users() {
           <select 
             value={roleFilter} 
             onChange={e => setRoleFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 appearance-none min-w-[150px]"
+            className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]"
           >
             <option value="">All Roles</option>
             {ROLES.map(role => (
@@ -448,7 +444,7 @@ export default function Users() {
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
@@ -643,7 +639,7 @@ export default function Users() {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
               <select
                 {...register('role', { required: 'Role is required' })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 {ROLES.map(role => (
                   <option key={role.value} value={role.value}>{role.label}</option>
@@ -655,7 +651,7 @@ export default function Users() {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
               <select
                 {...register('department', { required: 'Department is required' })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               >
                 {DEPARTMENTS.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
@@ -748,10 +744,10 @@ export default function Users() {
                   </div>
                 </div>
                 <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-4">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
                     <LuMail size={16} className="text-blue-500" /> {selectedUser.email}
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-900 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
                     <LuBadgeCheck size={16} className="text-emerald-500" /> {selectedUser.employee_id}
                   </div>
                 </div>
@@ -760,7 +756,7 @@ export default function Users() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="p-6 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <LuActivity size={16} className="text-blue-500" />
                   System Access
                 </h3>
@@ -779,7 +775,7 @@ export default function Users() {
               </div>
 
               <div className="p-6 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <LuShield size={16} className="text-emerald-500" />
                   Security Level
                 </h3>
@@ -791,7 +787,7 @@ export default function Users() {
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
                     <span className="text-xs font-bold text-gray-500 dark:text-gray-400">System Origin</span>
                     <span className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
-                      <LuGlobe size={12} className="text-gray-400 dark:text-gray-500" /> Internal Network
+                      <LuGlobe size={12} className="text-gray-400 dark:text-gray-500 dark:text-gray-400" /> Internal Network
                     </span>
                   </div>
                 </div>
@@ -833,7 +829,7 @@ export default function Users() {
                 Review Data: {pendingUploads?.length} users detected.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-900 rounded-xl border border-amber-200 dark:border-amber-500/20 shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-500/20 shadow-sm">
               <LuMail size={14} className="text-blue-500" />
               <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Invitations Enabled</span>
             </div>
@@ -844,14 +840,14 @@ export default function Users() {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 z-10">
                   <tr>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">User Details</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Email Address</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Role & Dept</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest">User Details</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest">Email Address</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest">Role & Dept</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {pendingUploads?.map((u, i) => (
-                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                    <tr key={i} className="hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800/50 transition">
                       <td className="px-6 py-4">
                         <p className="text-sm font-black text-gray-900 dark:text-white">{u.first_name} {u.last_name}</p>
                         <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{u.employee_id}</p>
@@ -864,7 +860,7 @@ export default function Users() {
                           <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-500 text-[9px] font-black uppercase border border-blue-100 dark:border-blue-500/20">
                             {u.role}
                           </span>
-                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase ml-0.5">
+                          <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase ml-0.5">
                             {u.department}
                           </span>
                         </div>

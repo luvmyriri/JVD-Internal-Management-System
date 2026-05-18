@@ -64,7 +64,7 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white"
+        className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white dark:bg-gray-800"
       />
     </div>
   );
@@ -85,13 +85,13 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
               <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white" />
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white dark:bg-gray-800" />
             </div>
             
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Status</label>
               <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white">
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white dark:bg-gray-900">
                 <option value="available">Available</option>
                 <option value="in_service">In Service</option>
                 <option value="under_maintenance">Under Maintenance</option>
@@ -104,7 +104,7 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>
               <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white">
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white dark:bg-gray-900">
                 <option value="">-- No Driver Assigned --</option>
                 {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
               </select>
@@ -124,7 +124,7 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
           )}
         </form>
 
-        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100">
+        <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
           <Button variant="secondary" onClick={onClose} className="px-8">
             Cancel
           </Button>
@@ -180,7 +180,7 @@ export default function Fleet() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Vehicles
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -193,20 +193,20 @@ export default function Fleet() {
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
             type="text"
             placeholder="Search plate or model..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
+            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 dark:text-gray-200"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
         <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white font-medium text-gray-600 appearance-none min-w-[150px]">
+          className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]">
           <option value="">All Statuses</option>
           <option value="available">Available</option>
           <option value="in_service">In Service</option>
@@ -215,11 +215,11 @@ export default function Fleet() {
         </select>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
+              <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
                 <th className="px-8 py-5">Plate & Model</th>
                 <th className="px-8 py-5">Capacity</th>
                 <th className="px-8 py-5">Status</th>
@@ -228,7 +228,7 @@ export default function Fleet() {
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="px-8 py-20 text-center text-gray-400">
@@ -245,13 +245,13 @@ export default function Fleet() {
                 </tr>
               ) : (
                 buses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50 last:border-0">
+                  <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50 last:border-0">
                     <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 text-base leading-tight">{bus.plate_number}</div>
+                      <div className="font-bold text-gray-900 dark:text-white text-base leading-tight">{bus.plate_number}</div>
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-black tracking-widest uppercase border border-gray-100">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
                         {bus.seating_capacity} pax
                       </span>
                     </td>
@@ -274,7 +274,7 @@ export default function Fleet() {
                           <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
                             <LuUser size={14} />
                           </div>
-                          <div className="text-sm font-bold text-gray-700">
+                          <div className="text-sm font-bold text-gray-700 dark:text-gray-200">
                             {bus.driver.first_name} {bus.driver.last_name}
                           </div>
                         </div>
@@ -283,7 +283,7 @@ export default function Fleet() {
                       )}
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <div className="text-gray-900 font-black text-base">{bus.total_mileage.toLocaleString()}</div>
+                      <div className="text-gray-900 dark:text-white font-black text-base">{bus.total_mileage.toLocaleString()}</div>
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
                     </td>
                     <td className="px-8 py-6 text-center">

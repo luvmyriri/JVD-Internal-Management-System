@@ -96,37 +96,59 @@ export default function Billing() {
       
       {/* KPI Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm group hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-              <LuDollarSign className="w-6 h-6" />
+        {/* Total Revenue */}
+        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-300/40 dark:shadow-blue-900/40 flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default">
+          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
+          <div className="flex items-start justify-between relative z-10">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuDollarSign className="w-5 h-5 text-white" />
             </div>
-            <LuTrendingUp className="text-emerald-500 w-5 h-5" />
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
+              <LuTrendingUp className="w-3 h-3" />
+              Revenue
+            </div>
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Revenue</p>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.total_revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</h3>
+          <div className="relative z-10">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Total Revenue</p>
+            <p className="text-3xl font-black">₱{stats?.total_revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm group hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-amber-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-amber-200">
-              <LuClock className="w-6 h-6" />
+        {/* Pending Amount */}
+        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-xl shadow-amber-300/40 dark:shadow-amber-900/40 flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default">
+          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
+          <div className="flex items-start justify-between relative z-10">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuClock className="w-5 h-5 text-white" />
             </div>
-            <span className="text-[10px] font-black text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-1 rounded-lg tracking-tighter">Outstanding</span>
+            <div className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
+              Outstanding
+            </div>
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Pending Amount</p>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">₱{stats?.pending_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</h3>
+          <div className="relative z-10">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Pending Amount</p>
+            <p className="text-3xl font-black">₱{stats?.pending_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+          </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 p-8 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm group hover:shadow-xl transition-all">
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-200">
-              <LuActivity className="w-6 h-6" />
+        {/* Total Invoices */}
+        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-300/40 dark:shadow-violet-900/40 flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default">
+          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/10" />
+          <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/5" />
+          <div className="flex items-start justify-between relative z-10">
+            <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuActivity className="w-5 h-5 text-white" />
             </div>
-            <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-lg tracking-tighter">Volume</span>
+            <div className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/20 text-white">
+              Volume
+            </div>
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-1">Total Invoices</p>
-          <h3 className="text-3xl font-black text-gray-900 dark:text-white">{stats?.invoice_count || '0'}</h3>
+          <div className="relative z-10">
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">Total Invoices</p>
+            <p className="text-3xl font-black">{stats?.invoice_count || '0'}</p>
+          </div>
         </div>
       </div>
 
@@ -174,7 +196,7 @@ export default function Billing() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-white">
+              <tr className="bg-white dark:bg-gray-900">
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Invoice Details</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
                 <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
@@ -261,7 +283,7 @@ export default function Billing() {
               <button 
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage(prev => prev - 1)}
-                className="p-3 bg-white border border-gray-100 rounded-2xl disabled:opacity-30 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl disabled:opacity-30 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
               >
                 <LuChevronLeft className="w-4 h-4" />
               </button>
@@ -272,7 +294,7 @@ export default function Billing() {
                   className={`w-10 h-10 rounded-2xl text-xs font-black transition-all ${
                     currentPage === i + 1 
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' 
-                    : 'bg-white border border-gray-100 text-gray-400 hover:text-gray-900'
+                    : 'bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-900 dark:hover:text-white'
                   }`}
                 >
                   {i + 1}
@@ -281,7 +303,7 @@ export default function Billing() {
               <button 
                 disabled={currentPage === pagination.last_page}
                 onClick={() => setCurrentPage(prev => prev + 1)}
-                className="p-3 bg-white border border-gray-100 rounded-2xl disabled:opacity-30 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                className="p-3 bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl disabled:opacity-30 hover:bg-blue-600 hover:text-white transition-all shadow-sm"
               >
                 <LuChevronRight className="w-4 h-4" />
               </button>
@@ -293,16 +315,16 @@ export default function Billing() {
       {/* Invoice Detail Modal */}
       {showModal && selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
-          <div className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
             
             {/* Modal Header */}
-            <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-white shrink-0 no-print">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
               <div className="flex items-center gap-3">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${selectedInvoice.status === 'paid' ? 'bg-emerald-500 shadow-emerald-500/20' : 'bg-amber-500 shadow-amber-500/20'}`}>
                   {selectedInvoice.status === 'paid' ? <LuFileCheck className="w-7 h-7" /> : <LuClock className="w-7 h-7" />}
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Invoice Details</h3>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Invoice Details</h3>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">ID: {selectedInvoice.invoice_number}</p>
                 </div>
               </div>

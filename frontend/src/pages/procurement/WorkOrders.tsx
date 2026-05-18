@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
@@ -68,11 +68,11 @@ function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-md p-8">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-black text-gray-900">Review Work Order</h2>
-            <p className="text-xs text-gray-500 mt-0.5">{wo.wo_number} · Auto-generated PMS</p>
+            <h2 className="font-black text-gray-900 dark:text-white">Review Work Order</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{wo.wo_number} · Auto-generated PMS</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={18} /></button>
         </div>
@@ -99,10 +99,10 @@ function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 
         <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
           placeholder={action === 'reject' ? 'Required: reason for rejection...' : 'Optional approval notes...'}
-          className="w-full px-4 py-3 rounded-2xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" />
+          className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4" />
 
         <div className="flex justify-end gap-3">
-          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-100 transition">Cancel</button>
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 transition">Cancel</button>
           {action === 'approve' ? (
             <button onClick={() => approveMutation.mutate()} disabled={isPending}
               className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
@@ -125,14 +125,14 @@ function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-[1.5rem] bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
               <LuWrench size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">{wo.wo_number}</h2>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{wo.wo_number}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <StatusBadge status={wo.status} />
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -141,7 +141,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-900 transition-all active:scale-95">
+          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 dark:text-white transition-all active:scale-95">
             <LuX size={20} />
           </button>
         </div>
@@ -151,8 +151,8 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Vehicle</p>
-              <h3 className="text-lg font-bold text-gray-900">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</h3>
-              <p className="text-xs text-gray-500">{wo.bus?.model ?? 'Vehicle Model Details'}</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{wo.bus?.model ?? 'Vehicle Model Details'}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Priority Level</p>
@@ -160,11 +160,11 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
             </div>
           </div>
 
-          <div className="p-8 bg-gray-50 rounded-[2rem] border border-gray-100">
+          <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
               <LuClipboardList size={14} /> Work Description
             </p>
-            <p className="text-sm text-gray-600 font-medium leading-relaxed italic">
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed italic">
               "{wo.description}"
             </p>
           </div>
@@ -172,14 +172,14 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Created Date</p>
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <LuClock size={16} className="text-blue-500" />
                 {new Date(wo.created_at).toLocaleDateString(undefined, { dateStyle: 'long' })}
               </div>
             </div>
             <div className="space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned To</p>
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-[10px]">
                   {wo.assignee ? wo.assignee.first_name.charAt(0) : '?'}
                 </div>
@@ -189,7 +189,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
           </div>
         </div>
 
-        <div className="p-8 px-10 border-t border-gray-100 bg-white flex justify-end">
+        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end">
           <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all active:scale-95">
             Close View
           </button>
@@ -212,18 +212,18 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
     <div>
       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
       <input type={type} value={(form[key] as string | number) || ''} onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder={`Enter ${label.replace(' *', '').replace(' (User ID)', '').toLowerCase()}...`} />
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder={`Enter ${label.replace(' *', '').replace(' (User ID)', '').toLowerCase()}...`} />
     </div>
   );
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">Request Work Order</h2>
-            <p className="text-sm text-gray-500 mt-1">Submit a maintenance or repair request for a fleet vehicle.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Request Work Order</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Submit a maintenance or repair request for a fleet vehicle.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
         
         <div className="p-8 overflow-y-auto">
@@ -236,7 +236,7 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Priority Level</label>
               <div className="relative">
                 <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as WorkOrderFormData['priority'] }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
                   <option value="routine">Routine</option>
                   <option value="urgent">Urgent</option>
                   <option value="critical">Critical</option>
@@ -248,13 +248,13 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detailed Description *</label>
               <textarea rows={4} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                 placeholder="Describe the issue, symptoms, or maintenance required..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
             </div>
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="wo-form" type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
@@ -281,14 +281,14 @@ function WORow({
   onComplete: (id: number) => void;
 }) {
   return (
-    <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 shadow-sm shadow-purple-200/20 group-hover:bg-white group-hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 shadow-sm shadow-purple-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all">
             <LuWrench size={18} />
           </div>
           <div>
-            <p className="font-black text-gray-900 tracking-tight">{wo.wo_number}</p>
+            <p className="font-black text-gray-900 dark:text-white tracking-tight">{wo.wo_number}</p>
             {wo.auto_generated && (
               <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest mt-1">Auto-generated (PMS)</span>
             )}
@@ -296,12 +296,12 @@ function WORow({
         </div>
       </td>
       <td className="px-8 py-6">
-        <div className="text-sm font-bold text-gray-700">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
+        <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'}</div>
       </td>
       <td className="px-8 py-6"><PriorityBadge priority={wo.priority} /></td>
       <td className="px-8 py-6"><StatusBadge status={wo.status} /></td>
-      <td className="px-8 py-6 text-xs text-gray-500 max-w-[200px] truncate leading-relaxed">{wo.description}</td>
+      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate leading-relaxed">{wo.description}</td>
       <td className="px-8 py-6">
         <Dropdown 
           items={[
@@ -376,7 +376,7 @@ export default function WorkOrders() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Requests
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -401,8 +401,8 @@ export default function WorkOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
@@ -415,7 +415,7 @@ export default function WorkOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-white font-bold">
             <option value="">All Statuses</option>
             {Object.entries(WO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -424,7 +424,7 @@ export default function WorkOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : wos.length === 0 ? (
@@ -434,14 +434,14 @@ export default function WorkOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
+            <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
               <tr>
                 {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
                   <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {wos.map(wo => (
                 <WORow 
                   key={wo.id} 

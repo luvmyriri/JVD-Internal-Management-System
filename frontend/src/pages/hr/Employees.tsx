@@ -380,7 +380,7 @@ export default function Employees() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800/60 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {usersData?.meta?.total ?? '0'} Personnel
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -389,19 +389,19 @@ export default function Employees() {
         </div>
         {canManage && (
           <div className="flex items-center gap-3">
-            <div className="flex bg-white border border-gray-100 rounded-[1.5rem] p-1 shadow-sm overflow-hidden">
+            <div className="flex bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[1.5rem] p-1 shadow-sm overflow-hidden">
                <button 
                  onClick={downloadTemplate}
-                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 text-gray-500 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
                  title="Download Template"
                >
                  <LuFileDown size={18} className="text-gray-400" />
                  <span className="hidden lg:inline">Format</span>
                </button>
-               <div className="w-px h-6 bg-gray-100 self-center" />
+               <div className="w-px h-6 bg-gray-100 dark:bg-gray-800 self-center" />
                <button 
                  onClick={() => fileInputRef.current?.click()}
-                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 text-blue-600 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800/60 text-blue-600 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
                  title="Upload Excel"
                >
                  <LuFileUp size={18} />
@@ -427,32 +427,28 @@ export default function Employees() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Active Staff', value: usersData?.meta?.total || 0, icon: LuUsers, color: 'blue' },
-          { label: 'On Duty', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, color: 'emerald' },
-          { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, color: 'purple' },
-          { label: 'Access Control', value: ROLES.length, icon: LuLock, color: 'amber' },
+          { label: 'Active Staff', value: usersData?.meta?.total || 0, icon: LuUsers, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-300/40 dark:shadow-blue-900/40' },
+          { label: 'On Duty', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/40 dark:shadow-emerald-900/40' },
+          { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, from: 'from-violet-500', to: 'to-purple-700', shadow: 'shadow-violet-300/40 dark:shadow-violet-900/40' },
+          { label: 'Access Control', value: ROLES.length, icon: LuLock, from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-amber-300/40 dark:shadow-amber-900/40' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.1 }}
-            className="p-6 bg-white border border-gray-100 rounded-[2rem] shadow-sm relative overflow-hidden group"
+            className={`relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br ${stat.from} ${stat.to} text-white shadow-xl ${stat.shadow} flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default`}
           >
-            <div className="absolute -right-4 -top-4 w-20 h-20 bg-gray-50 rounded-full group-hover:scale-150 transition-transform duration-500" />
-            <div className="relative z-10 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-                <p className="text-3xl font-black text-gray-900 tracking-tight">{stat.value}</p>
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
+            <div className="flex items-start justify-between relative z-10">
+              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                <stat.icon size={22} className="text-white" />
               </div>
-              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center border", {
-                'bg-blue-50 text-blue-500 border-blue-100': stat.color === 'blue',
-                'bg-emerald-50 text-emerald-500 border-emerald-100': stat.color === 'emerald',
-                'bg-purple-50 text-purple-500 border-purple-100': stat.color === 'purple',
-                'bg-amber-50 text-amber-500 border-amber-100': stat.color === 'amber',
-              })}>
-                <stat.icon size={22} />
-              </div>
+            </div>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">{stat.label}</p>
+              <p className="text-3xl font-black tracking-tight">{stat.value}</p>
             </div>
           </motion.div>
         ))}
@@ -461,20 +457,20 @@ export default function Employees() {
       {/* Filters & Table */}
       <div className="space-y-4">
         <div className="flex flex-wrap gap-4 items-center">
-          <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-            <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+          <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 max-w-md flex-1">
+            <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800/60 flex items-center justify-center text-gray-400">
               <LuSearch size={18} />
             </div>
             <input
               type="text"
               placeholder="Search by name, ID or email..."
-              className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700"
+              className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 dark:text-gray-200"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
           <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white font-medium text-gray-600 appearance-none min-w-[150px]">
+            className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]">
             <option value="">All Roles</option>
             {ROLES.map(role => (
               <option key={role.value} value={role.value}>{role.label}</option>
@@ -482,11 +478,11 @@ export default function Employees() {
           </select>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-[2.5rem] shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
+                <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
                   <th className="px-8 py-5">Employee & ID</th>
                   <th className="px-8 py-5">Department</th>
                   <th className="px-8 py-5">Role</th>
@@ -494,7 +490,7 @@ export default function Employees() {
                   <th className="px-8 py-5 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {isLoading ? (
                   <tr>
                     <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
@@ -525,13 +521,13 @@ export default function Employees() {
                             )}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 text-base">{fullName(user)}</div>
+                            <div className="font-bold text-gray-900 dark:text-white text-base">{fullName(user)}</div>
                             <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{user.employee_id}</div>
                           </div>
                         </div>
                       </td>
                       <td className="px-8 py-6">
-                        <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-black tracking-widest uppercase border border-gray-100">
+                        <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
                           {user.department}
                         </span>
                       </td>
@@ -551,7 +547,7 @@ export default function Employees() {
                                 })}>
                                   <Icon size={14} />
                                 </div>
-                                <span className="text-sm font-bold text-gray-700 capitalize">{user.role.replace('_', ' ')}</span>
+                                <span className="text-sm font-bold text-gray-700 dark:text-gray-200 capitalize">{user.role.replace('_', ' ')}</span>
                               </>
                             );
                           })()}
@@ -617,7 +613,7 @@ export default function Employees() {
       >
         {selectedUser && (
           <div className="space-y-8 p-2">
-            <div className="flex flex-col md:flex-row items-center gap-8 p-8 bg-gray-50 rounded-[2.5rem] border border-gray-100 relative overflow-hidden group">
+            <div className="flex flex-col md:flex-row items-center gap-8 p-8 bg-gray-50 dark:bg-gray-800/60 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
               <div className="absolute -right-8 -top-8 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors duration-700" />
               
               <div className="relative">
@@ -637,22 +633,22 @@ export default function Employees() {
               <div className="flex-1 text-center md:text-left relative z-10">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-3xl font-black text-gray-900 tracking-tight">{fullName(selectedUser)}</h2>
+                    <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{fullName(selectedUser)}</h2>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
                       <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100">
                         {selectedUser.department}
                       </span>
-                      <span className="px-3 py-1 bg-gray-100 text-gray-500 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200">
+                      <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200 dark:border-gray-700">
                         {selectedUser.role.replace('_', ' ')}
                       </span>
                     </div>
                   </div>
                 </div>
                 <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-4">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm text-sm font-bold text-gray-600">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
                     <LuMail size={16} className="text-blue-500" /> {selectedUser.email}
                   </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-gray-100 shadow-sm text-sm font-bold text-gray-600">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">
                     <LuBadgeCheck size={16} className="text-emerald-500" /> {selectedUser.employee_id}
                   </div>
                 </div>
@@ -660,26 +656,26 @@ export default function Employees() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+              <div className="p-6 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <LuActivity size={16} className="text-blue-500" />
                   System Interaction
                 </h3>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
-                    <span className="text-xs font-bold text-gray-500">Last Session</span>
-                    <span className="text-sm font-black text-gray-900">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Last Session</span>
+                    <span className="text-sm font-black text-gray-900 dark:text-white">
                       {selectedUser.last_login ? formatDate(selectedUser.last_login, 'MMM dd, yyyy HH:mm') : 'Never Active'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
-                    <span className="text-xs font-bold text-gray-500">Member Since</span>
-                    <span className="text-sm font-black text-gray-900">{formatDate(selectedUser.created_at, 'MMMM dd, yyyy')}</span>
+                  <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Member Since</span>
+                    <span className="text-sm font-black text-gray-900 dark:text-white">{formatDate(selectedUser.created_at, 'MMMM dd, yyyy')}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm space-y-4">
+              <div className="p-6 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm space-y-4">
                 <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest flex items-center gap-2">
                   <LuShield size={16} className="text-emerald-500" />
                   Security Profile
@@ -689,9 +685,9 @@ export default function Employees() {
                     <span className="text-xs font-bold text-emerald-600">Access Level</span>
                     <span className="text-sm font-black text-emerald-700 capitalize">{selectedUser.role.replace('_', ' ')}</span>
                   </div>
-                  <div className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
-                    <span className="text-xs font-bold text-gray-500">IP Origin</span>
-                    <span className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                  <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl">
+                    <span className="text-xs font-bold text-gray-500 dark:text-gray-400">IP Origin</span>
+                    <span className="text-sm font-black text-gray-900 dark:text-white flex items-center gap-1.5">
                       <LuGlobe size={12} className="text-gray-400" /> Static/Internal
                     </span>
                   </div>
@@ -699,7 +695,7 @@ export default function Employees() {
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 mt-4">
+            <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-4">
               <Button 
                 variant="secondary"
                 onClick={() => setIsViewModalOpen(false)}
@@ -743,7 +739,7 @@ export default function Employees() {
                   }
                 })}
                 className={cn(
-                  "w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                  "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                   errors.first_name && "border-red-300 bg-red-50/30"
                 )}
                 placeholder="e.g. Michael"
@@ -764,7 +760,7 @@ export default function Employees() {
                   }
                 })}
                 className={cn(
-                  "w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                  "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                   errors.last_name && "border-red-300 bg-red-50/30"
                 )}
                 placeholder="e.g. Scofield"
@@ -785,7 +781,7 @@ export default function Employees() {
               })}
               type="email"
               className={cn(
-                "w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                 errors.email && "border-red-300 bg-red-50/30"
               )}
               placeholder="name@jvd-logistics.com"
@@ -798,7 +794,7 @@ export default function Employees() {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
               <select
                 {...register('role', { required: true })}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
               >
                 {ROLES.map(role => (
                   <option key={role.value} value={role.value}>{role.label}</option>
@@ -809,7 +805,7 @@ export default function Employees() {
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
               <select
                 {...register('department', { required: true })}
-                className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
               >
                 {DEPARTMENTS.map(dept => (
                   <option key={dept} value={dept}>{dept}</option>
@@ -834,18 +830,18 @@ export default function Employees() {
 
           {!selectedUser && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 border border-gray-100 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
+              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
                 <div className="relative flex items-center">
                   <input
                     type="checkbox"
                     {...register('send_invitation')}
                     id="send_invitation"
-                    className="w-5 h-5 rounded-lg border-gray-200 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                    className="w-5 h-5 rounded-lg border-gray-200 dark:border-gray-700 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
                     defaultChecked={true}
                   />
                 </div>
                 <div className="flex-1">
-                  <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 uppercase tracking-widest cursor-pointer">
+                  <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest cursor-pointer">
                     Send Account Invitation
                   </label>
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
@@ -863,7 +859,7 @@ export default function Employees() {
             </div>
           )}
 
-          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
             <Button 
               variant="secondary"
               onClick={() => setIsModalOpen(false)}
@@ -895,31 +891,31 @@ export default function Employees() {
                 Review Data: {pendingUploads?.length} personnel detected.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-xl border border-amber-200 shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 shadow-sm">
               <LuMail size={14} className="text-blue-500" />
               <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Invitations Enabled</span>
             </div>
           </div>
 
-          <div className="border border-gray-100 rounded-[2rem] overflow-hidden bg-white shadow-sm">
+          <div className="border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
             <div className="max-h-[400px] overflow-y-auto">
               <table className="w-full text-left border-collapse">
-                <thead className="sticky top-0 bg-gray-50 border-b border-gray-100 z-10">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 z-10">
                   <tr>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Personnel</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Email Address</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Role & Dept</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                   {pendingUploads?.map((emp, i) => (
-                    <tr key={i} className="hover:bg-gray-50/50 transition">
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
                       <td className="px-6 py-4">
-                        <p className="text-sm font-black text-gray-900">{emp.first_name} {emp.last_name}</p>
+                        <p className="text-sm font-black text-gray-900 dark:text-white">{emp.first_name} {emp.last_name}</p>
                         <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{emp.employee_id}</p>
                       </td>
                       <td className="px-6 py-4">
-                        <p className="text-sm font-bold text-gray-600">{emp.email}</p>
+                        <p className="text-sm font-bold text-gray-600 dark:text-gray-300">{emp.email}</p>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
@@ -938,7 +934,7 @@ export default function Employees() {
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <Button variant="secondary" onClick={() => setIsPreviewModalOpen(false)}>
               Abort Upload
             </Button>
