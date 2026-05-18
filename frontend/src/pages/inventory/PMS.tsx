@@ -2,24 +2,18 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
-  LuLoaderCircle, LuBus, LuCalendar, LuGauge, LuCheckCheck, LuList,
+  LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
 import type { Bus } from '../../types/inventory';
 import { format, parseISO, differenceInDays, addDays } from 'date-fns';
-
-const MILEAGE_INTERVAL = 5000; // km — mirrors backend MaintenanceService
+import { getNextPmsInfo } from '../../data/pmsSchedule';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function daysUntilDue(dateStr: string | null): number | null {
   if (!dateStr) return null;
   return differenceInDays(parseISO(dateStr), new Date());
-}
-
-function mileageProgress(bus: Bus): number {
-  // Rough: progress since last service relative to 5 000 km interval
-  return Math.min(100, Math.round((bus.total_mileage % MILEAGE_INTERVAL) / MILEAGE_INTERVAL * 100));
 }
 
 // ── Log Maintenance Modal ────────────────────────────────────────────────────
@@ -29,6 +23,8 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
   const qc = useQueryClient();
   const today = format(new Date(), 'yyyy-MM-dd');
   const next90 = format(addDays(new Date(), 90), 'yyyy-MM-dd');
+  const pmsInfo = getNextPmsInfo(bus.total_mileage);
+  const [checked, setChecked] = useState<boolean[]>(pmsInfo.level.checklist.map(() => false));
 
   const [form, setForm] = useState({
     last_service_date: today,
@@ -55,25 +51,58 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
   const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
 
   return (
-    <Modal isOpen onClose={onClose} title="Log Maintenance" size="lg">
-      <div className="space-y-6 p-2">
-        {/* Bus summary */}
+    <Modal isOpen onClose={onClose} title="Log Maintenance" size="xl">
+      <div className="space-y-5 p-2">
+        {/* Bus + PMS type summary */}
         <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
             <LuBus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="text-sm font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
           </div>
+          <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
+            {pmsInfo.level.type}
+          </span>
           {bus.is_service_overdue && (
-            <span className="ml-auto text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-3 py-1 rounded-full uppercase tracking-wider">
+            <span className="text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-3 py-1 rounded-full uppercase tracking-wider">
               Overdue
             </span>
           )}
         </div>
 
-        <form id="log-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Scope of Works checklist */}
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+            <LuClipboardList className="w-4 h-4 text-gray-400" />
+            <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+              Scope of Works — {pmsInfo.level.type} ({pmsInfo.level.interval})
+            </p>
+            <span className="ml-auto text-[10px] text-gray-400 font-bold">
+              {checked.filter(Boolean).length}/{pmsInfo.level.checklist.length} done
+            </span>
+          </div>
+          <div className="max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+            {pmsInfo.level.checklist.map((item, i) => (
+              <label key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer transition-colors">
+                <input type="checkbox" checked={checked[i]}
+                  onChange={() => setChecked(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                  className="mt-0.5 rounded accent-blue-600 shrink-0" />
+                <span className={`text-xs font-medium leading-relaxed transition-all ${checked[i] ? 'line-through text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                  {item}
+                </span>
+              </label>
+            ))}
+          </div>
+          {pmsInfo.level.note && (
+            <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 border-t border-emerald-100 dark:border-emerald-500/20">
+              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">★ {pmsInfo.level.note}</p>
+            </div>
+          )}
+        </div>
+
+        <form id="log-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={lbl}>Service Date *</label>
             <input type="date" className={inp} value={form.last_service_date}
@@ -91,7 +120,7 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
           </div>
           <div>
             <label className={lbl}>Service Notes</label>
-            <input type="text" className={inp} placeholder="e.g. Oil change, brake check..." value={form.notes}
+            <input type="text" className={inp} placeholder="e.g. Parts replaced..." value={form.notes}
               onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
           </div>
         </form>
@@ -140,18 +169,21 @@ function KpiCard({ label, value, sub, gradient, shadow, icon }: KpiCardProps) {
 
 // ── Mileage Bar ───────────────────────────────────────────────────────────────
 function MileageBar({ bus }: { bus: Bus }) {
-  const pct = mileageProgress(bus);
+  const info = getNextPmsInfo(bus.total_mileage);
+  const pct = info.progressPct;
   const color = pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400';
   return (
     <div className="space-y-1">
       <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
-        <span>{(bus.total_mileage % MILEAGE_INTERVAL).toLocaleString()} km</span>
+        <span className={info.level.textColor}>{info.level.shortLabel}</span>
         <span>{pct}%</span>
       </div>
       <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
         <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
       </div>
-      <p className="text-[9px] text-gray-400">{MILEAGE_INTERVAL.toLocaleString()} km interval</p>
+      <p className="text-[9px] text-gray-400">
+        {info.isOverdue ? 'Overdue' : `${info.kmRemaining.toLocaleString()} km to ${info.level.type} @ ${info.dueAtKm.toLocaleString()} km`}
+      </p>
     </div>
   );
 }
@@ -273,6 +305,7 @@ export default function PMS() {
                 <th className="px-8 py-5">Status</th>
                 <th className="px-8 py-5">Last Serviced</th>
                 <th className="px-8 py-5">Next Due</th>
+                <th className="px-8 py-5">Next PMS Type</th>
                 <th className="px-8 py-5">Mileage Progress</th>
                 <th className="px-8 py-5 text-center">Action</th>
               </tr>
@@ -347,7 +380,20 @@ export default function PMS() {
                           <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
                         )}
                       </td>
-                      <td className="px-8 py-5 min-w-[160px]">
+                      <td className="px-8 py-5">
+                        {(() => {
+                          const info = getNextPmsInfo(bus.total_mileage);
+                          return (
+                            <div className="space-y-1">
+                              <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest border ${info.level.color} ${info.level.textColor} border-current/20`}>
+                                {info.level.type}
+                              </span>
+                              <p className="text-[9px] text-gray-400 font-bold">@ {info.dueAtKm.toLocaleString()} km</p>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td className="px-8 py-5 min-w-[170px]">
                         <MileageBar bus={bus} />
                       </td>
                       <td className="px-8 py-5 text-center">
