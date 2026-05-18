@@ -4,6 +4,7 @@ import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
   LuUser, LuShieldAlert, LuFileText, LuSend, LuExternalLink,
+  LuDownload, LuCloudUpload,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -429,12 +430,24 @@ export default function PMS() {
             ))}
           </div>
 
-          {/* Search */}
-          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-700 w-72 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
-            <LuSearch className="w-4 h-4 text-gray-400 shrink-0" />
-            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
-              placeholder="Search plate or model..."
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-gray-700 dark:text-gray-200" />
+          {/* Search and Actions */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-700 w-72 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+              <LuSearch className="w-4 h-4 text-gray-400 shrink-0" />
+              <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+                placeholder="Search plate or model..."
+                className="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-gray-700 dark:text-gray-200 outline-none" />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+                <LuCloudUpload className="w-4 h-4" /> Bulk Import
+                <input type="file" multiple className="hidden" accept=".csv,.xlsx" />
+              </label>
+              <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+                <LuDownload className="w-4 h-4" /> Export Data
+              </button>
+            </div>
           </div>
         </div>
 

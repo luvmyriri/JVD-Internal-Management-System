@@ -12,10 +12,7 @@ import {
   LuActivity,
   LuCircle,
   LuFileText,
-  LuClipboardList,
   LuBus,
-  LuCircleUser,
-  LuReceipt,
   LuDownload,
   LuFileSpreadsheet,
   LuChevronLeft,
@@ -1000,7 +997,7 @@ function CompactFleetCalendar({ theme: _theme }: { theme: string }) {
   );
 }
 
-function FleetScheduleCalendar({ theme: _theme2 }: { theme: string }) {
+export function FleetScheduleCalendar({ theme: _theme2 }: { theme: string }) {
   const [calDate, setCalDate]     = useState(new Date(y, m, 1));
   const [selected, setSelected]  = useState<Date>(today);
 

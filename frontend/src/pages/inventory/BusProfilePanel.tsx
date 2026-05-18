@@ -3,12 +3,13 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import {
   LuX, LuBus, LuUser, LuFileText, LuWrench, LuGauge,
   LuPackage, LuTriangleAlert, LuCircleCheckBig, LuClock, LuCar,
+  LuCloudUpload, LuDownload
 } from 'react-icons/lu';
 import type { Bus, BusDocument, MaintenanceRecord, MileageLog, ConsumptionRecord } from '../../types/inventory';
 import { getNextPmsInfo } from '../../data/pmsSchedule';
 
 // ── Mock data generators (replace with API calls when backend ready) ─────────
-function mockDocs(bus: Bus): BusDocument[] {
+function mockDocs(_bus: Bus): BusDocument[] {
   const today = new Date();
   const y = (d: number) => format(new Date(today.getTime() + d * 86400000), 'yyyy-MM-dd');
   return [
@@ -20,7 +21,7 @@ function mockDocs(bus: Bus): BusDocument[] {
   ];
 }
 
-function mockHistory(bus: Bus): MaintenanceRecord[] {
+function mockHistory(_bus: Bus): MaintenanceRecord[] {
   return [
     { id: 1, pms_type: 'First PMS', service_date: '2024-01-15', mileage_at_service: 5000, performed_by: 'Lionsjade Corp', cost: 0, parts_replaced: ['Engine Oil 15W-40 (10L)', 'Oil Filter', 'Fuel Filter (P&S)', 'Transmission Oil'], notes: 'Free labor and filters.' },
     { id: 2, pms_type: 'PMS 1', service_date: '2024-04-10', mileage_at_service: 15000, performed_by: 'Lionsjade Corp', cost: 2800, parts_replaced: ['Engine Oil 15W-40 (10L)', 'Oil Filter', 'Fuel Filter (Primary)'], notes: 'Brakes adjusted. Clutch OK.' },
@@ -36,7 +37,7 @@ function mockMileage(bus: Bus): MileageLog[] {
   ];
 }
 
-function mockConsumption(bus: Bus): ConsumptionRecord[] {
+function mockConsumption(_bus: Bus): ConsumptionRecord[] {
   return [
     { id: 1, record_date: '2024-11-15', category: 'engine_oil', item_name: 'Petron Supreme 15W-40', quantity: 10, unit: 'liters', unit_cost: 180, total_cost: 1800, notes: 'PMS change' },
     { id: 2, record_date: '2024-11-15', category: 'filters', item_name: 'Oil Filter - Genuine', quantity: 1, unit: 'pc', unit_cost: 350, total_cost: 350 },
@@ -92,7 +93,7 @@ export default function BusProfilePanel({ bus, onClose }: { bus: Bus; onClose: (
       <div className="absolute inset-0 bg-black/50 backdrop-blur-md" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative w-full max-w-5xl max-h-full rounded-2xl md:rounded-3xl bg-white dark:bg-gray-900 shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-5xl h-[85vh] min-h-[600px] rounded-2xl md:rounded-3xl bg-white dark:bg-gray-900 shadow-2xl flex flex-col overflow-hidden ring-1 ring-white/10 animate-in fade-in zoom-in-95 duration-200">
 
         {/* Header */}
         <div className="flex items-center gap-4 px-6 py-5 border-b border-gray-100 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-indigo-600">
@@ -214,39 +215,60 @@ export default function BusProfilePanel({ bus, onClose }: { bus: Bus; onClose: (
 
           {/* ── DOCUMENTS ── */}
           {tab === 'documents' && (
-            <div className="space-y-3">
-              {docs.map(doc => {
-                const daysLeft = differenceInDays(parseISO(doc.expiry_date), new Date());
-                const badgeCls = doc.status === 'expired'
-                  ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
-                  : doc.status === 'expiring_soon'
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                  : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400';
-                const Icon = doc.status === 'expired' ? LuTriangleAlert : doc.status === 'expiring_soon' ? LuClock : LuCircleCheckBig;
-                return (
-                  <div key={doc.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/30">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${badgeCls}`}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-gray-900 dark:text-white text-sm">{doc.label}</p>
-                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                        {DOC_LABELS[doc.type]} · Expires {format(parseISO(doc.expiry_date), 'MMM dd, yyyy')}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider ${badgeCls}`}>
-                      {doc.status === 'expired' ? `${Math.abs(daysLeft)}d overdue` : doc.status === 'expiring_soon' ? `${daysLeft}d left` : 'Valid'}
-                    </span>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-2xl border border-dashed border-blue-200 dark:border-blue-500/30 bg-blue-50/50 dark:bg-blue-500/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center">
+                    <LuCloudUpload className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                );
-              })}
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-white text-sm">Bulk Upload Documents</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Support for PDF, Excel, and Images</p>
+                  </div>
+                </div>
+                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-colors">
+                  Select Files
+                  <input type="file" multiple className="hidden" accept=".pdf,.xls,.xlsx,image/*" />
+                </label>
+              </div>
+
+              <div className="space-y-3">
+                {docs.map(doc => {
+                  const daysLeft = differenceInDays(parseISO(doc.expiry_date), new Date());
+                  const badgeCls = doc.status === 'expired'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400'
+                    : doc.status === 'expiring_soon'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                    : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400';
+                  const Icon = doc.status === 'expired' ? LuTriangleAlert : doc.status === 'expiring_soon' ? LuClock : LuCircleCheckBig;
+                  return (
+                    <div key={doc.id} className="flex items-center gap-4 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-800/30 group">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${badgeCls}`}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-gray-900 dark:text-white text-sm">{doc.label}</p>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          {DOC_LABELS[doc.type]} · Expires {format(parseISO(doc.expiry_date), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-wider ${badgeCls}`}>
+                        {doc.status === 'expired' ? `${Math.abs(daysLeft)}d overdue` : doc.status === 'expiring_soon' ? `${daysLeft}d left` : 'Valid'}
+                      </span>
+                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors" title="Download Document">
+                        <LuDownload className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
           {/* ── MAINTENANCE HISTORY ── */}
           {tab === 'history' && (
             <div className="space-y-4">
-              {history.map((rec, i) => (
+              {history.map((rec) => (
                 <div key={rec.id} className={card}>
                   <div className="flex items-start justify-between mb-3">
                     <div>

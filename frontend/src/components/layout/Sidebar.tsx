@@ -67,7 +67,6 @@ const navigation: NavSection[] = [
     items: [
       { label: 'Supplies', path: '/inventory/supplies', icon: <LuPackage />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
       { label: 'Fleet', path: '/inventory/fleet', icon: <LuBus />, roles: ['super_admin', 'admin', 'agent'] },
-      { label: 'Bus Accreditation', path: '/inventory/bus-accreditation', icon: <LuShieldCheck />, roles: ['super_admin', 'admin'] },
       { label: 'PMS', path: '/inventory/pms', icon: <LuActivity />, roles: ['super_admin', 'admin', 'agent'] },
     ],
   },

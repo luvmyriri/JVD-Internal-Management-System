@@ -1,11 +1,14 @@
-﻿import { useState } from 'react';
+import { useState, useRef } from 'react';
+import ExcelJS from 'exceljs';
+import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuShieldCheck, LuPlus, LuSearch, LuLoaderCircle, LuUserCheck,
-  LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock
+  LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock,
+  LuCloudUpload, LuDownload
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
-import { Pagination } from '../../components/ui';
+import { Pagination, Modal, Button } from '../../components/ui';
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   supplier: <LuBuilding2 size={16} />,
@@ -93,6 +96,33 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
               {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
               {field('Contact Person', 'contact_person', 'text', 'Primary Contact', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
               {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
+              <div className="sm:col-span-2 mt-2">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Supporting Documents</label>
+                <div className="grid grid-cols-3 gap-4">
+                  {['kyc', 'nda', 'terms'].map(doc => (
+                    <label key={doc} className="relative flex flex-col items-center justify-center w-full h-[60px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors px-2">
+                      {form[`${doc}_document_url` as keyof Accreditation] ? (
+                         <div className="flex flex-col items-center justify-center w-full" onClick={(e) => e.preventDefault()}>
+                           <span className="text-[10px] font-bold text-emerald-600 uppercase">Attached</span>
+                           <button type="button" onClick={(e) => { e.preventDefault(); setForm(p => ({ ...p, [`${doc}_document_url`]: '' })); }} className="text-gray-400 hover:text-red-500 mt-1"><LuX size={12} /></button>
+                         </div>
+                      ) : (
+                        <>
+                          <LuCloudUpload className="w-4 h-4 mb-1 text-gray-400" />
+                          <span className="text-[10px] font-bold text-gray-500 uppercase">{doc} Doc</span>
+                          <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setForm(p => ({ ...p, [`${doc}_document_url`]: URL.createObjectURL(file) }));
+                              toast.success(`${doc.toUpperCase()} document uploaded`);
+                            }
+                          }} />
+                        </>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {mutation.isError && (
@@ -118,21 +148,140 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
   );
 }
 
+// ── Details Modal ────────────────────────────────────────────────────────────
+
+interface DetailsModalProps { acc: Accreditation; onClose: () => void; }
+function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
+  const qc = useQueryClient();
+  const uploadMutation = useMutation({
+    mutationFn: ({ id, key, url }: { id: number, key: string, url: string }) => 
+      accreditationsApi.update(id, { [key]: url }),
+    onSuccess: () => {
+      toast.success('Main Document uploaded successfully!');
+      qc.invalidateQueries({ queryKey: ['accreditations'] });
+    }
+  });
+
+  const handleMainFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      uploadMutation.mutate({ 
+        id: acc.id, 
+        key: 'document_url', 
+        url 
+      });
+    }
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="Accreditation Details" size="lg">
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
+            {ENTITY_ICONS[acc.entity_type] ?? <LuShieldCheck size={28} />}
+          </div>
+          <div>
+            <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{acc.entity_name}</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{acc.entity_type} • {acc.accreditation_type}</p>
+          </div>
+          <div className="ml-auto">
+            <StatusBadge status={acc.status} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact Person</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{acc.contact_person}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact Email</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{acc.contact_email}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Issuing Body</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{acc.issuing_body || 'N/A'}</p>
+          </div>
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Expiry Date</p>
+            <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{acc.expiry_date ? new Date(acc.expiry_date).toLocaleDateString() : 'N/A'}</p>
+          </div>
+        </div>
+
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Main Supporting Document</p>
+          {acc.document_url ? (
+            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <div className="flex items-center gap-2">
+                <LuFileText size={18} />
+                <span className="text-sm font-bold">Document Uploaded</span>
+              </div>
+              <button onClick={() => uploadMutation.mutate({ id: acc.id, key: 'document_url', url: '' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
+                Remove
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-[100px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors">
+              <div className="flex flex-col items-center justify-center pb-2">
+                {uploadMutation.isPending ? <LuLoaderCircle className="w-6 h-6 mb-2 text-blue-500 animate-spin" /> : <LuCloudUpload className="w-6 h-6 mb-2 text-gray-400" />}
+                <p className="text-xs font-bold text-gray-500 uppercase">Click to upload Main Document</p>
+              </div>
+              <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={handleMainFileUpload} disabled={uploadMutation.isPending} />
+            </label>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Card Component ───────────────────────────────────────────────────────────
 
 function AccreditationCard({ acc }: { acc: Accreditation }) {
   const qc = useQueryClient();
+  const [showDetails, setShowDetails] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const kycMutation = useMutation({
     mutationFn: () => accreditationsApi.generateKycLink(acc.id),
     onSuccess: (res) => {
       const data = res.data;
-      alert(`KYC Link Generated!\n\nEmail sent to: ${data.email_sent_to}\nLink: ${data.link}`);
+      toast.success(`KYC Link Generated! Email sent to: ${data.email_sent_to}`);
+      setShowConfirm(false);
       qc.invalidateQueries({ queryKey: ['accreditations'] });
     },
+    onError: () => {
+      toast.error('Failed to generate KYC link');
+    }
   });
 
+  const uploadMutation = useMutation({
+    mutationFn: ({ id, key, url }: { id: number, key: string, url: string }) => 
+      accreditationsApi.update(id, { [key]: url }),
+    onSuccess: () => {
+      toast.success('Document uploaded successfully!');
+      qc.invalidateQueries({ queryKey: ['accreditations'] });
+    }
+  });
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      uploadMutation.mutate({ 
+        id: acc.id, 
+        key: `${docType.toLowerCase()}_document_url`, 
+        url 
+      });
+    }
+  };
+
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
+    <>
+    <div 
+      className="relative overflow-hidden bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6 cursor-pointer"
+      onClick={() => setShowDetails(true)}
+    >
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 shrink-0">
@@ -160,19 +309,30 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
       </div>
 
       <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-        <div className="flex-1 grid grid-cols-3 gap-2">
+        <div className="flex-1 grid grid-cols-3 gap-2" onClick={e => e.stopPropagation()}>
           {['NDA', 'Terms', 'KYC'].map(doc => {
             const hasDoc = acc[`${doc.toLowerCase()}_document_url` as keyof Accreditation];
+            
+            if (hasDoc) {
+              return (
+                <div key={doc} className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                  <LuFileText size={12} />
+                  {doc}
+                </div>
+              );
+            }
+            
             return (
-              <div key={doc} className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border ${hasDoc ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
-                <LuFileText size={12} />
-                {doc}
-              </div>
+              <label key={doc} className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600 transition group relative" title={`Upload ${doc}`}>
+                {uploadMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin text-blue-500" /> : <LuCloudUpload size={12} className="group-hover:text-blue-500 transition-colors" />}
+                <span className="group-hover:text-blue-600">{doc}</span>
+                <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => handleFileUpload(e, doc)} disabled={uploadMutation.isPending} />
+              </label>
             );
           })}
         </div>
         <button 
-          onClick={() => kycMutation.mutate()}
+          onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
           disabled={kycMutation.isPending}
           className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 transition tooltip-trigger"
           title="Send KYC Link"
@@ -180,7 +340,37 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
           {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}
         </button>
       </div>
+
+      {showConfirm && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem]">
+          <div className="p-6 text-center animate-in fade-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-2">Send KYC Request?</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-[200px] mx-auto">
+              This will email a secure upload link to <strong>{acc.contact_email}</strong>.
+            </p>
+            <div className="flex justify-center gap-2" onClick={e => e.stopPropagation()}>
+              <button 
+                onClick={(e) => { e.stopPropagation(); setShowConfirm(false); }}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); kycMutation.mutate(); }}
+                disabled={kycMutation.isPending}
+                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-1.5"
+              >
+                {kycMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin" /> : <LuMail size={12} />}
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+    
+    {showDetails && <AccreditationDetailsModal acc={acc} onClose={() => setShowDetails(false)} />}
+    </>
   );
 }
 
@@ -190,11 +380,187 @@ export default function Accreditations() {
   const [showAdd, setShowAdd] = useState(false);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [activeTab, setActiveTab] = useState<'all' | 'assets' | 'partners'>('all');
+  const qc = useQueryClient();
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Accreditations');
+    const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
+
+    dataSheet.getColumn(1).values = ['ENTITY TYPE', 'supplier', 'partner', 'client', 'driver', 'bus'];
+
+    const headerRow = worksheet.getRow(1);
+    headerRow.values = ['Entity Type', 'Entity Name', 'Accreditation Type', 'Contact Person', 'Contact Email', 'KYC Doc URL', 'NDA Doc URL', 'Terms Doc URL'];
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+    headerRow.height = 25;
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    
+    worksheet.columns = [
+      { key: 'entity_type', width: 20 },
+      { key: 'entity_name', width: 30 },
+      { key: 'accreditation_type', width: 25 },
+      { key: 'contact_person', width: 25 },
+      { key: 'contact_email', width: 30 },
+      { key: 'kyc_document_url', width: 20 },
+      { key: 'nda_document_url', width: 20 },
+      { key: 'terms_document_url', width: 20 },
+    ];
+
+    for (let i = 2; i <= 500; i++) {
+      worksheet.getCell(`A${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`Data!$A$2:$A$6`],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Type',
+        error: 'Please select an entity type from the dropdown menu.'
+      };
+    }
+
+    const helpSheet = workbook.addWorksheet('Instructions');
+    helpSheet.mergeCells('A1:B1');
+    const brandCell = helpSheet.getCell('A1');
+    brandCell.value = 'JVD INTERNAL MANAGEMENT SYSTEM';
+    brandCell.font = { name: 'Arial Black', size: 14, color: { argb: 'FF1E293B' } };
+    brandCell.alignment = { horizontal: 'center' };
+
+    helpSheet.addRow(['BULK ACCREDITATION REGISTRATION GUIDE']);
+    helpSheet.getRow(2).font = { bold: true, size: 12, color: { argb: 'FF3B82F6' } };
+    helpSheet.addRow(['']);
+    helpSheet.addRow(['1. Fill in the "Accreditations" sheet starting from row 2.']);
+    helpSheet.addRow(['2. Do not modify or delete the header row (Row 1).']);
+    helpSheet.addRow(['3. Use the dropdown menus for Entity Type.']);
+    
+    helpSheet.getColumn(1).width = 40;
+    helpSheet.getColumn(2).width = 60;
+
+    worksheet.addRow(['supplier', 'ABC Corporation', 'Supplier Verification', 'John Doe', 'contact@domain.com']);
+
+    workbook.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'JVD_Accreditations_Bulk_Template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success('Branded template with dropdowns downloaded!');
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      await workbook.xlsx.load(arrayBuffer);
+      const worksheet = workbook.getWorksheet(1);
+      const accToUpload: any[] = [];
+      const errors_list: string[] = [];
+
+      worksheet?.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const entity_type = row.getCell(1).text?.trim();
+        const entity_name = row.getCell(2).text?.trim();
+        const accreditation_type = row.getCell(3).text?.trim();
+        const contact_person = row.getCell(4).text?.trim();
+        const contact_email = row.getCell(5).text?.trim();
+        const kyc_document_url = row.getCell(6).text?.trim();
+        const nda_document_url = row.getCell(7).text?.trim();
+        const terms_document_url = row.getCell(8).text?.trim();
+
+        if (!entity_name && !contact_email) return;
+
+        if (!entity_type || !entity_name || !contact_email || !accreditation_type) {
+          errors_list.push(`Row ${rowNumber}: Incomplete data (Type, Name, Acc. Type, Email are required).`);
+          return;
+        }
+
+        accToUpload.push({
+          entity_type,
+          entity_name,
+          accreditation_type,
+          contact_person,
+          contact_email,
+          kyc_document_url,
+          nda_document_url,
+          terms_document_url
+        });
+      });
+
+      if (errors_list.length > 0) {
+        const displayErrors = errors_list.slice(0, 3);
+        const remaining = errors_list.length - 3;
+        displayErrors.forEach(err => toast.error(err, { duration: 4000 }));
+        if (remaining > 0) toast.error(`...and ${remaining} more errors found.`, { duration: 5000 });
+        e.target.value = '';
+        return;
+      }
+
+      if (accToUpload.length === 0) {
+        toast.error('No data found in the Excel file.');
+        e.target.value = '';
+        return;
+      }
+
+      setPendingUploads(accToUpload);
+      setIsPreviewModalOpen(true);
+      e.target.value = '';
+    } catch (err) {
+      toast.error('Failed to parse Excel file. Please use the provided template.');
+      console.error(err);
+      e.target.value = '';
+    }
+  };
+
+  const createAccMutation = useMutation({
+    mutationFn: (data: any) => accreditationsApi.create(data as Partial<Accreditation>),
+  });
+
+  const handleBulkUploadConfirm = async () => {
+    if (!pendingUploads || pendingUploads.length === 0) return;
+
+    const accToUpload = [...pendingUploads];
+    setPendingUploads(null);
+    setIsPreviewModalOpen(false);
+
+    const uploadToast = toast.loading(`Registering ${accToUpload.length} accreditations...`);
+    let successCount = 0;
+    
+    for (const acc of accToUpload) {
+      try {
+        await createAccMutation.mutateAsync(acc);
+        successCount++;
+      } catch (err: any) {
+        console.error(`Upload error for ${acc.entity_name}:`, err);
+      }
+    }
+
+    toast.dismiss(uploadToast);
+    qc.invalidateQueries({ queryKey: ['accreditations'] });
+    if (successCount === accToUpload.length) {
+      toast.success(`Successfully registered ${successCount} accreditations!`);
+    } else {
+      toast.success(`Completed with partial success: ${successCount}/${accToUpload.length} registered.`);
+    }
+  };
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ['accreditations', search, page],
+    queryKey: ['accreditations', search, page, activeTab],
     queryFn: () => accreditationsApi.list({ 
       search: search || undefined,
+      entity_types: activeTab === 'assets' ? 'bus,driver' : activeTab === 'partners' ? 'supplier,partner,client' : undefined,
       page,
       per_page: 10
     }),
@@ -221,17 +587,49 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md">
-        <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-          <LuSearch size={18} />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
+          {[
+            { id: 'all', label: 'All Records' },
+            { id: 'assets', label: 'Fleet & Assets' },
+            { id: 'partners', label: 'Partnerships & Suppliers' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id as any); setPage(1); }}
+              className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+                activeTab === tab.id 
+                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-        <input
-          type="text"
-          placeholder="Search accreditations..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-gray-800 placeholder:text-gray-400"
-        />
+
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md w-full sm:w-96">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
+            <LuSearch size={18} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search accreditations..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-gray-800 placeholder:text-gray-400 outline-none"
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+            <LuCloudUpload className="w-4 h-4" /> Bulk Import
+            <input type="file" multiple className="hidden" accept=".csv,.xlsx" onChange={handleFileChange} ref={fileInputRef} />
+          </label>
+          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+            <LuDownload className="w-4 h-4" /> Export Data
+          </button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -264,6 +662,70 @@ export default function Accreditations() {
       )}
 
       {showAdd && <AddAccreditationModal onClose={() => setShowAdd(false)} />}
+
+      {/* Preview Modal for Bulk Upload */}
+      <Modal
+        isOpen={isPreviewModalOpen}
+        onClose={() => { setIsPreviewModalOpen(false); setPendingUploads(null); }}
+        title="Confirm Bulk Upload & Documents"
+        size="lg"
+      >
+        <div className="p-4 space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300">
+            You are about to register <strong>{pendingUploads?.length}</strong> accreditations. You can attach KYC, NDA, and Terms documents for each entity before confirming.
+          </p>
+          <div className="max-h-[60vh] overflow-y-auto bg-gray-50 dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <ul className="space-y-4 text-sm text-gray-700 dark:text-gray-200">
+              {pendingUploads?.slice(0, 15).map((acc, i) => (
+                <li key={i} className="flex flex-col border-b border-gray-200 dark:border-gray-800 pb-4 last:border-0 last:pb-0 gap-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-col">
+                      <span className="font-bold">{acc.entity_name}</span>
+                      <span className="text-[10px] text-gray-500 uppercase tracking-widest">{acc.accreditation_type}</span>
+                    </div>
+                    <span className="text-[10px] px-2 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 rounded-lg uppercase font-bold">{acc.entity_type}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {['kyc', 'nda', 'terms'].map(doc => (
+                       <div key={doc} className="flex-1">
+                        {acc[`${doc}_document_url`] ? (
+                          <span className="flex items-center justify-center gap-1 w-full text-center text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 py-1.5 rounded-lg uppercase">
+                            <LuFileText size={12} /> {doc} Attached
+                          </span>
+                        ) : (
+                          <label className="cursor-pointer flex items-center justify-center gap-1 w-full text-center text-[10px] bg-white text-blue-600 py-1.5 rounded-lg hover:bg-blue-50 transition font-bold border border-blue-200 uppercase shadow-sm">
+                            <LuCloudUpload size={12} /> {doc}
+                            <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file && pendingUploads) {
+                                const newUploads = [...pendingUploads];
+                                newUploads[i][`${doc}_document_url`] = URL.createObjectURL(file);
+                                setPendingUploads(newUploads);
+                                toast.success(`Attached ${file.name} as ${doc.toUpperCase()}`);
+                              }
+                            }} />
+                          </label>
+                        )}
+                       </div>
+                    ))}
+                  </div>
+                </li>
+              ))}
+              {pendingUploads && pendingUploads.length > 15 && (
+                <li className="text-center text-gray-400 text-xs italic pt-2">...and {pendingUploads.length - 15} more</li>
+              )}
+            </ul>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={() => { setIsPreviewModalOpen(false); setPendingUploads(null); }}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkUploadConfirm}>
+              Confirm Upload
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

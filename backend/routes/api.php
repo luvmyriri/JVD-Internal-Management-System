@@ -87,6 +87,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // (Super Admin, Admin, Accounting, Agent)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+        Route::get('/procurement/overview', [\App\Http\Controllers\Procurement\OverviewController::class, 'getStats'])->name('procurement.overview');
         Route::apiResource('purchase-orders', PurchaseOrderController::class)->except(['destroy', 'update']);
         Route::post('/purchase-orders/{purchaseOrder}/submit',  [PurchaseOrderController::class, 'submit'])->name('purchase-orders.submit');
         Route::post('/purchase-orders/{purchaseOrder}/verify',  [PurchaseOrderController::class, 'verify'])->name('purchase-orders.verify');

@@ -18,6 +18,11 @@ class AccreditationController extends Controller
             $query->where('entity_type', $request->entity_type);
         }
 
+        if ($request->has('entity_types')) {
+            $types = explode(',', $request->entity_types);
+            $query->whereIn('entity_type', $types);
+        }
+
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
