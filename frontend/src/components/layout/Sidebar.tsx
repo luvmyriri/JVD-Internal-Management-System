@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { settingsApi } from '../../api/settings';
 import {
   LuLayoutDashboard,
   LuReceipt,
@@ -101,6 +102,7 @@ export default function Sidebar() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Overview': true,
   });
+  const [systemName, setSystemName] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMS');
 
   // Auto-expand section on mount if an item within it is active
   useEffect(() => {
@@ -111,6 +113,22 @@ export default function Sidebar() {
       }
     });
   }, [location.pathname]);
+
+  useEffect(() => {
+    const loadSystemName = async () => {
+      try {
+        const response = await settingsApi.getPublicSettings();
+        const { data } = response.data;
+        if (data && data.landing_page_title) {
+          setSystemName(data.landing_page_title);
+          localStorage.setItem('jvd_page_title', data.landing_page_title);
+        }
+      } catch (err) {
+        console.error('Failed to load system name:', err);
+      }
+    };
+    loadSystemName();
+  }, []);
 
   if (!user) return null;
 
@@ -141,7 +159,7 @@ export default function Sidebar() {
           }}
         />
         <div>
-          <p className="text-sm font-bold text-white leading-none select-none">JVD ETMS</p>
+          <p className="text-sm font-bold text-white leading-none select-none">{systemName}</p>
           <p className="text-[10px] text-gray-500 mt-0.5">Management Platform</p>
         </div>
       </div>

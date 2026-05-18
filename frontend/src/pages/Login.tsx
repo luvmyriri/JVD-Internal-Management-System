@@ -2,7 +2,36 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
+import { settingsApi } from '../api/settings';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+const transitionVariants = {
+  fade: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: 1.5, ease: "easeInOut" as const }
+  },
+  slide: {
+    initial: { opacity: 0, x: '100%' },
+    animate: { opacity: 1, x: 0 },
+    exit: { opacity: 0, x: '-100%' },
+    transition: { duration: 1.2, ease: "easeInOut" as const }
+  },
+  zoom: {
+    initial: { opacity: 0, scale: 1.15 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.85 },
+    transition: { duration: 1.5, ease: "easeInOut" as const }
+  },
+  none: {
+    initial: { opacity: 1 },
+    animate: { opacity: 1 },
+    exit: { opacity: 1 },
+    transition: { duration: 0 }
+  }
+};
 
 export default function Login() {
   const navigate = useNavigate();
@@ -24,6 +53,74 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  // Portal Customization States (Initialized from localStorage to prevent flash of default assets/color)
+  const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('jvd_logo_url') || '/JVD 3D.png');
+  const [bgList, setBgList] = useState<string[]>(() => {
+    const cached = localStorage.getItem('jvd_bg_list');
+    try {
+      return cached ? JSON.parse(cached) : ['/bus-bg.png'];
+    } catch {
+      return ['/bus-bg.png'];
+    }
+  });
+  const [btnColor, setBtnColor] = useState(() => localStorage.getItem('jvd_btn_color') || '#2563eb');
+  const [slideDuration, setSlideDuration] = useState<number>(() => {
+    const cached = localStorage.getItem('jvd_slide_duration');
+    return cached ? parseInt(cached) : 6;
+  });
+  const [currentBgIndex, setCurrentBgIndex] = useState(0);
+  const [isBtnHovered, setIsBtnHovered] = useState(false);
+  const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMS');
+  const [slideTransition, setSlideTransition] = useState(() => localStorage.getItem('jvd_slide_transition') || 'fade');
+
+  useEffect(() => {
+    // Load active branding configuration on mount
+    const loadConfig = async () => {
+      try {
+        const response = await settingsApi.getPublicSettings();
+        const { data } = response.data;
+        if (data) {
+          if (data.landing_page_logo) {
+            setLogoUrl(data.landing_page_logo);
+            localStorage.setItem('jvd_logo_url', data.landing_page_logo);
+          }
+          if (data.landing_page_bg && data.landing_page_bg.length > 0) {
+            setBgList(data.landing_page_bg);
+            localStorage.setItem('jvd_bg_list', JSON.stringify(data.landing_page_bg));
+          }
+          if (data.landing_page_btn_color) {
+            setBtnColor(data.landing_page_btn_color);
+            localStorage.setItem('jvd_btn_color', data.landing_page_btn_color);
+          }
+          if (data.landing_page_slide_duration) {
+            setSlideDuration(data.landing_page_slide_duration);
+            localStorage.setItem('jvd_slide_duration', data.landing_page_slide_duration.toString());
+          }
+          if (data.landing_page_title) {
+            setPageTitle(data.landing_page_title);
+            localStorage.setItem('jvd_page_title', data.landing_page_title);
+          }
+          if (data.landing_page_slide_transition) {
+            setSlideTransition(data.landing_page_slide_transition);
+            localStorage.setItem('jvd_slide_transition', data.landing_page_slide_transition);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load branding configurations:', err);
+      }
+    };
+    loadConfig();
+  }, []);
+
+  // Cycle slideshow backgrounds
+  useEffect(() => {
+    if (bgList.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentBgIndex((prev) => (prev + 1) % bgList.length);
+    }, slideDuration * 1000);
+    return () => clearInterval(interval);
+  }, [bgList, slideDuration]);
 
   const handleCredentials = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,46 +203,53 @@ export default function Login() {
   };
 
   return (
-    <div
-      className="min-h-screen flex font-sans bg-slate-950 relative overflow-hidden"
-    >
-      {/* Background Image with Parallax-like effect */}
-      <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat scale-105"
-        style={{ backgroundImage: 'url("/bus-bg.png")' }}
-      ></div>
+    <div className="min-h-screen flex font-sans bg-slate-950 relative overflow-hidden">
+      
+      {/* Background Image Slideshow with dynamic custom transition effects */}
+      <div className="absolute inset-0 overflow-hidden bg-slate-950">
+        <AnimatePresence mode="popLayout">
+          <motion.div
+            key={bgList[currentBgIndex]}
+            initial={transitionVariants[slideTransition as keyof typeof transitionVariants]?.initial || transitionVariants.fade.initial}
+            animate={transitionVariants[slideTransition as keyof typeof transitionVariants]?.animate || transitionVariants.fade.animate}
+            exit={transitionVariants[slideTransition as keyof typeof transitionVariants]?.exit || transitionVariants.fade.exit}
+            transition={transitionVariants[slideTransition as keyof typeof transitionVariants]?.transition || transitionVariants.fade.transition}
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+            style={{ backgroundImage: `url(${bgList[currentBgIndex]})` }}
+          />
+        </AnimatePresence>
+      </div>
 
-      {/* Dark Overlay */}
-      <div className="absolute inset-0 bg-slate-900/40 pointer-events-none"></div>
-      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent pointer-events-none"></div>
-
+      {/* Premium Glossy Dark Overlay */}
+      <div className="absolute inset-0 bg-slate-950/45 pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent pointer-events-none"></div>
 
       <div className="relative z-10 flex flex-col lg:flex-row w-full max-w-7xl mx-auto items-center justify-center lg:justify-between p-6 md:p-12 min-h-screen">
+        
         {/* Left Branding Section */}
-        <div className="lg:w-1/2 flex flex-col items-center lg:items-center text-center mb-12 lg:mb-0 relative z-10">
+        <div className="lg:w-1/2 flex flex-col items-center text-center mb-12 lg:mb-0 relative z-10">
           <div className="flex flex-col items-center">
             <img
-              src="/JVD 3D.png"
+              src={logoUrl}
               alt="JVD Logo"
-              className="h-80 md:h-100 w-auto drop-shadow-[0_10px_20px_rgba(0,0,0,0.3)] mb-4"
+              className="h-80 md:h-100 w-auto mb-4 transition-all duration-700 hover:scale-105 select-none"
+              style={{
+                filter: `drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 35px ${btnColor}66) drop-shadow(0 0 70px ${btnColor}22)`
+              }}
             />
             <div className="h-px w-48 bg-white/40 mb-6"></div>
           </div>
         </div>
 
-
-
         {/* Right Form Section (Premium Card) */}
         <div className="lg:w-1/2 flex justify-center lg:justify-end w-full max-w-lg relative z-10">
-          <div className="w-full bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.4)]">
+          <div className="w-full bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.55)] border border-white/10">
             {step === 'credentials' ? (
               <form onSubmit={handleCredentials} className="space-y-10">
                 <div className="text-left">
-                  <h2 className="text-4xl md:text-[2.75rem] font-display font-black text-slate-900 tracking-tight leading-none">JVD ETMS</h2>
+                  <h2 className="text-4xl md:text-[2.75rem] font-display font-black text-slate-900 tracking-tight leading-none">{pageTitle}</h2>
                   <p className="text-sm text-slate-500 mt-3 font-semibold">Enter your company credentials</p>
                 </div>
-
-
 
                 {error && (
                   <div className="bg-red-50 border-l-4 border-red-500 text-red-700 p-4 rounded-r-lg text-sm flex items-center shadow-sm">
@@ -165,7 +269,6 @@ export default function Login() {
                       <div className="absolute left-5 text-slate-400 flex items-center h-full pointer-events-none">
                         <Mail className="w-5 h-5 opacity-60" />
                       </div>
-
                       <input
                         id="email"
                         type="email"
@@ -175,8 +278,6 @@ export default function Login() {
                         className="w-full pl-14 pr-4 py-5 bg-slate-50/50 border-none rounded-2xl text-slate-900 placeholder-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/5 transition-all duration-300"
                         placeholder="employee@jvdtravels.com"
                       />
-
-
                     </div>
                   </div>
 
@@ -185,30 +286,25 @@ export default function Login() {
                       Password
                     </label>
                     <div className="relative flex items-center">
-                      <div className="absolute left-5 text-blue-600 flex items-center h-full pointer-events-none">
-                        <Lock className="w-5 h-5" />
+                      <div className="absolute left-5 text-slate-400 flex items-center h-full pointer-events-none">
+                        <Lock className="w-5 h-5 opacity-60" />
                       </div>
-                      <div className="absolute left-12 h-6 w-[1.5px] bg-slate-100 flex items-center"></div>
-
                       <input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         required
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-16 pr-12 py-5 bg-white border border-blue-100/50 rounded-2xl text-slate-900 placeholder-slate-200 font-medium focus:outline-none focus:ring-4 focus:ring-blue-600/5 focus:border-blue-200 transition-all duration-300 shadow-sm"
+                        className="w-full pl-14 pr-12 py-5 bg-slate-50/50 border-none rounded-2xl text-slate-900 placeholder-slate-300 font-medium focus:outline-none focus:ring-2 focus:ring-blue-600/5 transition-all duration-300"
                         placeholder="••••••••••••"
                       />
-
-
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-5 text-slate-300 hover:text-slate-400 transition-colors"
+                        className="absolute right-5 text-slate-350 hover:text-slate-500 transition-colors"
                       >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>
-
                     </div>
                   </div>
                 </div>
@@ -216,10 +312,14 @@ export default function Login() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-black tracking-widest rounded-2xl shadow-xl shadow-blue-600/30 active:scale-[0.98] transition-all duration-200 flex justify-center items-center mt-6 uppercase text-sm"
+                  style={{
+                    backgroundColor: isBtnHovered ? `${btnColor}e6` : btnColor,
+                    boxShadow: isBtnHovered ? `0 15px 30px -5px ${btnColor}55` : `0 10px 25px -5px ${btnColor}35`
+                  }}
+                  onMouseEnter={() => setIsBtnHovered(true)}
+                  onMouseLeave={() => setIsBtnHovered(false)}
+                  className="w-full py-5 text-white font-black tracking-widest rounded-2xl active:scale-[0.98] transition-all duration-300 flex justify-center items-center mt-6 uppercase text-sm cursor-pointer"
                 >
-
-
                   {isLoading ? (
                     <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -276,7 +376,13 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={isLoading || totpCode.length !== 6}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all duration-200"
+                    style={{
+                      backgroundColor: isBtnHovered ? `${btnColor}e6` : btnColor,
+                      boxShadow: isBtnHovered ? `0 15px 30px -5px ${btnColor}55` : `0 10px 25px -5px ${btnColor}35`
+                    }}
+                    onMouseEnter={() => setIsBtnHovered(true)}
+                    onMouseLeave={() => setIsBtnHovered(false)}
+                    className="w-full py-4 text-white font-semibold rounded-xl transition-all duration-300 cursor-pointer"
                   >
                     {isLoading ? 'Verifying...' : 'Complete Setup'}
                   </button>
@@ -330,7 +436,13 @@ export default function Login() {
                   <button
                     type="submit"
                     disabled={isLoading || totpCode.length !== 6}
-                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold rounded-xl shadow-md shadow-indigo-200 transition-all duration-200"
+                    style={{
+                      backgroundColor: isBtnHovered ? `${btnColor}e6` : btnColor,
+                      boxShadow: isBtnHovered ? `0 15px 30px -5px ${btnColor}55` : `0 10px 25px -5px ${btnColor}35`
+                    }}
+                    onMouseEnter={() => setIsBtnHovered(true)}
+                    onMouseLeave={() => setIsBtnHovered(false)}
+                    className="w-full py-4 text-white font-semibold rounded-xl transition-all duration-300 cursor-pointer"
                   >
                     {isLoading ? 'Verifying...' : 'Verify Identity'}
                   </button>

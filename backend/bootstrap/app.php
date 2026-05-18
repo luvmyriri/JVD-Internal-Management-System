@@ -26,6 +26,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
 
         $middleware->statefulApi();
+        
+        $middleware->validateCsrfTokens(except: [
+            'api/admin/settings/landing-page',
+        ]);
         // Apply audit logging to all API routes
     })
     ->withExceptions(function (Exceptions $exceptions): void {

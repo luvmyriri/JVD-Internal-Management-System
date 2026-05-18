@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\SystemSettingController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
 use App\Http\Controllers\Procurement\SupplierController;
 use App\Http\Controllers\Procurement\JobOrderController;
@@ -40,6 +41,9 @@ Route::prefix('auth')->group(function () {
 
 // Public KYC route
 Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->name('accreditations.submit-kyc');
+
+// Public settings route
+Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettings'])->name('settings.public');
 
 // ──────────────────────────────────────────
 // AUTHENTICATED routes (Sanctum + password-change enforcement)
@@ -167,5 +171,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
         Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+    });
+
+    // Super Admin exclusive configurations
+    Route::middleware('role:super_admin')->group(function () {
+        Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
     });
 });
