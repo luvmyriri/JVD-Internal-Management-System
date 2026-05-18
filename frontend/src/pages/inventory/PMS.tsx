@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
-  LuUser, LuShieldAlert, LuFileText, LuSend,
+  LuUser, LuShieldAlert, LuFileText, LuSend, LuExternalLink,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -483,8 +483,14 @@ export default function PMS() {
                           }`}>
                             <LuBus className={`w-4 h-4 ${isOverdue ? 'text-red-500' : isUpcoming ? 'text-amber-500' : 'text-emerald-500'}`} />
                           </div>
-                          <div>
-                            <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+                          <div
+                            onClick={() => setProfileBus(bus)}
+                            className="group cursor-pointer"
+                          >
+                            <p className="font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+                              {bus.plate_number}
+                              <LuExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                            </p>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{bus.model}</p>
                             {bus.driver ? (
                               <div className="flex items-center gap-1 mt-1">
@@ -548,12 +554,6 @@ export default function PMS() {
                       </td>
                       <td className="px-8 py-5 text-center">
                         <div className="flex flex-col items-center gap-2">
-                          <button
-                            onClick={() => setProfileBus(bus)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-700 transition-all w-full border border-gray-200 dark:border-gray-700"
-                          >
-                            <LuBus className="w-3.5 h-3.5" /> View Profile
-                          </button>
                           <button
                             onClick={() => setWoBus(bus)}
                             className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
