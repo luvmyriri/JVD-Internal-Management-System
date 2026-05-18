@@ -232,7 +232,10 @@ export default function Login() {
             <img
               src={logoUrl}
               alt="JVD Logo"
-              className="h-80 md:h-100 w-auto drop-shadow-[0_12px_25px_rgba(0,0,0,0.4)] mb-4 transition-all duration-500"
+              className="h-80 md:h-100 w-auto mb-4 transition-all duration-700 hover:scale-105 select-none"
+              style={{
+                filter: `drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 35px ${btnColor}66) drop-shadow(0 0 70px ${btnColor}22)`
+              }}
             />
             <div className="h-px w-48 bg-white/40 mb-6"></div>
           </div>
