@@ -1,171 +1,377 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock, LuLoaderCircle
+  LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
+  LuLoaderCircle, LuBus, LuCalendar, LuGauge, LuCheckCheck, LuList,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
-import { Pagination } from '../../components/ui';
-import { format, parseISO } from 'date-fns';
+import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
+import type { Bus } from '../../types/inventory';
+import { format, parseISO, differenceInDays, addDays } from 'date-fns';
 
+const MILEAGE_INTERVAL = 5000; // km — mirrors backend MaintenanceService
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function daysUntilDue(dateStr: string | null): number | null {
+  if (!dateStr) return null;
+  return differenceInDays(parseISO(dateStr), new Date());
+}
+
+function mileageProgress(bus: Bus): number {
+  // Rough: progress since last service relative to 5 000 km interval
+  return Math.min(100, Math.round((bus.total_mileage % MILEAGE_INTERVAL) / MILEAGE_INTERVAL * 100));
+}
+
+// ── Log Maintenance Modal ────────────────────────────────────────────────────
+interface LogModalProps { bus: Bus; onClose: () => void; }
+
+function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
+  const qc = useQueryClient();
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const next90 = format(addDays(new Date(), 90), 'yyyy-MM-dd');
+
+  const [form, setForm] = useState({
+    last_service_date: today,
+    next_service_due: next90,
+    total_mileage: bus.total_mileage,
+    notes: '',
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => fleetApi.update(bus.id, {
+      last_service_date: form.last_service_date,
+      next_service_due: form.next_service_due,
+      total_mileage: form.total_mileage,
+      status: 'available',
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['buses-pms'] });
+      qc.invalidateQueries({ queryKey: ['buses'] });
+      onClose();
+    },
+  });
+
+  const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
+  const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
+
+  return (
+    <Modal isOpen onClose={onClose} title="Log Maintenance" size="lg">
+      <div className="space-y-6 p-2">
+        {/* Bus summary */}
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <LuBus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
+          </div>
+          {bus.is_service_overdue && (
+            <span className="ml-auto text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-3 py-1 rounded-full uppercase tracking-wider">
+              Overdue
+            </span>
+          )}
+        </div>
+
+        <form id="log-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div>
+            <label className={lbl}>Service Date *</label>
+            <input type="date" className={inp} value={form.last_service_date}
+              onChange={e => setForm(p => ({ ...p, last_service_date: e.target.value }))} required />
+          </div>
+          <div>
+            <label className={lbl}>Next Service Due *</label>
+            <input type="date" className={inp} value={form.next_service_due}
+              onChange={e => setForm(p => ({ ...p, next_service_due: e.target.value }))} required />
+          </div>
+          <div>
+            <label className={lbl}>Current Mileage (km) *</label>
+            <input type="number" className={inp} value={form.total_mileage} min={bus.total_mileage}
+              onChange={e => setForm(p => ({ ...p, total_mileage: parseInt(e.target.value) || 0 }))} required />
+          </div>
+          <div>
+            <label className={lbl}>Service Notes</label>
+            <input type="text" className={inp} placeholder="e.g. Oil change, brake check..." value={form.notes}
+              onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+          </div>
+        </form>
+
+        {mutation.isError && (
+          <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-2xl">
+            <LuTriangleAlert className="w-4 h-4 text-red-500 shrink-0" />
+            <p className="text-xs text-red-600 dark:text-red-400 font-medium">Failed to log maintenance. Please try again.</p>
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button form="log-form" type="submit" isLoading={mutation.isPending}>
+            <LuCheckCheck className="w-4 h-4 mr-1.5" /> Confirm Service
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── KPI Card ─────────────────────────────────────────────────────────────────
+interface KpiCardProps {
+  label: string; value: number; sub: string;
+  gradient: string; shadow: string; icon: React.ReactNode;
+}
+function KpiCard({ label, value, sub, gradient, shadow, icon }: KpiCardProps) {
+  return (
+    <div className={`relative overflow-hidden p-6 rounded-[2rem] ${gradient} text-white ${shadow} hover:scale-[1.02] transition-all`}>
+      <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/20" />
+      <div className="absolute -bottom-3 -left-3 w-14 h-14 rounded-full bg-white/10" />
+      <div className="relative z-10 flex items-center justify-between mb-4">
+        <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+          {icon}
+        </div>
+      </div>
+      <div className="relative z-10">
+        <p className="text-4xl font-black leading-none">{value}</p>
+        <p className="text-[10px] font-black uppercase tracking-widest mt-2 opacity-80">{label}</p>
+        <p className="text-[10px] font-medium mt-0.5 opacity-60">{sub}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── Mileage Bar ───────────────────────────────────────────────────────────────
+function MileageBar({ bus }: { bus: Bus }) {
+  const pct = mileageProgress(bus);
+  const color = pct >= 90 ? 'bg-red-400' : pct >= 70 ? 'bg-amber-400' : 'bg-emerald-400';
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-[9px] font-black text-gray-400 uppercase">
+        <span>{(bus.total_mileage % MILEAGE_INTERVAL).toLocaleString()} km</span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-[9px] text-gray-400">{MILEAGE_INTERVAL.toLocaleString()} km interval</p>
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PMS() {
   const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<'priority' | 'all'>('priority');
   const [page, setPage] = useState(1);
+  const [logBus, setLogBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
-  // Fetch all buses to see overall PMS status, but we will mostly focus on overdue
   const { data, isLoading } = useQuery({
     queryKey: ['buses-pms', search],
-    queryFn: () => fleetApi.list({ search: search || undefined }),
+    queryFn: () => fleetApi.list({ search: search || undefined, per_page: 200 }),
     staleTime: 30_000,
   });
 
-  const buses = data?.data?.data ?? [];
+  const buses: Bus[] = data?.data?.data ?? [];
 
-  // Categorize buses for the dashboard
-  const overdueBuses = buses.filter(b => b.is_service_overdue);
-  const upcomingBuses = buses.filter(b => !b.is_service_overdue && b.next_service_due && new Date(b.next_service_due).getTime() - new Date().getTime() < 7 * 24 * 60 * 60 * 1000);
-  const healthyBuses = buses.filter(b => !overdueBuses.includes(b) && !upcomingBuses.includes(b));
-
-  // Determine what to display in the main table (Overdue and Upcoming)
-  const priorityBuses = [...overdueBuses, ...upcomingBuses].sort((a, b) => {
-    if (!a.next_service_due) return 1;
-    if (!b.next_service_due) return -1;
-    return new Date(a.next_service_due).getTime() - new Date(b.next_service_due).getTime();
+  const overdueBuses  = buses.filter(b => b.is_service_overdue);
+  const upcomingBuses = buses.filter(b => {
+    if (b.is_service_overdue) return false;
+    const days = daysUntilDue(b.next_service_due);
+    return days !== null && days <= 7;
   });
+  const healthyBuses  = buses.filter(b => !overdueBuses.includes(b) && !upcomingBuses.includes(b));
 
-  const totalPages = Math.ceil(priorityBuses.length / itemsPerPage);
-  const paginatedBuses = priorityBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const displayBuses = tab === 'priority'
+    ? [...overdueBuses, ...upcomingBuses].sort((a, b) => {
+        if (!a.next_service_due) return 1;
+        if (!b.next_service_due) return -1;
+        return new Date(a.next_service_due).getTime() - new Date(b.next_service_due).getTime();
+      })
+    : buses;
+
+  const totalPages   = Math.ceil(displayBuses.length / itemsPerPage);
+  const paginated    = displayBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
-    <div className="space-y-10 pb-12">
-      {/* Header Actions */}
+    <div className="space-y-8 pb-12">
+
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {buses.length} Vehicles
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
-            Fleet Health Tracking
-          </p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Preventive Maintenance System</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-4">
-        <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-8 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center shrink-0">
-            <LuTriangleAlert size={28} />
-          </div>
-          <div>
-            <div className="text-4xl font-black text-gray-900 dark:text-white leading-none">{overdueBuses.length}</div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Overdue for Service</div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-8 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-            <LuClock size={28} />
-          </div>
-          <div>
-            <div className="text-4xl font-black text-gray-900 dark:text-white leading-none">{upcomingBuses.length}</div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Due within 7 Days</div>
-          </div>
-        </div>
-        <div className="bg-white dark:bg-gray-900 rounded-[2rem] p-8 border border-gray-100 dark:border-gray-800 shadow-sm flex items-center gap-6">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <LuCircleCheckBig size={28} />
-          </div>
-          <div>
-            <div className="text-4xl font-black text-gray-900 dark:text-white leading-none">{healthyBuses.length}</div>
-            <div className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-2">Healthy Fleet</div>
-          </div>
-        </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+        <KpiCard label="Overdue for Service" value={overdueBuses.length}
+          sub="Requires immediate attention"
+          gradient="bg-gradient-to-br from-red-500 to-rose-600"
+          shadow="shadow-xl shadow-red-300/40 dark:shadow-red-900/40"
+          icon={<LuTriangleAlert className="w-5 h-5 text-white" />} />
+        <KpiCard label="Due within 7 Days" value={upcomingBuses.length}
+          sub="Schedule service soon"
+          gradient="bg-gradient-to-br from-amber-400 to-orange-500"
+          shadow="shadow-xl shadow-amber-300/40 dark:shadow-amber-900/40"
+          icon={<LuClock className="w-5 h-5 text-white" />} />
+        <KpiCard label="Healthy Fleet" value={healthyBuses.length}
+          sub="Within service window"
+          gradient="bg-gradient-to-br from-emerald-400 to-teal-600"
+          shadow="shadow-xl shadow-emerald-300/40 dark:shadow-emerald-900/40"
+          icon={<LuCircleCheckBig className="w-5 h-5 text-white" />} />
+        <KpiCard label="Total Fleet" value={buses.length}
+          sub="Registered vehicles"
+          gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
+          shadow="shadow-xl shadow-blue-300/40 dark:shadow-blue-900/40"
+          icon={<LuBus className="w-5 h-5 text-white" />} />
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 flex items-center justify-between">
-          <h2 className="font-bold text-gray-900 dark:text-white">Priority Maintenance Queue</h2>
-          <div className="flex items-center gap-3 bg-white dark:bg-gray-900 px-4 py-2 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm w-72 focus-within:ring-2 focus-within:ring-blue-600/10 transition-all">
-            <LuSearch size={16} className="text-gray-400" />
-            <input 
-              value={search} 
-              onChange={e => setSearch(e.target.value)} 
+      {/* Table Card */}
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
+
+        {/* Toolbar */}
+        <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
+          {/* Tabs */}
+          <div className="flex bg-gray-50 dark:bg-gray-800/50 p-1 rounded-2xl border border-gray-100 dark:border-gray-700/50 gap-1">
+            {([
+              { key: 'priority', label: 'Priority Queue', icon: LuTriangleAlert },
+              { key: 'all',      label: 'All Fleet',      icon: LuList },
+            ] as const).map(t => (
+              <button key={t.key} onClick={() => { setTab(t.key); setPage(1); }}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  tab === t.key
+                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'
+                }`}>
+                <t.icon className="w-3 h-3" />{t.label}
+                {t.key === 'priority' && overdueBuses.length + upcomingBuses.length > 0 && (
+                  <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none">
+                    {overdueBuses.length + upcomingBuses.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          {/* Search */}
+          <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-800 px-4 py-2.5 rounded-2xl border border-gray-100 dark:border-gray-700 w-72 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all">
+            <LuSearch className="w-4 h-4 text-gray-400 shrink-0" />
+            <input value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
               placeholder="Search plate or model..."
-              className="bg-transparent border-none focus:ring-0 text-sm font-medium w-full" 
-            />
+              className="bg-transparent border-none focus:ring-0 text-sm font-medium w-full text-gray-700 dark:text-gray-200" />
           </div>
         </div>
+
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-white dark:bg-gray-900 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-              <tr>
-                <th className="px-8 py-5">Bus Details</th>
-                <th className="px-8 py-5">Current Status</th>
+            <thead>
+              <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-400 uppercase tracking-widest text-[10px] border-b border-gray-100 dark:border-gray-800">
+                <th className="px-8 py-5">Bus</th>
+                <th className="px-8 py-5">Status</th>
                 <th className="px-8 py-5">Last Serviced</th>
-                <th className="px-8 py-5">Next Service Due</th>
+                <th className="px-8 py-5">Next Due</th>
+                <th className="px-8 py-5">Mileage Progress</th>
                 <th className="px-8 py-5 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
-                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2" />
-                    Loading PMS data...
+                  <td colSpan={6} className="px-8 py-16 text-center text-gray-400">
+                    <LuLoaderCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                    <p className="text-sm font-medium">Loading PMS data...</p>
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-8 py-16 text-center">
+                    <LuCircleCheckBig className="w-10 h-10 mx-auto mb-3 text-emerald-300 dark:text-emerald-700" />
+                    <p className="text-sm font-bold text-gray-400">
+                      {tab === 'priority' ? 'No priority maintenance needed — fleet is healthy!' : 'No vehicles found.'}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                paginatedBuses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50/50 last:border-0">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 dark:text-white text-base">{bus.plate_number}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className={`inline-flex items-center px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest ${
-                        bus.status === 'in_service' ? 'bg-blue-50 text-blue-700 border-blue-200 shadow-sm shadow-blue-200/20' :
-                        bus.status === 'available' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-200/20' :
-                        'bg-amber-50 text-amber-700 border-amber-200 shadow-sm shadow-amber-200/20'
-                      } border`}>
-                        {bus.status.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 font-medium text-gray-600 dark:text-gray-300">
-                      <div className="text-gray-900 dark:text-white font-bold">{bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : 'Never'}</div>
-                    </td>
-                    <td className="px-8 py-6">
-                      {bus.next_service_due ? (
-                        <div>
-                          <div className={`font-black text-base ${bus.is_service_overdue ? 'text-red-600' : 'text-amber-600'}`}>
-                            {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
+                paginated.map(bus => {
+                  const days = daysUntilDue(bus.next_service_due);
+                  const isOverdue = bus.is_service_overdue;
+                  const isUpcoming = !isOverdue && days !== null && days <= 7;
+                  return (
+                    <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                            isOverdue ? 'bg-red-50 dark:bg-red-500/10' : isUpcoming ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
+                          }`}>
+                            <LuBus className={`w-4 h-4 ${isOverdue ? 'text-red-500' : isUpcoming ? 'text-amber-500' : 'text-emerald-500'}`} />
                           </div>
-                          <div className={`text-[10px] font-black uppercase tracking-widest mt-1 opacity-70 ${bus.is_service_overdue ? 'text-red-500' : 'text-amber-500'}`}>
-                            {bus.is_service_overdue ? 'Overdue' : 'Upcoming'}
+                          <div>
+                            <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{bus.model}</p>
                           </div>
                         </div>
-                      ) : (
-                        <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Not scheduled</span>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <button className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-50 text-blue-700 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition mx-auto border border-blue-100 shadow-sm shadow-blue-200/20">
-                        <LuWrench size={14} /> Log Maintenance
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="space-y-1.5">
+                          <StatusBadge status={bus.status.replace('_', ' ')}
+                            variant={bus.status === 'available' ? 'success' : bus.status === 'in_service' ? 'info' : bus.status === 'under_maintenance' ? 'warning' : 'danger'} />
+                          {isOverdue && (
+                            <div className="flex items-center gap-1 text-[9px] text-red-500 font-black uppercase tracking-widest">
+                              <LuTriangleAlert className="w-3 h-3" /> Overdue
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-2">
+                          <LuCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                          <span className="font-bold text-gray-900 dark:text-white text-sm">
+                            {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : <span className="text-gray-300 dark:text-gray-600 italic">Never</span>}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">
+                        {bus.next_service_due ? (
+                          <div>
+                            <p className={`font-black text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isUpcoming ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+                              {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
+                            </p>
+                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-gray-400'}`}>
+                              {isOverdue ? `${Math.abs(days ?? 0)}d overdue` : days === 0 ? 'Due today' : `${days}d remaining`}
+                            </p>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
+                        )}
+                      </td>
+                      <td className="px-8 py-5 min-w-[160px]">
+                        <MileageBar bus={bus} />
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                        <button
+                          onClick={() => setLogBus(bus)}
+                          className="flex items-center justify-center gap-2 px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all mx-auto border border-blue-100 dark:border-blue-500/20"
+                        >
+                          <LuWrench className="w-3.5 h-3.5" /> Log Service
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
       </div>
+
       {totalPages > 1 && (
-        <Pagination
-          currentPage={page}
-          lastPage={totalPages}
-          total={priorityBuses.length}
-          perPage={itemsPerPage}
-          onPageChange={setPage}
-        />
+        <Pagination currentPage={page} lastPage={totalPages} total={displayBuses.length} perPage={itemsPerPage} onPageChange={setPage} />
       )}
+
+      {logBus && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
     </div>
   );
 }
