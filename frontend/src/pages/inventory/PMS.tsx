@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
+  LuUser, LuShieldAlert, LuFileText, LuSend,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -188,12 +189,148 @@ function MileageBar({ bus }: { bus: Bus }) {
   );
 }
 
+// ── Request WO Modal ─────────────────────────────────────────────────────────
+interface RequestWoModalProps { bus: Bus; onClose: () => void; }
+
+function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
+  const pmsInfo = getNextPmsInfo(bus.total_mileage);
+  const [notes, setNotes] = useState(
+    `Preventive maintenance due for ${bus.plate_number}. Total mileage: ${bus.total_mileage.toLocaleString()} km. Next service: ${pmsInfo.level.type}.`
+  );
+  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(bus.is_service_overdue ? 'high' : 'medium');
+  const [submitted, setSubmitted] = useState(false);
+
+  const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
+  const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
+
+  if (submitted) return (
+    <Modal isOpen onClose={onClose} title="Work Order Submitted" size="md">
+      <div className="p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto">
+          <LuCheckCheck className="w-8 h-8 text-emerald-500" />
+        </div>
+        <div>
+          <p className="text-lg font-black text-gray-900 dark:text-white">WO Request Sent</p>
+          <p className="text-sm text-gray-400 mt-1">The Work Order for <span className="font-bold text-gray-700 dark:text-gray-300">{bus.plate_number}</span> is now pending approval.</p>
+        </div>
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-left">
+          <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">⚠ Awaiting Approval</p>
+          <p className="text-xs text-amber-600 dark:text-amber-300">No maintenance work may begin until a designated approver reviews and approves this Work Order.</p>
+        </div>
+        <Button onClick={onClose} className="w-full">Done</Button>
+      </div>
+    </Modal>
+  );
+
+  return (
+    <Modal isOpen onClose={onClose} title="Request Work Order" size="lg">
+      <div className="space-y-5 p-2">
+        {/* Bus info */}
+        <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+            <LuBus className="w-5 h-5 text-blue-500" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
+          </div>
+          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
+            {pmsInfo.level.type}
+          </span>
+        </div>
+
+        {/* Approval notice */}
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+          <LuShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+            <span className="font-black">Approval Required.</span> This WO will be queued for review. No maintenance work may begin until a designated employee approves it.
+          </p>
+        </div>
+
+        {/* PMS scope preview */}
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+            <LuClipboardList className="w-3.5 h-3.5 text-gray-400" />
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scope — {pmsInfo.level.type} ({pmsInfo.level.interval})</p>
+          </div>
+          <ul className="max-h-36 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+            {pmsInfo.level.checklist.map((item, i) => (
+              <li key={i} className="flex items-start gap-2 px-4 py-2">
+                <span className="text-gray-300 dark:text-gray-600 text-xs mt-0.5 shrink-0">{i + 1}.</span>
+                <span className="text-xs text-gray-600 dark:text-gray-300">{item}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className={lbl}>Priority Level</label>
+            <select value={priority} onChange={e => setPriority(e.target.value as any)}
+              className={inp.replace('bg-white dark:bg-gray-800', 'bg-white dark:bg-gray-900')}>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High — Urgent</option>
+            </select>
+          </div>
+          <div>
+            <label className={lbl}>WO Description / Notes</label>
+            <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+              className={inp + ' resize-none'} />
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => setSubmitted(true)}>
+            <LuSend className="w-4 h-4 mr-1.5" /> Submit WO Request
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Service Adviser Alerts ────────────────────────────────────────────────────
+function ServiceAdviserAlerts({ overdue, upcoming }: { overdue: Bus[]; upcoming: Bus[] }) {
+  if (overdue.length === 0 && upcoming.length === 0) return null;
+  return (
+    <div className="space-y-3">
+      {overdue.length > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30">
+          <LuShieldAlert className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-black text-red-700 dark:text-red-400">Automated Service Adviser — {overdue.length} Vehicle{overdue.length > 1 ? 's' : ''} Overdue</p>
+            <p className="text-xs text-red-500 dark:text-red-400 mt-0.5">
+              {overdue.map(b => b.plate_number).join(', ')} — Request a Work Order immediately. No work may begin until approved.
+            </p>
+          </div>
+          <span className="text-[10px] font-black bg-red-500 text-white px-2 py-1 rounded-lg uppercase tracking-wider shrink-0">Critical</span>
+        </div>
+      )}
+      {upcoming.length > 0 && (
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30">
+          <LuClock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p className="text-sm font-black text-amber-700 dark:text-amber-400">Service Due within 7 Days — {upcoming.length} Vehicle{upcoming.length > 1 ? 's' : ''}</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+              {upcoming.map(b => b.plate_number).join(', ')} — Schedule preventive maintenance soon to avoid downtime.
+            </p>
+          </div>
+          <span className="text-[10px] font-black bg-amber-500 text-white px-2 py-1 rounded-lg uppercase tracking-wider shrink-0">Soon</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PMS() {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState<'priority' | 'all'>('priority');
   const [page, setPage] = useState(1);
   const [logBus, setLogBus] = useState<Bus | null>(null);
+  const [woBus, setWoBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
   const { data, isLoading } = useQuery({
@@ -260,6 +397,9 @@ export default function PMS() {
           icon={<LuBus className="w-5 h-5 text-white" />} />
       </div>
 
+      {/* Automated Service Adviser */}
+      <ServiceAdviserAlerts overdue={overdueBuses} upcoming={upcomingBuses} />
+
       {/* Table Card */}
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
 
@@ -301,13 +441,13 @@ export default function PMS() {
           <table className="w-full text-sm text-left">
             <thead>
               <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-400 uppercase tracking-widest text-[10px] border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5">Bus</th>
+                <th className="px-8 py-5">Bus / Driver</th>
                 <th className="px-8 py-5">Status</th>
                 <th className="px-8 py-5">Last Serviced</th>
                 <th className="px-8 py-5">Next Due</th>
                 <th className="px-8 py-5">Next PMS Type</th>
                 <th className="px-8 py-5">Mileage Progress</th>
-                <th className="px-8 py-5 text-center">Action</th>
+                <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -344,6 +484,14 @@ export default function PMS() {
                           <div>
                             <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
                             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{bus.model}</p>
+                            {bus.driver ? (
+                              <div className="flex items-center gap-1 mt-1">
+                                <LuUser className="w-3 h-3 text-blue-400" />
+                                <span className="text-[9px] text-blue-500 dark:text-blue-400 font-bold">{bus.driver.first_name} {bus.driver.last_name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] text-gray-300 dark:text-gray-600 italic">No driver</span>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -397,12 +545,20 @@ export default function PMS() {
                         <MileageBar bus={bus} />
                       </td>
                       <td className="px-8 py-5 text-center">
-                        <button
-                          onClick={() => setLogBus(bus)}
-                          className="flex items-center justify-center gap-2 px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all mx-auto border border-blue-100 dark:border-blue-500/20"
-                        >
-                          <LuWrench className="w-3.5 h-3.5" /> Log Service
-                        </button>
+                        <div className="flex flex-col items-center gap-2">
+                          <button
+                            onClick={() => setWoBus(bus)}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
+                          >
+                            <LuFileText className="w-3.5 h-3.5" /> Request WO
+                          </button>
+                          <button
+                            onClick={() => setLogBus(bus)}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all w-full border border-blue-100 dark:border-blue-500/20"
+                          >
+                            <LuWrench className="w-3.5 h-3.5" /> Log Service
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -418,6 +574,7 @@ export default function PMS() {
       )}
 
       {logBus && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
+      {woBus  && <RequestWoModal bus={woBus} onClose={() => setWoBus(null)} />}
     </div>
   );
 }
