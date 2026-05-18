@@ -73,8 +73,9 @@ class InventoryController extends Controller
     /**
      * Get a single inventory item.
      */
-    public function show(InventoryItem $inventoryItem): JsonResponse
+    public function show($id): JsonResponse
     {
+        $inventoryItem = InventoryItem::findOrFail($id);
         return response()->json([
             'success' => true,
             'data'    => new InventoryItemResource($inventoryItem),
@@ -84,8 +85,10 @@ class InventoryController extends Controller
     /**
      * Update item details or adjust quantity.
      */
-    public function update(Request $request, InventoryItem $inventoryItem): JsonResponse
+    public function update(Request $request, $id): JsonResponse
     {
+        $inventoryItem = InventoryItem::findOrFail($id);
+        
         $validated = $request->validate([
             'item_name'     => ['sometimes', 'string', 'max:255'],
             'category'      => ['sometimes', 'string', 'max:100'],

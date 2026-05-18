@@ -42,9 +42,38 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
     contact_person: '', contact_email: '',
   });
 
+  const [filesToUpload, setFilesToUpload] = useState<{ [key: string]: File }>({});
+
+  const uploadMutation = useMutation({
+    mutationFn: ({ id, type, file }: { id: number, type: string, file: File }) => 
+      accreditationsApi.uploadDocument(id, type, file)
+  });
+
   const mutation = useMutation({
-    mutationFn: () => accreditationsApi.create(form),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['accreditations'] }); onClose(); },
+    mutationFn: async () => {
+      // Create first without document urls
+      const { ...dataToSubmit } = form;
+      ['kyc_document_url', 'nda_document_url', 'terms_document_url'].forEach(k => delete dataToSubmit[k as keyof Accreditation]);
+      
+      const res = await accreditationsApi.create(dataToSubmit);
+      const accId = res.data.data?.id || (res.data as any).id;
+      
+      // Upload pending files
+      if (accId) {
+        for (const [type, file] of Object.entries(filesToUpload)) {
+          await uploadMutation.mutateAsync({ id: accId, type, file });
+        }
+      }
+      return res;
+    },
+    onSuccess: () => { 
+      toast.success('Accreditation created successfully');
+      qc.invalidateQueries({ queryKey: ['accreditations'] }); 
+      onClose(); 
+    },
+    onError: () => {
+      toast.error('Failed to create accreditation');
+    }
   });
 
   const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
@@ -113,8 +142,9 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
                           <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              setForm(p => ({ ...p, [`${doc}_document_url`]: URL.createObjectURL(file) }));
-                              toast.success(`${doc.toUpperCase()} document uploaded`);
+                              setFilesToUpload(p => ({ ...p, [doc]: file }));
+                              setForm(p => ({ ...p, [`${doc}_document_url`]: 'attached' }));
+                              toast.success(`${doc.toUpperCase()} document attached`);
                             }
                           }} />
                         </>
@@ -154,10 +184,22 @@ interface DetailsModalProps { acc: Accreditation; onClose: () => void; }
 function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
   const qc = useQueryClient();
   const uploadMutation = useMutation({
-    mutationFn: ({ id, key, url }: { id: number, key: string, url: string }) => 
-      accreditationsApi.update(id, { [key]: url }),
+    mutationFn: ({ id, type, file }: { id: number, type: string, file: File }) => 
+      accreditationsApi.uploadDocument(id, type, file),
     onSuccess: () => {
       toast.success('Main Document uploaded successfully!');
+      qc.invalidateQueries({ queryKey: ['accreditations'] });
+    },
+    onError: () => {
+      toast.error('Failed to upload document');
+    }
+  });
+
+  const removeMutation = useMutation({
+    mutationFn: ({ id, key }: { id: number, key: string }) => 
+      accreditationsApi.update(id, { [key]: '' }),
+    onSuccess: () => {
+      toast.success('Main Document removed!');
       qc.invalidateQueries({ queryKey: ['accreditations'] });
     }
   });
@@ -165,11 +207,10 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
   const handleMainFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
       uploadMutation.mutate({ 
         id: acc.id, 
-        key: 'document_url', 
-        url 
+        type: 'main', 
+        file 
       });
     }
   };
@@ -217,7 +258,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                 <LuFileText size={18} />
                 <span className="text-sm font-bold">Document Uploaded</span>
               </div>
-              <button onClick={() => uploadMutation.mutate({ id: acc.id, key: 'document_url', url: '' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
+              <button onClick={() => removeMutation.mutate({ id: acc.id, key: 'document_url' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
                 Remove
               </button>
             </div>
@@ -242,11 +283,33 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
   const qc = useQueryClient();
   const [showDetails, setShowDetails] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  
   const kycMutation = useMutation({
     mutationFn: () => accreditationsApi.generateKycLink(acc.id),
     onSuccess: (res) => {
       const data = res.data;
-      toast.success(`KYC Link Generated! Email sent to: ${data.email_sent_to}`);
+      toast.custom((t) => (
+        <div className={`${t.visible ? 'animate-in fade-in slide-in-from-top-2' : 'animate-out fade-out slide-out-to-top-2'} max-w-sm w-full bg-white dark:bg-gray-800 shadow-xl rounded-2xl pointer-events-auto flex ring-1 ring-black/5 dark:ring-white/10 overflow-hidden`}>
+          <div className="flex-1 w-0 p-4">
+            <div className="flex items-start">
+              <div className="flex-shrink-0 pt-0.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center border border-blue-100 dark:border-blue-800">
+                  <LuMail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+              </div>
+              <div className="ml-3 flex-1">
+                <p className="text-sm font-black text-gray-900 dark:text-white">KYC Request Sent</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Secure link delivered to <span className="font-bold text-gray-700 dark:text-gray-200">{data.email_sent_to || acc.contact_email}</span></p>
+              </div>
+            </div>
+          </div>
+          <div className="flex border-l border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50">
+            <button onClick={() => toast.dismiss(t.id)} className="w-full border border-transparent rounded-none rounded-r-2xl p-4 flex items-center justify-center text-xs font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none transition-colors">
+              Close
+            </button>
+          </div>
+        </div>
+      ), { duration: 5000 });
       setShowConfirm(false);
       qc.invalidateQueries({ queryKey: ['accreditations'] });
     },
@@ -256,22 +319,24 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
   });
 
   const uploadMutation = useMutation({
-    mutationFn: ({ id, key, url }: { id: number, key: string, url: string }) => 
-      accreditationsApi.update(id, { [key]: url }),
+    mutationFn: ({ id, type, file }: { id: number, type: string, file: File }) => 
+      accreditationsApi.uploadDocument(id, type, file),
     onSuccess: () => {
       toast.success('Document uploaded successfully!');
       qc.invalidateQueries({ queryKey: ['accreditations'] });
+    },
+    onError: () => {
+      toast.error('Failed to upload document');
     }
   });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>, docType: string) => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
       uploadMutation.mutate({ 
         id: acc.id, 
-        key: `${docType.toLowerCase()}_document_url`, 
-        url 
+        type: docType.toLowerCase(), 
+        file 
       });
     }
   };
@@ -340,35 +405,40 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
           {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}
         </button>
       </div>
-
-      {showConfirm && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-[2rem]">
-          <div className="p-6 text-center animate-in fade-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-black text-gray-900 dark:text-white mb-2">Send KYC Request?</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mb-4 max-w-[200px] mx-auto">
-              This will email a secure upload link to <strong>{acc.contact_email}</strong>.
-            </p>
-            <div className="flex justify-center gap-2" onClick={e => e.stopPropagation()}>
-              <button 
-                onClick={(e) => { e.stopPropagation(); setShowConfirm(false); }}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-600 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800 transition"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={(e) => { e.stopPropagation(); kycMutation.mutate(); }}
-                disabled={kycMutation.isPending}
-                className="px-3 py-1.5 rounded-lg text-xs font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-1.5"
-              >
-                {kycMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin" /> : <LuMail size={12} />}
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
     
+    {showConfirm && (
+      <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Verification Required" size="sm">
+        <div className="p-6 text-center space-y-4">
+          <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-3xl flex items-center justify-center mx-auto mb-2 border border-blue-100 dark:border-blue-800">
+            <LuMail size={28} />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-gray-900 dark:text-white leading-tight">Send KYC Request</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              Are you sure you want to send a secure KYC upload link to <strong>{acc.contact_person}</strong> at <strong className="text-gray-700 dark:text-gray-300">{acc.contact_email}</strong>?
+            </p>
+          </div>
+          <div className="pt-4 flex items-center justify-center gap-3">
+            <button 
+              onClick={() => setShowConfirm(false)}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={() => kycMutation.mutate()}
+              disabled={kycMutation.isPending}
+              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20"
+            >
+              {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}
+              Yes, Send Link
+            </button>
+          </div>
+        </div>
+      </Modal>
+    )}
+
     {showDetails && <AccreditationDetailsModal acc={acc} onClose={() => setShowDetails(false)} />}
     </>
   );
@@ -540,7 +610,19 @@ export default function Accreditations() {
     
     for (const acc of accToUpload) {
       try {
-        await createAccMutation.mutateAsync(acc);
+        const { kyc_file, nda_file, terms_file, ...dataToSubmit } = acc;
+        ['kyc_document_url', 'nda_document_url', 'terms_document_url'].forEach(k => {
+            if (dataToSubmit[k] === 'attached') delete dataToSubmit[k];
+        });
+        
+        const res = await createAccMutation.mutateAsync(dataToSubmit);
+        const accId = res.data?.data?.id || res.data?.id;
+
+        if (accId) {
+           if (kyc_file) await accreditationsApi.uploadDocument(accId, 'kyc', kyc_file);
+           if (nda_file) await accreditationsApi.uploadDocument(accId, 'nda', nda_file);
+           if (terms_file) await accreditationsApi.uploadDocument(accId, 'terms', terms_file);
+        }
         successCount++;
       } catch (err: any) {
         console.error(`Upload error for ${acc.entity_name}:`, err);
@@ -699,7 +781,8 @@ export default function Accreditations() {
                               const file = e.target.files?.[0];
                               if (file && pendingUploads) {
                                 const newUploads = [...pendingUploads];
-                                newUploads[i][`${doc}_document_url`] = URL.createObjectURL(file);
+                                newUploads[i][`${doc}_file`] = file;
+                                newUploads[i][`${doc}_document_url`] = 'attached';
                                 setPendingUploads(newUploads);
                                 toast.success(`Attached ${file.name} as ${doc.toUpperCase()}`);
                               }

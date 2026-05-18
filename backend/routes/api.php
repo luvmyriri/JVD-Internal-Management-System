@@ -137,6 +137,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::apiResource('buses',          BusController::class)->except(['destroy']);
         
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
+        Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
     });
 

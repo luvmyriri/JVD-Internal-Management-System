@@ -33,4 +33,14 @@ export const accreditationsApi = {
 
   generateKycLink: (id: number) =>
     client.post<{ message: string, link: string, email_sent_to: string }>(`/accreditations/${id}/generate-kyc`),
+
+  uploadDocument: (id: number, type: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return client.post<{ success: boolean, url: string, message: string }>(
+      `/accreditations/${id}/documents/${type}`, 
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+  }
 };
