@@ -10,6 +10,7 @@ import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
 import type { Bus } from '../../types/inventory';
 import { format, parseISO, differenceInDays, addDays } from 'date-fns';
 import { getNextPmsInfo } from '../../data/pmsSchedule';
+import BusProfilePanel from './BusProfilePanel';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function daysUntilDue(dateStr: string | null): number | null {
@@ -331,6 +332,7 @@ export default function PMS() {
   const [page, setPage] = useState(1);
   const [logBus, setLogBus] = useState<Bus | null>(null);
   const [woBus, setWoBus] = useState<Bus | null>(null);
+  const [profileBus, setProfileBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
   const { data, isLoading } = useQuery({
@@ -547,6 +549,12 @@ export default function PMS() {
                       <td className="px-8 py-5 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <button
+                            onClick={() => setProfileBus(bus)}
+                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest hover:bg-gray-100 dark:hover:bg-gray-700 transition-all w-full border border-gray-200 dark:border-gray-700"
+                          >
+                            <LuBus className="w-3.5 h-3.5" /> View Profile
+                          </button>
+                          <button
                             onClick={() => setWoBus(bus)}
                             className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
                           >
@@ -573,8 +581,9 @@ export default function PMS() {
         <Pagination currentPage={page} lastPage={totalPages} total={displayBuses.length} perPage={itemsPerPage} onPageChange={setPage} />
       )}
 
-      {logBus && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
-      {woBus  && <RequestWoModal bus={woBus} onClose={() => setWoBus(null)} />}
+      {logBus     && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
+      {woBus      && <RequestWoModal bus={woBus} onClose={() => setWoBus(null)} />}
+      {profileBus && <BusProfilePanel bus={profileBus} onClose={() => setProfileBus(null)} />}
     </div>
   );
 }
