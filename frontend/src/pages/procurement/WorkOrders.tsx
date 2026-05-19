@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
@@ -301,7 +301,7 @@ function WORow({
       </td>
       <td className="px-8 py-6"><PriorityBadge priority={wo.priority} /></td>
       <td className="px-8 py-6"><StatusBadge status={wo.status} /></td>
-      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[200px] truncate leading-relaxed">{wo.description}</td>
+      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[300px] leading-relaxed">{wo.description}</td>
       <td className="px-8 py-6">
         <Dropdown 
           items={[

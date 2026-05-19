@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuShieldCheck, LuPlus, LuSearch, LuLoaderCircle, LuUserCheck,
   LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock,
-  LuCloudUpload, LuDownload
+  LuCloudUpload, LuFileDown, LuFileUp
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
 import { Pagination, Modal, Button } from '../../components/ui';
@@ -652,7 +652,7 @@ export default function Accreditations() {
   const meta = response?.data?.meta;
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-6 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -669,7 +669,7 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4">
         <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
           {[
             { id: 'all', label: 'All Records' },
@@ -704,13 +704,13 @@ export default function Accreditations() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+            <LuFileDown className="w-4 h-4" /> Format
+          </button>
           <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
-            <LuCloudUpload className="w-4 h-4" /> Bulk Import
+            <LuFileUp className="w-4 h-4" /> Bulk Upload
             <input type="file" multiple className="hidden" accept=".csv,.xlsx" onChange={handleFileChange} ref={fileInputRef} />
           </label>
-          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
-            <LuDownload className="w-4 h-4" /> Export Data
-          </button>
         </div>
       </div>
 

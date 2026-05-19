@@ -1,14 +1,19 @@
-﻿import { useState } from 'react';
+import { useState, useRef } from 'react';
+import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuTruck, LuPlus, LuSearch, LuShieldCheck, LuShieldX,
   LuBan, LuPhone, LuMail, LuMapPin, LuX, LuLoaderCircle,
-  LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash, LuChevronDown
+  LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash, LuChevronDown, LuTrash,
+  LuFileDown, LuFileUp
 } from 'react-icons/lu';
+import ExcelJS from 'exceljs';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
 import AddressSelector, { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/AddressSelector';
-import { Pagination } from '../../components/ui';
+import { Modal, Pagination, Button } from '../../components/ui';
+
+
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -217,14 +222,52 @@ function BlacklistModal({ supplier, onClose }: BlacklistModalProps) {
   );
 }
 
+interface DeleteModalProps { supplier: Supplier; onClose: () => void; deleteMutation: any; }
+function DeleteModal({ supplier, onClose, deleteMutation }: DeleteModalProps) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600"><LuTrash size={18} /></div>
+          <div>
+            <h2 className="font-black text-gray-900 dark:text-white">Delete Supplier</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{supplier.company_name}</p>
+          </div>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">Are you sure you want to delete this supplier? This action cannot be undone.</p>
+        <div className="flex justify-end gap-3 mt-4">
+          <button onClick={onClose} className="px-5 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-100 transition">Cancel</button>
+          <button onClick={() => { deleteMutation.mutate(); onClose(); }} disabled={deleteMutation.isPending}
+            className="px-6 py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 disabled:opacity-60 flex items-center gap-2 transition">
+            {deleteMutation.isPending && <LuLoaderCircle size={14} className="animate-spin" />}
+            Confirm Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Supplier Card ────────────────────────────────────────────────────────────
 
 function SupplierCard({ supplier }: { supplier: Supplier }) {
   const qc = useQueryClient();
   const [showBlacklist, setShowBlacklist] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
   const verifyMutation = useMutation({
     mutationFn: () => supplierApi.verify(supplier.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['suppliers'] }),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => supplierApi.delete(supplier.id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success('Supplier deleted successfully');
+    },
+    onError: () => {
+      toast.error('Failed to delete supplier');
+    }
   });
 
   return (
@@ -294,10 +337,16 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
               <LuShieldX size={12} /> Blacklisted
             </div>
           )}
+          <button onClick={() => setShowDelete(true)}
+            disabled={deleteMutation.isPending}
+            className="p-2 rounded-xl border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60" title="Delete supplier">
+            {deleteMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuTrash size={14} />}
+          </button>
         </div>
       </div>
 
       {showBlacklist && <BlacklistModal supplier={supplier} onClose={() => setShowBlacklist(false)} />}
+      {showDelete && <DeleteModal supplier={supplier} onClose={() => setShowDelete(false)} deleteMutation={deleteMutation} />}
     </>
   );
 }
@@ -305,10 +354,212 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Suppliers() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'accredited' | 'pending' | 'blacklisted'>('all');
   const [showAdd, setShowAdd] = useState(false);
   const [page, setPage] = useState(1);
+  const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Suppliers');
+    const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
+
+    // Setup Data for Dropdowns in hidden sheet
+    dataSheet.getColumn(1).values = ['PAYMENT_TERMS', 'COD', 'Net 15', 'Net 30', 'Net 60', 'Monthly', 'Upon Order'];
+    dataSheet.getColumn(2).values = ['IS_CONSIGNMENT', 'Yes', 'No'];
+
+    // Header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.values = [
+      'Company Name', 'Contact Person', 'Phone', 'Email', 
+      'Address', 'Payment Terms', 'Is Consignment', 
+      'Bank Name', 'Bank Account Number', 'TIN Number'
+    ];
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FF3B82F6' } // Blue-500
+    };
+    headerRow.height = 25;
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    
+    worksheet.columns = [
+      { key: 'company_name', width: 30 },
+      { key: 'contact_person', width: 25 },
+      { key: 'phone', width: 20 },
+      { key: 'email', width: 30 },
+      { key: 'address', width: 40 },
+      { key: 'payment_terms', width: 20 },
+      { key: 'is_consignment', width: 20 },
+      { key: 'bank_name', width: 20 },
+      { key: 'bank_account_number', width: 25 },
+      { key: 'tin_number', width: 20 },
+    ];
+
+    // Set Data Validations
+    for (let i = 2; i <= 500; i++) {
+      worksheet.getCell(`F${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: ['Data!$A$2:$A$7'],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Payment Terms',
+        error: 'Please select a payment term from the dropdown menu.'
+      };
+      
+      worksheet.getCell(`G${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: ['Data!$B$2:$B$3'],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Consignment Value',
+        error: 'Please select Yes or No.'
+      };
+    }
+
+    // Instructions sheet
+    const helpSheet = workbook.addWorksheet('Instructions');
+    helpSheet.mergeCells('A1:B1');
+    const brandCell = helpSheet.getCell('A1');
+    brandCell.value = 'JVD INTERNAL MANAGEMENT SYSTEM';
+    brandCell.font = { name: 'Arial Black', size: 14, color: { argb: 'FF1E293B' } };
+    brandCell.alignment = { horizontal: 'center' };
+
+    helpSheet.addRow(['BULK SUPPLIER REGISTRATION GUIDE']);
+    helpSheet.getRow(2).font = { bold: true, size: 12, color: { argb: 'FF3B82F6' } };
+    helpSheet.addRow(['']);
+    helpSheet.addRow(['1. Fill in the "Suppliers" sheet starting from row 2.']);
+    helpSheet.addRow(['2. Do not modify or delete the header row (Row 1).']);
+    helpSheet.addRow(['3. Company Name is required.']);
+    helpSheet.addRow(['4. Use the dropdown menus for Payment Terms and Is Consignment columns.']);
+    helpSheet.addRow(['5. Phone should be in format: +63 9XX XXX XXXX or just the number.']);
+    helpSheet.addRow(['6. If "Protected View" appears, click "Enable Editing" to use dropdowns.']);
+    
+    helpSheet.getColumn(1).width = 40;
+    helpSheet.getColumn(2).width = 60;
+
+    // Add example in Suppliers sheet
+    worksheet.addRow([
+      'ABC Parts Supply Co.', 'Juan Dela Cruz', '+63 917 123 4567', 'supplier@example.com', 
+      'Manila, Philippines', 'Net 30', 'No', 
+      'BDO', '1234-5678-9012', '000-000-000-000'
+    ]);
+
+    // Set Suppliers as the active sheet
+    workbook.views = [
+      {
+        x: 0, y: 0, width: 10000, height: 20000,
+        firstSheet: 0, activeTab: 0, visibility: 'visible'
+      }
+    ];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'JVD_Suppliers_Bulk_Template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success('Branded template with dropdowns downloaded!');
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const workbook = new ExcelJS.Workbook();
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      await workbook.xlsx.load(arrayBuffer);
+      const worksheet = workbook.getWorksheet(1);
+      const suppliers: any[] = [];
+
+      worksheet?.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header
+
+        const company_name = row.getCell(1).text?.trim();
+        const contact_person = row.getCell(2).text?.trim();
+        const phone = row.getCell(3).text?.trim();
+        const email = row.getCell(4).text?.trim();
+        const address = row.getCell(5).text?.trim();
+        const payment_terms = row.getCell(6).text?.trim();
+        const is_consignment_str = row.getCell(7).text?.trim();
+        const bank_name = row.getCell(8).text?.trim();
+        const bank_account_number = row.getCell(9).text?.trim();
+        const tin_number = row.getCell(10).text?.trim();
+
+        // Skip empty rows
+        if (!company_name) return;
+
+        const is_consignment = is_consignment_str?.toLowerCase() === 'yes';
+
+        suppliers.push({
+          company_name,
+          contact_person,
+          phone,
+          email,
+          address,
+          payment_terms,
+          is_consignment,
+          bank_name,
+          bank_account_number,
+          tin_number
+        });
+      });
+
+      if (suppliers.length === 0) {
+        toast.error('No data found in the Excel file.');
+        e.target.value = '';
+        return;
+      }
+
+      setPendingUploads(suppliers);
+      setIsPreviewModalOpen(true);
+      e.target.value = '';
+    } catch (err) {
+      toast.error('Failed to parse Excel file. Please use the provided template.');
+      console.error(err);
+      e.target.value = '';
+    }
+  };
+
+  const handleBulkUploadConfirm = async () => {
+    if (!pendingUploads || pendingUploads.length === 0) return;
+
+    const suppliersToUpload = [...pendingUploads];
+    setPendingUploads(null);
+    setIsPreviewModalOpen(false);
+
+    const uploadToast = toast.loading(`Registering ${suppliersToUpload.length} suppliers...`);
+    let successCount = 0;
+    
+    for (const sup of suppliersToUpload) {
+      try {
+        await supplierApi.create(sup);
+        successCount++;
+      } catch (err: any) {
+        console.error(`Upload error for ${sup.company_name}:`, err);
+      }
+    }
+
+    toast.dismiss(uploadToast);
+    qc.invalidateQueries({ queryKey: ['suppliers'] });
+    
+    if (successCount === suppliersToUpload.length) {
+      toast.success(`Successfully registered ${successCount} suppliers!`);
+    } else {
+      toast.success(`Completed with partial success: ${successCount}/${suppliersToUpload.length} registered.`);
+    }
+  };
+
 
   const { data, isLoading } = useQuery({
     queryKey: ['suppliers', search, filter, page],
@@ -336,10 +587,41 @@ export default function Suppliers() {
             Partner Directory
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
-          <LuPlus size={16} /> Add Supplier
-        </button>
+          <div className="flex items-center gap-3">
+            <div className="flex bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[1.5rem] p-1 shadow-sm overflow-hidden">
+               <button 
+                 onClick={downloadTemplate}
+                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                 title="Download Template"
+               >
+                 <LuFileDown size={18} className="text-gray-400" />
+                 <span className="hidden lg:inline">Format</span>
+               </button>
+               <div className="w-px h-6 bg-gray-100 dark:bg-gray-800 self-center" />
+               <button 
+                 onClick={() => fileInputRef.current?.click()}
+                 className="flex items-center gap-2 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800/60 text-blue-600 transition-all text-[11px] font-black uppercase tracking-widest rounded-xl active:scale-95"
+                 title="Upload Excel"
+               >
+                 <LuFileUp size={18} />
+                 <span className="hidden lg:inline">Bulk Upload</span>
+               </button>
+            </div>
+            
+            <button onClick={() => setShowAdd(true)}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+              <LuPlus size={16} /> Add Supplier
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept=".xlsx, .xls"
+              onChange={handleFileChange}
+            />
+          </div>
+
       </div>
 
       {/* Filters */}
@@ -387,6 +669,75 @@ export default function Suppliers() {
       )}
 
       {showAdd && <AddSupplierModal onClose={() => setShowAdd(false)} />}
+
+      {/* Bulk Upload Preview Modal */}
+      <Modal 
+        isOpen={isPreviewModalOpen} 
+        onClose={() => setIsPreviewModalOpen(false)}
+        title="Bulk Supplier Registration Preview"
+        size="xl"
+      >
+        <div className="space-y-6">
+          <div className="p-4 bg-amber-50 border border-amber-100 rounded-[1.5rem] flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <LuTriangleAlert size={20} className="text-amber-500" />
+              <p className="text-xs text-amber-700 font-bold uppercase tracking-tight">
+                Review Data: {pendingUploads?.length} suppliers detected.
+              </p>
+            </div>
+          </div>
+
+          <div className="border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+            <div className="max-h-[400px] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800/60 border-b border-gray-100 dark:border-gray-800 z-10">
+                  <tr>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Company</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Contact</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Terms</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+                  {pendingUploads?.map((sup, i) => (
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-black text-gray-900 dark:text-white">{sup.company_name}</p>
+                        <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{sup.email}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-gray-600 dark:text-gray-300">{sup.contact_person}</p>
+                        <p className="text-[10px] text-gray-400 font-bold">{sup.phone}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase border border-blue-100">
+                            {sup.payment_terms}
+                          </span>
+                          {sup.is_consignment && (
+                            <span className="text-[10px] font-bold text-purple-600 uppercase ml-0.5">
+                              Consignment
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={() => setIsPreviewModalOpen(false)}>
+              Abort Upload
+            </Button>
+            <Button onClick={handleBulkUploadConfirm} className="px-8 shadow-lg shadow-blue-200">
+              Confirm & Register All
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
       
       {meta && meta.last_page > 1 && (
         <Pagination

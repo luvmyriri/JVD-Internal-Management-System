@@ -301,9 +301,9 @@ export default function POS() {
                 </div>
 
                 {/* View Overlay */}
-                <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-500">
-                  <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
-                    <p className="text-[10px] font-black text-white uppercase tracking-[0.4em] drop-shadow-sm">View</p>
+                <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                  <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
+                    <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
                   </div>
                 </div>
               </div>
@@ -858,8 +858,8 @@ export default function POS() {
                   )}
                   {selectedServiceForDetail.images.length > 1 && (
                     <div className="absolute inset-y-0 inset-x-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-white hover:bg-white dark:bg-gray-900/40 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
-                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-white hover:bg-white dark:bg-gray-900/40 transition-all"><LuChevronRight className="w-6 h-6" /></button>
+                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
+                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronRight className="w-6 h-6" /></button>
                     </div>
                   )}
                 </>
@@ -871,7 +871,7 @@ export default function POS() {
               )}
               <button 
                 onClick={() => setShowDetailModal(false)}
-                className="absolute top-6 right-6 p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md border border-white/20 rounded-2xl text-white hover:bg-white dark:bg-gray-900 hover:text-gray-900 dark:text-white transition-all"
+                className="absolute top-6 right-6 p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md border border-white/20 rounded-2xl text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
               >
                 <LuX className="w-5 h-5" />
               </button>

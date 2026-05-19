@@ -55,4 +55,7 @@ export const supplierApi = {
   /** Blacklist a supplier — blocks future POs */
   blacklist: (id: number, reason: string) =>
     client.post<{ success: boolean; data: Supplier; message: string }>(`/suppliers/${id}/blacklist`, { reason }),
+
+  delete: (id: number) =>
+    client.delete<{ success: boolean; message: string }>(`/suppliers/${id}`),
 };
