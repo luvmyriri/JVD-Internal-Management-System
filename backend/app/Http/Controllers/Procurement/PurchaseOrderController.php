@@ -129,8 +129,8 @@ class PurchaseOrderController extends Controller
 
         $oldStatus = $purchaseOrder->status;
         $purchaseOrder->update([
-            'status'          => $request->approved ? 'verified' : 'rejected',
-            'verified_by'     => $request->user()->id,
+            'status'          => $request->approved ? 'pending_ceo_approval' : 'rejected',
+            'verified_by'     => auth()->id(),
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
 
@@ -140,7 +140,7 @@ class PurchaseOrderController extends Controller
             entityType: 'purchase_order',
             entityId: $purchaseOrder->id,
             old: ['status' => $oldStatus],
-            new: ['status' => $purchaseOrder->status, 'verified_by' => $request->user()->id]
+            new: ['status' => $purchaseOrder->status, 'verified_by' => auth()->id()]
         );
 
         return response()->json([
@@ -156,7 +156,7 @@ class PurchaseOrderController extends Controller
      */
     public function approve(ReviewPurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
-        if ($purchaseOrder->status !== 'verified') {
+        if ($purchaseOrder->status !== 'pending_ceo_approval') {
             return response()->json([
                 'success' => false,
                 'message' => 'Only verified P.O.s can be approved.',
@@ -166,7 +166,7 @@ class PurchaseOrderController extends Controller
         $oldStatus = $purchaseOrder->status;
         $purchaseOrder->update([
             'status'          => $request->approved ? 'approved' : 'rejected',
-            'approved_by'     => $request->user()->id,
+            'approved_by'     => auth()->id(),
             'approved_at'     => $request->approved ? now() : null,
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
@@ -177,7 +177,7 @@ class PurchaseOrderController extends Controller
             entityType: 'purchase_order',
             entityId: $purchaseOrder->id,
             old: ['status' => $oldStatus],
-            new: ['status' => $purchaseOrder->status, 'approved_by' => $request->user()->id]
+            new: ['status' => $purchaseOrder->status, 'approved_by' => auth()->id()]
         );
 
         return response()->json([

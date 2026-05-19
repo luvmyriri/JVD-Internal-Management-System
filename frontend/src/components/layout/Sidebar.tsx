@@ -67,7 +67,6 @@ const navigation: NavSection[] = [
     items: [
       { label: 'Supplies', path: '/inventory/supplies', icon: <LuPackage />, roles: ['super_admin', 'admin', 'accounting', 'agent'] },
       { label: 'Fleet', path: '/inventory/fleet', icon: <LuBus />, roles: ['super_admin', 'admin', 'agent'] },
-      { label: 'Bus Accreditation', path: '/inventory/bus-accreditation', icon: <LuShieldCheck />, roles: ['super_admin', 'admin'] },
       { label: 'PMS', path: '/inventory/pms', icon: <LuActivity />, roles: ['super_admin', 'admin', 'agent'] },
     ],
   },
@@ -226,7 +225,7 @@ export default function Sidebar() {
       {/* Footer */}
       <div className="px-4 py-4 border-t border-gray-800 shrink-0">
         <p className="text-[10px] text-gray-600 text-center">JVD Events & Travels</p>
-        <p className="text-[10px] text-gray-700 text-center">Management Co. — Confidential</p>
+        <p className="text-[10px] text-gray-700 text-center">Management Co.</p>
       </div>
     </aside>
   );

@@ -18,6 +18,11 @@ class AccreditationController extends Controller
             $query->where('entity_type', $request->entity_type);
         }
 
+        if ($request->has('entity_types')) {
+            $types = explode(',', $request->entity_types);
+            $query->whereIn('entity_type', $types);
+        }
+
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
@@ -133,5 +138,37 @@ class AccreditationController extends Controller
         ]);
 
         return response()->json(['message' => 'KYC documents submitted successfully.']);
+    }
+
+    public function uploadDocument(Request $request, Accreditation $accreditation, $type)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
+        ]);
+
+        $validTypes = ['kyc', 'nda', 'terms', 'main'];
+        if (!in_array($type, $validTypes)) {
+            return response()->json(['success' => false, 'message' => 'Invalid document type'], 400);
+        }
+
+        if ($request->hasFile('file')) {
+            $file = $request->file('file');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $path = $file->storeAs("public/accreditations/{$accreditation->id}/{$type}", $filename);
+            
+            // Generate public URL
+            $url = \Illuminate\Support\Facades\Storage::url($path);
+            
+            $column = $type === 'main' ? 'document_url' : "{$type}_document_url";
+            $accreditation->update([$column => $url]);
+
+            return response()->json([
+                'success' => true,
+                'url' => $url,
+                'message' => ucfirst($type) . ' document uploaded successfully.'
+            ]);
+        }
+
+        return response()->json(['success' => false, 'message' => 'No file uploaded'], 400);
     }
 }

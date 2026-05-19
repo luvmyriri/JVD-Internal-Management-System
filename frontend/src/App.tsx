@@ -20,7 +20,6 @@ import Accreditations from './pages/procurement/Accreditations';
 import Suppliers from './pages/procurement/Suppliers';
 import Supplies from './pages/inventory/Supplies';
 import Fleet from './pages/inventory/Fleet';
-import BusAccreditation from './pages/inventory/BusAccreditation';
 import PMS from './pages/inventory/PMS';
 import Passporting from './pages/travel/Passporting';
 import VisaProcessing from './pages/travel/VisaProcessing';
@@ -90,7 +89,6 @@ export default function App() {
                 {/* Inventory */}
                 <Route path="/inventory/supplies" element={<Supplies />} />
                 <Route path="/inventory/fleet" element={<Fleet />} />
-                <Route path="/inventory/bus-accreditation" element={<BusAccreditation />} />
                 <Route path="/inventory/pms" element={<PMS />} />
 
                 {/* Travel */}

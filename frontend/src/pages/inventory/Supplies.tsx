@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPackage, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuArrowDownToLine
@@ -47,20 +47,20 @@ function ItemModal({ item, onClose }: ItemModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white"
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
       />
     </div>
   );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">{item ? 'Edit Supply Item' : 'Add Supply Item'}</h2>
-            <p className="text-sm text-gray-500 mt-1">{item ? 'Update stock quantity and details.' : 'Register a new consumable or spare part.'}</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{item ? 'Edit Supply Item' : 'Add Supply Item'}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item ? 'Update stock quantity and details.' : 'Register a new consumable or spare part.'}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
         
         <div className="p-8 overflow-y-auto">
@@ -71,7 +71,7 @@ function ItemModal({ item, onClose }: ItemModalProps) {
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category *</label>
                 <input type="text" list="categories" value={form.category ?? ''} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white" placeholder="e.g. Fluids, Tyres, Filters" />
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900" placeholder="e.g. Fluids, Tyres, Filters" />
                 <datalist id="categories">
                   <option value="Fluids & Lubricants" />
                   <option value="Spare Parts" />
@@ -97,8 +97,8 @@ function ItemModal({ item, onClose }: ItemModalProps) {
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="item-form" type="submit" disabled={!form.item_name || !form.category || !form.unit || mutation.isPending}
@@ -143,7 +143,7 @@ export default function Supplies() {
     <div className="space-y-10 pb-12">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Items
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -157,8 +157,8 @@ export default function Supplies() {
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-4 bg-white p-2 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
@@ -170,7 +170,7 @@ export default function Supplies() {
           />
         </div>
         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-2xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white font-medium text-gray-600">
+          className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300">
           <option value="">All Categories</option>
           {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
@@ -181,10 +181,10 @@ export default function Supplies() {
         </button>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-[2rem] shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 uppercase tracking-widest text-[10px]">
+            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
               <tr>
                 <th className="px-8 py-5">Item Name</th>
                 <th className="px-8 py-5">Category</th>
@@ -194,7 +194,7 @@ export default function Supplies() {
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
@@ -211,15 +211,15 @@ export default function Supplies() {
                 </tr>
               ) : (
                 items.map(item => (
-                  <tr key={item.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50/50 last:border-0">
+                  <tr key={item.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50/50 last:border-0">
                     <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 text-base">{item.item_name}</div>
+                      <div className="font-bold text-gray-900 dark:text-white text-base">{item.item_name}</div>
                     </td>
-                    <td className="px-8 py-6 font-medium text-gray-600">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 text-gray-500 text-[10px] font-bold tracking-widest uppercase border border-gray-100">{item.category}</span>
+                    <td className="px-8 py-6 font-medium text-gray-600 dark:text-gray-300">
+                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold tracking-widest uppercase border border-gray-100 dark:border-gray-800">{item.category}</span>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <div className="font-black text-gray-900 text-xl tracking-tight">{item.quantity}</div>
+                      <div className="font-black text-gray-900 dark:text-white text-xl tracking-tight">{item.quantity}</div>
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{item.unit}</div>
                     </td>
                     <td className="px-8 py-6 text-center">
@@ -234,12 +234,12 @@ export default function Supplies() {
                       )}
                     </td>
                     <td className="px-8 py-6 text-right">
-                      <div className="text-gray-900 font-bold text-base">₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+                      <div className="text-gray-900 dark:text-white font-bold text-base">₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
                       <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Per {item.unit}</div>
                     </td>
                     <td className="px-8 py-6 text-center">
                       <button onClick={() => { setEditingItem(item); setShowModal(true); }}
-                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
+                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white dark:bg-gray-900 hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
                         <LuSettings size={20} />
                       </button>
                     </td>

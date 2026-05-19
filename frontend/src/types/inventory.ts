@@ -8,6 +8,12 @@ export interface Bus {
   id: number;
   plate_number: string;
   model: string;
+  chassis_number?: string;
+  engine_number?: string;
+  year?: number;
+  color?: string;
+  body_type?: string;
+  fuel_type?: string;
   seating_capacity: number;
   status: 'available' | 'in_service' | 'under_maintenance' | 'decommissioned';
   total_mileage: number;
@@ -17,6 +23,56 @@ export interface Bus {
   driver?: Driver | null;
   created_at: string;
   updated_at: string;
+}
+
+// ── Bus Profiling Types (boss requirements) ──────────────────────────────────
+export interface BusDocument {
+  id: number;
+  type: 'or_cr' | 'lto_registration' | 'insurance' | 'franchise' | 'inspection' | 'other';
+  label: string;
+  issue_date: string;
+  expiry_date: string;
+  file_url?: string;
+  status: 'valid' | 'expiring_soon' | 'expired';
+}
+
+export interface MaintenanceRecord {
+  id: number;
+  pms_type: string;          // 'First PMS' | 'PMS 1' … 'PMS 4'
+  service_date: string;
+  mileage_at_service: number;
+  performed_by: string;
+  cost: number;
+  parts_replaced: string[];
+  notes: string;
+}
+
+export interface MileageLog {
+  id: number;
+  log_date: string;
+  mileage: number;
+  trip_description?: string;
+  logged_by?: string;
+}
+
+export interface ConsumptionRecord {
+  id: number;
+  record_date: string;
+  category: 'engine_oil' | 'fuel' | 'tire' | 'brake_parts' | 'filters' | 'grease' | 'other';
+  item_name: string;
+  quantity: number;
+  unit: string;
+  unit_cost: number;
+  total_cost: number;
+  notes?: string;
+}
+
+export interface BusProfile {
+  bus: Bus;
+  documents: BusDocument[];
+  maintenance_history: MaintenanceRecord[];
+  mileage_logs: MileageLog[];
+  consumption_records: ConsumptionRecord[];
 }
 
 export interface BusFormData {

@@ -19,8 +19,8 @@ class InventoryItemResource extends JsonResource
             'unit_cost'     => (float) $this->unit_cost,
             'total_value'   => (float) ($this->unit_cost * $this->quantity),
             'is_low_stock'  => $this->isLowStock(),
-            'created_at'    => $this->created_at->toISOString(),
-            'updated_at'    => $this->updated_at->toISOString(),
+            'created_at'    => $this->created_at?->toISOString(),
+            'updated_at'    => $this->updated_at?->toISOString(),
         ];
     }
 }

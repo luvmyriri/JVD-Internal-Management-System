@@ -79,10 +79,10 @@ export default function AuditLogs() {
       {/* Advanced Filters */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Module</label>
+          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Module</label>
           <div className="relative">
             <select
-              className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
               value={module}
               onChange={(e) => setModule(e.target.value)}
             >
@@ -92,16 +92,16 @@ export default function AuditLogs() {
               <option value="suppliers">Suppliers</option>
               <option value="billing">Billing/Accounting</option>
             </select>
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 dark:text-gray-500">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400 dark:text-gray-500 dark:text-gray-400">
               <LuActivity size={14} />
             </div>
           </div>
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Action Type</label>
+          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Action Type</label>
           <select
-            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none"
             value={action}
             onChange={(e) => setAction(e.target.value)}
           >
@@ -114,11 +114,11 @@ export default function AuditLogs() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Date From</label>
+          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Date From</label>
           <div className="relative">
             <input
               type="date"
-              className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
             />
@@ -126,10 +126,10 @@ export default function AuditLogs() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider ml-1">Date To</label>
+          <label className="text-[10px] font-bold text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-wider ml-1">Date To</label>
           <input
             type="date"
-            className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-600 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
           />
@@ -152,15 +152,15 @@ export default function AuditLogs() {
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500">
+                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
                     <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
                     <p className="text-sm font-medium">Retrieving audit trail...</p>
                   </td>
                 </tr>
               ) : logsData?.data?.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500">
-                    <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
+                    <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600 dark:text-gray-300" />
                     <p className="text-sm font-medium">No logs found matching filters.</p>
                   </td>
                 </tr>
@@ -176,7 +176,7 @@ export default function AuditLogs() {
                           <div className="font-bold text-gray-900 dark:text-white text-base">
                             {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System Process'}
                           </div>
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
+                          <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
                             {formatDate(log.created_at, 'MMM dd, yyyy HH:mm')}
                             <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
                             {timeAgo(log.created_at)}
@@ -197,7 +197,7 @@ export default function AuditLogs() {
                     </td>
                     <td className="px-8 py-6 text-right">
                       <div className="text-gray-900 dark:text-white font-black text-base tracking-tight">{log.ip_address}</div>
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-0.5">IPv4 Address</div>
+                      <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">IPv4 Address</div>
                     </td>
                     <td className="px-8 py-6 text-center">
                       <Button 
@@ -240,7 +240,7 @@ export default function AuditLogs() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 relative overflow-hidden group">
                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-blue-500/5 dark:bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/10 dark:group-hover:bg-blue-500/20 transition-colors" />
-                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">Transaction Context</p>
+                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] mb-4">Transaction Context</p>
                 <div className="flex items-center gap-4">
                   <StatusBadge 
                     status={selectedLog.action}
@@ -254,7 +254,7 @@ export default function AuditLogs() {
 
               <div className="p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[2rem] border border-gray-100 dark:border-gray-700/50 relative overflow-hidden group">
                 <div className="absolute -right-4 -top-4 w-24 h-24 bg-emerald-500/5 dark:bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/10 dark:group-hover:bg-emerald-500/20 transition-colors" />
-                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4">Identity Matrix</p>
+                <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-[0.2em] mb-4">Identity Matrix</p>
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-white dark:bg-gray-800 flex items-center justify-center text-blue-500 shadow-sm border border-gray-100 dark:border-gray-700">
                     <LuUser size={24} />
@@ -263,7 +263,7 @@ export default function AuditLogs() {
                     <p className="text-lg font-black text-gray-900 dark:text-white leading-tight">
                       {selectedLog.performed_by ? `${selectedLog.performed_by.first_name} ${selectedLog.performed_by.last_name}` : 'System'}
                     </p>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest mt-1">
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-1">
                       {selectedLog.performed_by?.employee_id || 'SYSTEM_PROCESS'}
                     </p>
                   </div>
@@ -282,11 +282,11 @@ export default function AuditLogs() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between px-2">
-                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Baseline State</p>
-                    <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600">PRE-EVENT</span>
+                    <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest">Baseline State</p>
+                    <span className="text-[10px] font-bold text-gray-300 dark:text-gray-600 dark:text-gray-300">PRE-EVENT</span>
                   </div>
                   <div className="p-6 bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-inner overflow-hidden relative">
-                    <pre className="text-[11px] font-mono text-gray-400 dark:text-gray-500 overflow-auto max-h-[300px] leading-relaxed custom-scrollbar">
+                    <pre className="text-[11px] font-mono text-gray-400 dark:text-gray-500 dark:text-gray-400 overflow-auto max-h-[300px] leading-relaxed custom-scrollbar">
                       {selectedLog.old_values ? JSON.stringify(selectedLog.old_values, null, 2) : '// No previous state recorded'}
                     </pre>
                   </div>
@@ -309,11 +309,11 @@ export default function AuditLogs() {
             <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800/50 rounded-[2.5rem] border border-gray-100 dark:border-gray-700/50 mt-8">
               <div className="flex items-center gap-8">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Source IP</span>
+                  <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">Source IP</span>
                   <span className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><LuGlobe size={14} className="text-blue-500 dark:text-blue-400" /> {selectedLog.ip_address}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-1">Execution Time</span>
+                  <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-1">Execution Time</span>
                   <span className="text-sm font-bold text-gray-700 dark:text-gray-300 flex items-center gap-2"><LuCalendar size={14} className="text-blue-500 dark:text-blue-400" /> {formatDate(selectedLog.created_at)}</span>
                 </div>
               </div>

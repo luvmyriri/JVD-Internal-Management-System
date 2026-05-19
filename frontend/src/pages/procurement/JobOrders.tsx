@@ -79,13 +79,13 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">New Job Order</h2>
-            <p className="text-sm text-gray-500 mt-1">Issued by Ma'am Minda · No PO needed unless parts are required.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">New Job Order</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Issued by Ma'am Minda · No PO needed unless parts are required.</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50"><LuX size={20} /></button>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
 
         <div className="p-8 overflow-y-auto">
@@ -94,7 +94,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Type *</label>
               <div className="relative">
                 <select value={form.service_type} onChange={e => set('service_type', e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
                   {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                   <option value="maintenance">Maintenance (PMS)</option>
                 </select>
@@ -113,7 +113,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer ID *</label>
                 <input type="number" value={form.customer_id || ''} onChange={e => set('customer_id', Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter customer ID..." />
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter customer ID..." />
               </div>
             )}
 
@@ -121,39 +121,39 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Date *</label>
                 <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
               </div>
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID*</label>
                 <input type="number" value={form.bus_id ?? ''} onChange={e => set('bus_id', Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter bus ID..." />
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter bus ID..." />
               </div>
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Destination / Description *</label>
               <input value={form.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. Baguio City or 'Engine overhaul'"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Estimated Cost (₱)</label>
               <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', Number(e.target.value))}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
             </div>
 
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
               <textarea rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Optional notes..." />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Optional notes..." />
             </div>
 
             {mutation.isError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">Failed to create job order.</p>}
           </form>
         </div>
 
-        <div className="p-6 px-8 border-t border-gray-100 bg-gray-50 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition">
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
             Cancel
           </button>
           <button form="jo-form" type="submit" disabled={!canSubmit || mutation.isPending}
@@ -171,14 +171,14 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-10 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-[1.5rem] bg-sky-50 flex items-center justify-center text-sky-600 shadow-sm">
               <LuClipboardList size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-black text-gray-900 tracking-tight">{jo.jo_number}</h2>
+              <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{jo.jo_number}</h2>
               <div className="flex items-center gap-2 mt-1">
                 <StatusBadge status={jo.status} />
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
@@ -187,7 +187,7 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 rounded-2xl text-gray-400 hover:text-gray-900 transition-all active:scale-95">
+          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 dark:text-white transition-all active:scale-95">
             <LuX size={20} />
           </button>
         </div>
@@ -197,24 +197,24 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</p>
-              <h3 className="text-lg font-bold text-gray-900">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
                 {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
               </h3>
-              {jo.customer && <p className="text-xs text-gray-500">{jo.customer.email || 'No email provided'}</p>}
+              {jo.customer && <p className="text-xs text-gray-500 dark:text-gray-400">{jo.customer.email || 'No email provided'}</p>}
             </div>
             <div className="space-y-1 text-right">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Investment</p>
-              <h3 className="text-2xl font-black text-gray-900">
+              <h3 className="text-2xl font-black text-gray-900 dark:text-white">
                 {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}
               </h3>
             </div>
           </div>
 
-          <div className="p-8 bg-gray-50 rounded-[2rem] border border-gray-100">
+          <div className="p-8 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
               <LuMapPin size={14} /> Destination / Work Summary
             </p>
-            <p className="text-sm text-gray-600 font-bold leading-relaxed">
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-bold leading-relaxed">
               {jo.destination}
             </p>
             {jo.notes && (
@@ -227,14 +227,14 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Schedule Date</p>
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <LuCalendar size={16} className="text-blue-500" />
                 {new Date(jo.service_date).toLocaleDateString(undefined, { dateStyle: 'long' })}
               </div>
             </div>
             <div className="space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Vehicle</p>
-              <div className="flex items-center gap-2 text-sm font-bold text-gray-700">
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <LuArrowRight size={16} className="text-sky-500" />
                 {jo.bus?.plate_number ?? `Bus #${jo.bus_id}`}
               </div>
@@ -242,7 +242,7 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
           </div>
         </div>
 
-        <div className="p-8 px-10 border-t border-gray-100 bg-white flex justify-end">
+        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end">
           <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-gray-900/20 hover:bg-gray-800 transition-all active:scale-95">
             Close View
           </button>
@@ -266,34 +266,34 @@ function JORow({
   onComplete: (id: number) => void;
 }) {
   return (
-    <tr className="hover:bg-blue-50/30 transition-all border-b border-gray-50/50 group last:border-0">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm shadow-sky-200/20 group-hover:bg-white group-hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm shadow-sky-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all">
             <LuClipboardList size={18} />
           </div>
-          <span className="font-black text-gray-900 tracking-tight">{jo.jo_number}</span>
+          <span className="font-black text-gray-900 dark:text-white tracking-tight">{jo.jo_number}</span>
         </div>
       </td>
       <td className="px-8 py-6"><ServiceTypeBadge type={jo.service_type} /></td>
-      <td className="px-8 py-6 text-sm font-bold text-gray-700">
+      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200">
         {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
       </td>
       <td className="px-8 py-6">
         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
           <LuMapPin size={12} className="shrink-0" /> Destination
         </div>
-        <div className="text-sm font-bold text-gray-700 truncate max-w-[150px]">{jo.destination}</div>
+        <div className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px]">{jo.destination}</div>
       </td>
       <td className="px-8 py-6">
         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
           <LuCalendar size={12} /> Schedule
         </div>
-        <div className="text-sm font-bold text-gray-700">{fmt(jo.service_date)}</div>
+        <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{fmt(jo.service_date)}</div>
       </td>
       <td className="px-8 py-6"><StatusBadge status={jo.status} /></td>
       <td className="px-8 py-6">
-        <div className="text-gray-900 font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
+        <div className="text-gray-900 dark:text-white font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
       <td className="px-8 py-6">
@@ -374,7 +374,7 @@ export default function JobOrders() {
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Orders
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
@@ -389,8 +389,8 @@ export default function JobOrders() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
-        <div className="flex items-center gap-4 bg-white p-2.5 rounded-2xl shadow-sm border border-gray-100 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 flex items-center justify-center text-gray-400">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md flex-1">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
           <input
@@ -403,7 +403,7 @@ export default function JobOrders() {
         </div>
         <div className="relative">
           <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-white font-bold">
             <option value="">All Statuses</option>
             {Object.entries(JO_STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -411,7 +411,7 @@ export default function JobOrders() {
         </div>
         <div className="relative">
           <select value={serviceType} onChange={e => setServiceType(e.target.value)}
-            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 text-sm bg-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 font-bold">
+            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-white font-bold">
             <option value="">All Types</option>
             {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             <option value="maintenance">Maintenance (PMS)</option>
@@ -421,7 +421,7 @@ export default function JobOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : jos.length === 0 ? (
@@ -432,14 +432,14 @@ export default function JobOrders() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
+              <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
                 <tr>
                   {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
                     <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {jos.map(jo => (
                   <JORow
                     key={jo.id}
