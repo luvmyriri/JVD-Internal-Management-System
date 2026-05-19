@@ -134,4 +134,47 @@ class PassportCaseController extends Controller
             'message' => 'Passport case updated.',
         ]);
     }
+
+    /**
+     * Transition status with state machine guard (PATCH /passport-cases/{id}/status).
+     */
+    public function updateStatus(Request $request, PassportCase $passportCase): JsonResponse
+    {
+        $request->validate(['status' => ['required', 'string']]);
+
+        $newStatus = $request->status;
+        $current   = $passportCase->status;
+        $allowed   = self::STATUS_TRANSITIONS[$current] ?? [];
+
+        if (!in_array($newStatus, $allowed)) {
+            return response()->json([
+                'success' => false,
+                'message' => "Cannot transition from '{$current}' to '{$newStatus}'.",
+            ], 422);
+        }
+
+        $passportCase->update(['status' => $newStatus]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new PassportCaseResource($passportCase->fresh(['customer', 'passenger', 'handler'])),
+            'message' => 'Status updated.',
+        ]);
+    }
+
+    /**
+     * Update document checklist (PATCH /passport-cases/{id}/checklist).
+     */
+    public function updateChecklist(Request $request, PassportCase $passportCase): JsonResponse
+    {
+        $request->validate(['checklist' => ['required', 'array']]);
+
+        $passportCase->update(['checklist' => $request->checklist]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => new PassportCaseResource($passportCase->fresh(['customer', 'passenger', 'handler'])),
+            'message' => 'Checklist updated.',
+        ]);
+    }
 }

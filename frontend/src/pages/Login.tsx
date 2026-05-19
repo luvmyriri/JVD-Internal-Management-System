@@ -463,7 +463,7 @@ export default function Login() {
 
       <div className="absolute bottom-8 left-0 right-0 z-10 px-6">
         <p className="text-center text-[10px] font-bold text-white/40 tracking-[0.3em] uppercase">
-          &copy; 2026 JVD Events and Travels Management Co. <span className="mx-2">|</span> Powered by Enterprise Core
+          &copy; 2026 JVD Events and Travels Management Co. 
         </p>
       </div>
 

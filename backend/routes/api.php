@@ -12,6 +12,7 @@ use App\Http\Controllers\Procurement\WorkOrderController;
 use App\Http\Controllers\Travel\CustomerController;
 use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
+use App\Http\Controllers\Travel\LegalDocumentController;
 use App\Http\Controllers\Fleet\BusController;
 use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Inventory\InventoryController;
@@ -127,6 +128,12 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
         Route::apiResource('passengers',     PassengerController::class)->except(['destroy']);
         Route::apiResource('passport-cases', PassportCaseController::class)->except(['destroy']);
+        Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');
+        Route::patch('/passport-cases/{passportCase}/checklist', [PassportCaseController::class, 'updateChecklist'])->name('passport-cases.checklist');
+        // Legal Documents
+        Route::get('/legal-documents',            [LegalDocumentController::class, 'index']);
+        Route::post('/legal-documents',           [LegalDocumentController::class, 'store']);
+        Route::delete('/legal-documents/{legalDocument}', [LegalDocumentController::class, 'destroy']);
     });
 
     // ──────────────────────────────────────

@@ -260,7 +260,7 @@ export default function Dashboard() {
           Object.values(obj).map(val => 
             typeof val === 'string' ? val.replace(/₱/g, 'PHP ') : val
           )
-        ),
+        ) as any,
         startY: 80,
         theme: 'grid',
         headStyles: {

@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuLoaderCircle, LuUser,
-  LuCloudUpload, LuDownload
+  LuFileDown, LuFileUp
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -385,13 +385,13 @@ export default function Fleet() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+            <LuFileDown className="w-4 h-4" /> Format
+          </button>
           <label className="cursor-pointer flex items-center gap-2 px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
-            <LuCloudUpload className="w-4 h-4" /> Bulk Import
+            <LuFileUp className="w-4 h-4" /> Bulk Upload
             <input type="file" multiple className="hidden" accept=".csv,.xlsx" onChange={handleFileChange} ref={fileInputRef} />
           </label>
-          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
-            <LuDownload className="w-4 h-4" /> Export Data
-          </button>
         </div>
       </div>
 

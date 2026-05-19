@@ -1,8 +1,477 @@
-export default function Passporting() {
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  LuStamp, LuPlus, LuSearch, LuLoaderCircle,
+  LuCalendar, LuCircleCheck, LuCircle, LuChevronRight,
+} from 'react-icons/lu';
+import { passportingApi } from '../../api/passporting';
+import { customerApi } from '../../api/customers';
+import { Pagination, Modal, Button } from '../../components/ui';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+interface PassportCase {
+  id: number;
+  reference_number?: string;
+  case_type: 'passport' | 'visa';
+  status: string;
+  checklist: Record<string, boolean>;
+  submitted_date?: string;
+  release_date?: string;
+  customer?: { id: number; first_name: string; last_name: string; email: string };
+  passenger?: { id: number; first_name: string; last_name: string };
+  handler?: { id: number; first_name: string; last_name: string };
+}
+
+const STATUS_FLOW = [
+  'requirements_gathering',
+  'documents_complete',
+  'submitted_for_processing',
+  'processing',
+  'ready_for_release',
+  'released',
+];
+
+const STATUS_LABELS: Record<string, string> = {
+  requirements_gathering: 'Requirements',
+  documents_complete: 'Docs Complete',
+  submitted_for_processing: 'Submitted',
+  processing: 'Processing',
+  ready_for_release: 'Ready',
+  released: 'Released',
+  denied: 'Denied',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  requirements_gathering: 'bg-amber-50 text-amber-700 border-amber-200',
+  documents_complete: 'bg-blue-50 text-blue-700 border-blue-200',
+  submitted_for_processing: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  processing: 'bg-purple-50 text-purple-700 border-purple-200',
+  ready_for_release: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  released: 'bg-gray-50 text-gray-600 border-gray-200',
+  denied: 'bg-red-50 text-red-700 border-red-200',
+};
+
+const PASSPORT_CHECKLIST = [
+  'Birth Certificate (PSA)',
+  'Valid Government ID',
+  'Accomplished DFA Form',
+  'Passport Photo',
+  'Payment Receipt',
+];
+
+const VISA_CHECKLIST = [
+  'Valid Passport',
+  'Visa Application Form',
+  'Proof of Accommodation',
+  'Flight Itinerary',
+  'Bank Statement (3 months)',
+  'Travel Insurance',
+];
+
+const STATUS_TRANSITIONS: Record<string, string[]> = {
+  requirements_gathering: ['documents_complete'],
+  documents_complete: ['submitted_for_processing', 'requirements_gathering'],
+  submitted_for_processing: ['processing'],
+  processing: ['denied', 'ready_for_release'],
+  ready_for_release: ['released'],
+  denied: ['requirements_gathering'],
+};
+
+// ── New Case Modal ─────────────────────────────────────────────────────────────
+function NewCaseModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    customer_id: '',
+    case_type: 'passport' as 'passport' | 'visa',
+  });
+
+  const { data: customersRes } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => customerApi.list({ per_page: 200 }),
+  });
+  const customers = customersRes?.data?.data ?? [];
+
+  const mutation = useMutation({
+    mutationFn: () => passportingApi.create({ ...form, customer_id: parseInt(form.customer_id) }),
+    onSuccess: () => {
+      toast.success('Case opened successfully!');
+      qc.invalidateQueries({ queryKey: ['passport_cases'] });
+      onClose();
+    },
+    onError: () => toast.error('Failed to open case.'),
+  });
+
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-100">Passporting</h1>
-      <p className="text-gray-400 mt-2">Passport case tracker — under development.</p>
+    <Modal isOpen onClose={onClose} title="Open New Case" size="sm">
+      <div className="p-6 space-y-5">
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
+          <select
+            value={form.customer_id}
+            onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">Select Customer...</option>
+            {customers.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Case Type *</label>
+          <div className="grid grid-cols-2 gap-3">
+            {(['passport', 'visa'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setForm(p => ({ ...p, case_type: t }))}
+                className={`py-3 rounded-xl text-sm font-bold border transition-all capitalize ${
+                  form.case_type === t
+                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
+                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!form.customer_id}>
+            Open Case
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Case Detail Modal ──────────────────────────────────────────────────────────
+function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [localChecklist, setLocalChecklist] = useState<Record<string, boolean>>(
+    caseData.checklist ?? {}
+  );
+  const checklistItems = caseData.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
+  const allowedNext = STATUS_TRANSITIONS[caseData.status] ?? [];
+
+  const statusMutation = useMutation({
+    mutationFn: (status: string) => passportingApi.updateStatus(caseData.id, status),
+    onSuccess: () => {
+      toast.success('Status updated!');
+      qc.invalidateQueries({ queryKey: ['passport_cases'] });
+      onClose();
+    },
+    onError: () => toast.error('Failed to update status.'),
+  });
+
+  const checklistMutation = useMutation({
+    mutationFn: (cl: Record<string, boolean>) => passportingApi.updateChecklist(caseData.id, cl),
+    onSuccess: () => {
+      toast.success('Checklist saved!');
+      qc.invalidateQueries({ queryKey: ['passport_cases'] });
+    },
+  });
+
+  const toggleItem = (item: string) => {
+    const updated = { ...localChecklist, [item]: !localChecklist[item] };
+    setLocalChecklist(updated);
+    checklistMutation.mutate(updated);
+  };
+
+  const completedCount = checklistItems.filter(i => localChecklist[i]).length;
+
+  return (
+    <Modal isOpen onClose={onClose} title={`Case #${caseData.id} — ${caseData.case_type === 'passport' ? 'Passport' : 'Visa'}`} size="lg">
+      <div className="p-6 space-y-6">
+        {/* Info row */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">
+              {caseData.customer?.first_name} {caseData.customer?.last_name}
+            </p>
+          </div>
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[caseData.status]}`}>
+              {STATUS_LABELS[caseData.status] ?? caseData.status}
+            </span>
+          </div>
+          {caseData.reference_number && (
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
+              <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{caseData.reference_number}</p>
+            </div>
+          )}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">
+              {caseData.handler ? `${caseData.handler.first_name} ${caseData.handler.last_name}` : '—'}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress */}
+        <div>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
+          <div className="flex items-center gap-1">
+            {STATUS_FLOW.map((s, i) => {
+              const idx = STATUS_FLOW.indexOf(caseData.status);
+              const done = i < idx;
+              const active = i === idx;
+              return (
+                <div key={s} className="flex items-center flex-1 gap-1">
+                  <div className={`h-2 flex-1 rounded-full transition-all ${done || active ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
+                  {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex justify-between mt-1">
+            <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[0]]}</span>
+            <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[STATUS_FLOW.length - 1]]}</span>
+          </div>
+        </div>
+
+        {/* Checklist */}
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
+            <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
+          </div>
+          <div className="space-y-2">
+            {checklistItems.map(item => (
+              <button
+                key={item}
+                onClick={() => toggleItem(item)}
+                className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
+              >
+                {localChecklist[item]
+                  ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
+                  : <LuCircle size={18} className="text-gray-300 shrink-0" />
+                }
+                <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                  {item}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Status transitions */}
+        {allowedNext.length > 0 && (
+          <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Advance Status</p>
+            <div className="flex flex-wrap gap-2">
+              {allowedNext.map(next => (
+                <Button
+                  key={next}
+                  onClick={() => statusMutation.mutate(next)}
+                  isLoading={statusMutation.isPending}
+                  size="sm"
+                  className="capitalize"
+                >
+                  → {STATUS_LABELS[next] ?? next}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+// ── Kanban Card ────────────────────────────────────────────────────────────────
+function CaseCard({ c, onClick }: { c: PassportCase; onClick: () => void }) {
+  const checklistItems = c.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
+  const done = checklistItems.filter(i => c.checklist?.[i]).length;
+  const pct = Math.round((done / checklistItems.length) * 100);
+
+  return (
+    <div
+      onClick={onClick}
+      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all"
+    >
+      <div className="flex items-start justify-between gap-2 mb-3">
+        <div>
+          <p className="text-sm font-black text-gray-900 dark:text-white">
+            {c.customer?.first_name} {c.customer?.last_name}
+          </p>
+          <p className="text-[10px] font-mono text-gray-400 mt-0.5">Case #{c.id}</p>
+        </div>
+        <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
+          c.case_type === 'passport' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-violet-50 text-violet-600 border-violet-200'
+        }`}>
+          {c.case_type}
+        </span>
+      </div>
+
+      {/* Checklist progress */}
+      <div className="mb-2">
+        <div className="flex justify-between mb-1">
+          <span className="text-[9px] text-gray-400 font-bold uppercase">Checklist</span>
+          <span className="text-[9px] font-bold text-blue-600">{done}/{checklistItems.length}</span>
+        </div>
+        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+          <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
+        </div>
+      </div>
+
+      {c.submitted_date && (
+        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-2">
+          <LuCalendar size={10} />
+          Submitted: {new Date(c.submitted_date).toLocaleDateString()}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Main Page ─────────────────────────────────────────────────────────────────
+export default function Passporting() {
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [showNew, setShowNew] = useState(false);
+  const [selected, setSelected] = useState<PassportCase | null>(null);
+  const [activeType, setActiveType] = useState<'all' | 'passport' | 'visa'>('all');
+
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['passport_cases', search, page, activeType],
+    queryFn: () => passportingApi.list({
+      search: search || undefined,
+      case_type: activeType !== 'all' ? activeType : undefined,
+      page,
+      per_page: 20,
+    }),
+  });
+
+  const cases: PassportCase[] = response?.data?.data ?? [];
+  const meta = response?.data?.meta;
+
+  // Group by status for kanban
+  const grouped = STATUS_FLOW.reduce<Record<string, PassportCase[]>>((acc, status) => {
+    acc[status] = cases.filter(c => c.status === status);
+    return acc;
+  }, {});
+  const denied = cases.filter(c => c.status === 'denied');
+
+  return (
+    <div className="space-y-8 pb-12">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
+            {meta?.total ?? '0'} Cases
+          </div>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Passport & Visa Processing</p>
+        </div>
+        <Button onClick={() => setShowNew(true)} className="flex items-center gap-2">
+          <LuPlus size={16} /> Open Case
+        </Button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+          {(['all', 'passport', 'visa'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => { setActiveType(t); setPage(1); }}
+              className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all capitalize ${
+                activeType === t
+                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
+              }`}
+            >
+              {t === 'all' ? 'All Cases' : t}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 max-w-md">
+          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400">
+            <LuSearch size={18} />
+          </div>
+          <input
+            type="text"
+            placeholder="Search by customer or reference..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-gray-800 dark:text-gray-200 placeholder:text-gray-400 outline-none"
+          />
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-24 gap-4">
+          <LuLoaderCircle size={32} className="animate-spin text-blue-600" />
+          <p className="text-sm text-gray-500 font-medium">Loading cases...</p>
+        </div>
+      ) : cases.length === 0 ? (
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 border-dashed flex flex-col items-center justify-center py-24 text-center px-4">
+          <div className="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-3xl flex items-center justify-center mb-4">
+            <LuStamp size={28} />
+          </div>
+          <h3 className="text-gray-900 dark:text-white font-bold mb-1">No cases found</h3>
+          <p className="text-sm text-gray-500 max-w-sm">Open a new passport or visa case to get started.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto pb-4">
+          <div className="flex gap-4 min-w-max">
+            {STATUS_FLOW.map(status => (
+              <div key={status} className="w-64 shrink-0 flex flex-col">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[status]}`}>
+                    {STATUS_LABELS[status]}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-black">{grouped[status]?.length ?? 0}</span>
+                </div>
+                <div className="flex-1 flex flex-col h-[400px] bg-gray-50 dark:bg-gray-800/40 rounded-[1.8rem] p-3 border border-gray-100 dark:border-gray-800/60">
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                    {(grouped[status] ?? []).map(c => (
+                      <CaseCard key={c.id} c={c} onClick={() => setSelected(c)} />
+                    ))}
+                    {(grouped[status] ?? []).length === 0 && (
+                      <div className="h-full flex items-center justify-center">
+                        <p className="text-center text-[10px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest">Empty</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {denied.length > 0 && (
+              <div className="w-64 shrink-0 flex flex-col">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-red-50 text-red-700 border-red-200">
+                    Denied
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-black">{denied.length}</span>
+                </div>
+                <div className="flex-1 flex flex-col h-[400px] bg-gray-50 dark:bg-gray-800/40 rounded-[1.8rem] p-3 border border-gray-100 dark:border-gray-800/60">
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                    {denied.map(c => (
+                      <CaseCard key={c.id} c={c} onClick={() => setSelected(c)} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {meta && meta.last_page > 1 && (
+        <Pagination currentPage={page} lastPage={meta.last_page} total={meta.total} perPage={meta.per_page} onPageChange={setPage} />
+      )}
+
+      {showNew && <NewCaseModal onClose={() => setShowNew(false)} />}
+      {selected && <CaseDetailModal caseData={selected} onClose={() => setSelected(null)} />}
     </div>
   );
 }
