@@ -146,7 +146,7 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-30">
+    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50">
       {/* Brand */}
       <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-800 shrink-0">
         <img

@@ -61,7 +61,7 @@ export default function Header() {
   const { title, subtitle } = getPageContext();
 
   return (
-    <header className={`h-16 border-b flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-20 transition-colors ${
+    <header className={`h-16 border-b flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-40 transition-colors ${
       theme === 'dark' 
         ? 'bg-gray-900 border-gray-800' 
         : 'bg-white border-gray-200'
