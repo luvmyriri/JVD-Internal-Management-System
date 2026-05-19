@@ -26,10 +26,10 @@ export const accreditationsApi = {
     client.get<PaginatedResponse<Accreditation>>('/accreditations', { params }),
 
   create: (data: Partial<Accreditation>) =>
-    client.post<Accreditation>('/accreditations', data),
+    client.post<{ success: boolean; data: Accreditation }>('/accreditations', data),
 
   update: (id: number, data: Partial<Accreditation>) =>
-    client.put<Accreditation>(`/accreditations/${id}`, data),
+    client.put<{ success: boolean; data: Accreditation }>(`/accreditations/${id}`, data),
 
   generateKycLink: (id: number) =>
     client.post<{ message: string, link: string, email_sent_to: string }>(`/accreditations/${id}/generate-kyc`),

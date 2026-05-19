@@ -616,7 +616,7 @@ export default function Accreditations() {
         });
         
         const res = await createAccMutation.mutateAsync(dataToSubmit);
-        const accId = res.data?.data?.id || res.data?.id;
+        const accId = res.data?.data?.id || (res.data as any)?.id;
 
         if (accId) {
            if (kyc_file) await accreditationsApi.uploadDocument(accId, 'kyc', kyc_file);

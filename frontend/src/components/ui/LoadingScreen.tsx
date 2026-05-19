@@ -18,7 +18,7 @@ export const LoadingScreen = () => {
           transition={{
             opacity: { duration: 0.5 },
             scale: { 
-              duration: 2,
+              duration: 1,
               repeat: Infinity,
               ease: "easeInOut"
             }
@@ -32,7 +32,7 @@ export const LoadingScreen = () => {
               opacity: [0.5, 0, 0.5]
             }}
             transition={{
-              duration: 2,
+              duration: 1,
               repeat: Infinity,
               ease: "easeInOut"
             }}
@@ -75,7 +75,7 @@ export const LoadingScreen = () => {
           JVD Events & Travels
         </p>
         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-          Management System v2.0
+          Management System
         </p>
       </div>
     </div>

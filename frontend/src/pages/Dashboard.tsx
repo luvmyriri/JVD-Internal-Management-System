@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useNavigate } from 'react-router-dom';
@@ -96,6 +96,65 @@ const branchData = {
     { name: 'Sun', value: 12 },
   ],
 };
+
+const detailedBranchData = {
+  accounting: [
+    { Date: '2026-05-18', 'Invoice ID': 'INV-001', Client: 'Acme Corp', Amount: '₱150,000', Status: 'Paid' },
+    { Date: '2026-05-17', 'Invoice ID': 'INV-002', Client: 'Globex', Amount: '₱200,000', Status: 'Pending' },
+    { Date: '2026-05-16', 'Invoice ID': 'INV-003', Client: 'Soylent Corp', Amount: '₱50,000', Status: 'Paid' },
+    { Date: '2026-05-15', 'Invoice ID': 'INV-004', Client: 'Initech', Amount: '₱120,000', Status: 'Cancelled' },
+    { Date: '2026-05-14', 'Invoice ID': 'INV-005', Client: 'Umbrella Corp', Amount: '₱300,000', Status: 'Paid' },
+  ],
+  procurement: [
+    { Date: '2026-05-18', 'PO ID': 'PO-1001', Supplier: 'Office Depot', Item: 'Laptops', Amount: '₱250,000', Status: 'Approved' },
+    { Date: '2026-05-17', 'PO ID': 'PO-1002', Supplier: 'Dell', Item: 'Monitors', Amount: '₱80,000', Status: 'Pending' },
+    { Date: '2026-05-16', 'PO ID': 'PO-1003', Supplier: 'Furniture Inc', Item: 'Desks', Amount: '₱45,000', Status: 'Delivered' },
+    { Date: '2026-05-15', 'PO ID': 'PO-1004', Supplier: 'Stationery Pro', Item: 'Paper', Amount: '₱5,000', Status: 'Approved' },
+  ],
+  inventory: [
+    { 'Item Code': 'ITEM-001', 'Item Name': 'MacBook Pro 14"', Category: 'Electronics', 'Stock Level': '45 pcs', Status: 'In Stock' },
+    { 'Item Code': 'ITEM-002', 'Item Name': 'Dell 24" Monitor', Category: 'Electronics', 'Stock Level': '12 pcs', Status: 'Low Stock' },
+    { 'Item Code': 'ITEM-003', 'Item Name': 'Ergonomic Chair', Category: 'Furniture', 'Stock Level': '0 pcs', Status: 'Out of Stock' },
+    { 'Item Code': 'ITEM-004', 'Item Name': 'A4 Paper Ream', Category: 'Supplies', 'Stock Level': '150 pcs', Status: 'In Stock' },
+  ],
+  travel: [
+    { Date: '2026-05-18', 'Booking ID': 'BK-9001', Customer: 'John Doe', Destination: 'Boracay', Amount: '₱12,000', Status: 'Confirmed' },
+    { Date: '2026-05-17', 'Booking ID': 'BK-9002', Customer: 'Jane Smith', Destination: 'Palawan', Amount: '₱18,000', Status: 'Pending' },
+    { Date: '2026-05-16', 'Booking ID': 'BK-9003', Customer: 'Bob Johnson', Destination: 'Cebu', Amount: '₱8,500', Status: 'Confirmed' },
+    { Date: '2026-05-15', 'Booking ID': 'BK-9004', Customer: 'Alice Brown', Destination: 'Siargao', Amount: '₱25,000', Status: 'Cancelled' },
+  ],
+};
+
+const detailedCustomerData = [
+  { 'Customer ID': 'CUST-001', Name: 'John Doe', Email: 'john.doe@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-01-15' },
+  { 'Customer ID': 'CUST-002', Name: 'Jane Smith', Email: 'jane.smith@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-02-20' },
+  { 'Customer ID': 'CUST-003', Name: 'Bob Johnson', Email: 'bob.j@example.com', 'Plan Type': 'Enterprise', Status: 'Inactive', 'Join Date': '2025-11-10' },
+  { 'Customer ID': 'CUST-004', Name: 'Alice Brown', Email: 'alice.b@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-03-05' },
+  { 'Customer ID': 'CUST-005', Name: 'Charlie Green', Email: 'charlie.g@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-04-12' },
+];
+
+const detailedEmployeeData = [
+  { 'Employee ID': 'EMP-001', Name: 'Alice Smith', Department: 'HR', Position: 'Manager', Status: 'Active', 'Hire Date': '2024-05-10' },
+  { 'Employee ID': 'EMP-002', Name: 'Bob Jones', Department: 'Accounting', Position: 'Accountant', Status: 'Active', 'Hire Date': '2025-01-15' },
+  { 'Employee ID': 'EMP-003', Name: 'Charlie Brown', Department: 'IT', Position: 'Developer', Status: 'Active', 'Hire Date': '2025-06-01' },
+  { 'Employee ID': 'EMP-004', Name: 'David Wilson', Department: 'Procurement', Position: 'Officer', Status: 'On Leave', 'Hire Date': '2024-11-20' },
+  { 'Employee ID': 'EMP-005', Name: 'Eva Davis', Department: 'Travel', Position: 'Agent', Status: 'Active', 'Hire Date': '2026-02-15' },
+];
+
+const detailedRevenueData = [
+  { Month: 'January', 'Gross Revenue': '₱1,050,000', Expenses: '₱600,000', 'Net Profit': '₱450,000', Status: 'Audited' },
+  { Month: 'February', 'Gross Revenue': '₱1,280,000', Expenses: '₱700,000', 'Net Profit': '₱580,000', Status: 'Audited' },
+  { Month: 'March', 'Gross Revenue': '₱1,520,000', Expenses: '₱800,000', 'Net Profit': '₱720,000', Status: 'Audited' },
+  { Month: 'April', 'Gross Revenue': '₱1,850,000', Expenses: '₱900,000', 'Net Profit': '₱950,000', Status: 'Audited' },
+  { Month: 'May', 'Gross Revenue': '₱2,210,000', Expenses: '₱1,000,000', 'Net Profit': '₱1,210,000', Status: 'Estimated' },
+];
+
+const detailedAgentData = [
+  { 'Agent ID': 'AGT-001', Name: 'James Bond', Area: 'Manila', 'Total Bookings': 45, 'Success Rate': '95%', Status: 'Active' },
+  { 'Agent ID': 'AGT-002', Name: 'Ethan Hunt', Area: 'Cebu', 'Total Bookings': 32, 'Success Rate': '90%', Status: 'Active' },
+  { 'Agent ID': 'AGT-003', Name: 'Jason Bourne', Area: 'Davao', 'Total Bookings': 12, 'Success Rate': '85%', Status: 'Inactive' },
+  { 'Agent ID': 'AGT-004', Name: 'Lara Croft', Area: 'Palawan', 'Total Bookings': 28, 'Success Rate': '98%', Status: 'Active' },
+];
 
 const mainChartData = {
   Day: [
@@ -197,7 +256,11 @@ export default function Dashboard() {
       // Main Data Table
       autoTable(doc, {
         head: [Object.keys(data[0]).map(k => k.toUpperCase())],
-        body: data.map(obj => Object.values(obj)),
+        body: data.map(obj => 
+          Object.values(obj).map(val => 
+            typeof val === 'string' ? val.replace(/₱/g, 'PHP ') : val
+          )
+        ),
         startY: 80,
         theme: 'grid',
         headStyles: {
@@ -254,141 +317,163 @@ export default function Dashboard() {
   };
 
   const exportToExcel = async (title: string, data: any[]) => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('JVD Report');
+    alert("Starting Excel export...");
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet('JVD Report');
 
-    // 1. Setup Columns (Improved Auto-fit estimation)
-    const columns = Object.keys(data[0] || {}).map(key => {
-      const headerLen = key.length;
-      const maxContentLen = Math.max(...data.map(row => String(row[key] || '').length), 0);
-      return {
-        header: key.toUpperCase(),
-        key: key,
-        width: Math.max(headerLen, maxContentLen, 12) + 8 // More generous padding
-      };
-    });
+      // 1. Setup Columns (Improved Auto-fit estimation)
+      const columns = Object.keys(data[0] || {}).map(key => {
+        const headerLen = key.length;
+        const maxContentLen = Math.max(...data.map(row => String(row[key] || '').length), 0);
+        return {
+          header: key.toUpperCase(),
+          key: key,
+          width: Math.max(headerLen, maxContentLen, 12) + 8 // More generous padding
+        };
+      });
 
-    if (columns[0]) columns[0].width = Math.max(columns[0].width, 35);
-    worksheet.columns = columns;
+      if (columns[0]) columns[0].width = Math.max(columns[0].width, 35);
+      worksheet.columns = columns;
 
-    // 2. Add Professional Header Section (Rows 1-6)
-    worksheet.insertRow(1, ['JVD INTERNAL MANAGEMENT SYSTEM']);
-    worksheet.insertRow(2, [`OFFICIAL REPORT: ${title.toUpperCase()}`]);
-    worksheet.insertRow(3, [`Generated by: ${user?.first_name} ${user?.last_name}`]);
-    worksheet.insertRow(4, [`Date: ${new Date().toLocaleString()}`]);
-    worksheet.insertRow(5, [`Reference: JVD-REF-${Math.floor(100000 + Math.random() * 900000)}`]);
-    worksheet.insertRow(6, [`Status: AUTHORIZED INTERNAL USE ONLY`]);
-    worksheet.insertRow(7, []); // Spacer
+      // 2. Add Professional Header Section (Rows 1-6)
+      worksheet.insertRow(1, ['JVD INTERNAL MANAGEMENT SYSTEM']);
+      worksheet.insertRow(2, [`OFFICIAL REPORT: ${title.toUpperCase()}`]);
+      worksheet.insertRow(3, [`Generated by: ${user?.first_name} ${user?.last_name}`]);
+      worksheet.insertRow(4, [`Date: ${new Date().toLocaleString()}`]);
+      worksheet.insertRow(5, [`Reference: JVD-REF-${Math.floor(100000 + Math.random() * 900000)}`]);
+      worksheet.insertRow(6, [`Status: AUTHORIZED INTERNAL USE ONLY`]);
+      worksheet.insertRow(7, []); // Spacer
 
-    // Style the Header Section
-    for (let i = 1; i <= 6; i++) {
-      const row = worksheet.getRow(i);
-      row.getCell(1).font = { bold: true, size: i === 1 ? 16 : 10, color: { argb: i === 1 ? 'FF1E3A8A' : 'FF64748B' } };
-    }
+      // Style the Header Section
+      for (let i = 1; i <= 6; i++) {
+        const row = worksheet.getRow(i);
+        row.getCell(1).font = { bold: true, size: i === 1 ? 16 : 10, color: { argb: i === 1 ? 'FF1E3A8A' : 'FF64748B' } };
+      }
 
-    // 3. Add the Data Table (Starts at row 8)
-    worksheet.getRow(8).values = Object.keys(data[0] || {}).map(k => k.toUpperCase());
+      // 3. Add the Data Table (Starts at row 8)
+      worksheet.getRow(8).values = Object.keys(data[0] || {}).map(k => k.toUpperCase());
 
-    data.forEach((item) => {
-      worksheet.addRow(item);
-    });
-
-    // 4. Style the Table Header (Row 8)
-    const headerRow = worksheet.getRow(8);
-    headerRow.eachCell((cell) => {
-      cell.fill = {
-        type: 'pattern',
-        pattern: 'solid',
-        fgColor: { argb: 'FF2563EB' }
-      };
-      cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      cell.border = {
-        top: { style: 'thin' },
-        left: { style: 'thin' },
-        bottom: { style: 'thin' },
-        right: { style: 'thin' }
-      };
-      cell.alignment = { vertical: 'middle', horizontal: 'center' };
-    });
-
-    // 5. Style the Data Cells (Alignment Logic)
-    worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber > 8 && rowNumber <= 8 + data.length) {
-        row.eachCell((cell) => {
-          cell.border = {
-            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-          };
-
-          // Center-align numbers, percentages, and currencies
-          const val = String(cell.value || '');
-          const isNumeric = !isNaN(Number(cell.value)) || val.includes('%') || val.includes('₱');
-
-          cell.alignment = {
-            vertical: 'middle',
-            horizontal: isNumeric ? 'center' : 'left',
-            indent: isNumeric ? 0 : 1 // Slight indent for text
-          };
-
-          if (rowNumber % 2 === 0) {
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FFF8FAFC' }
-            };
+      data.forEach((item) => {
+        const cleanedItem = { ...item };
+        Object.keys(cleanedItem).forEach(key => {
+          if (typeof cleanedItem[key] === 'string') {
+            cleanedItem[key] = cleanedItem[key].replace(/₱/g, 'PHP ');
           }
         });
+        worksheet.addRow(cleanedItem);
+      });
+
+      // 4. Style the Table Header (Row 8)
+      const headerRow = worksheet.getRow(8);
+      headerRow.eachCell((cell) => {
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF2563EB' }
+        };
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' }
+        };
+        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+      });
+
+      // 5. Style the Data Cells (Alignment Logic)
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber > 8 && rowNumber <= 8 + data.length) {
+          row.eachCell((cell) => {
+            cell.border = {
+              top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+              right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+            };
+
+            // Center-align numbers, percentages, and currencies
+            const val = String(cell.value || '');
+            const isNumeric = !isNaN(Number(cell.value)) || val.includes('%') || val.includes('₱');
+
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: isNumeric ? 'center' : 'left',
+              indent: isNumeric ? 0 : 1 // Slight indent for text
+            };
+
+            if (rowNumber % 2 === 0) {
+              cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FFF8FAFC' }
+              };
+            }
+          });
+        }
+      });
+
+      // 6. Add Signature Footer
+      const footerStart = 8 + data.length + 3;
+      worksheet.getRow(footerStart).values = ['--------------------------------------------------'];
+      worksheet.getRow(footerStart + 1).values = ['Authorized Signature'];
+      worksheet.getRow(footerStart + 2).values = [`${user?.first_name} ${user?.last_name}`];
+      worksheet.getRow(footerStart + 3).values = ['JVD Events & Travel Management Co.'];
+
+      for (let i = 0; i < 4; i++) {
+        worksheet.getRow(footerStart + i).getCell(1).font = { size: 9, color: { argb: 'FF64748B' } };
       }
-    });
 
-    // 6. Add Signature Footer
-    const footerStart = 8 + data.length + 3;
-    worksheet.getRow(footerStart).values = ['--------------------------------------------------'];
-    worksheet.getRow(footerStart + 1).values = ['Authorized Signature'];
-    worksheet.getRow(footerStart + 2).values = [`${user?.first_name} ${user?.last_name}`];
-    worksheet.getRow(footerStart + 3).values = ['JVD Events & Travel Management Co.'];
+      // 7. Protection (Make headers non-editable)
+      await worksheet.protect('jvd-secure', {
+        selectLockedCells: true,
+        selectUnlockedCells: true,
+      });
 
-    for (let i = 0; i < 4; i++) {
-      worksheet.getRow(footerStart + i).getCell(1).font = { size: 9, color: { argb: 'FF64748B' } };
+      // 8. Generate and Save
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${title.toLowerCase().replace(/\s+/g, '_')}_report.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Excel Generation Error:", error);
+      alert("Failed to generate Excel report.");
     }
-
-    // 7. Protection (Make headers non-editable)
-    // Lock all cells by default, then unlock if needed. 
-    // Here we just protect the sheet to make it professional.
-    await worksheet.protect('jvd-secure', {
-      selectLockedCells: true,
-      selectUnlockedCells: true,
-    });
-
-    // 8. Generate and Save
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${title.toLowerCase().replace(/\s+/g, '_')}_report.xlsx`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
   };
 
   if (!user) return null;
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      };
+
+      if (isOpen) {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, [isOpen]);
 
     return (
-      <div
-        className="relative flex items-center"
-        onMouseEnter={() => setIsOpen(true)}
-        onMouseLeave={() => setIsOpen(false)}
-      >
+      <div className="relative flex items-center" ref={dropdownRef}>
         <button
           onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-          className={`p-1.5 rounded-xl transition-all opacity-0 group-hover:opacity-100 ${
+          className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${
             variant === 'light'
               ? 'bg-white/20 hover:bg-white/30 text-white'
               : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
@@ -399,23 +484,23 @@ export default function Dashboard() {
 
         {isOpen && (
           <div className="absolute top-full right-0 pt-2 z-[100]">
-            <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
-              >
-                <LuFileText className="w-3.5 h-3.5" />
-                Export PDF
-              </button>
-              <button
-                onClick={(e) => { e.stopPropagation(); exportToExcel(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
-              >
-                <LuFileSpreadsheet className="w-3.5 h-3.5" />
-                Export Excel
-              </button>
+              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
+                <button
+                  onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
+                >
+                  <LuFileText className="w-3.5 h-3.5" />
+                  Export PDF
+                </button>
+                <button
+                  onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
+                >
+                  <LuFileSpreadsheet className="w-3.5 h-3.5" />
+                  Export Excel
+                </button>
+              </div>
             </div>
-          </div>
         )}
       </div>
     );
@@ -424,7 +509,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-10 pb-12 pt-4">
       {/* Top Row: Global KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6 relative z-20">
         {/* Total Employees */}
         <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-xl shadow-blue-300/40 dark:shadow-blue-900/40 flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default">
           <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
@@ -438,7 +523,7 @@ export default function Dashboard() {
                 <LuArrowUpRight className="w-3 h-3" />
                 +12%
               </div>
-              <DownloadActions variant="light" title="Global Personnel" data={[{ Category: 'Total Employees', Value: 234, Growth: '+12%', Timestamp: new Date().toISOString() }]} />
+              <DownloadActions variant="light" title="Global Personnel" data={detailedEmployeeData} />
             </div>
           </div>
           <div className="relative z-10">
@@ -460,7 +545,7 @@ export default function Dashboard() {
                 <LuArrowUpRight className="w-3 h-3" />
                 +8%
               </div>
-              <DownloadActions variant="light" title="Revenue Metrics" data={[{ Category: 'Monthly Revenue', Value: '₱2.3M', Growth: '+8%', Timestamp: new Date().toISOString() }]} />
+              <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
             </div>
           </div>
           <div className="relative z-10">
@@ -482,7 +567,7 @@ export default function Dashboard() {
                 <LuArrowUpRight className="w-3 h-3" />
                 +5%
               </div>
-              <DownloadActions variant="light" title="Agent Activity" data={[{ Category: 'Active Agents', Value: 89, Growth: '+5%', Timestamp: new Date().toISOString() }]} />
+              <DownloadActions variant="light" title="Agent Activity" data={detailedAgentData} />
             </div>
           </div>
           <div className="relative z-10">
@@ -504,7 +589,7 @@ export default function Dashboard() {
                 <LuArrowUpRight className="w-3 h-3" />
                 +15%
               </div>
-              <DownloadActions variant="light" title="Customer Base" data={[{ Category: 'Total Customers', Value: 1456, Growth: '+15%', Timestamp: new Date().toISOString() }]} />
+              <DownloadActions variant="light" title="Customer Base" data={detailedCustomerData} />
             </div>
           </div>
           <div className="relative z-10">
@@ -515,7 +600,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Chart + Fleet Calendar + Traffic Donut */}
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6 relative z-10">
       {/* System Performance */}
       <div className="xl:col-span-2 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-6 group">
         <div className="flex flex-col md:flex-row md:items-center justify-between mb-5 gap-3">
@@ -633,16 +718,21 @@ export default function Dashboard() {
       <h3 className="text-xs font-black text-gray-400 uppercase tracking-[0.3em] px-2">Branch Performance Matrix</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Accounting Branch */}
-        <div className="relative overflow-hidden p-6 rounded-[2.5rem] bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-xl shadow-emerald-300/40 dark:shadow-emerald-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/accounting/billing')}>
-          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
-          <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-emerald-400 to-teal-600 text-white shadow-xl shadow-emerald-300/40 dark:shadow-emerald-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/accounting/billing')}>
+          <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+          </div>
           <div className="flex items-center justify-between mb-4 relative z-10">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <LuDollarSign className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-2">
-              <p className="text-lg font-black">₱4,200,000</p>
-              <DownloadActions variant="light" title="Accounting Branch Report" data={branchData.accounting} />
+              <div className="text-right">
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Accounting</p>
+                <p className="text-lg font-black">₱4,200,000</p>
+              </div>
+              <DownloadActions variant="light" title="Accounting Branch Report" data={detailedBranchData.accounting} />
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
@@ -655,9 +745,11 @@ export default function Dashboard() {
         </div>
 
         {/* Procurement Branch */}
-        <div className="relative overflow-hidden p-6 rounded-[2.5rem] bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-300/40 dark:shadow-blue-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/procurement/purchase-orders')}>
-          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
-          <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-xl shadow-blue-300/40 dark:shadow-blue-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/procurement/purchase-orders')}>
+          <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+          </div>
           <div className="flex items-center justify-between mb-1 relative z-10">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <LuShoppingCart className="w-5 h-5 text-white" />
@@ -667,7 +759,7 @@ export default function Dashboard() {
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Procurement</p>
                 <p className="text-lg font-black">142 POs</p>
               </div>
-              <DownloadActions variant="light" title="Procurement Branch Report" data={branchData.procurement} />
+              <DownloadActions variant="light" title="Procurement Branch Report" data={detailedBranchData.procurement} />
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
@@ -680,9 +772,11 @@ export default function Dashboard() {
         </div>
 
         {/* Inventory Branch */}
-        <div className="relative overflow-hidden p-6 rounded-[2.5rem] bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-300/40 dark:shadow-violet-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/inventory/supplies')}>
-          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
-          <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-xl shadow-violet-300/40 dark:shadow-violet-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/inventory/supplies')}>
+          <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+          </div>
           <div className="flex items-center justify-between mb-1 relative z-10">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <LuPackage className="w-5 h-5 text-white" />
@@ -692,7 +786,7 @@ export default function Dashboard() {
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Inventory</p>
                 <p className="text-lg font-black">92% Stock</p>
               </div>
-              <DownloadActions variant="light" title="Inventory Branch Report" data={branchData.inventory} />
+              <DownloadActions variant="light" title="Inventory Branch Report" data={detailedBranchData.inventory} />
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
@@ -705,9 +799,11 @@ export default function Dashboard() {
         </div>
 
         {/* Travel Branch */}
-        <div className="relative overflow-hidden p-6 rounded-[2.5rem] bg-gradient-to-br from-rose-500 to-pink-700 text-white shadow-xl shadow-rose-300/40 dark:shadow-rose-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/travel/customers')}>
-          <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
-          <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+        <div className="relative p-6 rounded-[2.5rem] bg-gradient-to-br from-rose-500 to-pink-700 text-white shadow-xl shadow-rose-300/40 dark:shadow-rose-900/40 hover:scale-[1.02] transition-all group cursor-pointer" onClick={() => navigate('/travel/customers')}>
+          <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden">
+            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
+            <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full bg-white/10" />
+          </div>
           <div className="flex items-center justify-between mb-1 relative z-10">
             <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <LuGlobe className="w-5 h-5 text-white" />
@@ -717,7 +813,7 @@ export default function Dashboard() {
                 <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Travel</p>
                 <p className="text-lg font-black">24 Bookings</p>
               </div>
-              <DownloadActions variant="light" title="Travel Branch Report" data={branchData.travel} />
+              <DownloadActions variant="light" title="Travel Branch Report" data={detailedBranchData.travel} />
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
@@ -730,37 +826,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Gradient Stat Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-5">
-        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-pink-500 to-rose-600 text-white shadow-lg shadow-pink-200/40 dark:shadow-pink-900/30">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Revenue Status</p>
-          <p className="text-2xl font-black mt-1">₱4,200,000</p>
-          <p className="text-[10px] opacity-60 mt-0.5">Jan 01 – Jan 10</p>
-          <div className="h-12 mt-3 opacity-60"><ResponsiveContainer width="100%" height="100%"><BarChart data={branchData.accounting} barSize={6}><Bar dataKey="value" fill="white" radius={[3,3,0,0]} /></BarChart></ResponsiveContainer></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/20" />
-        </div>
-        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-violet-500 to-blue-600 text-white shadow-lg shadow-violet-200/40 dark:shadow-violet-900/30">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Purchase Orders</p>
-          <p className="text-2xl font-black mt-1">142 POs</p>
-          <p className="text-[10px] opacity-60 mt-0.5">Monthly</p>
-          <div className="h-12 mt-3 opacity-60"><ResponsiveContainer width="100%" height="100%"><AreaChart data={branchData.procurement}><Area type="monotone" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/20" />
-        </div>
-        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-200/40 dark:shadow-cyan-900/30">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Fleet Utilization</p>
-          <p className="text-2xl font-black mt-1">87%</p>
-          <p className="text-[10px] opacity-60 mt-0.5">Monthly</p>
-          <div className="h-12 mt-3 opacity-60"><ResponsiveContainer width="100%" height="100%"><LineChart data={branchData.inventory}><Line type="monotone" dataKey="value" stroke="white" strokeWidth={2} dot={false} /></LineChart></ResponsiveContainer></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/20" />
-        </div>
-        <div className="relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg shadow-amber-200/40 dark:shadow-amber-900/30">
-          <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Travel Bookings</p>
-          <p className="text-2xl font-black mt-1">24</p>
-          <p className="text-[10px] opacity-60 mt-0.5">Jan 01 – Jan 10</p>
-          <div className="h-12 mt-3 opacity-60"><ResponsiveContainer width="100%" height="100%"><AreaChart data={branchData.travel}><Area type="basis" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} /></AreaChart></ResponsiveContainer></div>
-          <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/20" />
-        </div>
-      </div>
+
 
       {/* Bottom: Recent Activity + Order Status Pie */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

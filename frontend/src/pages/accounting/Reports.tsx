@@ -278,6 +278,19 @@ export default function Reports() {
     return <LoadingScreen />;
   }
 
+  const trendData = data?.trend || [];
+  let processedTrend = trendData;
+  if (trendData.length === 1) {
+    const d = new Date(trendData[0].date);
+    const startOfMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+    if (trendData[0].date !== startOfMonth) {
+      processedTrend = [
+        { date: startOfMonth, total: 0 },
+        trendData[0]
+      ];
+    }
+  }
+
   return (
     <div className="space-y-10 pb-12 mt-10">
       
@@ -411,7 +424,7 @@ export default function Reports() {
           </div>
           <div className="h-[350px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data?.trend} style={{ background: "transparent" }}>
+              <AreaChart data={processedTrend} style={{ background: "transparent" }}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
@@ -432,7 +445,16 @@ export default function Reports() {
                   labelStyle={{ fontWeight: 800, color: '#111827', marginBottom: '8px' }}
                   formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
                 />
-                <Area type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={4} fillOpacity={1} fill="url(#colorRev)" />
+                <Area 
+                  type="monotone" 
+                  dataKey="total" 
+                  stroke="#3b82f6" 
+                  strokeWidth={4} 
+                  fillOpacity={1} 
+                  fill="url(#colorRev)" 
+                  dot={{ r: 5, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 7, strokeWidth: 0 }}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </div>
