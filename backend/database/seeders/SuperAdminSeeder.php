@@ -13,7 +13,7 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $email = 'vjlamsenlamsen28@gmail.com';
+        $email = 'johnemmanuelnalang+superadmin@gmail.com';
         
         $user = User::updateOrCreate(
             ['email' => $email],

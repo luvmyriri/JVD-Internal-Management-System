@@ -12,7 +12,7 @@ class SupplierSeeder extends Seeder
         $suppliers = [
             [
                 'company_name' => 'Caltex Philippines',
-                'email' => 'contact@caltex.com',
+                'email' => 'johnemmanuelnalang+sup1@gmail.com',
                 'phone' => '+63 917 123 4567',
                 'address' => 'Makati City, Metro Manila',
                 'is_verified' => true,
@@ -20,7 +20,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'company_name' => 'Petron Bataan',
-                'email' => 'sales@petron.ph',
+                'email' => 'johnemmanuelnalang+sup2@gmail.com',
                 'phone' => '+63 918 765 4321',
                 'address' => 'Bataan, Philippines',
                 'is_verified' => true,
@@ -28,7 +28,7 @@ class SupplierSeeder extends Seeder
             ],
             [
                 'company_name' => 'Victory Liner Parts Depot',
-                'email' => 'parts@victoryliner.com',
+                'email' => 'johnemmanuelnalang+sup3@gmail.com',
                 'phone' => '+63 920 111 2222',
                 'address' => 'Pasay City, Metro Manila',
                 'is_verified' => false,
@@ -37,7 +37,7 @@ class SupplierSeeder extends Seeder
             [
                 'company_name' => 'Caltex Susano',
                 'contact_person' => 'Juan Dela Cruz',
-                'email' => 'juan@caltex.com',
+                'email' => 'johnemmanuelnalang+sup4@gmail.com',
                 'phone' => '09171234567',
                 'address' => 'Susano Road, Caloocan',
                 'accreditation_status' => 'accredited',
@@ -46,7 +46,7 @@ class SupplierSeeder extends Seeder
             [
                 'company_name' => 'Victory Liner Parts',
                 'contact_person' => 'Maria Santos',
-                'email' => 'maria@victory.com',
+                'email' => 'johnemmanuelnalang+sup5@gmail.com',
                 'phone' => '09187654321',
                 'address' => 'Pasay City',
                 'accreditation_status' => 'accredited',
@@ -55,7 +55,7 @@ class SupplierSeeder extends Seeder
             [
                 'company_name' => 'Globe Telecom',
                 'contact_person' => 'Peter Parker',
-                'email' => 'peter@globe.com',
+                'email' => 'johnemmanuelnalang+sup6@gmail.com',
                 'phone' => '09159990000',
                 'address' => 'BGC, Taguig',
                 'accreditation_status' => 'accredited',

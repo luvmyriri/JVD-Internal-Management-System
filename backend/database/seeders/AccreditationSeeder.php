@@ -23,7 +23,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => '2025-01-15',
                 'status' => 'active',
                 'contact_person' => 'Juan Dela Cruz',
-                'contact_email' => 'juan@caltex.com',
+                'contact_email' => 'johnemmanuelnalang+acc1@gmail.com',
             ],
             [
                 'entity_type' => 'bus',

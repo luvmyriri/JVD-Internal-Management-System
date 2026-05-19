@@ -4,10 +4,10 @@ import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers
 } from 'react-icons/lu';
-import { 
-  Eye, 
-  CheckCircle, 
-  FileEdit, 
+import {
+  Eye,
+  CheckCircle,
+  FileEdit,
   Send
 } from 'lucide-react';
 import { jobOrderApi } from '../../api/jobOrders';
@@ -254,13 +254,13 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
 
 // ── JO Row ───────────────────────────────────────────────────────────────────
 
-function JORow({ 
-  jo, 
-  onDetail, 
-  onConfirm, 
-  onComplete 
-}: { 
-  jo: JobOrder; 
+function JORow({
+  jo,
+  onDetail,
+  onConfirm,
+  onComplete
+}: {
+  jo: JobOrder;
   onDetail: (jo: JobOrder) => void;
   onConfirm: (id: number) => void;
   onComplete: (id: number) => void;
@@ -297,27 +297,27 @@ function JORow({
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
       <td className="px-8 py-6">
-        <Dropdown 
+        <Dropdown
           items={[
-            { 
-              label: 'View Details', 
-              icon: <Eye size={14} />, 
-              onClick: () => onDetail(jo) 
+            {
+              label: 'View Details',
+              icon: <Eye size={14} />,
+              onClick: () => onDetail(jo)
             },
-            ...(jo.status === 'created' ? [{ 
-              label: 'Confirm Order', 
-              icon: <Send size={14} />, 
-              onClick: () => onConfirm(jo.id) 
+            ...(jo.status === 'created' ? [{
+              label: 'Confirm Order',
+              icon: <Send size={14} />,
+              onClick: () => onConfirm(jo.id)
             }] : []),
-            ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{ 
-              label: 'Mark Completed', 
-              icon: <CheckCircle size={14} />, 
-              onClick: () => onComplete(jo.id) 
+            ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{
+              label: 'Mark Completed',
+              icon: <CheckCircle size={14} />,
+              onClick: () => onComplete(jo.id)
             }] : []),
-            ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{ 
-              label: 'Edit Order', 
-              icon: <FileEdit size={14} />, 
-              onClick: () => alert('Edit feature coming soon') 
+            ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{
+              label: 'Edit Order',
+              icon: <FileEdit size={14} />,
+              onClick: () => alert('Edit feature coming soon')
             }] : []),
           ]}
         />
@@ -340,9 +340,9 @@ export default function JobOrders() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['job-orders', search, status, serviceType, page],
-    queryFn: () => jobOrderApi.list({ 
-      search: search || undefined, 
-      status: status || undefined, 
+    queryFn: () => jobOrderApi.list({
+      search: search || undefined,
+      status: status || undefined,
       service_type: serviceType || undefined,
       page,
       per_page: 10
@@ -432,18 +432,18 @@ export default function JobOrders() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-                <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
-                  <tr>
-                    {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
-                      <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
+              <thead className="bg-gray-50/50 border-b border-gray-100 uppercase tracking-[0.2em] text-[10px]">
+                <tr>
+                  {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
+                    <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
+                  ))}
+                </tr>
+              </thead>
               <tbody className="divide-y divide-gray-50">
                 {jos.map(jo => (
-                  <JORow 
-                    key={jo.id} 
-                    jo={jo} 
+                  <JORow
+                    key={jo.id}
+                    jo={jo}
                     onDetail={setDetailJO}
                     onConfirm={(id) => confirmMutation.mutate(id)}
                     onComplete={(id) => completeMutation.mutate(id)}
