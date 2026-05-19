@@ -28,7 +28,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => now()->addMonths(7),
                 'status' => 'active',
                 'contact_person' => 'Juan Dela Cruz',
-                'contact_email' => 'johnemmanuelnalang+acc1@gmail.com',
+                'contact_email' => 'johnemmanuelnalang@gmail.com',
                 'kyc_document_url' => 'https://example.com/kyc-caltex.pdf',
                 'nda_document_url' => 'https://example.com/nda-caltex.pdf',
             ],
@@ -42,7 +42,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => now()->subDays(2),
                 'status' => 'expired',
                 'contact_person' => 'Maria Santos',
-                'contact_email' => 'johnemmanuelnalang+acc2@gmail.com',
+                'contact_email' => 'johnemmanuelnalang@gmail.com',
                 'terms_document_url' => 'https://example.com/terms.pdf',
             ],
             [
@@ -55,7 +55,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => now()->addMonths(11),
                 'status' => 'active',
                 'contact_person' => 'Asec. Garcia',
-                'contact_email' => 'johnemmanuelnalang+acc3@gmail.com',
+                'contact_email' => 'johnemmanuelnalang@gmail.com',
             ],
             // Fleet & Assets
             [
@@ -68,7 +68,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => now()->addDays(15),
                 'status' => 'pending_renewal',
                 'contact_person' => 'Fleet Manager',
-                'contact_email' => 'johnemmanuelnalang+acc4@gmail.com',
+                'contact_email' => 'johnemmanuelnalang@gmail.com',
                 'kyc_document_url' => 'https://example.com/bus-orcr.pdf',
             ],
             [
@@ -81,7 +81,7 @@ class AccreditationSeeder extends Seeder
                 'expiry_date' => now()->addYears(1),
                 'status' => 'active',
                 'contact_person' => 'Pedro Penduko',
-                'contact_email' => 'johnemmanuelnalang+acc5@gmail.com',
+                'contact_email' => 'johnemmanuelnalang@gmail.com',
                 'kyc_document_url' => 'https://example.com/license-pedro.pdf',
             ],
         ];

@@ -25,6 +25,12 @@ class AccreditationResource extends JsonResource
             'days_until_expiry'   => $daysUntilExpiry,
             'is_expiring_soon'    => $daysUntilExpiry !== null && $daysUntilExpiry >= 0 && $daysUntilExpiry <= 30,
             'is_expired'          => $daysUntilExpiry !== null && $daysUntilExpiry < 0,
+            'entity_name'         => $this->entity_name,
+            'contact_person'      => $this->contact_person,
+            'contact_email'       => $this->contact_email,
+            'kyc_document_url'    => $this->kyc_document_url,
+            'nda_document_url'    => $this->nda_document_url,
+            'terms_document_url'  => $this->terms_document_url,
             'created_at'          => $this->created_at->toISOString(),
             'updated_at'          => $this->updated_at->toISOString(),
         ];
