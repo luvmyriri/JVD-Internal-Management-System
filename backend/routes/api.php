@@ -126,6 +126,25 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,agent')->group(function () {
         Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
+        Route::get('/customers/{customer}/passports', [CustomerPassportController::class, 'index']);
+        Route::post('/customers/{customer}/passports', [CustomerPassportController::class, 'store']);
+        Route::delete('/customers/{customer}/passports/{passport}', [CustomerPassportController::class, 'destroy']);
+        
+        Route::get('/customers/{customer}/visas', [CustomerVisaController::class, 'index']);
+        Route::post('/customers/{customer}/visas', [CustomerVisaController::class, 'store']);
+        Route::delete('/customers/{customer}/visas/{visa}', [CustomerVisaController::class, 'destroy']);
+        
+        Route::get('/customers/{customer}/kycs', [CustomerKycController::class, 'index']);
+        Route::post('/customers/{customer}/kycs', [CustomerKycController::class, 'store']);
+        Route::delete('/customers/{customer}/kycs/{kyc}', [CustomerKycController::class, 'destroy']);
+        
+        Route::get('/customers/{customer}/tasks', [AgentTaskController::class, 'index']);
+        Route::post('/customers/{customer}/tasks', [AgentTaskController::class, 'store']);
+        Route::put('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'update']);
+        Route::delete('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'destroy']);
+
+        Route::post('/customers/{customer}/send-email', [App\Http\Controllers\Travel\CustomerEmailController::class, 'send']);
+
         Route::apiResource('passengers',     PassengerController::class)->except(['destroy']);
         Route::apiResource('passport-cases', PassportCaseController::class)->except(['destroy']);
         Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');

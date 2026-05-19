@@ -3,8 +3,9 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuUsers, LuPlus, LuSearch, LuLoaderCircle, LuX, LuPencil,
-  LuTrash2, LuMail, LuPhone, LuMapPin,
+  LuTrash2, LuMail, LuPhone, LuMapPin, LuUser,
 } from 'react-icons/lu';
+import { useNavigate } from 'react-router-dom';
 import { customerApi } from '../../api/customers';
 import { Pagination, Modal, Button } from '../../components/ui';
 
@@ -135,6 +136,7 @@ function DeleteModal({ customer, onClose }: { customer: Customer; onClose: () =>
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Customers() {
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
@@ -247,6 +249,13 @@ export default function Customers() {
                   </td>
                   <td className="px-8 py-5">
                     <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => navigate(`/travel/customers/${c.id}`)}
+                        className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 hover:bg-purple-100 transition"
+                        title="View Profile"
+                      >
+                        <LuUser size={14} />
+                      </button>
                       <button
                         onClick={() => setEditTarget(c)}
                         className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"

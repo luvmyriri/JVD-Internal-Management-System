@@ -23,4 +23,29 @@ class Customer extends Model
     {
         return $this->hasMany(JobOrder::class);
     }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class);
+    }
+
+    public function passports()
+    {
+        return $this->hasMany(CustomerPassport::class);
+    }
+
+    public function visas()
+    {
+        return $this->hasMany(CustomerVisa::class);
+    }
+
+    public function kycs()
+    {
+        return $this->hasMany(CustomerKyc::class);
+    }
+
+    public function tasks()
+    {
+        return $this->hasMany(AgentTask::class);
+    }
 }

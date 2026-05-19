@@ -1,0 +1,64 @@
+<?php
+
+namespace App\Http\Controllers\Travel;
+
+use App\Http\Controllers\Controller;
+use App\Models\Customer;
+use App\Models\AgentTask;
+use Illuminate\Http\Request;
+
+class AgentTaskController extends Controller
+{
+    public function index(Customer $customer)
+    {
+        return response()->json($customer->tasks()->with('assignee')->latest()->get());
+    }
+
+    public function store(Request $request, Customer $customer)
+    {
+        $validated = $request->validate([
+            'title'       => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'status'      => 'nullable|in:pending,in_progress,resolved',
+            'due_date'    => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
+        ]);
+
+        if (!isset($validated['assigned_to'])) {
+            $validated['assigned_to'] = $request->user()->id;
+        }
+
+        $task = $customer->tasks()->create($validated);
+
+        return response()->json($task->load('assignee'), 201);
+    }
+
+    public function update(Request $request, Customer $customer, AgentTask $task)
+    {
+        if ($task->customer_id !== $customer->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'title'       => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'status'      => 'sometimes|in:pending,in_progress,resolved',
+            'due_date'    => 'nullable|date',
+            'assigned_to' => 'nullable|exists:users,id',
+        ]);
+
+        $task->update($validated);
+
+        return response()->json($task->load('assignee'));
+    }
+
+    public function destroy(Customer $customer, AgentTask $task)
+    {
+        if ($task->customer_id !== $customer->id) {
+            abort(404);
+        }
+        
+        $task->delete();
+        return response()->json(null, 204);
+    }
+}

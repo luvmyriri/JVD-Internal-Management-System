@@ -24,6 +24,7 @@ import PMS from './pages/inventory/PMS';
 import Passporting from './pages/travel/Passporting';
 import VisaProcessing from './pages/travel/VisaProcessing';
 import Customers from './pages/travel/Customers';
+import CustomerProfile from './pages/travel/CustomerProfile';
 import Documents from './pages/travel/Documents';
 import Employees from './pages/hr/Employees';
 import Users from './pages/admin/Users';
@@ -95,6 +96,7 @@ export default function App() {
                 <Route path="/travel/passporting" element={<Passporting />} />
                 <Route path="/travel/visa-processing" element={<VisaProcessing />} />
                 <Route path="/travel/customers" element={<Customers />} />
+                <Route path="/travel/customers/:id" element={<CustomerProfile />} />
                 <Route path="/travel/documents" element={<Documents />} />
 
                 {/* HR */}
