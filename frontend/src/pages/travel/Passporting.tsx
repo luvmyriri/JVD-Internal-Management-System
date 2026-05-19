@@ -83,7 +83,7 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     customer_id: '',
-    case_type: 'passport' as 'passport' | 'visa',
+    case_type: 'passport' as const,
   });
 
   const { data: customersRes } = useQuery({
@@ -95,7 +95,7 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: () => passportingApi.create({ ...form, customer_id: parseInt(form.customer_id) }),
     onSuccess: () => {
-      toast.success('Case opened successfully!');
+      toast.success('Passport case opened successfully!');
       qc.invalidateQueries({ queryKey: ['passport_cases'] });
       onClose();
     },
@@ -103,7 +103,7 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
   });
 
   return (
-    <Modal isOpen onClose={onClose} title="Open New Case" size="sm">
+    <Modal isOpen onClose={onClose} title="Open New Passport Case" size="sm">
       <div className="p-6 space-y-5">
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
@@ -118,29 +118,10 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
             ))}
           </select>
         </div>
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Case Type *</label>
-          <div className="grid grid-cols-2 gap-3">
-            {(['passport', 'visa'] as const).map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setForm(p => ({ ...p, case_type: t }))}
-                className={`py-3 rounded-xl text-sm font-bold border transition-all capitalize ${
-                  form.case_type === t
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-200'
-                    : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        </div>
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!form.customer_id}>
-            Open Case
+            Open Passport Case
           </Button>
         </div>
       </div>
@@ -291,13 +272,12 @@ export default function Passporting() {
   const [page, setPage] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<PassportCase | null>(null);
-  const [activeType, setActiveType] = useState<'all' | 'passport' | 'visa'>('all');
 
   const { data: response, isLoading } = useQuery({
-    queryKey: ['passport_cases', search, page, activeType],
+    queryKey: ['passport_cases', search, page],
     queryFn: () => passportingApi.list({
       search: search || undefined,
-      case_type: activeType !== 'all' ? activeType : undefined,
+      case_type: 'passport',
       page,
       per_page: 20,
     }),
@@ -314,31 +294,15 @@ export default function Passporting() {
           <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Cases
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Passport & Visa Processing</p>
+          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Passport Processing</p>
         </div>
         <Button onClick={() => setShowNew(true)} className="flex items-center gap-2">
-          <LuPlus size={16} /> Open Case
+          <LuPlus size={16} /> Open Passport Case
         </Button>
       </div>
 
-      {/* Filters */}
+      {/* Search & Search Header */}
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-          {(['all', 'passport', 'visa'] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => { setActiveType(t); setPage(1); }}
-              className={`px-5 py-2 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all capitalize ${
-                activeType === t
-                  ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
-              }`}
-            >
-              {t === 'all' ? 'All Cases' : t}
-            </button>
-          ))}
-        </div>
-
         <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 flex-1 max-w-md">
           <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-700 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />

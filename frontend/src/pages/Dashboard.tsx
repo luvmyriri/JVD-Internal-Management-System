@@ -205,6 +205,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const [activeFilter, setActiveFilter] = useState<keyof typeof mainChartData>('Month');
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const exportToPDF = (title: string, data: any[]) => {
     try {
@@ -630,52 +635,54 @@ export default function Dashboard() {
         </div>
 
         <div className="h-[220px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={mainChartData[activeFilter]} key={activeFilter + theme} style={{ background: 'transparent' }}>
-              <defs>
-                <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={theme === 'dark' ? 0.25 : 0.15} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }} dy={10} />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }}
-                domain={[0, 'auto']}
-                tickFormatter={(value) => {
-                  if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-                  if (value >= 1000) return `${(value / 1000)}K`;
-                  return value;
-                }}
-              />
-              <Tooltip
-                contentStyle={{ 
-                  borderRadius: '24px', 
-                  border: 'none', 
-                  boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
-                  backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
-                  color: theme === 'dark' ? '#ffffff' : '#1e293b'
-                }}
-                itemStyle={{ color: theme === 'dark' ? '#60a5fa' : '#3b82f6' }}
-                labelStyle={{ fontWeight: 800, color: theme === 'dark' ? '#ffffff' : '#1e293b' }}
-                formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
-              />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#3b82f6"
-                strokeWidth={3}
-                fillOpacity={1}
-                fill="url(#colorMain)"
-                animationDuration={800}
-                dot={false}
-                activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+          {isMounted && (
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+              <AreaChart data={mainChartData[activeFilter]} key={activeFilter + theme} style={{ background: 'transparent' }}>
+                <defs>
+                  <linearGradient id="colorMain" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={theme === 'dark' ? 0.25 : 0.15} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={theme === 'dark' ? '#334155' : '#f1f5f9'} />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }} dy={10} />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 10, fontWeight: 700, fill: theme === 'dark' ? '#64748b' : '#94a3b8' }}
+                  domain={[0, 'auto']}
+                  tickFormatter={(value) => {
+                    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+                    if (value >= 1000) return `${(value / 1000)}K`;
+                    return value;
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{ 
+                    borderRadius: '24px', 
+                    border: 'none', 
+                    boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.15)',
+                    backgroundColor: theme === 'dark' ? '#0f172a' : '#ffffff',
+                    color: theme === 'dark' ? '#ffffff' : '#1e293b'
+                  }}
+                  itemStyle={{ color: theme === 'dark' ? '#60a5fa' : '#3b82f6' }}
+                  labelStyle={{ fontWeight: 800, color: theme === 'dark' ? '#ffffff' : '#1e293b' }}
+                  formatter={(value: any) => [`₱${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 'Revenue']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="revenue"
+                  stroke="#3b82f6"
+                  strokeWidth={3}
+                  fillOpacity={1}
+                  fill="url(#colorMain)"
+                  animationDuration={800}
+                  dot={false}
+                  activeDot={{ r: 5, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
 
@@ -693,14 +700,16 @@ export default function Dashboard() {
         </div>
         <div className="flex-1 flex flex-col items-center justify-center">
           <div className="h-[160px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart style={{ background: 'transparent' }}>
-                <Pie data={userDistributionData} cx="50%" cy="50%" innerRadius={44} outerRadius={68} paddingAngle={3} dataKey="value" animationDuration={800}>
-                  {userDistributionData.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 20px 40px -8px rgb(0 0 0/0.15)', backgroundColor: theme === 'dark' ? '#111827' : '#fff', fontSize: '11px', fontWeight: 700 }} formatter={(v: any) => [`${v}%`, 'Share']} />
-              </PieChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <PieChart style={{ background: 'transparent' }}>
+                  <Pie data={userDistributionData} cx="50%" cy="50%" innerRadius={44} outerRadius={68} paddingAngle={3} dataKey="value" animationDuration={800}>
+                    {userDistributionData.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 20px 40px -8px rgb(0 0 0/0.15)', backgroundColor: theme === 'dark' ? '#111827' : '#fff', fontSize: '11px', fontWeight: 700 }} formatter={(v: any) => [`${v}%`, 'Share']} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </div>
           <div className="flex flex-wrap justify-center gap-x-3 gap-y-1.5 mt-1">
             {userDistributionData.map((item) => (
@@ -736,11 +745,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={branchData.accounting} barSize={7} style={{ background: 'transparent' }}>
-                <Bar dataKey="value" fill="white" radius={[3,3,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <BarChart data={branchData.accounting} barSize={7} style={{ background: 'transparent' }}>
+                  <Bar dataKey="value" fill="white" radius={[3,3,0,0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -763,11 +774,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={branchData.procurement} style={{ background: 'transparent' }}>
-                <Area type="monotone" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <AreaChart data={branchData.procurement} style={{ background: 'transparent' }}>
+                  <Area type="monotone" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -790,11 +803,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={branchData.inventory} style={{ background: 'transparent' }}>
-                <Line type="stepAfter" dataKey="value" stroke="white" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <LineChart data={branchData.inventory} style={{ background: 'transparent' }}>
+                  <Line type="stepAfter" dataKey="value" stroke="white" strokeWidth={2.5} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
 
@@ -817,11 +832,13 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="h-16 w-full opacity-70 relative z-10">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={branchData.travel} style={{ background: 'transparent' }}>
-                <Area type="basis" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
+            {isMounted && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <AreaChart data={branchData.travel} style={{ background: 'transparent' }}>
+                  <Area type="basis" dataKey="value" stroke="white" fill="rgba(255,255,255,0.2)" strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       </div>
@@ -874,14 +891,16 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-6">
             <div className="h-[210px] flex-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart style={{ background: 'transparent' }}>
-                  <Pie data={orderStatusData} cx="50%" cy="50%" outerRadius={88} paddingAngle={3} dataKey="value" animationBegin={100} animationDuration={800}>
-                    {orderStatusData.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
-                  </Pie>
-                  <Tooltip contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 20px 40px -8px rgb(0 0 0/0.15)', backgroundColor: theme === 'dark' ? '#111827' : '#fff', fontSize: '11px', fontWeight: 700 }} formatter={(v: any) => [`${v}%`, 'Orders']} />
-                </PieChart>
-              </ResponsiveContainer>
+              {isMounted && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <PieChart style={{ background: 'transparent' }}>
+                    <Pie data={orderStatusData} cx="50%" cy="50%" outerRadius={88} paddingAngle={3} dataKey="value" animationBegin={100} animationDuration={800}>
+                      {orderStatusData.map((e, i) => <Cell key={i} fill={e.color} stroke="transparent" />)}
+                    </Pie>
+                    <Tooltip contentStyle={{ borderRadius: '14px', border: 'none', boxShadow: '0 20px 40px -8px rgb(0 0 0/0.15)', backgroundColor: theme === 'dark' ? '#111827' : '#fff', fontSize: '11px', fontWeight: 700 }} formatter={(v: any) => [`${v}%`, 'Orders']} />
+                  </PieChart>
+                </ResponsiveContainer>
+              )}
             </div>
             <div className="flex flex-col gap-3">
               {orderStatusData.map((item) => (
