@@ -41,7 +41,9 @@ Route::prefix('auth')->group(function () {
 });
 
 // Public KYC route
+Route::get('/accreditations/{accreditation}/verify-token', [App\Http\Controllers\Procurement\AccreditationController::class, 'verifyToken'])->name('accreditations.verify-token');
 Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->name('accreditations.submit-kyc');
+Route::post('/accreditations/{accreditation}/submit-kyc/upload/{type}', [App\Http\Controllers\Procurement\AccreditationController::class, 'uploadDocumentPublic'])->name('accreditations.submit-kyc.upload');
 
 // Public settings route
 Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettings'])->name('settings.public');
