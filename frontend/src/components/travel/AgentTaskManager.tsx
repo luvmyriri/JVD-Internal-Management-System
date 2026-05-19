@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
-import { LuPlus, LuTrash2, LuCheckCircle, LuCircle, LuClock } from 'react-icons/lu';
+import { LuPlus, LuTrash2, LuCheck, LuClock, LuLoaderCircle } from 'react-icons/lu';
 import { customerApi } from '../../api/customers';
 import { Button, Modal } from '../ui';
 
@@ -55,9 +55,9 @@ export default function AgentTaskManager({ customerId }: { customerId: number })
   });
 
   const getStatusIcon = (status: string) => {
-    if (status === 'resolved') return <LuCheckCircle className="text-emerald-500" size={20} />;
-    if (status === 'in_progress') return <LuClock className="text-blue-500" size={20} />;
-    return <LuCircle className="text-gray-400" size={20} />;
+    if (status === 'resolved') return <LuCheck className="text-emerald-500" size={20} />;
+    if (status === 'in_progress') return <LuLoaderCircle className="text-blue-500 animate-spin" size={20} />;
+    return <LuClock className="text-gray-400" size={20} />;
   };
 
   return (

@@ -43,6 +43,13 @@ export default function Header() {
     const segments = path.split('/').filter(Boolean);
     if (segments.length === 0) return { title: '', subtitle: '' };
 
+    if (path.startsWith('/travel/customers/') && !isNaN(Number(segments[segments.length - 1]))) {
+      return {
+        title: 'Customer Profile',
+        subtitle: 'Management / Travel'
+      };
+    }
+
     const format = (s: string) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     
     return {

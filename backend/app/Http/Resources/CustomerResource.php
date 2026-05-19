@@ -19,6 +19,11 @@ class CustomerResource extends JsonResource
             'address'    => $this->address,
             'notes'      => $this->notes,
             'passengers' => PassengerResource::collection($this->whenLoaded('passengers')),
+            'invoices'   => InvoiceResource::collection($this->whenLoaded('invoices')),
+            'passports'  => $this->whenLoaded('passports'),
+            'visas'      => $this->whenLoaded('visas'),
+            'kycs'       => $this->whenLoaded('kycs'),
+            'tasks'      => $this->whenLoaded('tasks'),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

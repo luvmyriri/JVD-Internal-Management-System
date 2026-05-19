@@ -248,7 +248,7 @@ export default function Customers() {
                     </p>
                   </td>
                   <td className="px-8 py-5">
-                    <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center justify-center gap-2 transition-opacity">
                       <button
                         onClick={() => navigate(`/travel/customers/${c.id}`)}
                         className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 hover:bg-purple-100 transition"

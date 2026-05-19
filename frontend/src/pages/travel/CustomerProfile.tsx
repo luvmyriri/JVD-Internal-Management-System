@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { LuArrowLeft, LuMail, LuPhone, LuMapPin, LuUser, LuBriefcase, LuFileText, LuCheckSquare, LuPlane } from 'react-icons/lu';
+import { LuArrowLeft, LuMail, LuPhone, LuMapPin, LuUser, LuFileText, LuList, LuPlane, LuFileSpreadsheet } from 'react-icons/lu';
 import { customerApi } from '../../api/customers';
 import AgentTaskManager from '../../components/travel/AgentTaskManager';
 import CustomerEmailModal from '../../components/travel/CustomerEmailModal';
+import KycManager from '../../components/travel/KycManager';
+import PassportManager from '../../components/travel/PassportManager';
+import VisaManager from '../../components/travel/VisaManager';
 import { Button } from '../../components/ui';
 
 export default function CustomerProfile() {
@@ -55,7 +58,7 @@ export default function CustomerProfile() {
           { id: 'details', label: 'Overview', icon: LuUser },
           { id: 'travel', label: 'Travel History', icon: LuPlane },
           { id: 'documents', label: 'KYC & Visas', icon: LuFileText },
-          { id: 'tasks', label: 'Agent Tasks', icon: LuCheckSquare },
+          { id: 'tasks', label: 'Agent Tasks', icon: LuList },
         ].map(tab => (
           <button
             key={tab.id}
@@ -107,41 +110,79 @@ export default function CustomerProfile() {
         )}
 
         {activeTab === 'travel' && (
-          <div className="space-y-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-              <LuPlane className="text-blue-500" /> Travel Packages & Availed Services
-            </h3>
-            <div className="bg-blue-50/50 dark:bg-blue-900/10 p-6 rounded-2xl border border-blue-100 dark:border-blue-900/30 text-center text-blue-600 dark:text-blue-400 text-sm">
-              Linked invoices and passenger manifests will appear here in future updates.
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                <LuFileSpreadsheet className="text-indigo-500" /> Availed Packages & Invoices
+              </h3>
+              {!customer.invoices || customer.invoices.length === 0 ? (
+                <div className="py-6 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                  No billing history found for this customer.
+                </div>
+              ) : (
+                <div className="overflow-hidden border border-gray-200 dark:border-gray-800 rounded-2xl">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-gray-50 dark:bg-gray-800/50 text-[10px] uppercase font-black text-gray-400 tracking-wider">
+                        <th className="px-4 py-3">Invoice No</th>
+                        <th className="px-4 py-3">Status</th>
+                        <th className="px-4 py-3">Total Amount</th>
+                        <th className="px-4 py-3 text-right">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                      {customer.invoices.map((inv: any) => (
+                        <tr key={inv.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
+                          <td className="px-4 py-3 font-mono font-bold text-gray-900 dark:text-white">#{inv.invoice_number || inv.id}</td>
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
+                              inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' : 'bg-amber-50 text-amber-600 border-amber-200'
+                            }`}>
+                              {inv.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
+                            ${Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          </td>
+                          <td className="px-4 py-3 text-right text-gray-400">{new Date(inv.created_at).toLocaleDateString()}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-6 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
+                <LuUser className="text-blue-500" /> Linked Passengers
+              </h3>
+              {!customer.passengers || customer.passengers.length === 0 ? (
+                <div className="py-6 text-center text-xs text-gray-400 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                  No passengers linked to this profile.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {customer.passengers.map((p: any) => (
+                    <div key={p.id} className="p-4 rounded-xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/30 text-xs space-y-1">
+                      <p className="font-bold text-gray-900 dark:text-white">{p.first_name} {p.last_name}</p>
+                      {p.passport_number && <p className="text-gray-500">Passport: <span className="font-mono">{p.passport_number}</span></p>}
+                      {p.ticket_number && <p className="text-gray-500">Ticket: <span className="font-mono">{p.ticket_number}</span></p>}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
 
         {activeTab === 'documents' && (
           <div className="space-y-10">
-            <div>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2 mb-4">
-                <LuBriefcase className="text-emerald-500" /> Walk-in KYC Records
-              </h3>
-              <p className="text-xs text-gray-500 mb-4 border-l-2 border-emerald-500 pl-3">Upload government IDs, proof of billing, or any other verification documents required for walk-in accreditation.</p>
-              <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center text-sm text-gray-500 border-dashed">
-                [ KYC Document Upload Component Placeholder ]
-              </div>
-            </div>
+            <KycManager customerId={customerId} kycs={customer.kycs || []} />
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 border-t border-gray-100 dark:border-gray-800">
-              <div>
-                <h3 className="text-md font-bold text-gray-900 dark:text-white mb-4">Passports</h3>
-                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center text-sm text-gray-500 border-dashed">
-                  [ Passport List Component Placeholder ]
-                </div>
-              </div>
-              <div>
-                <h3 className="text-md font-bold text-gray-900 dark:text-white mb-4">Visas</h3>
-                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center text-sm text-gray-500 border-dashed">
-                  [ Visa List Component Placeholder ]
-                </div>
-              </div>
+              <PassportManager customerId={customerId} passports={customer.passports || []} />
+              <VisaManager customerId={customerId} visas={customer.visas || []} />
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuStamp, LuPlus, LuSearch, LuLoaderCircle,
-  LuCalendar, LuCircleCheck, LuCircle, LuChevronRight,
+  LuCircleCheck, LuCircle, LuChevronRight,
 } from 'react-icons/lu';
 import { passportingApi } from '../../api/passporting';
 import { customerApi } from '../../api/customers';
@@ -285,52 +285,6 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   );
 }
 
-// ── Kanban Card ────────────────────────────────────────────────────────────────
-function CaseCard({ c, onClick }: { c: PassportCase; onClick: () => void }) {
-  const checklistItems = c.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
-  const done = checklistItems.filter(i => c.checklist?.[i]).length;
-  const pct = Math.round((done / checklistItems.length) * 100);
-
-  return (
-    <div
-      onClick={onClick}
-      className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 cursor-pointer hover:shadow-lg hover:border-blue-200 dark:hover:border-blue-800 transition-all"
-    >
-      <div className="flex items-start justify-between gap-2 mb-3">
-        <div>
-          <p className="text-sm font-black text-gray-900 dark:text-white">
-            {c.customer?.first_name} {c.customer?.last_name}
-          </p>
-          <p className="text-[10px] font-mono text-gray-400 mt-0.5">Case #{c.id}</p>
-        </div>
-        <span className={`shrink-0 inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
-          c.case_type === 'passport' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-violet-50 text-violet-600 border-violet-200'
-        }`}>
-          {c.case_type}
-        </span>
-      </div>
-
-      {/* Checklist progress */}
-      <div className="mb-2">
-        <div className="flex justify-between mb-1">
-          <span className="text-[9px] text-gray-400 font-bold uppercase">Checklist</span>
-          <span className="text-[9px] font-bold text-blue-600">{done}/{checklistItems.length}</span>
-        </div>
-        <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
-          <div className="bg-blue-500 h-1.5 rounded-full transition-all" style={{ width: `${pct}%` }} />
-        </div>
-      </div>
-
-      {c.submitted_date && (
-        <div className="flex items-center gap-1.5 text-[10px] text-gray-400 mt-2">
-          <LuCalendar size={10} />
-          Submitted: {new Date(c.submitted_date).toLocaleDateString()}
-        </div>
-      )}
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function Passporting() {
   const [search, setSearch] = useState('');
@@ -351,13 +305,6 @@ export default function Passporting() {
 
   const cases: PassportCase[] = response?.data?.data ?? [];
   const meta = response?.data?.meta;
-
-  // Group by status for kanban
-  const grouped = STATUS_FLOW.reduce<Record<string, PassportCase[]>>((acc, status) => {
-    acc[status] = cases.filter(c => c.status === status);
-    return acc;
-  }, {});
-  const denied = cases.filter(c => c.status === 'denied');
 
   return (
     <div className="space-y-8 pb-12">
@@ -406,7 +353,7 @@ export default function Passporting() {
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {/* List View */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-24 gap-4">
           <LuLoaderCircle size={32} className="animate-spin text-blue-600" />
@@ -421,47 +368,72 @@ export default function Passporting() {
           <p className="text-sm text-gray-500 max-w-sm">Open a new passport or visa case to get started.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex gap-4 min-w-max">
-            {STATUS_FLOW.map(status => (
-              <div key={status} className="w-64 shrink-0 flex flex-col">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[status]}`}>
-                    {STATUS_LABELS[status]}
-                  </span>
-                  <span className="text-[10px] text-gray-400 font-black">{grouped[status]?.length ?? 0}</span>
-                </div>
-                <div className="flex-1 flex flex-col h-[400px] bg-gray-50 dark:bg-gray-800/40 rounded-[1.8rem] p-3 border border-gray-100 dark:border-gray-800/60">
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                    {(grouped[status] ?? []).map(c => (
-                      <CaseCard key={c.id} c={c} onClick={() => setSelected(c)} />
-                    ))}
-                    {(grouped[status] ?? []).length === 0 && (
-                      <div className="h-full flex items-center justify-center">
-                        <p className="text-center text-[10px] text-gray-300 dark:text-gray-600 font-bold uppercase tracking-widest">Empty</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-            {denied.length > 0 && (
-              <div className="w-64 shrink-0 flex flex-col">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border bg-red-50 text-red-700 border-red-200">
-                    Denied
-                  </span>
-                  <span className="text-[10px] text-gray-400 font-black">{denied.length}</span>
-                </div>
-                <div className="flex-1 flex flex-col h-[400px] bg-gray-50 dark:bg-gray-800/40 rounded-[1.8rem] p-3 border border-gray-100 dark:border-gray-800/60">
-                  <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-                    {denied.map(c => (
-                      <CaseCard key={c.id} c={c} onClick={() => setSelected(c)} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-gray-50 dark:bg-gray-800/50 text-[10px] uppercase font-black text-gray-400 tracking-wider">
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-tl-3xl">Case ID</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Customer</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Type</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Status</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Checklist</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Submitted Date</th>
+                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-tr-3xl text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {cases.map((c) => {
+                  const checklistItems = c.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
+                  const done = checklistItems.filter(i => c.checklist?.[i]).length;
+                  const pct = Math.round((done / checklistItems.length) * 100);
+
+                  return (
+                    <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition cursor-pointer group" onClick={() => setSelected(c)}>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-mono font-bold text-gray-900 dark:text-white">#{c.id}</span>
+                        {c.reference_number && <div className="text-[10px] text-gray-400 uppercase mt-0.5">{c.reference_number}</div>}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
+                        {c.customer?.first_name} {c.customer?.last_name}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
+                          c.case_type === 'passport' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-violet-50 text-violet-600 border-violet-200'
+                        }`}>
+                          {c.case_type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[c.status] ?? STATUS_COLORS['released']}`}>
+                          {STATUS_LABELS[c.status] ?? c.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-gray-500 w-8">{done}/{checklistItems.length}</span>
+                          <div className="w-24 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden flex">
+                            <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-medium text-gray-500">
+                        {c.submitted_date ? new Date(c.submitted_date).toLocaleDateString() : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelected(c); }}
+                          className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"
+                          title="View Detail"
+                        >
+                          <LuChevronRight size={14} />
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
