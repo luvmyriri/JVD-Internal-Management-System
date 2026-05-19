@@ -32,12 +32,23 @@ Each customer record must capture the following minimum fields:
 
 ---
 
-## 3. Travel Module — Joiners Logic
+## 3. Travel Module & Visa Processing
 
+### 3.1 Joiners Logic
 - A single travel booking (fleet/package) can accommodate **multiple joiners** of different types (individual, couple, group).
 - Example: A Baguio trip may have Joiner A (individual), Joiner B (couple), and Joiner C (family group) — all under the same bus/departure.
 - The system must track each joiner's details separately but link them to the parent booking.
 - **Passenger manifests** should reflect all joiners per fleet/trip.
+
+### 3.2 Visa Process & Customer KYC
+- **Scope:** The visa process is strictly for uploading and storing customer visa and passport information.
+- **Walk-in Customers (KYC):** The system must capture KYC information for all walk-in customers.
+- **Consistent Tracking:** User information must be consistently tracked and easily searchable. 
+- **Customer Profiling:** The system must link and display all connections in the database for a customer profile (e.g., owned passports, visas, and what packages/trips they have availed).
+
+### 3.3 Customer Communication & Task Tracking
+- **Email Communication:** The system must include an automated email sending function (automatically formatted templates) that is also customizable for reaching out to customers.
+- **Agent Task Tracker:** If there are problems or tasks to be done, the assigned user (Agent) must have access to a built-in task tracker and task maker.
 
 ---
 

@@ -7,6 +7,8 @@ use App\Http\Resources\AccreditationResource;
 use App\Models\Accreditation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\KycRequestMail;
 
 class AccreditationController extends Controller
 {
@@ -107,11 +109,13 @@ class AccreditationController extends Controller
     public function generateKycLink(Accreditation $accreditation)
     {
         // Business Requirement: "System generates a Gmail-accessible submission link/form for the supplier/partner/client to upload their KYC documents."
-        // We simulate sending the email and return a generated link.
         $token = Str::random(32);
         
         // This link would be sent via email normally
         $link = config('app.frontend_url', 'http://localhost:3000') . '/kyc-submission?token=' . $token . '&ref=' . $accreditation->id;
+
+        // Send the actual email
+        Mail::to($accreditation->contact_email)->send(new KycRequestMail($link, $accreditation));
 
         return response()->json([
             'message' => 'KYC request link generated successfully.',
