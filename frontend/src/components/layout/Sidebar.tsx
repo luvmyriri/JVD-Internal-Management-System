@@ -147,12 +147,25 @@ export default function Sidebar() {
 
   return (
     <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50">
+      {/* Logo glow keyframe animation */}
+      <style>{`
+        @keyframes jvd-logo-glow {
+          0%   { filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.85))  drop-shadow(0 0 18px rgba(250, 204, 21, 0.4)); }
+          33%  { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 0.85))  drop-shadow(0 0 18px rgba(59, 130, 246, 0.4)); }
+          66%  { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.85))   drop-shadow(0 0 18px rgba(239, 68, 68, 0.4)); }
+          100% { filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.85))  drop-shadow(0 0 18px rgba(250, 204, 21, 0.4)); }
+        }
+        .jvd-logo-glow {
+          animation: jvd-logo-glow 3s ease-in-out infinite;
+        }
+      `}</style>
+
       {/* Brand */}
       <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-800 shrink-0">
         <img
           src="/JVD 3D.png"
           alt="JVD Logo"
-          className="h-9 w-auto"
+          className="h-9 w-auto jvd-logo-glow"
           onError={(e) => {
             e.currentTarget.style.display = 'none';
           }}
