@@ -49,7 +49,9 @@ export type UserRole =
   | 'admin'
   | 'human_resource'
   | 'accounting'
-  | 'agent';
+  | 'agent'
+  | 'driver';
+
 
 export interface User {
   id: number;
@@ -61,6 +63,7 @@ export interface User {
   role: UserRole;
   department: string;
   is_active: boolean;
+  must_change_password: boolean;
   last_login: string | null;
   created_by: number | null;
   created_at: string;

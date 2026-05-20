@@ -18,7 +18,10 @@ import {
   LuGlobe,
   LuTruck,
   LuFileDown,
-  LuFileUp
+  LuFileUp,
+  LuCopy,
+  LuKeyRound,
+  LuCheckCheck,
 } from 'react-icons/lu';
 import { motion } from 'framer-motion';
 import { 
@@ -34,6 +37,62 @@ import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
+
+// ── Temp Password Modal ───────────────────────────────────────────────────────
+interface TempPasswordEntry { name: string; email: string; password: string; }
+function TempPasswordModal({ entries, onClose }: { entries: TempPasswordEntry[]; onClose: () => void }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const copyAll = () => {
+    const text = entries.map(e => `${e.name} | ${e.email} | ${e.password}`).join('\n');
+    navigator.clipboard.writeText(text);
+    toast.success('All credentials copied!');
+  };
+  const copyOne = (idx: number, pw: string) => {
+    navigator.clipboard.writeText(pw);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+  return (
+    <Modal isOpen onClose={onClose} title="Temporary Passwords" size="lg">
+      <div className="space-y-5 p-2">
+        <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl">
+          <LuKeyRound className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black text-amber-800 dark:text-amber-300">✉️ Email sent + backup copy below</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 font-medium">Credentials were emailed to each employee. Save this backup. Employees will be forced to change their password on first login.</p>
+          </div>
+        </div>
+        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+          {entries.map((e, idx) => (
+            <div key={idx} className="p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm space-y-2">
+              <div>
+                <p className="text-sm font-black text-gray-900 dark:text-white">{e.name}</p>
+                <p className="text-[10px] text-gray-400 font-bold">{e.email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
+                  {e.password}
+                </code>
+                <button
+                  onClick={() => copyOne(idx, e.password)}
+                  className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors border border-blue-100 dark:border-blue-500/20"
+                >
+                  {copiedIdx === idx ? <LuCheckCheck className="w-4 h-4" /> : <LuCopy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={copyAll} className="flex items-center gap-2">
+            <LuCopy className="w-4 h-4" /> Copy All
+          </Button>
+          <Button onClick={onClose}>Done — I've Saved These</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 interface User {
   id: number;
@@ -75,6 +134,8 @@ export default function Employees() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [tempPasswords, setTempPasswords] = useState<TempPasswordEntry[]>([]);
+  const [showTempPasswordModal, setShowTempPasswordModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = useHasRole(['super_admin', 'admin']);
@@ -125,10 +186,17 @@ export default function Employees() {
     try {
       if (selectedUser) {
         await updateUserMutation.mutateAsync({ id: selectedUser.id, data });
+        setIsModalOpen(false);
       } else {
-        await createUserMutation.mutateAsync(data);
+        const sendInvite = data.send_invitation !== false;
+        const res = await createUserMutation.mutateAsync({ ...data, send_invitation: sendInvite });
+        const tempPw = res?.data?.data?.temporary_password;
+        setIsModalOpen(false);
+        if (!sendInvite && tempPw) {
+          setTempPasswords([{ name: `${data.first_name} ${data.last_name}`, email: data.email, password: tempPw }]);
+          setShowTempPasswordModal(true);
+        }
       }
-      setIsModalOpen(false);
     } catch (error) {
       console.error('Submit error:', error);
     }
@@ -263,7 +331,7 @@ export default function Employees() {
       const errors_list: string[] = [];
 
       worksheet?.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Skip only header now
+        if (rowNumber <= 2) return; // Skip header (row 1) and example row (row 2)
 
         const first_name = row.getCell(1).text?.trim();
         const last_name = row.getCell(2).text?.trim();
@@ -366,11 +434,20 @@ export default function Employees() {
 
     const uploadToast = toast.loading(`Registering ${employees.length} personnel...`);
     let successCount = 0;
+    const collectedPasswords: TempPasswordEntry[] = [];
     
     for (const emp of employees) {
       try {
-        // Bulk uploads always send invitations for better security
-        await createUserMutation.mutateAsync({ ...emp, send_invitation: true });
+        // Bulk HR upload — no invitation email, collect temp passwords instead
+        const res = await createUserMutation.mutateAsync({ ...emp, send_invitation: false });
+        const tempPw = res?.data?.data?.temporary_password;
+        if (tempPw) {
+          collectedPasswords.push({
+            name: `${emp.first_name} ${emp.last_name}`,
+            email: emp.email,
+            password: tempPw,
+          });
+        }
         successCount++;
       } catch (err: any) {
         console.error(`Upload error for ${emp.email}:`, err);
@@ -382,6 +459,11 @@ export default function Employees() {
       toast.success(`Successfully registered ${successCount} personnel!`);
     } else {
       toast.success(`Completed with partial success: ${successCount}/${employees.length} registered.`);
+    }
+
+    if (collectedPasswords.length > 0) {
+      setTempPasswords(collectedPasswords);
+      setShowTempPasswordModal(true);
     }
   };
 
@@ -860,10 +942,10 @@ export default function Employees() {
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-[1.5rem] flex items-start gap-3">
-                <LuTriangleAlert size={18} className="text-blue-500 mt-0.5" />
-                <p className="text-xs text-blue-700 leading-relaxed font-medium">
-                  System will generate a unique entry and send secure onboarding credentials to the specified email address.
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
+                <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                  <span className="font-black">Unchecked = Temp Password.</span> If invitation is disabled, a temporary password will be generated and shown to you immediately after registration.
                 </p>
               </div>
             </div>
@@ -902,8 +984,8 @@ export default function Employees() {
               </p>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 shadow-sm">
-              <LuMail size={14} className="text-blue-500" />
-              <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Invitations Enabled</span>
+              <LuKeyRound size={14} className="text-amber-500" />
+              <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Temp Passwords</span>
             </div>
           </div>
 
@@ -954,6 +1036,12 @@ export default function Employees() {
           </div>
         </div>
       </Modal>
+      {showTempPasswordModal && tempPasswords.length > 0 && (
+        <TempPasswordModal
+          entries={tempPasswords}
+          onClose={() => { setShowTempPasswordModal(false); setTempPasswords([]); }}
+        />
+      )}
     </div>
   );
 }

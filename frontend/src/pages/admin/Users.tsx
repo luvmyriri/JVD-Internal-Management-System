@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { 
   LuSearch, 
   LuShieldCheck, 
@@ -19,7 +20,12 @@ import {
   LuFileUp,
   LuLock,
   LuTriangleAlert,
-  LuGlobe
+  LuGlobe,
+  LuCopy,
+  LuKeyRound,
+  LuCheckCheck,
+  LuEyeOff,
+  LuEye as LuEyeOn,
 } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -27,7 +33,8 @@ import {
   useCreateUser, 
   useUpdateUser, 
   useDeactivateUser, 
-  useActivateUser 
+  useActivateUser,
+  useSetPassword,
 } from '../../hooks/useUsers';
 import { useHasRole } from '../../hooks/useHasRole';
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
@@ -35,7 +42,69 @@ import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
-import { useRef } from 'react';
+
+// ── Temp Password Modal ───────────────────────────────────────────────────────
+interface TempPasswordEntry { name: string; email: string; password: string; }
+function TempPasswordModal({ entries, onClose }: { entries: TempPasswordEntry[]; onClose: () => void }) {
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+  const copyAll = () => {
+    const text = entries.map(e => `${e.name} | ${e.email} | ${e.password}`).join('\n');
+    navigator.clipboard.writeText(text);
+    toast.success('All credentials copied!');
+  };
+  const copyOne = (idx: number, pw: string) => {
+    navigator.clipboard.writeText(pw);
+    setCopiedIdx(idx);
+    setTimeout(() => setCopiedIdx(null), 2000);
+  };
+  return (
+    <Modal isOpen onClose={onClose} title="Temporary Passwords" size="lg">
+      <div className="space-y-5 p-2">
+        {/* Warning banner */}
+        <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl">
+          <LuKeyRound className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-black text-amber-800 dark:text-amber-300">✉️ Email sent + backup copy below</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 font-medium">Credentials were emailed to each employee. Save this backup. Employees will be forced to change their password on first login.</p>
+          </div>
+        </div>
+
+        {/* Password list */}
+        <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+          {entries.map((e, idx) => (
+            <div key={idx} className="p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-black text-gray-900 dark:text-white">{e.name}</p>
+                  <p className="text-[10px] text-gray-400 font-bold">{e.email}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
+                  {e.password}
+                </code>
+                <button
+                  onClick={() => copyOne(idx, e.password)}
+                  className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors border border-blue-100 dark:border-blue-500/20"
+                  title="Copy password"
+                >
+                  {copiedIdx === idx ? <LuCheckCheck className="w-4 h-4" /> : <LuCopy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={copyAll} className="flex items-center gap-2">
+            <LuCopy className="w-4 h-4" /> Copy All
+          </Button>
+          <Button onClick={onClose}>Done — I've Saved These</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
 interface User {
   id: number;
@@ -80,8 +149,15 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [tempPasswords, setTempPasswords] = useState<TempPasswordEntry[]>([]);
+  const [showTempPasswordModal, setShowTempPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   const isAdmin = useHasRole(['super_admin', 'admin']);
   const canManage = isAdmin;
 
@@ -96,6 +172,7 @@ export default function Users() {
   const updateUserMutation = useUpdateUser();
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
+  const setPasswordMutation = useSetPassword();
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
@@ -117,6 +194,10 @@ export default function Users() {
         employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
       });
     }
+    // Reset password fields whenever modal opens
+    setNewPassword('');
+    setNewPasswordConfirm('');
+    setShowNewPw(false);
     setIsModalOpen(true);
   };
 
@@ -128,12 +209,38 @@ export default function Users() {
   const onSubmit = async (data: any) => {
     try {
       if (selectedUser) {
+        // If super_admin filled in a new password, set it first
+        if (isSuperAdmin && newPassword.trim()) {
+          if (newPassword !== newPasswordConfirm) {
+            toast.error('Passwords do not match.');
+            return;
+          }
+          if (newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters.');
+            return;
+          }
+          await setPasswordMutation.mutateAsync({
+            id: selectedUser.id,
+            data: { new_password: newPassword, new_password_confirmation: newPasswordConfirm },
+          });
+        }
         await updateUserMutation.mutateAsync({ id: selectedUser.id, data });
+        setIsModalOpen(false);
+        setNewPassword('');
+        setNewPasswordConfirm('');
+        reset();
       } else {
-        await createUserMutation.mutateAsync({ ...data, send_invitation: true });
+        const sendInvite = data.send_invitation !== false;
+        const res = await createUserMutation.mutateAsync({ ...data, send_invitation: sendInvite });
+        const tempPw = res?.data?.data?.temporary_password;
+        setIsModalOpen(false);
+        reset();
+        // If no invitation sent, show temp password modal
+        if (!sendInvite && tempPw) {
+          setTempPasswords([{ name: `${data.first_name} ${data.last_name}`, email: data.email, password: tempPw }]);
+          setShowTempPasswordModal(true);
+        }
       }
-      setIsModalOpen(false);
-      reset();
     } catch (error) {
       console.error('Submit error:', error);
     }
@@ -253,7 +360,7 @@ export default function Users() {
       const errors_list: string[] = [];
 
       worksheet?.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return;
+        if (rowNumber <= 2) return; // Skip header (row 1) and example row (row 2)
 
         const first_name = row.getCell(1).text?.trim();
         const last_name = row.getCell(2).text?.trim();
@@ -315,10 +422,20 @@ export default function Users() {
 
     const uploadToast = toast.loading(`Provisioning ${users.length} accounts...`);
     let successCount = 0;
+    const collectedPasswords: TempPasswordEntry[] = [];
     
     for (const u of users) {
       try {
-        await createUserMutation.mutateAsync({ ...u, send_invitation: true });
+        // Always use send_invitation: false for bulk — collect temp passwords
+        const res = await createUserMutation.mutateAsync({ ...u, send_invitation: false });
+        const tempPw = res?.data?.data?.temporary_password;
+        if (tempPw) {
+          collectedPasswords.push({
+            name: `${u.first_name} ${u.last_name}`,
+            email: u.email,
+            password: tempPw,
+          });
+        }
         successCount++;
       } catch (err) {
         console.error(err);
@@ -327,6 +444,12 @@ export default function Users() {
 
     toast.dismiss(uploadToast);
     toast.success(`Registered ${successCount}/${users.length} accounts.`);
+
+    // Show temp passwords if any were generated
+    if (collectedPasswords.length > 0) {
+      setTempPasswords(collectedPasswords);
+      setShowTempPasswordModal(true);
+    }
   };
 
   const getRoleIcon = (role: string) => {
@@ -671,6 +794,66 @@ export default function Users() {
             </div>
           </div>
 
+          {/* ── Super Admin: Set Password (edit mode only) ── */}
+          {selectedUser && isSuperAdmin && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+                <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <LuKeyRound size={12} /> Super Admin — Set Password
+                </span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              </div>
+
+              <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-2xl">
+                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
+                  Leave blank to keep the existing password unchanged.
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                      placeholder="Min. 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewPw ? <LuEyeOff size={16} /> : <LuEyeOn size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
+                  <input
+                    type={showNewPw ? 'text' : 'password'}
+                    value={newPasswordConfirm}
+                    onChange={e => setNewPasswordConfirm(e.target.value)}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+
+                {newPassword && newPasswordConfirm && newPassword !== newPasswordConfirm && (
+                  <p className="text-[10px] font-bold text-rose-500 ml-1">⚠ Passwords do not match.</p>
+                )}
+                {newPassword && newPassword.length < 8 && (
+                  <p className="text-[10px] font-bold text-amber-500 ml-1">⚠ Must be at least 8 characters.</p>
+                )}
+                {newPassword && newPassword.length >= 8 && newPassword === newPasswordConfirm && (
+                  <p className="text-[10px] font-bold text-emerald-500 ml-1">✓ Passwords match.</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {!selectedUser && (
             <div className="space-y-4">
               <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-blue-50/50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
@@ -693,10 +876,10 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="p-4 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-[1.5rem] flex items-start gap-3">
-                <LuTriangleAlert size={18} className="text-blue-500 mt-0.5" />
-                <p className="text-xs text-blue-700 dark:text-blue-400 leading-relaxed font-medium">
-                  System will generate a unique entry and send secure onboarding credentials to the specified email address.
+              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
+                <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                  <span className="font-black">Unchecked = Temp Password.</span> If invitation is disabled, a temporary password will be generated and shown to you immediately after account creation.
                 </p>
               </div>
             </div>
@@ -891,6 +1074,12 @@ export default function Users() {
           </div>
         </div>
       </Modal>
+      {showTempPasswordModal && tempPasswords.length > 0 && (
+        <TempPasswordModal
+          entries={tempPasswords}
+          onClose={() => { setShowTempPasswordModal(false); setTempPasswords([]); }}
+        />
+      )}
     </div>
   );
 }

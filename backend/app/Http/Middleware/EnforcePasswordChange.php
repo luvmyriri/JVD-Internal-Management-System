@@ -18,6 +18,7 @@ class EnforcePasswordChange
      * Endpoints allowed to bypass the password change gate.
      */
     private const ALLOWED_ROUTES = [
+        'auth.me',
         'auth.logout',
         'auth.change-password',
     ];

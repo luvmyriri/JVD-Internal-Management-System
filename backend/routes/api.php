@@ -17,10 +17,6 @@ use App\Http\Controllers\Travel\AgentTaskController;
 use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Travel\LegalDocumentController;
-use App\Http\Controllers\Travel\CustomerPassportController;
-use App\Http\Controllers\Travel\CustomerVisaController;
-use App\Http\Controllers\Travel\CustomerKycController;
-use App\Http\Controllers\Travel\AgentTaskController;
 use App\Http\Controllers\Fleet\BusController;
 use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Inventory\InventoryController;
@@ -225,5 +221,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // Super Admin exclusive configurations
     Route::middleware('role:super_admin')->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
+        // Super Admin can directly set a specific password for any user
+        Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
     });
 });
