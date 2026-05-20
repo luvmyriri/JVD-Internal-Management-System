@@ -55,6 +55,8 @@ class BillingController extends Controller
                 'last_page'    => $invoices->lastPage(),
                 'per_page'     => $invoices->perPage(),
                 'total'        => $invoices->total(),
+                'from'         => $invoices->firstItem(),
+                'to'           => $invoices->lastItem(),
             ],
             'stats' => $stats
         ]);
@@ -209,12 +211,15 @@ class BillingController extends Controller
             'customer_name' => 'nullable|string|max:255',
             'customer_address' => 'nullable|string|max:255',
             'customer_email' => 'nullable|string|email|max:255',
-            'customer_contact' => 'nullable|string|max:20',
+            'customer_contact' => ['nullable', 'string', 'regex:/^(09|\+639|639)\d{9}$/'],
             'payment_method' => 'required|string',
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'required|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string',
+        ], [
+            'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
+            'customer_email.email' => 'The email address must be a valid email format.',
         ]);
 
         if ($validator->fails()) {
@@ -259,6 +264,8 @@ class BillingController extends Controller
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
+                'amount_received' => $request->amount_received,
+                'change' => $request->change,
                 'payment_method' => $request->payment_method,
                 'status' => $request->payment_method === 'Cash' ? 'paid' : 'pending_payment',
                 'created_by' => auth()->id() ?? 1,

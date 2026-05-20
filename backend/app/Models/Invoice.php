@@ -21,6 +21,8 @@ class Invoice extends Model
         'subtotal',
         'tax_amount',
         'total_amount',
+        'amount_received',
+        'change',
         'payment_method',
         'payment_url',
         'payment_id',

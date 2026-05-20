@@ -12,6 +12,7 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { workOrderApi } from '../../api/workOrders';
+import { fleetApi } from '../../api/fleet';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
@@ -208,6 +209,14 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
     mutationFn: () => workOrderApi.create(form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
   });
+
+  const { data: busesData, isLoading: busesLoading } = useQuery({
+    queryKey: ['buses-dropdown'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+    staleTime: 60_000,
+  });
+  const buses = busesData?.data?.data ?? [];
+
   const f = (label: string, key: keyof WorkOrderFormData, type = 'text') => (
     <div>
       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
@@ -229,7 +238,25 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
         <div className="p-8 overflow-y-auto">
           <form id="wo-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
             <div className="grid grid-cols-2 gap-6">
-              {f('Bus ID *', 'bus_id', 'number')}
+              {/* Bus ID Dropdown */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID *</label>
+                <div className="relative">
+                  <select
+                    value={form.bus_id || ''}
+                    onChange={e => setForm(p => ({ ...p, bus_id: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                  >
+                    <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
+                    {buses.map((bus) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
               {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
             </div>
             <div>

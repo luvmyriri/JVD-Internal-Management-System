@@ -165,20 +165,22 @@ export default function Fleet() {
 
     dataSheet.getColumn(1).values = ['STATUS', 'available', 'in_service', 'under_maintenance', 'decommissioned'];
 
+    // Set columns with widths + headers first
+    worksheet.columns = [
+      { header: 'Plate Number', key: 'plate_number', width: 20 },
+      { header: 'Bus Model', key: 'model', width: 25 },
+      { header: 'Seating Capacity', key: 'seating_capacity', width: 20 },
+      { header: 'Status', key: 'status', width: 20 },
+      { header: 'Total Mileage', key: 'total_mileage', width: 20 },
+    ];
+
+    // Style the header row (row 1)
     const headerRow = worksheet.getRow(1);
-    headerRow.values = ['Plate Number', 'Bus Model', 'Seating Capacity', 'Status', 'Total Mileage'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
     headerRow.height = 25;
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    worksheet.columns = [
-      { key: 'plate_number', width: 20 },
-      { key: 'model', width: 25 },
-      { key: 'seating_capacity', width: 20 },
-      { key: 'status', width: 20 },
-      { key: 'total_mileage', width: 20 },
-    ];
+    headerRow.commit();
 
     for (let i = 2; i <= 500; i++) {
       worksheet.getCell(`D${i}`).dataValidation = {
@@ -208,7 +210,16 @@ export default function Fleet() {
     helpSheet.getColumn(1).width = 40;
     helpSheet.getColumn(2).width = 60;
 
-    worksheet.addRow(['ABC-1234', 'Yutong ZK6122H', 45, 'available', 0]);
+    // Add example row at row 2 (must use getRow(2) explicitly — addRow goes to row 501
+    // because the validation loop already touches rows 2-500 via getCell())
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('plate_number').value = 'ABC-1234';
+    exampleRow.getCell('model').value = 'Yutong ZK6122H';
+    exampleRow.getCell('seating_capacity').value = 45;
+    exampleRow.getCell('status').value = 'available';
+    exampleRow.getCell('total_mileage').value = 0;
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
 
     workbook.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
 

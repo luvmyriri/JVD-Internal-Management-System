@@ -17,8 +17,8 @@ interface VisaCase {
   checklist: Record<string, boolean>;
   submitted_date?: string;
   release_date?: string;
-  customer?: { id: number; first_name: string; last_name: string };
-  handler?: { id: number; first_name: string; last_name: string };
+  customer?: { id: number; first_name?: string; last_name?: string; full_name?: string };
+  handler?: { id: number; first_name?: string; last_name?: string; full_name?: string };
 }
 
 const STATUS_FLOW = [
@@ -152,7 +152,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
             <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {vc.customer?.first_name} {vc.customer?.last_name}
+              {vc.customer?.full_name || (vc.customer?.first_name ? `${vc.customer.first_name} ${vc.customer.last_name}` : '—')}
             </p>
           </div>
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
@@ -164,7 +164,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           {vc.handler && (
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-white">{vc.handler.first_name} {vc.handler.last_name}</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{vc.handler.full_name || `${vc.handler.first_name} ${vc.handler.last_name}`}</p>
             </div>
           )}
           {vc.reference_number && (
@@ -326,7 +326,7 @@ export default function VisaProcessing() {
                         {c.reference_number && <div className="text-[10px] text-gray-400 uppercase mt-0.5">{c.reference_number}</div>}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
-                        {c.customer?.first_name} {c.customer?.last_name}
+                        {c.customer?.full_name || (c.customer?.first_name ? `${c.customer.first_name} ${c.customer.last_name}` : '—')}
                       </td>
                       <td className="px-6 py-4">
                         <span className="shrink-0 inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border bg-violet-50 text-violet-600 border-violet-200">

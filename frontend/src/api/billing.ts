@@ -29,6 +29,8 @@ export interface Invoice {
   subtotal: number;
   tax_amount: number;
   total_amount: number;
+  amount_received?: number;
+  change?: number;
   payment_method: string;
   status: string;
   notes?: string;
@@ -49,6 +51,8 @@ export const billingApi = {
     customer_email?: string;
     customer_contact?: string;
     payment_method: string;
+    amount_received?: number;
+    change?: number;
     items: { service_id: number; quantity: number }[];
     notes?: string;
   }) => client.post('/billing', data),

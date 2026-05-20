@@ -31,18 +31,76 @@ export default function Reports() {
       setData(summaryRes.data.data);
     } catch (err) {
       console.error('Failed to fetch report summary, using professional mock data');
-      setData({
-        kpis: { revenue: 1250500, transactions: 142, avg_ticket: 8806, profit_margin: 0.18 },
-        trend: [
-          { date: '2026-05-01', total: 45000 },
-          { date: '2026-05-15', total: 210000 },
-          { date: '2026-05-30', total: 310500 }
-        ],
-        categories: [
-          { category: 'Travel & Tours', total: 650000 },
-          { category: 'Accounting Services', total: 250000 },
-        ]
-      });
+      const mockData: Record<string, any> = {
+        day: {
+          kpis: { revenue: 45200, transactions: 18, avg_ticket: 2511, profit_margin: 0.15 },
+          trend: [
+            { date: `${new Date().toISOString().split('T')[0]} 08:00:00`, total: 5000 },
+            { date: `${new Date().toISOString().split('T')[0]} 10:00:00`, total: 12000 },
+            { date: `${new Date().toISOString().split('T')[0]} 12:00:00`, total: 8500 },
+            { date: `${new Date().toISOString().split('T')[0]} 14:00:00`, total: 15000 },
+            { date: `${new Date().toISOString().split('T')[0]} 16:00:00`, total: 4700 }
+          ],
+          categories: [
+            { category: 'Travel & Tours', total: 30000 },
+            { category: 'Accounting Services', total: 15200 },
+          ]
+        },
+        week: {
+          kpis: { revenue: 285400, transactions: 84, avg_ticket: 3397, profit_margin: 0.16 },
+          trend: Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return {
+              date: d.toISOString().split('T')[0],
+              total: Math.round(20000 + Math.random() * 40000)
+            };
+          }),
+          categories: [
+            { category: 'Travel & Tours', total: 180000 },
+            { category: 'Accounting Services', total: 105400 },
+          ]
+        },
+        month: {
+          kpis: { revenue: 1250500, transactions: 142, avg_ticket: 8806, profit_margin: 0.18 },
+          trend: [
+            { date: '2026-05-01', total: 45000 },
+            { date: '2026-05-15', total: 210000 },
+            { date: '2026-05-30', total: 310500 }
+          ],
+          categories: [
+            { category: 'Travel & Tours', total: 650000 },
+            { category: 'Accounting Services', total: 250000 },
+          ]
+        },
+        year: {
+          kpis: { revenue: 14850000, transactions: 1840, avg_ticket: 8070, profit_margin: 0.20 },
+          trend: Array.from({ length: 12 }, (_, i) => {
+            const year = new Date().getFullYear();
+            return {
+              date: `${year}-${String(i + 1).padStart(2, '0')}-01`,
+              total: Math.round(800000 + Math.random() * 600000)
+            };
+          }),
+          categories: [
+            { category: 'Travel & Tours', total: 9500000 },
+            { category: 'Accounting Services', total: 5350000 },
+          ]
+        },
+        all: {
+          kpis: { revenue: 42500000, transactions: 5120, avg_ticket: 8300, profit_margin: 0.19 },
+          trend: [
+            { date: '2024-01-01', total: 12000000 },
+            { date: '2025-01-01', total: 18000000 },
+            { date: '2026-01-01', total: 12500000 }
+          ],
+          categories: [
+            { category: 'Travel & Tours', total: 26000000 },
+            { category: 'Accounting Services', total: 16500000 },
+          ]
+        }
+      };
+      setData(mockData[range] || mockData.month);
     } finally {
       setIsLoading(false);
     }
@@ -283,18 +341,108 @@ export default function Reports() {
     return <LoadingScreen />;
   }
 
-  const trendData = data?.trend || [];
-  let processedTrend = trendData;
-  if (trendData.length === 1) {
-    const d = new Date(trendData[0].date);
-    const startOfMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
-    if (trendData[0].date !== startOfMonth) {
-      processedTrend = [
-        { date: startOfMonth, total: 0 },
-        trendData[0]
-      ];
+  const getProcessedTrend = (rawTrend: any[], selectedRange: string) => {
+    const trendList = rawTrend || [];
+    const localNow = new Date();
+    const currentYear = localNow.getFullYear();
+    const currentMonthStr = String(localNow.getMonth() + 1).padStart(2, '0');
+    
+    if (selectedRange === 'day') {
+      const todayStr = `${currentYear}-${currentMonthStr}-${String(localNow.getDate()).padStart(2, '0')}`;
+      const filled = [];
+      for (let h = 0; h < 24; h++) {
+        const hourStr = String(h).padStart(2, '0');
+        const dateKey = `${todayStr} ${hourStr}:00:00`;
+        const match = trendList.find((t: any) => {
+          if (!t.date) return false;
+          const tDate = t.date.replace('T', ' ');
+          return tDate.includes(`${todayStr} ${hourStr}:`) || tDate.includes(` ${hourStr}:`);
+        });
+        filled.push({
+          date: dateKey,
+          total: match ? parseFloat(match.total) : 0
+        });
+      }
+      return filled;
     }
-  }
+
+    if (selectedRange === 'week') {
+      const startOfWeek = new Date(localNow);
+      const dayOfWeek = startOfWeek.getDay(); // 0 = Sunday, 1 = Monday
+      const diff = startOfWeek.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+      startOfWeek.setDate(diff);
+      startOfWeek.setHours(0, 0, 0, 0);
+
+      const filled = [];
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(startOfWeek);
+        d.setDate(startOfWeek.getDate() + i);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const match = trendList.find((t: any) => t.date && t.date.startsWith(dateKey));
+        filled.push({
+          date: dateKey,
+          total: match ? parseFloat(match.total) : 0
+        });
+      }
+      return filled;
+    }
+
+    if (selectedRange === 'month') {
+      const daysInMonth = new Date(currentYear, localNow.getMonth() + 1, 0).getDate();
+      const filled = [];
+      for (let i = 1; i <= daysInMonth; i++) {
+        const d = new Date(currentYear, localNow.getMonth(), i);
+        const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const match = trendList.find((t: any) => t.date && t.date.startsWith(dateKey));
+        filled.push({
+          date: dateKey,
+          total: match ? parseFloat(match.total) : 0
+        });
+      }
+      return filled;
+    }
+
+    if (selectedRange === 'year') {
+      const filled = [];
+      for (let m = 0; m < 12; m++) {
+        const monthNum = String(m + 1).padStart(2, '0');
+        const dateKey = `${currentYear}-${monthNum}-01`;
+        const match = trendList.find((t: any) => {
+          if (!t.date) return false;
+          return t.date.startsWith(`${currentYear}-${monthNum}`);
+        });
+        filled.push({
+          date: dateKey,
+          total: match ? parseFloat(match.total) : 0
+        });
+      }
+      return filled;
+    }
+
+    if (selectedRange === 'all') {
+      if (trendList.length === 1) {
+        const d = new Date(trendList[0].date.replace(' ', 'T'));
+        const prevYear = `${d.getFullYear() - 1}-01-01`;
+        const nextYear = `${d.getFullYear() + 1}-01-01`;
+        return [
+          { date: prevYear, total: 0 },
+          { date: trendList[0].date, total: parseFloat(trendList[0].total) },
+          { date: nextYear, total: 0 }
+        ];
+      }
+      return trendList.map((t: any) => ({
+        date: t.date,
+        total: parseFloat(t.total)
+      }));
+    }
+
+    return trendList.map((t: any) => ({
+      date: t.date,
+      total: parseFloat(t.total)
+    }));
+  };
+
+  const processedTrend = getProcessedTrend(data?.trend, range);
 
   return (
     <div className="space-y-10 pb-12 mt-10">
@@ -311,15 +459,15 @@ export default function Reports() {
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex bg-white dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
+          <div className="flex bg-gray-100/80 dark:bg-gray-800/80 p-1.5 rounded-[1.25rem] border border-gray-200/50 dark:border-gray-700/50 shadow-inner backdrop-blur-md">
             {['day', 'week', 'month', 'year', 'all'].map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                   range === r 
-                  ? 'bg-white text-gray-900 shadow-sm' 
-                  : 'text-gray-400 hover:text-gray-900'
+                  ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md scale-[1.03]' 
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:scale-[1.01]'
                 }`}
               >
                 {r}
@@ -443,7 +591,22 @@ export default function Reports() {
                     axisLine={false} 
                     tickLine={false} 
                     tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} 
-                    tickFormatter={(val) => new Date(val).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tickFormatter={(val) => {
+                      try {
+                        const dateObj = new Date(val);
+                        if (isNaN(dateObj.getTime())) return val;
+                        
+                        if (range === 'day') {
+                          return dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+                        }
+                        if (range === 'year' || range === 'all') {
+                          return dateObj.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        }
+                        return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                      } catch (e) {
+                        return val;
+                      }
+                    }}
                   />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={(val) => `₱${val >= 1000 ? val/1000 + 'k' : val}`} />
                   <Tooltip 

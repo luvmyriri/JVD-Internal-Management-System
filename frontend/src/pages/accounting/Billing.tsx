@@ -34,8 +34,8 @@ export default function Billing() {
       
       const resData = response.data;
       if (resData?.success) {
-        setInvoices(resData.data?.data || []);
-        setPagination(resData.data || null);
+        setInvoices(resData.data || []);
+        setPagination(resData.meta || null);
         setStats(resData.stats || null);
       }
     } catch (err) {

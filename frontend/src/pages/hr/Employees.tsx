@@ -152,9 +152,17 @@ export default function Employees() {
     dataSheet.getColumn(1).values = ['ROLES', ...ROLES.map(r => r.label)];
     dataSheet.getColumn(2).values = ['DEPARTMENTS', ...DEPARTMENTS];
 
-    // Header row (Now row 1 for cleaner editing)
+    // Set columns with widths first (must be done before setting header values)
+    worksheet.columns = [
+      { header: 'First Name', key: 'first_name', width: 25 },
+      { header: 'Last Name', key: 'last_name', width: 25 },
+      { header: 'Email', key: 'email', width: 35 },
+      { header: 'Role', key: 'role', width: 20 },
+      { header: 'Department', key: 'department', width: 25 },
+    ];
+
+    // Style the header row (row 1)
     const headerRow = worksheet.getRow(1);
-    headerRow.values = ['First Name', 'Last Name', 'Email', 'Role', 'Department'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = {
       type: 'pattern',
@@ -163,14 +171,7 @@ export default function Employees() {
     };
     headerRow.height = 25;
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    worksheet.columns = [
-      { key: 'first_name', width: 25 },
-      { key: 'last_name', width: 25 },
-      { key: 'email', width: 35 },
-      { key: 'role', width: 20 },
-      { key: 'department', width: 25 },
-    ];
+    headerRow.commit();
 
     // Set Data Validations using named ranges/cell references from hidden sheet
     // Role validation (D2:D500)
@@ -216,8 +217,17 @@ export default function Employees() {
     helpSheet.getColumn(1).width = 40;
     helpSheet.getColumn(2).width = 60;
 
-    // Add example in Employees sheet
-    worksheet.addRow(['Michael', 'Scofield', 'm.scofield@jvd-logistics.com', 'Agent', 'Operations']);
+    // Add example row at row 2 so users know what to type
+    // NOTE: Must use getRow(2) explicitly because the validation loop above
+    // already "touches" rows 2-500 via getCell(), which pushes addRow() to row 501.
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('first_name').value = 'Juan';
+    exampleRow.getCell('last_name').value = 'dela cruz';
+    exampleRow.getCell('email').value = 'JuanDC@gmail.com';
+    exampleRow.getCell('role').value = 'Agent';
+    exampleRow.getCell('department').value = 'Operations';
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
 
     // Set Employees as the active sheet
     workbook.views = [

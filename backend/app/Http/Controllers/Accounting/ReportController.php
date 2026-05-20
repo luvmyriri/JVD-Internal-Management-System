@@ -15,45 +15,67 @@ class ReportController extends Controller
      */
     public function getSummary(Request $request)
     {
-        $range = $request->range ?? 'month'; // month, year, all
-        $query = Invoice::where('status', 'paid');
+        $range = $request->range ?? 'month'; // day, week, month, year, all
+        $now = Carbon::now();
+        $startDate = null;
+        $trendFormat = "CAST(created_at AS date)";
 
         if ($range === 'day') {
-            $query->where('created_at', '>=', Carbon::now()->startOfDay());
+            $startDate = $now->copy()->startOfDay();
+            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-DD HH24:00:00')";
         } elseif ($range === 'week') {
-            $query->where('created_at', '>=', Carbon::now()->startOfWeek());
+            $startDate = $now->copy()->startOfWeek();
+            $trendFormat = "CAST(created_at AS date)";
         } elseif ($range === 'month') {
-            $query->where('created_at', '>=', Carbon::now()->startOfMonth());
+            $startDate = $now->copy()->startOfMonth();
+            $trendFormat = "CAST(created_at AS date)";
         } elseif ($range === 'year') {
-            $query->where('created_at', '>=', Carbon::now()->startOfYear());
+            $startDate = $now->copy()->startOfYear();
+            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-01')";
         }
 
-        // KPIs
-        $totalRevenue = $query->sum('total_amount');
-        $transactionCount = $query->count();
+        // KPIs (Independent query builder instance to avoid query reuse pollution)
+        $kpiQuery = Invoice::where('status', 'paid');
+        if ($startDate) {
+            $kpiQuery->where('created_at', '>=', $startDate);
+        }
+        $totalRevenue = (float) $kpiQuery->sum('total_amount');
+        $transactionCount = $kpiQuery->count();
         $averageTicketSize = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
         
-        // Growth (vs previous period)
-        // For simplicity, let's just return current stats. 
-        // In a real app, we'd calculate % change.
-
-        // Revenue Trend (Daily for current month)
-        $trend = Invoice::select(
-                DB::raw('DATE(created_at) as date'),
+        // Revenue Trend (Dynamic grouping and filtering based on range)
+        $trendQuery = Invoice::select(
+                DB::raw("{$trendFormat} as date"),
                 DB::raw('SUM(total_amount) as total')
             )
-            ->where('status', 'paid')
-            ->where('created_at', '>=', Carbon::now()->subDays(30))
-            ->groupBy('date')
+            ->where('status', 'paid');
+
+        if ($startDate) {
+            $trendQuery->where('created_at', '>=', $startDate);
+        } else {
+            // For 'all' range, group by month
+            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-01')";
+            $trendQuery = Invoice::select(
+                DB::raw("{$trendFormat} as date"),
+                DB::raw('SUM(total_amount) as total')
+            )->where('status', 'paid');
+        }
+
+        $trend = $trendQuery->groupBy('date')
             ->orderBy('date')
             ->get();
 
-        // Service Category Breakdown
-        $categories = DB::table('invoice_items')
+        // Service Category Breakdown (Dynamic filtering based on range)
+        $categoryQuery = DB::table('invoice_items')
             ->join('services', 'invoice_items.service_id', '=', 'services.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->where('invoices.status', 'paid')
-            ->select('services.category', DB::raw('SUM(invoice_items.total_price) as total'))
+            ->where('invoices.status', 'paid');
+
+        if ($startDate) {
+            $categoryQuery->where('invoices.created_at', '>=', $startDate);
+        }
+
+        $categories = $categoryQuery->select('services.category', DB::raw('SUM(invoice_items.total_price) as total'))
             ->groupBy('services.category')
             ->get();
 
@@ -78,16 +100,22 @@ class ReportController extends Controller
     public function getDetailed(Request $request)
     {
         $range = $request->range ?? 'month';
-        $query = Invoice::with(['customer', 'items.service'])->where('status', 'paid');
+        $now = Carbon::now();
+        $startDate = null;
 
         if ($range === 'day') {
-            $query->where('created_at', '>=', Carbon::now()->startOfDay());
+            $startDate = $now->copy()->startOfDay();
         } elseif ($range === 'week') {
-            $query->where('created_at', '>=', Carbon::now()->startOfWeek());
+            $startDate = $now->copy()->startOfWeek();
         } elseif ($range === 'month') {
-            $query->where('created_at', '>=', Carbon::now()->startOfMonth());
+            $startDate = $now->copy()->startOfMonth();
         } elseif ($range === 'year') {
-            $query->where('created_at', '>=', Carbon::now()->startOfYear());
+            $startDate = $now->copy()->startOfYear();
+        }
+
+        $query = Invoice::with(['customer', 'items.service'])->where('status', 'paid');
+        if ($startDate) {
+            $query->where('created_at', '>=', $startDate);
         }
 
         $invoices = $query->orderBy('created_at', 'desc')->get();

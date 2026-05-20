@@ -23,6 +23,8 @@ class InvoiceResource extends JsonResource
             'subtotal' => (float) $this->subtotal,
             'tax_amount' => (float) $this->tax_amount,
             'total_amount' => (float) $this->total_amount,
+            'amount_received' => $this->amount_received !== null ? (float) $this->amount_received : null,
+            'change' => $this->change !== null ? (float) $this->change : null,
             'payment_method' => $this->payment_method,
             'payment_id' => $this->payment_id,
             'payment_url' => $this->payment_url,
@@ -39,6 +41,12 @@ class InvoiceResource extends JsonResource
                         'quantity' => $item->quantity,
                         'unit_price' => (float) $item->unit_price,
                         'total_price' => (float) $item->total_price,
+                        'service' => [
+                            'id' => $item->service->id ?? null,
+                            'name' => $item->service->name ?? 'N/A',
+                            'category' => $item->service->category ?? 'N/A',
+                            'description' => $item->service->description ?? '',
+                        ]
                     ];
                 });
             }),

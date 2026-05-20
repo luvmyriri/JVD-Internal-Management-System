@@ -36,6 +36,42 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
     notes: customer?.notes ?? '',
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+
+    if (!form.first_name.trim()) {
+      newErrors.first_name = 'First name is required';
+    }
+
+    if (!form.last_name.trim()) {
+      newErrors.last_name = 'Last name is required';
+    }
+
+    if (!form.email.trim()) {
+      newErrors.email = 'Email is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email.trim())) {
+        newErrors.email = 'Invalid email address format';
+      }
+    }
+
+    if (!form.phone.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else {
+      const cleanPhone = form.phone.replace(/[\s()-]/g, '');
+      const phPhoneRegex = /^(?:\+63|63|0)9\d{9}$/;
+      if (!phPhoneRegex.test(cleanPhone)) {
+        newErrors.phone = 'Invalid Philippine mobile number (e.g. 09171234567 or +639171234567)';
+      }
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const mutation = useMutation({
     mutationFn: () =>
       customer
@@ -46,36 +82,75 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
       qc.invalidateQueries({ queryKey: ['customers'] });
       onClose();
     },
-    onError: () => toast.error('Failed to save customer.'),
+    onError: (err: any) => {
+      const responseData = err?.response?.data;
+      if (responseData && responseData.errors) {
+        const backendErrors: Record<string, string> = {};
+        Object.keys(responseData.errors).forEach(key => {
+          backendErrors[key] = Array.isArray(responseData.errors[key])
+            ? responseData.errors[key][0]
+            : responseData.errors[key];
+        });
+        setErrors(backendErrors);
+        toast.error('Please fix the validation errors.');
+      } else {
+        toast.error('Failed to save customer.');
+      }
+    },
   });
 
-  const field = (label: string, key: keyof typeof form, type = 'text', placeholder = '') => (
-    <div>
-      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
-      {key === 'notes' ? (
-        <textarea
-          rows={3}
-          value={form[key]}
-          onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-          placeholder={placeholder}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow resize-none bg-white dark:bg-gray-900"
-        />
-      ) : (
-        <input
-          type={type}
-          value={form[key]}
-          onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
-          placeholder={placeholder}
-          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
-        />
-      )}
-    </div>
-  );
+  const field = (label: string, key: keyof typeof form, type = 'text', placeholder = '') => {
+    const hasError = !!errors[key];
+    return (
+      <div>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
+        {key === 'notes' ? (
+          <textarea
+            rows={3}
+            value={form[key]}
+            onChange={e => {
+              setForm(p => ({ ...p, [key]: e.target.value }));
+              if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
+            }}
+            placeholder={placeholder}
+            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow resize-none bg-white dark:bg-gray-900 ${
+              hasError
+                ? 'border-red-500 focus:ring-red-500 dark:border-red-500'
+                : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500'
+            }`}
+          />
+        ) : (
+          <input
+            type={type}
+            value={form[key]}
+            onChange={e => {
+              setForm(p => ({ ...p, [key]: e.target.value }));
+              if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
+            }}
+            placeholder={placeholder}
+            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow bg-white dark:bg-gray-900 ${
+              hasError
+                ? 'border-red-500 focus:ring-red-500 dark:border-red-500'
+                : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500'
+            }`}
+          />
+        )}
+        {hasError && <p className="text-xs text-red-500 mt-1 font-medium">{errors[key]}</p>}
+      </div>
+    );
+  };
 
   return (
     <Modal isOpen onClose={onClose} title={customer ? 'Edit Customer' : 'Register New Customer'} size="lg">
       <div className="p-6">
-        <form id="customer-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-5">
+        <form id="customer-form" onSubmit={e => {
+          e.preventDefault();
+          if (validateForm()) {
+            mutation.mutate();
+          } else {
+            toast.error('Please fix the validation errors.');
+          }
+        }} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {field('First Name *', 'first_name', 'text', 'Juan')}
             {field('Last Name *', 'last_name', 'text', 'dela Cruz')}
@@ -88,7 +163,7 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button form="customer-form" type="submit" isLoading={mutation.isPending}
-            disabled={!form.first_name || !form.last_name || !form.email}>
+            disabled={!form.first_name || !form.last_name || !form.email || !form.phone}>
             {customer ? 'Save Changes' : 'Register Customer'}
           </Button>
         </div>

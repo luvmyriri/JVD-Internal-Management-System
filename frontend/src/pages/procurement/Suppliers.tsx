@@ -372,13 +372,22 @@ export default function Suppliers() {
     dataSheet.getColumn(1).values = ['PAYMENT_TERMS', 'COD', 'Net 15', 'Net 30', 'Net 60', 'Monthly', 'Upon Order'];
     dataSheet.getColumn(2).values = ['IS_CONSIGNMENT', 'Yes', 'No'];
 
-    // Header row
-    const headerRow = worksheet.getRow(1);
-    headerRow.values = [
-      'Company Name', 'Contact Person', 'Phone', 'Email', 
-      'Address', 'Payment Terms', 'Is Consignment', 
-      'Bank Name', 'Bank Account Number', 'TIN Number'
+    // Set columns with widths + headers first
+    worksheet.columns = [
+      { header: 'Company Name', key: 'company_name', width: 30 },
+      { header: 'Contact Person', key: 'contact_person', width: 25 },
+      { header: 'Phone', key: 'phone', width: 20 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Address', key: 'address', width: 40 },
+      { header: 'Payment Terms', key: 'payment_terms', width: 20 },
+      { header: 'Is Consignment', key: 'is_consignment', width: 20 },
+      { header: 'Bank Name', key: 'bank_name', width: 20 },
+      { header: 'Bank Account Number', key: 'bank_account_number', width: 25 },
+      { header: 'TIN Number', key: 'tin_number', width: 20 },
     ];
+
+    // Style the header row (row 1)
+    const headerRow = worksheet.getRow(1);
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = {
       type: 'pattern',
@@ -387,19 +396,7 @@ export default function Suppliers() {
     };
     headerRow.height = 25;
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    worksheet.columns = [
-      { key: 'company_name', width: 30 },
-      { key: 'contact_person', width: 25 },
-      { key: 'phone', width: 20 },
-      { key: 'email', width: 30 },
-      { key: 'address', width: 40 },
-      { key: 'payment_terms', width: 20 },
-      { key: 'is_consignment', width: 20 },
-      { key: 'bank_name', width: 20 },
-      { key: 'bank_account_number', width: 25 },
-      { key: 'tin_number', width: 20 },
-    ];
+    headerRow.commit();
 
     // Set Data Validations
     for (let i = 2; i <= 500; i++) {
@@ -443,12 +440,21 @@ export default function Suppliers() {
     helpSheet.getColumn(1).width = 40;
     helpSheet.getColumn(2).width = 60;
 
-    // Add example in Suppliers sheet
-    worksheet.addRow([
-      'ABC Parts Supply Co.', 'Juan Dela Cruz', '+63 917 123 4567', 'supplier@example.com', 
-      'Manila, Philippines', 'Net 30', 'No', 
-      'BDO', '1234-5678-9012', '000-000-000-000'
-    ]);
+    // Add example row at row 2 (must use getRow(2) explicitly — addRow goes to row 501
+    // because the validation loop already touches rows 2-500 via getCell())
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('company_name').value = 'ABC Parts Supply Co.';
+    exampleRow.getCell('contact_person').value = 'Juan dela cruz';
+    exampleRow.getCell('phone').value = '+63 917 123 4567';
+    exampleRow.getCell('email').value = 'JuanDC@gmail.com';
+    exampleRow.getCell('address').value = 'Manila, Philippines';
+    exampleRow.getCell('payment_terms').value = 'Net 30';
+    exampleRow.getCell('is_consignment').value = 'No';
+    exampleRow.getCell('bank_name').value = 'BDO';
+    exampleRow.getCell('bank_account_number').value = '1234-5678-9012';
+    exampleRow.getCell('tin_number').value = '000-000-000-000';
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
 
     // Set Suppliers as the active sheet
     workbook.views = [

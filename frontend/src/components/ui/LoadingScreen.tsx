@@ -49,7 +49,7 @@ export const LoadingScreen = () => {
         {/* Loading Text */}
         <div className="flex flex-col items-center gap-2">
           <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.5em] animate-pulse">
-            System Synchronizing
+            Loading...
           </p>
           
           {/* Modern Progress Bar */}
