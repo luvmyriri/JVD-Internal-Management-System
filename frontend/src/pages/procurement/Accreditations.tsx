@@ -24,6 +24,20 @@ const STATUS_STYLE: Record<string, string> = {
   pending_renewal: 'bg-amber-50 text-amber-700 border border-amber-200',
 };
 
+const formatDocUrl = (url: string | undefined | null): string => {
+  if (!url) return '';
+  let normalizedUrl = url;
+  if (normalizedUrl.includes('/storage/accreditations/')) {
+    normalizedUrl = normalizedUrl.replace('/storage/accreditations/', '/uploads/accreditations/');
+  }
+  if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
+    return normalizedUrl;
+  }
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const slash = normalizedUrl.startsWith('/') ? '' : '/';
+  return `${baseUrl}${slash}${normalizedUrl}`;
+};
+
 function StatusBadge({ status }: { status: string }) {
   return (
     <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
@@ -258,9 +272,20 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                 <LuFileText size={18} />
                 <span className="text-sm font-bold">Document Uploaded</span>
               </div>
-              <button onClick={() => removeMutation.mutate({ id: acc.id, key: 'document_url' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
-                Remove
-              </button>
+              <div className="flex items-center gap-3">
+                <a 
+                  href={formatDocUrl(acc.document_url)} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="text-blue-600 hover:text-blue-800 text-xs font-bold underline"
+                >
+                  View
+                </a>
+                <span className="text-gray-300">|</span>
+                <button onClick={() => removeMutation.mutate({ id: acc.id, key: 'document_url' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
+                  Remove
+                </button>
+              </div>
             </div>
           ) : (
             <label className="flex flex-col items-center justify-center w-full h-[100px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors">
@@ -271,6 +296,44 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
               <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={handleMainFileUpload} disabled={uploadMutation.isPending} />
             </label>
           )}
+        </div>
+
+        {/* Compliance Portal Documents Section */}
+        <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Compliance Portal Documents</p>
+          <div className="grid grid-cols-3 gap-4">
+            {['nda', 'terms', 'kyc'].map(docKey => {
+              const url = acc[`${docKey}_document_url` as keyof Accreditation] as string | undefined;
+              const docName = docKey.toUpperCase();
+              
+              if (url) {
+                return (
+                  <a
+                    key={docKey}
+                    href={formatDocUrl(url)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                  >
+                    <LuFileText size={20} className="mb-1" />
+                    <span className="text-[11px] font-black">{docName} Document</span>
+                    <span className="text-[9px] text-emerald-650 mt-0.5">Click to View</span>
+                  </a>
+                );
+              }
+              
+              return (
+                <div
+                  key={docKey}
+                  className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-250 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900/60"
+                >
+                  <LuFileText size={20} className="mb-1 opacity-40" />
+                  <span className="text-[11px] font-bold">{docName}</span>
+                  <span className="text-[9px] text-gray-450 mt-0.5">Not Submitted</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </Modal>
@@ -380,10 +443,21 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
             
             if (hasDoc) {
               return (
-                <div key={doc} className="flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200">
+                <button 
+                  type="button"
+                  key={doc} 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (hasDoc) {
+                      window.open(formatDocUrl(hasDoc as string), '_blank');
+                    }
+                  }}
+                  className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-105 hover:text-emerald-800 transition-all"
+                  title={`View submitted ${doc} document`}
+                >
                   <LuFileText size={12} />
                   {doc}
-                </div>
+                </button>
               );
             }
             

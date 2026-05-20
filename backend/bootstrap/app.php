@@ -29,6 +29,8 @@ return Application::configure(basePath: dirname(__DIR__))
         
         $middleware->validateCsrfTokens(except: [
             'api/admin/settings/landing-page',
+            'api/accreditations/*/submit-kyc',
+            'api/accreditations/*/submit-kyc/upload/*',
         ]);
         // Apply audit logging to all API routes
     })

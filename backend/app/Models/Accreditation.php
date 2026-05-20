@@ -14,7 +14,7 @@ class Accreditation extends Model
         'issuing_body', 'issue_date', 'expiry_date',
         'status', 'document_url',
         'nda_document_url', 'terms_document_url', 'kyc_document_url',
-        'entity_name', 'contact_person', 'contact_email'
+        'entity_name', 'contact_person', 'contact_email', 'kyc_token'
     ];
 
     protected function casts(): array

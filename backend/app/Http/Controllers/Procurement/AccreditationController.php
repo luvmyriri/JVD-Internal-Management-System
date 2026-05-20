@@ -111,8 +111,11 @@ class AccreditationController extends Controller
         // Business Requirement: "System generates a Gmail-accessible submission link/form for the supplier/partner/client to upload their KYC documents."
         $token = Str::random(32);
         
-        // This link would be sent via email normally
-        $link = config('app.frontend_url', 'http://localhost:3000') . '/kyc-submission?token=' . $token . '&ref=' . $accreditation->id;
+        $frontendUrls = explode(',', env('FRONTEND_URL', 'http://localhost:3000'));
+        $baseUrl = rtrim($frontendUrls[0], '/');
+        
+        $accreditation->update(['kyc_token' => $token]);
+        $link = $baseUrl . '/kyc-submission?token=' . $token . '&ref=' . $accreditation->id;
 
         // Send the actual email
         Mail::to($accreditation->contact_email)->send(new KycRequestMail($link, $accreditation));
@@ -124,24 +127,52 @@ class AccreditationController extends Controller
         ]);
     }
 
+    public function verifyToken(Request $request, Accreditation $accreditation)
+    {
+        $token = $request->query('token');
+        if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
+            return response()->json(['success' => false, 'message' => 'Invalid or expired token.'], 403);
+        }
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'entity_name' => $accreditation->entity_name,
+                'contact_person' => $accreditation->contact_person,
+                'contact_email' => $accreditation->contact_email,
+            ]
+        ]);
+    }
+
     public function submitKyc(Request $request, Accreditation $accreditation)
     {
-        // In a real scenario, we'd validate the token against a database record.
-        // For now, we simulate receiving the documents and updating the record.
+        $token = $request->input('token');
+        if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
+            return response()->json(['message' => 'Forbidden: Invalid or expired compliance session.'], 403);
+        }
+
         $validated = $request->validate([
-            'nda_document_url' => 'required|string',
+            'nda_document_url'   => 'required|string',
             'terms_document_url' => 'required|string',
-            'kyc_document_url' => 'required|string',
+            'kyc_document_url'   => 'required|string',
+            'entity_name'        => 'nullable|string|max:255',
+            'contact_person'     => 'nullable|string|max:255',
+            'contact_email'      => 'nullable|string|email|max:255',
         ]);
 
-        $accreditation->update([
-            'nda_document_url' => $validated['nda_document_url'],
-            'terms_document_url' => $validated['terms_document_url'],
-            'kyc_document_url' => $validated['kyc_document_url'],
-            'status' => 'active', // For demo we set directly to active upon upload
-        ]);
+        $accreditation->update(array_merge($validated, [
+            'status' => 'active', // Set active upon submission
+        ]));
 
         return response()->json(['message' => 'KYC documents submitted successfully.']);
+    }
+
+    public function uploadDocumentPublic(Request $request, Accreditation $accreditation, $type)
+    {
+        $token = $request->query('token') ?: $request->input('token');
+        if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
+            return response()->json(['success' => false, 'message' => 'Forbidden: Invalid or expired compliance session.'], 403);
+        }
+        return $this->uploadDocument($request, $accreditation, $type);
     }
 
     public function uploadDocument(Request $request, Accreditation $accreditation, $type)
@@ -158,10 +189,11 @@ class AccreditationController extends Controller
         if ($request->hasFile('file')) {
             $file = $request->file('file');
             $filename = time() . '_' . $file->getClientOriginalName();
-            $path = $file->storeAs("public/accreditations/{$accreditation->id}/{$type}", $filename);
+            // Store explicitly inside the public disk
+            $path = $file->storeAs("accreditations/{$accreditation->id}/{$type}", $filename, 'public');
             
-            // Generate public URL
-            $url = \Illuminate\Support\Facades\Storage::url($path);
+            // Generate public URL using the public disk
+            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
             
             $column = $type === 'main' ? 'document_url' : "{$type}_document_url";
             $accreditation->update([$column => $url]);
