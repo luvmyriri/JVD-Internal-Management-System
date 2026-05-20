@@ -18,7 +18,7 @@ class SystemSettingController extends Controller
         $bgList = SystemSetting::getValue('landing_page_bg', ['/bus-bg.png']);
         $btnColor = SystemSetting::getValue('landing_page_btn_color', '#2563eb');
         $duration = SystemSetting::getValue('landing_page_slide_duration', 6);
-        $title = SystemSetting::getValue('landing_page_title', 'JVD ETMS');
+        $title = SystemSetting::getValue('landing_page_title', 'JVD ETMC');
         $transition = SystemSetting::getValue('landing_page_slide_transition', 'fade');
 
         return response()->json([
@@ -122,7 +122,7 @@ class SystemSettingController extends Controller
                 'landing_page_bg' => SystemSetting::getValue('landing_page_bg', ['/bus-bg.png']),
                 'landing_page_btn_color' => SystemSetting::getValue('landing_page_btn_color', '#2563eb'),
                 'landing_page_slide_duration' => intval(SystemSetting::getValue('landing_page_slide_duration', 6)),
-                'landing_page_title' => SystemSetting::getValue('landing_page_title', 'JVD ETMS'),
+                'landing_page_title' => SystemSetting::getValue('landing_page_title', 'JVD ETMC'),
                 'landing_page_slide_transition' => SystemSetting::getValue('landing_page_slide_transition', 'fade'),
             ]
         ]);

@@ -101,7 +101,7 @@ export default function Sidebar() {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     'Overview': true,
   });
-  const [systemName, setSystemName] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMS');
+  const [systemName, setSystemName] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMC');
 
   // Auto-expand section on mount if an item within it is active
   useEffect(() => {

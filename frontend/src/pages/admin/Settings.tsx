@@ -97,7 +97,7 @@ export default function Settings() {
   const [bgUrls, setBgUrls] = useState<string[]>(['/bus-bg.png']);
   const [btnColor, setBtnColor] = useState('#2563eb');
   const [slideDuration, setSlideDuration] = useState<number>(6);
-  const [landingPageTitle, setLandingPageTitle] = useState<string>('JVD ETMS');
+  const [landingPageTitle, setLandingPageTitle] = useState<string>('JVD ETMC');
   const [slideTransition, setSlideTransition] = useState<string>('fade');
 
   // File Upload State
@@ -130,7 +130,7 @@ export default function Settings() {
         setBgUrls(data.landing_page_bg || []);
         setBtnColor(data.landing_page_btn_color || '#2563eb');
         setSlideDuration(data.landing_page_slide_duration || 6);
-        setLandingPageTitle(data.landing_page_title || 'JVD ETMS');
+        setLandingPageTitle(data.landing_page_title || 'JVD ETMC');
         setSlideTransition(data.landing_page_slide_transition || 'fade');
       }
     } catch (error) {
@@ -234,7 +234,7 @@ export default function Settings() {
         setBgUrls(updatedData.landing_page_bg || []);
         setBtnColor(updatedData.landing_page_btn_color || '#2563eb');
         setSlideDuration(updatedData.landing_page_slide_duration || 6);
-        setLandingPageTitle(updatedData.landing_page_title || 'JVD ETMS');
+        setLandingPageTitle(updatedData.landing_page_title || 'JVD ETMC');
         setSlideTransition(updatedData.landing_page_slide_transition || 'fade');
       }
 
@@ -430,7 +430,7 @@ export default function Settings() {
                     type="text" 
                     value={landingPageTitle}
                     onChange={(e) => setLandingPageTitle(e.target.value)}
-                    placeholder="JVD ETMS"
+                    placeholder="JVD ETMC"
                     maxLength={50}
                     className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 rounded-xl text-gray-900 dark:text-white font-bold text-sm outline-none focus:border-indigo-500 transition-all"
                   />
@@ -558,7 +558,7 @@ export default function Settings() {
 
       {/* Version Footer */}
       <div className="text-center pt-4">
-        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">JVD ETMS v1.2.0-stable</p>
+        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">JVD ETMC v1.2.0-stable</p>
       </div>
     </div>
   );

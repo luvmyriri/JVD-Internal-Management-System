@@ -30,6 +30,8 @@ class AgentTaskController extends Controller
 
         $task = $customer->tasks()->create($validated);
 
+        \App\Http\Services\NotificationService::notifyTaskAssignment($task);
+
         return response()->json($task->load('assignee'), 201);
     }
 
@@ -47,7 +49,12 @@ class AgentTaskController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
         ]);
 
+        $oldAssignedTo = $task->assigned_to;
         $task->update($validated);
+
+        if (isset($validated['assigned_to']) && $validated['assigned_to'] != $oldAssignedTo) {
+            \App\Http\Services\NotificationService::notifyTaskAssignment($task);
+        }
 
         return response()->json($task->load('assignee'));
     }
