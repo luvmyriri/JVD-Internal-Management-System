@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import * as ExcelJS from 'exceljs';
+import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
   LuUser, LuShieldAlert, LuFileText, LuSend, LuExternalLink,
-  LuDownload, LuCloudUpload,
+  LuDownload, LuCloudUpload, LuFileDown,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -336,6 +338,90 @@ export default function PMS() {
   const [profileBus, setProfileBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('PMS Log');
+    const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
+
+    dataSheet.getColumn(1).values = ['STATUS', 'available', 'in_service', 'under_maintenance', 'decommissioned'];
+
+    // Set columns with headers first
+    worksheet.columns = [
+      { header: 'Plate Number', key: 'plate_number', width: 20 },
+      { header: 'Service Date', key: 'service_date', width: 20 },
+      { header: 'Next Service Due', key: 'next_service_due', width: 20 },
+      { header: 'Current Mileage (km)', key: 'total_mileage', width: 22 },
+      { header: 'Bus Status After Service', key: 'status', width: 28 },
+      { header: 'Service Notes', key: 'notes', width: 40 },
+    ];
+
+    // Style the header row
+    const headerRow = worksheet.getRow(1);
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
+    headerRow.height = 25;
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+    headerRow.commit();
+
+    // Status dropdown validation on column E (rows 2-500)
+    for (let i = 2; i <= 500; i++) {
+      worksheet.getCell(`E${i}`).dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`Data!$A$2:$A$5`],
+        showErrorMessage: true,
+        errorTitle: 'Invalid Status',
+        error: 'Please select a status from the dropdown menu.'
+      };
+    }
+
+    // Instructions sheet
+    const helpSheet = workbook.addWorksheet('Instructions');
+    helpSheet.mergeCells('A1:B1');
+    const brandCell = helpSheet.getCell('A1');
+    brandCell.value = 'JVD INTERNAL MANAGEMENT SYSTEM';
+    brandCell.font = { name: 'Arial Black', size: 14, color: { argb: 'FF1E293B' } };
+    brandCell.alignment = { horizontal: 'center' };
+    helpSheet.addRow(['BULK PMS SERVICE LOG GUIDE']);
+    helpSheet.getRow(2).font = { bold: true, size: 12, color: { argb: 'FF3B82F6' } };
+    helpSheet.addRow(['']);
+    helpSheet.addRow(['1. Fill in the "PMS Log" sheet starting from row 2.']);
+    helpSheet.addRow(['2. Do not modify or delete the header row (Row 1).']);
+    helpSheet.addRow(['3. Plate Number must match an existing registered vehicle.']);
+    helpSheet.addRow(['4. Service Date and Next Service Due must be in YYYY-MM-DD format.']);
+    helpSheet.addRow(['5. Current Mileage must be a number (e.g. 35000).']);
+    helpSheet.addRow(['6. Use the dropdown for Bus Status After Service.']);
+    helpSheet.addRow(['7. If "Protected View" appears, click "Enable Editing" to use dropdowns.']);
+    helpSheet.getColumn(1).width = 55;
+    helpSheet.getColumn(2).width = 40;
+
+    // Add example row at row 2 (use getRow(2) explicitly — addRow goes to row 501
+    // because the validation loop already touches rows 2-500 via getCell())
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('plate_number').value = 'ABC-1234';
+    exampleRow.getCell('service_date').value = '2026-05-20';
+    exampleRow.getCell('next_service_due').value = '2026-08-20';
+    exampleRow.getCell('total_mileage').value = 35000;
+    exampleRow.getCell('status').value = 'available';
+    exampleRow.getCell('notes').value = 'Oil change, filter replacement, brake inspection completed.';
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
+
+    workbook.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'JVD_PMS_Bulk_Template.xlsx';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    toast.success('PMS template downloaded!');
+  };
+
   const { data, isLoading } = useQuery({
     queryKey: ['buses-pms', search],
     queryFn: () => fleetApi.list({ search: search || undefined, per_page: 200 }),
@@ -440,6 +526,12 @@ export default function PMS() {
             </div>
             
             <div className="flex items-center gap-2">
+              <button
+                onClick={downloadTemplate}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+              >
+                <LuFileDown className="w-4 h-4" /> Format
+              </button>
               <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
                 <LuCloudUpload className="w-4 h-4" /> Bulk Import
                 <input type="file" multiple className="hidden" accept=".csv,.xlsx" />

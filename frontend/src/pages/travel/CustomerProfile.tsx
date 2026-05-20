@@ -23,7 +23,7 @@ export default function CustomerProfile() {
     queryFn: () => customerApi.get(customerId),
   });
 
-  const customer = response?.data;
+  const customer = response?.data?.data;
 
   if (isLoading) {
     return <div className="p-10 text-center animate-pulse text-gray-400 font-bold tracking-widest uppercase text-sm">Loading Profile...</div>;
@@ -142,7 +142,7 @@ export default function CustomerProfile() {
                             </span>
                           </td>
                           <td className="px-4 py-3 font-bold text-gray-900 dark:text-white">
-                            ${Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            ₱{Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-400">{new Date(inv.created_at).toLocaleDateString()}</td>
                         </tr>

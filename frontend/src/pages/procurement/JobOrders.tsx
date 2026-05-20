@@ -11,6 +11,8 @@ import {
   Send
 } from 'lucide-react';
 import { jobOrderApi } from '../../api/jobOrders';
+import { customerApi } from '../../api/customers';
+import { fleetApi } from '../../api/fleet';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
@@ -73,7 +75,23 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-orders'] }); onClose(); },
   });
 
-  const set = (key: keyof JobOrderFormData, value: string | number) => setForm(p => ({ ...p, [key]: value }));
+  // Fetch Customers for Dropdown
+  const { data: customersData, isLoading: customersLoading } = useQuery({
+    queryKey: ['customers-dropdown'],
+    queryFn: () => customerApi.list({ per_page: 100 }),
+    staleTime: 60_000,
+  });
+  const customers = customersData?.data?.data ?? [];
+
+  // Fetch Buses for Dropdown
+  const { data: busesData, isLoading: busesLoading } = useQuery({
+    queryKey: ['buses-dropdown'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+    staleTime: 60_000,
+  });
+  const buses = busesData?.data?.data ?? [];
+
+  const set = (key: keyof JobOrderFormData, value: any) => setForm(p => ({ ...p, [key]: value }));
   const isMaintenanceType = form.service_type === 'maintenance';
   const canSubmit = (isMaintenanceType || form.customer_id > 0) && form.service_date && form.destination;
 
@@ -111,9 +129,22 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
             {!isMaintenanceType && (
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer ID *</label>
-                <input type="number" value={form.customer_id || ''} onChange={e => set('customer_id', Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter customer ID..." />
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
+                <div className="relative">
+                  <select
+                    value={form.customer_id || ''}
+                    onChange={e => set('customer_id', Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                  >
+                    <option value="">{customersLoading ? 'Loading customers...' : 'Select a customer...'}</option>
+                    {customers.map((c: any) => (
+                      <option key={c.id} value={c.id}>
+                        {c.first_name} {c.last_name} (ID: {c.id})
+                      </option>
+                    ))}
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             )}
 
@@ -124,9 +155,22 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID*</label>
-                <input type="number" value={form.bus_id ?? ''} onChange={e => set('bus_id', Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Enter bus ID..." />
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus Selection</label>
+                <div className="relative">
+                  <select
+                    value={form.bus_id || ''}
+                    onChange={e => set('bus_id', e.target.value ? Number(e.target.value) : undefined)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                  >
+                    <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus (Optional)...'}</option>
+                    {buses.map((bus: any) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
               </div>
             </div>
 

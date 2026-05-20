@@ -537,23 +537,25 @@ export default function Accreditations() {
 
     dataSheet.getColumn(1).values = ['ENTITY TYPE', 'supplier', 'partner', 'client', 'driver', 'bus'];
 
+    // Set columns with widths + headers first
+    worksheet.columns = [
+      { header: 'Entity Type', key: 'entity_type', width: 20 },
+      { header: 'Entity Name', key: 'entity_name', width: 30 },
+      { header: 'Accreditation Type', key: 'accreditation_type', width: 25 },
+      { header: 'Contact Person', key: 'contact_person', width: 25 },
+      { header: 'Contact Email', key: 'contact_email', width: 30 },
+      { header: 'KYC Doc URL', key: 'kyc_document_url', width: 20 },
+      { header: 'NDA Doc URL', key: 'nda_document_url', width: 20 },
+      { header: 'Terms Doc URL', key: 'terms_document_url', width: 20 },
+    ];
+
+    // Style the header row (row 1)
     const headerRow = worksheet.getRow(1);
-    headerRow.values = ['Entity Type', 'Entity Name', 'Accreditation Type', 'Contact Person', 'Contact Email', 'KYC Doc URL', 'NDA Doc URL', 'Terms Doc URL'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } };
     headerRow.height = 25;
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    worksheet.columns = [
-      { key: 'entity_type', width: 20 },
-      { key: 'entity_name', width: 30 },
-      { key: 'accreditation_type', width: 25 },
-      { key: 'contact_person', width: 25 },
-      { key: 'contact_email', width: 30 },
-      { key: 'kyc_document_url', width: 20 },
-      { key: 'nda_document_url', width: 20 },
-      { key: 'terms_document_url', width: 20 },
-    ];
+    headerRow.commit();
 
     for (let i = 2; i <= 500; i++) {
       worksheet.getCell(`A${i}`).dataValidation = {
@@ -583,7 +585,16 @@ export default function Accreditations() {
     helpSheet.getColumn(1).width = 40;
     helpSheet.getColumn(2).width = 60;
 
-    worksheet.addRow(['supplier', 'ABC Corporation', 'Supplier Verification', 'John Doe', 'contact@domain.com']);
+    // Add example row at row 2 (must use getRow(2) explicitly — addRow goes to row 501
+    // because the validation loop already touches rows 2-500 via getCell())
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('entity_type').value = 'supplier';
+    exampleRow.getCell('entity_name').value = 'ABC Corporation';
+    exampleRow.getCell('accreditation_type').value = 'Supplier Verification';
+    exampleRow.getCell('contact_person').value = 'Juan dela cruz';
+    exampleRow.getCell('contact_email').value = 'JuanDC@gmail.com';
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
 
     workbook.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
 

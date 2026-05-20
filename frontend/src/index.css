@@ -52,3 +52,62 @@
     color: #f9fafb; /* gray-50 */
   }
 }
+
+/* Ensure receipt maintains physical white receipt aesthetics on screen even in dark mode */
+.dark #printable-invoice,
+.dark [id="printable-invoice"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+  border-color: #e2e8f0 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark #printable-invoice *,
+.dark [id="printable-invoice"] * {
+  color: #1f2937 !important;
+  border-color: #f1f5f9 !important;
+}
+
+/* Maintain special brand accent colors on receipt in dark mode */
+.dark #printable-invoice .text-blue-600,
+.dark [id="printable-invoice"] .text-blue-600 {
+  color: #2563eb !important;
+}
+.dark #printable-invoice .text-emerald-600,
+.dark [id="printable-invoice"] .text-emerald-600 {
+  color: #059669 !important;
+}
+.dark #printable-invoice .text-gray-300,
+.dark [id="printable-invoice"] .text-gray-300 {
+  color: #d1d5db !important;
+}
+.dark #printable-invoice .text-gray-400,
+.dark [id="printable-invoice"] .text-gray-400 {
+  color: #9ca3af !important;
+}
+.dark #printable-invoice .text-gray-500,
+.dark [id="printable-invoice"] .text-gray-500 {
+  color: #6b7280 !important;
+}
+.dark #printable-invoice .text-gray-600,
+.dark [id="printable-invoice"] .text-gray-600 {
+  color: #4b5563 !important;
+}
+.dark #printable-invoice .text-gray-700,
+.dark [id="printable-invoice"] .text-gray-700 {
+  color: #374151 !important;
+}
+.dark #printable-invoice .text-gray-800,
+.dark [id="printable-invoice"] .text-gray-800 {
+  color: #1f2937 !important;
+}
+.dark #printable-invoice .text-gray-900,
+.dark [id="printable-invoice"] .text-gray-900 {
+  color: #111827 !important;
+}
+
+/* Ensure background grid pattern is clean and light in dark mode */
+.dark #printable-invoice {
+  background-image: radial-gradient(rgba(0,0,0,0.01) 1px, transparent 0) !important;
+}
+

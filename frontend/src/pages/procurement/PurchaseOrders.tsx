@@ -1,15 +1,16 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPlus, LuSearch, LuLoaderCircle, LuX,
   LuTrash2, LuChevronDown, LuSendHorizontal, LuCheck, LuTriangleAlert,
   LuFileText, LuHash, LuPackage, LuArrowRight,
 } from 'react-icons/lu';
+import { Eye, CheckCircle, Send } from 'lucide-react';
 import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { supplierApi } from '../../api/suppliers';
 import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../types/procurement';
 import { PO_STATUS_LABELS } from '../../constants';
-import { Pagination } from '../../components/ui';
+import { Pagination, Dropdown } from '../../components/ui';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -290,9 +291,19 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
 // ── PO Row ───────────────────────────────────────────────────────────────────
 
-function PORow({ po, onClick }: { po: PurchaseOrder; onClick: () => void }) {
+function PORow({
+  po,
+  onDetail,
+  onSubmitReview,
+  onApprove
+}: {
+  po: PurchaseOrder;
+  onDetail: (po: PurchaseOrder) => void;
+  onSubmitReview: (id: number) => void;
+  onApprove: (id: number) => void;
+}) {
   return (
-    <tr onClick={onClick} className="cursor-pointer hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
       <td className="px-8 py-6">
         <div className="flex items-center gap-4">
           <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-blue-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
@@ -310,7 +321,25 @@ function PORow({ po, onClick }: { po: PurchaseOrder; onClick: () => void }) {
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Date Issued</div>
       </td>
       <td className="px-8 py-6">
-        <div className="flex items-center justify-end gap-2 text-gray-400 group-hover:text-blue-600 text-xs font-black uppercase tracking-widest transition-all">View Details <LuArrowRight size={14} /></div>
+        <Dropdown
+          items={[
+            {
+              label: 'View Details',
+              icon: <Eye size={14} />,
+              onClick: () => onDetail(po)
+            },
+            ...(po.status === 'draft' ? [{
+              label: 'Submit for Review',
+              icon: <Send size={14} />,
+              onClick: () => onSubmitReview(po.id)
+            }] : []),
+            ...(po.status === 'pending_accounting_review' || po.status === 'verified' ? [{
+              label: 'Approve PO',
+              icon: <CheckCircle size={14} />,
+              onClick: () => onApprove(po.id)
+            }] : []),
+          ]}
+        />
       </td>
     </tr>
   );
@@ -319,6 +348,7 @@ function PORow({ po, onClick }: { po: PurchaseOrder; onClick: () => void }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PurchaseOrders() {
+  const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -334,6 +364,30 @@ export default function PurchaseOrders() {
       per_page: 10
     }),
     staleTime: 30_000,
+  });
+
+  const submitMutation = useMutation({
+    mutationFn: (id: number) => purchaseOrderApi.submit(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+      alert('Purchase order submitted for review successfully!');
+    },
+    onError: (err) => {
+      console.error(err);
+      alert('Failed to submit purchase order.');
+    }
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => purchaseOrderApi.approve(id, { approved: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+      alert('Purchase order approved successfully!');
+    },
+    onError: (err) => {
+      console.error(err);
+      alert('Failed to approve purchase order.');
+    }
   });
 
   const pos = data?.data?.data ?? [];
@@ -411,7 +465,15 @@ export default function PurchaseOrders() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-              {pos.map(po => <PORow key={po.id} po={po} onClick={() => setSelectedPO(po)} />)}
+              {pos.map(po => (
+                <PORow
+                  key={po.id}
+                  po={po}
+                  onDetail={setSelectedPO}
+                  onSubmitReview={(id) => submitMutation.mutate(id)}
+                  onApprove={(id) => approveMutation.mutate(id)}
+                />
+              ))}
             </tbody>
           </table>
         )}

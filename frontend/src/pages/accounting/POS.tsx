@@ -51,6 +51,8 @@ export default function POS() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [amountReceived, setAmountReceived] = useState<number | string>('');
+  const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
+  const [receiptChange, setReceiptChange] = useState<number>(0);
   
   // Service Management State
   const [showAddService, setShowAddService] = useState(false);
@@ -120,7 +122,18 @@ export default function POS() {
   const subtotal = cart.reduce((sum, item) => sum + (item.service.price * item.quantity), 0);
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
-  const change = typeof amountReceived === 'number' ? Math.max(0, amountReceived - total) : 0;
+  const change = amountReceived !== '' && !isNaN(Number(amountReceived)) ? Math.max(0, Number(amountReceived) - total) : 0;
+
+  const isContactValid = useMemo(() => {
+    if (!customerContact) return true;
+    const cleaned = customerContact.replace(/[\s\-\(\)]/g, '');
+    return /^(09|\+639|639)\d{9}$/.test(cleaned);
+  }, [customerContact]);
+
+  const isEmailValid = useMemo(() => {
+    if (!customerEmail) return true;
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customerEmail);
+  }, [customerEmail]);
 
   const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
 
@@ -136,6 +149,10 @@ export default function POS() {
   // Checkout
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+    if (!isContactValid || !isEmailValid) {
+      alert('Please correct the validation errors in customer details.');
+      return;
+    }
     
     setIsProcessing(true);
     try {
@@ -143,8 +160,10 @@ export default function POS() {
         customer_name: customerName || undefined,
         customer_address: customerAddress || undefined,
         customer_email: customerEmail || undefined,
-        customer_contact: customerContact || undefined,
+        customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
         payment_method: paymentMethod,
+        amount_received: paymentMethod === 'Cash' ? Number(amountReceived || 0) : undefined,
+        change: paymentMethod === 'Cash' ? Number(change) : undefined,
         items: cart.map(item => ({
           service_id: item.service.id,
           quantity: item.quantity
@@ -152,6 +171,8 @@ export default function POS() {
       });
 
       setLastInvoice(response.data.data);
+      setReceiptAmountReceived(amountReceived);
+      setReceiptChange(change);
       setShowReceipt(true);
       
       if (response.data.data.payment_url) {
@@ -392,24 +413,42 @@ export default function POS() {
                 />
               </div>
               <div className="relative group">
-                <LuPhone className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
+                <LuPhone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerContact && !isContactValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
                 <input 
                   type="text" 
                   placeholder="Contact Number"
-                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${
+                    customerContact && !isContactValid 
+                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5' 
+                    : 'border-gray-100 dark:border-gray-700'
+                  }`}
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
                 />
+                {customerContact && !isContactValid && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1.5 pl-1 animate-in fade-in duration-200">
+                    Must be a valid PH mobile number (e.g., 09171234567)
+                  </p>
+                )}
               </div>
               <div className="relative group">
-                <LuMail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
+                <LuMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerEmail && !isEmailValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
                 <input 
                   type="email" 
                   placeholder="Email Address"
-                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${
+                    customerEmail && !isEmailValid 
+                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5' 
+                    : 'border-gray-100 dark:border-gray-700'
+                  }`}
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                 />
+                {customerEmail && !isEmailValid && (
+                  <p className="text-[10px] text-rose-500 font-bold mt-1.5 pl-1 animate-in fade-in duration-200">
+                    Must be a valid email address
+                  </p>
+                )}
               </div>
               <div className="relative group">
                 <LuMapPin className="absolute left-4 top-4 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
@@ -491,7 +530,7 @@ export default function POS() {
           </div>
 
           <button 
-            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total))}
+            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total)) || !isContactValid || !isEmailValid}
             onClick={handleCheckout}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
           >
@@ -535,123 +574,146 @@ export default function POS() {
               </div>
             </div>
 
-            {/* Invoice Content (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-10" id="printable-invoice">
-              {/* Invoice Header */}
-              <div className="flex justify-between items-start mb-12">
-                <div>
-                <div className="flex flex-col items-start">
-                  <img src="/JVDlogo-removebg-preview.png" alt="JVD Logo" className="h-16 mb-2 object-contain" />
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
-                  
-                  <div className="space-y-1 pl-1">
-                    <p className="text-[11px] text-gray-900 dark:text-white font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175. Susano Road Camarin, Caloocan City</p>
-                    <div className="flex flex-col gap-0.5 mt-2">
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                        <span className="text-blue-600">PHONE:</span> 0976 4711294
-                      </p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest flex items-center gap-2">
-                        <span className="text-blue-600">TEL:</span> 02 82938068
-                      </p>
+            {/* Invoice Content (Scrollable wrapper with dark/light background) */}
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100 dark:bg-gray-950 flex justify-center print-wrapper no-scrollbar">
+              {/* Premium Paper Receipt Sheet (Always Light Theme for a real receipt feel) */}
+              <div 
+                className="w-full max-w-xl bg-white text-gray-900 border border-gray-200/80 shadow-2xl rounded-[2rem] p-10 relative overflow-hidden flex flex-col"
+                id="printable-invoice"
+                style={{
+                  backgroundImage: 'radial-gradient(rgba(0,0,0,0.01) 1px, transparent 0)',
+                  backgroundSize: '8px 8px',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02), 0 0 40px rgba(0, 0, 0, 0.01) inset'
+                }}
+              >
+                {/* Decorative cut marks at top/bottom */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 opacity-80" />
+
+                {/* Invoice Header */}
+                <div className="flex justify-between items-start mb-12">
+                  <div>
+                    <div className="flex flex-col items-start">
+                      <img src="/JVDlogo-removebg-preview.png" alt="JVD Logo" className="h-16 mb-2 object-contain" />
+                      <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
+                      
+                      <div className="space-y-1 pl-1 text-left">
+                        <p className="text-[11px] text-gray-800 font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City</p>
+                        <div className="flex flex-col gap-0.5 mt-2">
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span className="text-blue-600">PHONE:</span> 0976 471 1294
+                          </p>
+                          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center gap-2">
+                            <span className="text-blue-600">TEL:</span> 02 8293 8068
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-                </div>
-                <div className="text-right">
-                  <h2 className="text-4xl font-black text-gray-900 dark:text-white uppercase tracking-tighter mb-2">INVOICE</h2>
-                  <p className="text-sm font-black text-blue-600">#{lastInvoice?.invoice_number}</p>
-                  <p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-widest">
-                    {new Date(lastInvoice?.created_at).toLocaleDateString('en-US', { 
-                      year: 'numeric', month: 'long', day: 'numeric' 
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              {/* Bill To */}
-              <div className="grid grid-cols-2 gap-12 mb-12 border-t border-b border-gray-50 py-8">
-                <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
-                  <p className="text-lg font-black text-gray-900 dark:text-white">{lastInvoice?.customer_name || 'Walk-in Customer'}</p>
-                  <div className="mt-2 space-y-1">
-                    {lastInvoice?.customer_contact && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
-                        <LuPhone className="w-3 h-3" /> {lastInvoice.customer_contact}
-                      </p>
-                    )}
-                    {lastInvoice?.customer_email && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
-                        <LuMail className="w-3 h-3" /> {lastInvoice.customer_email}
-                      </p>
-                    )}
-                    {lastInvoice?.customer_address && (
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-medium flex items-center gap-2">
-                        <LuMapPin className="w-3 h-3" /> {lastInvoice.customer_address}
-                      </p>
-                    )}
+                  <div className="text-right">
+                    <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-2">INVOICE</h2>
+                    <p className="text-sm font-black text-blue-600">#{lastInvoice?.invoice_number}</p>
+                    <p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-widest">
+                      {new Date(lastInvoice?.created_at).toLocaleDateString('en-US', { 
+                        year: 'numeric', month: 'long', day: 'numeric' 
+                      })}
+                    </p>
                   </div>
-                  <p className="text-[10px] text-blue-600 mt-3 font-bold uppercase tracking-tight italic">Verified POS Transaction</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>
-                  <p className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tight">{lastInvoice?.payment_method}</p>
-                  <p className="text-xs text-emerald-600 mt-1 font-bold uppercase">Status: {lastInvoice?.status}</p>
-                </div>
-              </div>
 
-              {/* Table */}
-              <table className="w-full mb-12">
-                <thead>
-                  <tr className="border-b-2 border-gray-900">
-                    <th className="text-left py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Description</th>
-                    <th className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
-                    <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
-                    <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                  {lastInvoice?.items?.map((item: any) => (
-                    <tr key={item.id}>
-                      <td className="py-5">
-                        <p className="font-black text-gray-900 dark:text-white">{item.service?.name}</p>
-                        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-tight">{item.service?.category}</p>
-                      </td>
-                      <td className="py-5 text-center font-bold text-gray-600 dark:text-gray-300">{item.quantity}</td>
-                      <td className="py-5 text-right font-bold text-gray-600 dark:text-gray-300">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      <td className="py-5 text-right font-black text-gray-900 dark:text-white">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                {/* Bill To */}
+                <div className="grid grid-cols-2 gap-8 mb-12 border-t border-b border-gray-100 py-8">
+                  <div className="text-left">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
+                    <p className="text-lg font-black text-gray-900">{lastInvoice?.customer_name || 'Walk-in Customer'}</p>
+                    <div className="mt-2 space-y-1">
+                      {lastInvoice?.customer_contact && (
+                        <p className="text-xs text-gray-600 font-medium flex items-center gap-2">
+                          <LuPhone className="w-3 h-3 text-blue-600" /> {lastInvoice.customer_contact}
+                        </p>
+                      )}
+                      {lastInvoice?.customer_email && (
+                        <p className="text-xs text-gray-600 font-medium flex items-center gap-2">
+                          <LuMail className="w-3 h-3 text-blue-600" /> {lastInvoice.customer_email}
+                        </p>
+                      )}
+                      {lastInvoice?.customer_address && (
+                        <p className="text-xs text-gray-600 font-medium flex items-center gap-2">
+                          <LuMapPin className="w-3 h-3 text-blue-600" /> {lastInvoice.customer_address}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-blue-600 mt-3 font-bold uppercase tracking-tight italic">Verified POS Transaction</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>
+                    <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{lastInvoice?.payment_method}</p>
+                    <p className="text-xs text-emerald-600 mt-1 font-bold uppercase">Status: {lastInvoice?.status}</p>
+                  </div>
+                </div>
+
+                {/* Table */}
+                <table className="w-full mb-12">
+                  <thead>
+                    <tr className="border-b-2 border-gray-900">
+                      <th className="text-left py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Description</th>
+                      <th className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                      <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
+                      <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {lastInvoice?.items?.map((item: any) => (
+                      <tr key={item.id} className="border-b border-gray-100/50">
+                        <td className="py-5 text-left">
+                          <p className="font-black text-gray-900">{item.service?.name}</p>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mb-1">{item.service?.category}</p>
+                          {item.service?.description && (
+                            <p className="text-[11px] text-gray-500 font-normal leading-relaxed max-w-[320px] whitespace-pre-wrap">{item.service.description}</p>
+                          )}
+                        </td>
+                        <td className="py-5 text-center font-bold text-gray-700">{item.quantity}</td>
+                        <td className="py-5 text-right font-bold text-gray-700">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
 
-              {/* Summary */}
-              <div className="flex justify-end">
-                <div className="w-64 space-y-3">
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    <span>Subtotal</span>
-                    <span className="text-gray-900 dark:text-white">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                    <span>VAT (12%)</span>
-                    <span className="text-gray-900 dark:text-white">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
-                    <span className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-tighter">Total Amount</span>
-                    <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  {lastInvoice?.payment_method === 'Cash' && (
-                    <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                      <span>Change</span>
-                      <span className="text-emerald-600">₱{(Number(amountReceived) - Number(lastInvoice?.total_amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                {/* Summary */}
+                <div className="flex justify-end">
+                  <div className="w-64 space-y-3">
+                    <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      <span>Subtotal</span>
+                      <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
-                  )}
+                    <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                      <span>VAT (12%)</span>
+                      <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
+                      <span className="text-sm font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                      <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    {lastInvoice?.payment_method === 'Cash' && (
+                      <>
+                        <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                          <span>Amount Received</span>
+                          <span className="text-gray-900">₱{Number(receiptAmountReceived || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                          <span>Change</span>
+                          <span className="text-emerald-600 font-black">₱{receiptChange.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {/* Notes */}
-              <div className="mt-16 pt-8 border-t border-gray-50 text-center">
-                <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Thank you for choosing JVD Events & Travels!</p>
-                <p className="text-[9px] text-gray-300 font-medium italic">This is an electronically generated invoice.</p>
+                {/* Notes */}
+                <div className="mt-16 pt-8 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">Thank you for choosing JVD Events & Travels!</p>
+                  <p className="text-[9px] text-gray-300 font-medium italic">This is an electronically generated invoice.</p>
+                </div>
               </div>
             </div>
 
@@ -949,7 +1011,82 @@ export default function POS() {
       )}
 
       {/* Print Styles */}
-
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          /* Hide everything by default */
+          body * {
+            visibility: hidden !important;
+          }
+          /* Show the invoice and all its children */
+          #printable-invoice, #printable-invoice * {
+            visibility: visible !important;
+          }
+          /* Hide the modal overlay/backdrop */
+          .fixed.inset-0 {
+            background: transparent !important;
+            backdrop-filter: none !important;
+          }
+          /* Hide scrollable wrapper background, show invoice only */
+          .print-wrapper {
+            background: none !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            display: block !important;
+          }
+          /* Position invoice at top of page */
+          #printable-invoice {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 20px 40px !important;
+            margin: 0 !important;
+            background: #ffffff !important;
+            color: #111827 !important;
+            box-shadow: none !important;
+            border: none !important;
+            border-radius: 0 !important;
+            background-image: none !important;
+          }
+          /* Force white background */
+          html, body, #root {
+            background-color: #ffffff !important;
+            background-image: none !important;
+            color: #111827 !important;
+          }
+          /* Neutralize dark-mode classes in print */
+          .dark, [class*="dark:"] {
+            background-color: #ffffff !important;
+            color: #111827 !important;
+            border-color: #e5e7eb !important;
+          }
+          /* Force standard text colors on elements */
+          #printable-invoice p, 
+          #printable-invoice span, 
+          #printable-invoice td, 
+          #printable-invoice th, 
+          #printable-invoice h2, 
+          #printable-invoice h3, 
+          #printable-invoice div {
+            color: #111827 !important;
+          }
+          /* Preserve branding accents */
+          #printable-invoice .text-blue-600 {
+            color: #1d4ed8 !important;
+          }
+          #printable-invoice .text-emerald-600 {
+            color: #047857 !important;
+          }
+          #printable-invoice .text-gray-400,
+          #printable-invoice .text-gray-500 {
+            color: #6b7280 !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      ` }} />
 
     </div>
   );

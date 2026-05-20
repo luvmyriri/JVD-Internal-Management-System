@@ -76,10 +76,12 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name'  => ['sometimes', 'string', 'max:100'],
-            'email'      => ['nullable', 'email', 'max:255'],
-            'phone'      => ['nullable', 'string', 'max:30'],
+            'email'      => ['required', 'email', 'max:255'],
+            'phone'      => ['required', 'string', 'max:30', 'regex:/^(?:\+63|63|0)[\s-]*9(?:[\s-]*\d){9}$/'],
             'address'    => ['nullable', 'string', 'max:500'],
             'notes'      => ['nullable', 'string', 'max:1000'],
+        ], [
+            'phone.regex' => 'The phone number must be a valid Philippine mobile number (e.g. 09171234567 or +639171234567).',
         ]);
 
         $customer->update($validated);

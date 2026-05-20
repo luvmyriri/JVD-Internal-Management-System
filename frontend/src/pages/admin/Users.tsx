@@ -155,8 +155,17 @@ export default function Users() {
     dataSheet.getColumn(1).values = ['ROLES', ...ROLES.map(r => r.label)];
     dataSheet.getColumn(2).values = ['DEPARTMENTS', ...DEPARTMENTS];
 
+    // Set columns with widths + headers first
+    worksheet.columns = [
+      { header: 'First Name', key: 'first_name', width: 25 },
+      { header: 'Last Name', key: 'last_name', width: 25 },
+      { header: 'Email', key: 'email', width: 35 },
+      { header: 'Role', key: 'role', width: 20 },
+      { header: 'Department', key: 'department', width: 25 },
+    ];
+
+    // Style the header row (row 1)
     const headerRow = worksheet.getRow(1);
-    headerRow.values = ['First Name', 'Last Name', 'Email', 'Role', 'Department'];
     headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     headerRow.fill = {
       type: 'pattern',
@@ -165,14 +174,7 @@ export default function Users() {
     };
     headerRow.height = 25;
     headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
-    
-    worksheet.columns = [
-      { key: 'first_name', width: 25 },
-      { key: 'last_name', width: 25 },
-      { key: 'email', width: 35 },
-      { key: 'role', width: 20 },
-      { key: 'department', width: 25 },
-    ];
+    headerRow.commit();
 
     const roleCount = ROLES.length;
     for (let i = 2; i <= 500; i++) {
@@ -212,7 +214,16 @@ export default function Users() {
     helpSheet.getColumn(1).width = 40;
     helpSheet.getColumn(2).width = 60;
 
-    worksheet.addRow(['John', 'Doe', 'j.doe@jvd.com', 'Admin', 'Administration']);
+    // Add example row at row 2 (must use getRow(2) explicitly — addRow goes to row 501
+    // because the validation loop already touches rows 2-500 via getCell())
+    const exampleRow = worksheet.getRow(2);
+    exampleRow.getCell('first_name').value = 'Juan';
+    exampleRow.getCell('last_name').value = 'dela cruz';
+    exampleRow.getCell('email').value = 'JuanDC@gmail.com';
+    exampleRow.getCell('role').value = 'Admin';
+    exampleRow.getCell('department').value = 'Administration';
+    exampleRow.font = { italic: true, color: { argb: 'FF9CA3AF' } };
+    exampleRow.commit();
 
     workbook.views = [{ x: 0, y: 0, width: 10000, height: 20000, firstSheet: 0, activeTab: 0, visibility: 'visible' }];
 

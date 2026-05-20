@@ -18,9 +18,9 @@ interface PassportCase {
   checklist: Record<string, boolean>;
   submitted_date?: string;
   release_date?: string;
-  customer?: { id: number; first_name: string; last_name: string; email: string };
-  passenger?: { id: number; first_name: string; last_name: string };
-  handler?: { id: number; first_name: string; last_name: string };
+  customer?: { id: number; first_name?: string; last_name?: string; full_name?: string; email?: string };
+  passenger?: { id: number; first_name?: string; last_name?: string; full_name?: string };
+  handler?: { id: number; first_name?: string; last_name?: string; full_name?: string };
 }
 
 const STATUS_FLOW = [
@@ -172,7 +172,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
             <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {caseData.customer?.first_name} {caseData.customer?.last_name}
+              {caseData.customer?.full_name || (caseData.customer?.first_name ? `${caseData.customer.first_name} ${caseData.customer.last_name}` : '—')}
             </p>
           </div>
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
@@ -190,7 +190,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
           <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
             <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {caseData.handler ? `${caseData.handler.first_name} ${caseData.handler.last_name}` : '—'}
+              {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
             </p>
           </div>
         </div>
@@ -359,7 +359,7 @@ export default function Passporting() {
                         {c.reference_number && <div className="text-[10px] text-gray-400 uppercase mt-0.5">{c.reference_number}</div>}
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
-                        {c.customer?.first_name} {c.customer?.last_name}
+                        {c.customer?.full_name || (c.customer?.first_name ? `${c.customer.first_name} ${c.customer.last_name}` : '—')}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
