@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
 import { 
   LuSearch, 
   LuShieldCheck, 
@@ -23,6 +24,8 @@ import {
   LuCopy,
   LuKeyRound,
   LuCheckCheck,
+  LuEyeOff,
+  LuEye as LuEyeOn,
 } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -30,7 +33,8 @@ import {
   useCreateUser, 
   useUpdateUser, 
   useDeactivateUser, 
-  useActivateUser 
+  useActivateUser,
+  useSetPassword,
 } from '../../hooks/useUsers';
 import { useHasRole } from '../../hooks/useHasRole';
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
@@ -147,8 +151,13 @@ export default function Users() {
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [tempPasswords, setTempPasswords] = useState<TempPasswordEntry[]>([]);
   const [showTempPasswordModal, setShowTempPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { user: currentUser } = useAuth();
+  const isSuperAdmin = currentUser?.role === 'super_admin';
   const isAdmin = useHasRole(['super_admin', 'admin']);
   const canManage = isAdmin;
 
@@ -163,6 +172,7 @@ export default function Users() {
   const updateUserMutation = useUpdateUser();
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
+  const setPasswordMutation = useSetPassword();
 
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
 
@@ -184,6 +194,10 @@ export default function Users() {
         employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
       });
     }
+    // Reset password fields whenever modal opens
+    setNewPassword('');
+    setNewPasswordConfirm('');
+    setShowNewPw(false);
     setIsModalOpen(true);
   };
 
@@ -195,8 +209,25 @@ export default function Users() {
   const onSubmit = async (data: any) => {
     try {
       if (selectedUser) {
+        // If super_admin filled in a new password, set it first
+        if (isSuperAdmin && newPassword.trim()) {
+          if (newPassword !== newPasswordConfirm) {
+            toast.error('Passwords do not match.');
+            return;
+          }
+          if (newPassword.length < 8) {
+            toast.error('Password must be at least 8 characters.');
+            return;
+          }
+          await setPasswordMutation.mutateAsync({
+            id: selectedUser.id,
+            data: { new_password: newPassword, new_password_confirmation: newPasswordConfirm },
+          });
+        }
         await updateUserMutation.mutateAsync({ id: selectedUser.id, data });
         setIsModalOpen(false);
+        setNewPassword('');
+        setNewPasswordConfirm('');
         reset();
       } else {
         const sendInvite = data.send_invitation !== false;
@@ -762,6 +793,66 @@ export default function Users() {
               </select>
             </div>
           </div>
+
+          {/* ── Super Admin: Set Password (edit mode only) ── */}
+          {selectedUser && isSuperAdmin && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+                <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <LuKeyRound size={12} /> Super Admin — Set Password
+                </span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              </div>
+
+              <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-2xl">
+                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
+                  Leave blank to keep the existing password unchanged.
+                </p>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPw ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="w-full px-4 py-3 pr-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                      placeholder="Min. 8 characters"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(v => !v)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showNewPw ? <LuEyeOff size={16} /> : <LuEyeOn size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
+                  <input
+                    type={showNewPw ? 'text' : 'password'}
+                    value={newPasswordConfirm}
+                    onChange={e => setNewPasswordConfirm(e.target.value)}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                    placeholder="Re-enter new password"
+                  />
+                </div>
+
+                {newPassword && newPasswordConfirm && newPassword !== newPasswordConfirm && (
+                  <p className="text-[10px] font-bold text-rose-500 ml-1">⚠ Passwords do not match.</p>
+                )}
+                {newPassword && newPassword.length < 8 && (
+                  <p className="text-[10px] font-bold text-amber-500 ml-1">⚠ Must be at least 8 characters.</p>
+                )}
+                {newPassword && newPassword.length >= 8 && newPassword === newPasswordConfirm && (
+                  <p className="text-[10px] font-bold text-emerald-500 ml-1">✓ Passwords match.</p>
+                )}
+              </div>
+            </div>
+          )}
 
           {!selectedUser && (
             <div className="space-y-4">

@@ -22,6 +22,8 @@ import {
   LuSettings,
   LuCircleUser,
   LuChevronDown,
+  LuCalendarClock,
+  LuMapPin,
 } from 'react-icons/lu';
 import type { UserRole } from '../../types/auth';
 
@@ -41,7 +43,7 @@ const navigation: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'admin', 'human_resource', 'accounting', 'agent'] },
+      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'admin', 'human_resource', 'accounting', 'agent', 'driver'] },
     ],
   },
   {
@@ -91,6 +93,14 @@ const navigation: NavSection[] = [
       { label: 'Users', path: '/admin/users', icon: <LuUserCog />, roles: ['super_admin', 'admin'] },
       { label: 'Audit Logs', path: '/admin/audit-logs', icon: <LuScrollText />, roles: ['super_admin', 'admin', 'human_resource'] },
       { label: 'Settings', path: '/admin/settings', icon: <LuSettings />, roles: ['super_admin', 'admin'] },
+    ],
+  },
+  {
+    title: 'Driver',
+    items: [
+      { label: 'My Schedule', path: '/driver/schedule', icon: <LuCalendarClock />, roles: ['driver'] },
+      { label: 'My Trips', path: '/driver/trips', icon: <LuMapPin />, roles: ['driver'] },
+      { label: 'My Bus', path: '/driver/bus', icon: <LuBus />, roles: ['driver'] },
     ],
   },
 ];

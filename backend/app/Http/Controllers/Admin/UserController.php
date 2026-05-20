@@ -25,8 +25,9 @@ class UserController extends Controller
     {
         $query = User::query();
 
-        // Filter by role
-        if ($request->has('role')) {
+
+        // Filter by role (filled() ignores empty strings — prevents WHERE role = '' returning zero results)
+        if ($request->filled('role')) {
             $query->where('role', $request->role);
         }
 
@@ -241,6 +242,39 @@ class UserController extends Controller
                 'temporary_password' => $tempPassword,
             ],
             'message' => 'Password reset. Provide the new temporary password securely.',
+        ]);
+    }
+
+    /**
+     * Super Admin: directly set a specific password for any user.
+     * Only accessible by super_admin (enforced at route level).
+     */
+    public function setPassword(Request $request, User $user): JsonResponse
+    {
+        $validated = $request->validate([
+            'new_password'              => ['required', 'string', 'min:8', 'confirmed'],
+            'new_password_confirmation' => ['required'],
+        ]);
+
+        $user->update([
+            'password'             => Hash::make($validated['new_password']),
+            'must_change_password' => false,
+        ]);
+
+        // Revoke all active tokens so the user must re-login with the new password
+        $user->tokens()->delete();
+
+        // Audit log
+        AuditLogService::log(
+            action: 'SET_PASSWORD',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated. The user must log in again with the new password.',
         ]);
     }
 }
