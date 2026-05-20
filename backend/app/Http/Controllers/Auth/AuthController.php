@@ -63,7 +63,7 @@ class AuthController extends Controller
         RateLimiter::clear($key);
 
         // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
-        if (env('REQUIRE_2FA', true) === false) {
+        if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
             $token = $user->createToken('auth-token')->plainTextToken;
             $user->update(['last_login' => now()]);
 

@@ -61,6 +61,7 @@ export interface User {
   role: UserRole;
   department: string;
   is_active: boolean;
+  must_change_password: boolean;
   last_login: string | null;
   created_by: number | null;
   created_at: string;

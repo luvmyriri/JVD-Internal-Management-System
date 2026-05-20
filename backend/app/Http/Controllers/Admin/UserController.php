@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use App\Http\Services\AuditLogService;
 use App\Notifications\AccountInvitation;
+use App\Notifications\TempPasswordNotification;
 
 class UserController extends Controller
 {
@@ -99,6 +100,9 @@ class UserController extends Controller
             // Generate password reset token for the new user
             $token = Password::broker()->createToken($user);
             $user->notify(new AccountInvitation($token, $user->email));
+        } else {
+            // Send temporary password to the employee's email
+            $user->notify(new TempPasswordNotification($tempPassword));
         }
 
         // Explicit Audit Log

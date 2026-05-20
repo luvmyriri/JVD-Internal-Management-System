@@ -33,6 +33,7 @@ import Settings from './pages/admin/Settings';
 import KycSubmission from './pages/KycSubmission';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
+import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -111,6 +112,7 @@ export default function App() {
               <Route path="*" element={<DefaultRedirect />} />
             </Routes>
             <Toaster position="top-right" />
+            <ForceChangePasswordModal />
           </AuthProvider>
         </BrowserRouter>
       </ThemeProvider>
