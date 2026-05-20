@@ -163,6 +163,8 @@ class AccreditationController extends Controller
             'status' => 'active', // Set active upon submission
         ]));
 
+        \App\Http\Services\NotificationService::notifyKycSubmission($accreditation);
+
         return response()->json(['message' => 'KYC documents submitted successfully.']);
     }
 

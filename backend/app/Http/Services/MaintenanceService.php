@@ -78,6 +78,8 @@ class MaintenanceService
         // Set bus status to under_maintenance
         $bus->update(['status' => 'under_maintenance']);
 
+        \App\Http\Services\NotificationService::notifyWorkOrderRequest($wo);
+
         return $wo;
     }
 

@@ -71,7 +71,7 @@ export default function Login() {
   });
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [isBtnHovered, setIsBtnHovered] = useState(false);
-  const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMS');
+  const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMC');
   const [slideTransition, setSlideTransition] = useState(() => localStorage.getItem('jvd_slide_transition') || 'fade');
 
   useEffect(() => {

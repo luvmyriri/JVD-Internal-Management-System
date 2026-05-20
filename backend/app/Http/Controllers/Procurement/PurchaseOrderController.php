@@ -99,6 +99,8 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->update(['status' => 'pending_accounting_review']);
 
+        \App\Http\Services\NotificationService::notifyPoSubmission($purchaseOrder);
+
         AuditLogService::log(
             action: 'SUBMIT_PO',
             module: 'purchase-orders',
@@ -133,6 +135,8 @@ class PurchaseOrderController extends Controller
             'verified_by'     => auth()->id(),
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
+
+        \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(
             action: $request->approved ? 'VERIFY_PO' : 'REJECT_PO',
@@ -170,6 +174,8 @@ class PurchaseOrderController extends Controller
             'approved_at'     => $request->approved ? now() : null,
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
+
+        \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(
             action: $request->approved ? 'APPROVE_PO' : 'REJECT_PO',

@@ -10,6 +10,10 @@ use App\Http\Controllers\Procurement\SupplierController;
 use App\Http\Controllers\Procurement\JobOrderController;
 use App\Http\Controllers\Procurement\WorkOrderController;
 use App\Http\Controllers\Travel\CustomerController;
+use App\Http\Controllers\Travel\CustomerPassportController;
+use App\Http\Controllers\Travel\CustomerVisaController;
+use App\Http\Controllers\Travel\CustomerKycController;
+use App\Http\Controllers\Travel\AgentTaskController;
 use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Travel\LegalDocumentController;
@@ -68,6 +72,17 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::put('/profile',         [ProfileController::class, 'update'])->name('auth.profile.update');
         Route::post('/profile/avatar', [ProfileController::class, 'updateAvatar'])->name('auth.profile.avatar');
     });
+
+    // Notifications Management
+    Route::prefix('notifications')->group(function () {
+        Route::get('/',                 [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+        Route::post('/mark-all-read',   [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
+        Route::put('/{id}/read',        [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
+        Route::delete('/{id}',          [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');
+        Route::delete('/',              [\App\Http\Controllers\NotificationController::class, 'clearAll'])->name('notifications.clear-all');
+        Route::post('/simulate',        [\App\Http\Controllers\NotificationController::class, 'simulate'])->name('notifications.simulate');
+    });
+
 
     // ──────────────────────────────────────
     // ADMINISTRATION (Super Admin + Admin + HR)
