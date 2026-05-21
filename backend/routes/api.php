@@ -116,7 +116,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // OPERATIONS — Job Orders & Work Orders
     // (Super Admin, Admin, Agent)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent')->group(function () {
+    Route::middleware('role:super_admin,admin,agent,driver')->group(function () {
         Route::apiResource('job-orders',  JobOrderController::class)->except(['destroy']);
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
     });
@@ -176,9 +176,16 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // FLEET & ACCREDITATIONS
     // (Super Admin, Admin)
     // ──────────────────────────────────────
+    // Drivers can read buses (for My Bus page)
+    Route::middleware('role:super_admin,admin,driver')->group(function () {
+        Route::get('buses',       [BusController::class, 'index'])->name('buses.index');
+        Route::get('buses/{bus}', [BusController::class, 'show'])->name('buses.show');
+    });
     Route::middleware('role:super_admin,admin')->group(function () {
-        Route::apiResource('buses',          BusController::class)->except(['destroy']);
-        
+        Route::post('buses',           [BusController::class, 'store'])->name('buses.store');
+        Route::put('buses/{bus}',      [BusController::class, 'update'])->name('buses.update');
+        Route::patch('buses/{bus}',    [BusController::class, 'update']);
+
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);

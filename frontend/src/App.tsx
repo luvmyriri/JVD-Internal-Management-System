@@ -30,6 +30,9 @@ import Employees from './pages/hr/Employees';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
+import DriverSchedule from './pages/driver/Schedule';
+import DriverTrips from './pages/driver/Trips';
+import DriverBus from './pages/driver/Bus';
 import KycSubmission from './pages/KycSubmission';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
@@ -107,6 +110,11 @@ export default function App() {
                 <Route path="/admin/users" element={<Users />} />
                 <Route path="/admin/audit-logs" element={<AuditLogs />} />
                 <Route path="/admin/settings" element={<Settings />} />
+
+                {/* Driver */}
+                <Route path="/driver/schedule" element={<DriverSchedule />} />
+                <Route path="/driver/trips" element={<DriverTrips />} />
+                <Route path="/driver/bus" element={<DriverBus />} />
               </Route>
 
               <Route path="*" element={<DefaultRedirect />} />

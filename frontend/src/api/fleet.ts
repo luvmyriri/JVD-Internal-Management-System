@@ -15,6 +15,9 @@ export const fleetApi = {
   update: (id: number, data: Partial<BusFormData>) =>
     client.put<{ success: boolean; data: Bus }>(`/buses/${id}`, data),
 
+  patch: (id: number, data: Partial<BusFormData & { assigned_driver: number | null }>) =>
+    client.patch<{ success: boolean; data: Bus }>(`/buses/${id}`, data),
+
   delete: (id: number) =>
     client.delete(`/buses/${id}`),
 

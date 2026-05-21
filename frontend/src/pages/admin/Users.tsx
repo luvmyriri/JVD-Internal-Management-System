@@ -26,6 +26,7 @@ import {
   LuCheckCheck,
   LuEyeOff,
   LuEye as LuEyeOn,
+  LuBus,
 } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -36,6 +37,7 @@ import {
   useActivateUser,
   useSetPassword,
 } from '../../hooks/useUsers';
+import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
 import { useHasRole } from '../../hooks/useHasRole';
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
@@ -154,6 +156,7 @@ export default function Users() {
   const [newPassword, setNewPassword] = useState('');
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [showNewPw, setShowNewPw] = useState(false);
+  const [assignedBusId, setAssignedBusId] = useState<number | ''>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user: currentUser } = useAuth();
@@ -173,8 +176,14 @@ export default function Users() {
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
   const setPasswordMutation = useSetPassword();
+  const assignDriverToBus = useAssignDriverToBus();
 
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm();
+  // Fetch all buses for the assignment dropdown
+  const { data: busesData } = useBuses();
+  const allBuses = (busesData?.data ?? []) as any[];
+
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
+  const watchedRole = watch('role', selectedUser?.role ?? 'agent');
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -198,6 +207,13 @@ export default function Users() {
     setNewPassword('');
     setNewPasswordConfirm('');
     setShowNewPw(false);
+    // Pre-fill assigned bus for drivers
+    if (user) {
+      const currentBus = allBuses.find((b: any) => b.driver?.id === user.id);
+      setAssignedBusId(currentBus ? currentBus.id : '');
+    } else {
+      setAssignedBusId('');
+    }
     setIsModalOpen(true);
   };
 
@@ -225,6 +241,28 @@ export default function Users() {
           });
         }
         await updateUserMutation.mutateAsync({ id: selectedUser.id, data });
+
+        // Handle bus assignment for driver role
+        const currentRole = data.role;
+        const prevBus = allBuses.find((b: any) => b.driver?.id === selectedUser.id);
+        const prevBusId = prevBus?.id ?? null;
+
+        if (currentRole === 'driver') {
+          // Role is driver — sync the bus
+          if (assignedBusId !== prevBusId) {
+            // Unassign from old bus
+            if (prevBusId) {
+              await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
+            }
+            // Assign to new bus
+            if (assignedBusId) {
+              await assignDriverToBus.mutateAsync({ busId: Number(assignedBusId), driverId: selectedUser.id });
+            }
+          }
+        } else if (prevBusId) {
+          // Role changed away from driver — unassign their bus
+          await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
+        }
         setIsModalOpen(false);
         setNewPassword('');
         setNewPasswordConfirm('');
@@ -793,6 +831,46 @@ export default function Users() {
               </select>
             </div>
           </div>
+
+          {/* ── Assigned Bus (driver role only) ── */}
+          {(watchedRole === 'driver' || selectedUser?.role === 'driver') && watchedRole === 'driver' && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <LuBus size={12} /> Driver Assignment
+                </span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Bus</label>
+                <select
+                  value={assignedBusId}
+                  onChange={e => setAssignedBusId(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+                >
+                  <option value="">— None / Unassigned —</option>
+                  {allBuses
+                    .filter((b: any) => b.status !== 'decommissioned')
+                    .map((bus: any) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.plate_number} · {bus.model}
+                        {bus.driver && bus.driver.id !== selectedUser?.id
+                          ? ` (Assigned to ${bus.driver.first_name} ${bus.driver.last_name})`
+                          : ''}
+                      </option>
+                    ))}
+                </select>
+                {assignedBusId && allBuses.find((b: any) => b.id === Number(assignedBusId))?.driver?.id &&
+                  allBuses.find((b: any) => b.id === Number(assignedBusId))?.driver?.id !== selectedUser?.id && (
+                  <p className="text-[10px] font-bold text-amber-500 ml-1">
+                    ⚠ This bus is currently assigned to another driver. Saving will reassign it.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* ── Super Admin: Set Password (edit mode only) ── */}
           {selectedUser && isSuperAdmin && (

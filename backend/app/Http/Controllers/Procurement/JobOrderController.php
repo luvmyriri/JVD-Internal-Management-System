@@ -22,19 +22,36 @@ class JobOrderController extends Controller
         $query = JobOrder::with(['customer', 'bus']);
 
         $user = $request->user();
-        if (!$user->hasRole('super_admin', 'admin')) {
+
+        if ($user->hasRole('driver')) {
+            // Drivers only see job orders for their assigned bus
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus) {
+                return response()->json(['success' => true, 'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'last_page' => 1, 'per_page' => 20]]);
+            }
+            $query->where('bus_id', $assignedBus->id);
+        } elseif (!$user->hasRole('super_admin', 'admin')) {
             $query->where('created_by', $user->id);
         }
 
+        // Optional filters (all roles)
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
-
         if ($request->filled('service_type')) {
             $query->where('service_type', $request->service_type);
         }
+        if ($request->filled('bus_id')) {
+            $query->where('bus_id', $request->bus_id);
+        }
+        if ($request->filled('date_from')) {
+            $query->whereDate('service_date', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('service_date', '<=', $request->date_to);
+        }
 
-        $jos = $query->orderByDesc('service_date')
+        $jos = $query->orderBy('service_date')
                      ->paginate($request->per_page ?? 20);
 
         return response()->json([

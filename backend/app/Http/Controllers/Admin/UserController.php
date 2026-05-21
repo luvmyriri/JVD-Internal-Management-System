@@ -99,6 +99,7 @@ class UserController extends Controller
 
         if ($sendInvitation) {
             // Generate password reset token for the new user
+            // @phpstan-ignore-next-line — createToken() exists on the concrete broker at runtime
             $token = Password::broker()->createToken($user);
             $user->notify(new AccountInvitation($token, $user->email));
         } else {

@@ -43,7 +43,7 @@ const navigation: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'admin', 'human_resource', 'accounting', 'agent', 'driver'] },
+      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin'] },
     ],
   },
   {
