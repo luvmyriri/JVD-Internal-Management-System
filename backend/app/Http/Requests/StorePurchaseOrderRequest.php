@@ -17,7 +17,20 @@ class StorePurchaseOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'supplier_id'          => ['required', 'integer', 'exists:suppliers,id'],
+            'supplier_id'          => [
+                'required', 
+                'integer', 
+                'exists:suppliers,id',
+                function ($attribute, $value, $fail) {
+                    $supplier = \App\Models\Supplier::with('accreditations')->find($value);
+                    if ($supplier && $supplier->accreditation_status !== 'accredited') {
+                        $fail('The selected supplier must be accredited to issue a purchase order.');
+                    }
+                    if ($supplier && $supplier->accreditations()->where('status', 'active')->count() === 0) {
+                        $fail('The selected supplier lacks an active accreditation record.');
+                    }
+                }
+            ],
             'notes'                => ['nullable', 'string', 'max:1000'],
             'items'                => ['required', 'array', 'min:1'],
             'items.*.item_name'    => ['required', 'string', 'max:255'],

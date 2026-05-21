@@ -63,6 +63,11 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    public function assignedBus()
+    {
+        return $this->hasOne(Bus::class, 'assigned_driver');
+    }
+
     public function auditLogs()
     {
         return $this->hasMany(AuditLog::class);

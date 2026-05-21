@@ -55,4 +55,12 @@ class Supplier extends Model
     {
         return $query->where('accreditation_status', 'accredited');
     }
+
+    /**
+     * Get all of the supplier's accreditations.
+     */
+    public function accreditations()
+    {
+        return $this->morphMany(Accreditation::class, 'entity', 'entity_type', 'entity_id');
+    }
 }
