@@ -204,7 +204,23 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex font-sans bg-slate-950 relative overflow-hidden">
-      
+
+      {/* Logo glow keyframe: yellow → blue → red */}
+      <style>{`
+        @keyframes login-logo-glow {
+          0%   { filter: drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 30px rgba(250,204,21,0.9)) drop-shadow(0 0 70px rgba(250,204,21,0.35)); }
+          33%  { filter: drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 30px rgba(59,130,246,0.9)) drop-shadow(0 0 70px rgba(59,130,246,0.35)); }
+          66%  { filter: drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 30px rgba(239,68,68,0.9))  drop-shadow(0 0 70px rgba(239,68,68,0.35)); }
+          100% { filter: drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 30px rgba(250,204,21,0.9)) drop-shadow(0 0 70px rgba(250,204,21,0.35)); }
+        }
+        .login-logo-glow {
+          animation: login-logo-glow 15s ease-in-out infinite;
+        }
+        .login-logo-glow:hover {
+          animation-play-state: paused;
+          transform: scale(1.05);
+        }
+      `}</style>
       {/* Background Image Slideshow with dynamic custom transition effects */}
       <div className="absolute inset-0 overflow-hidden bg-slate-950">
         <AnimatePresence mode="popLayout">
@@ -232,10 +248,7 @@ export default function Login() {
             <img
               src={logoUrl}
               alt="JVD Logo"
-              className="h-80 md:h-100 w-auto mb-4 transition-all duration-700 hover:scale-105 select-none"
-              style={{
-                filter: `drop-shadow(0 15px 30px rgba(0,0,0,0.65)) drop-shadow(0 0 35px ${btnColor}66) drop-shadow(0 0 70px ${btnColor}22)`
-              }}
+              className="h-80 md:h-100 w-auto mb-4 transition-transform duration-700 select-none login-logo-glow"
             />
             <div className="h-px w-48 bg-white/40 mb-6"></div>
           </div>
