@@ -83,6 +83,10 @@ class BillingController extends Controller
             'description' => 'nullable|string',
             'images' => 'nullable|array',
             'images.*' => 'nullable|string', // Base64 strings
+            'child_discount' => 'nullable|numeric|min:0|max:100',
+            'has_booking_fields' => 'nullable|boolean',
+            'adult_price' => 'nullable|numeric|min:0',
+            'child_price' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -116,6 +120,10 @@ class BillingController extends Controller
             'images' => $imageUrls,
             'is_active' => true,
             'created_by' => auth()->id(),
+            'child_discount' => $request->child_discount ?? 30.00,
+            'has_booking_fields' => $request->has_booking_fields ?? false,
+            'adult_price' => $request->adult_price,
+            'child_price' => $request->child_price,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -140,6 +148,10 @@ class BillingController extends Controller
             'description' => 'nullable|string',
             'images' => 'nullable|array',
             'is_active' => 'nullable|boolean',
+            'child_discount' => 'nullable|numeric|min:0|max:100',
+            'has_booking_fields' => 'nullable|boolean',
+            'adult_price' => 'nullable|numeric|min:0',
+            'child_price' => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -173,7 +185,11 @@ class BillingController extends Controller
             'price' => $request->price,
             'description' => $request->description,
             'images' => $imageUrls,
-            'is_active' => $request->is_active ?? $service->is_active
+            'is_active' => $request->is_active ?? $service->is_active,
+            'child_discount' => $request->child_discount ?? $service->child_discount,
+            'has_booking_fields' => $request->has_booking_fields ?? $service->has_booking_fields,
+            'adult_price' => $request->adult_price ?? $service->adult_price,
+            'child_price' => $request->child_price ?? $service->child_price,
         ]);
 
         return response()->json([
@@ -220,6 +236,9 @@ class BillingController extends Controller
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'required|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'nullable|numeric',
+            'items.*.adults' => 'nullable|integer',
+            'items.*.children' => 'nullable|integer',
             'notes' => 'nullable|string',
         ], [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
@@ -243,14 +262,19 @@ class BillingController extends Controller
             $processedItems = [];
             foreach ($request->items as $item) {
                 $service = Service::find($item['service_id']);
-                $itemTotal = $service->price * $item['quantity'];
+                
+                // Allow custom unit price calculated by frontend for bookings (pax base)
+                $unitPrice = isset($item['unit_price']) ? (double)$item['unit_price'] : $service->price;
+                $itemTotal = $unitPrice * $item['quantity'];
                 $subtotal += $itemTotal;
-
+ 
                 $processedItems[] = [
                     'service_id' => $service->id,
                     'quantity' => $item['quantity'],
-                    'unit_price' => $service->price,
+                    'unit_price' => $unitPrice,
                     'total_price' => $itemTotal,
+                    'adults' => $item['adults'] ?? null,
+                    'children' => $item['children'] ?? null,
                 ];
             }
 
@@ -277,14 +301,15 @@ class BillingController extends Controller
             ]);
 
             // Create Invoice Items
-            foreach ($request->items as $item) {
-                $service = Service::find($item['service_id']);
+            foreach ($processedItems as $pItem) {
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
-                    'service_id' => $service->id,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $service->price,
-                    'total_price' => $service->price * $item['quantity'],
+                    'service_id' => $pItem['service_id'],
+                    'quantity' => $pItem['quantity'],
+                    'unit_price' => $pItem['unit_price'],
+                    'total_price' => $pItem['total_price'],
+                    'adults' => $pItem['adults'],
+                    'children' => $pItem['children'],
                 ]);
             }
 
@@ -294,10 +319,19 @@ class BillingController extends Controller
                 $payData = [
                     'line_items' => array_map(function($item) {
                         $service = Service::find($item['service_id']);
+                        $unitPrice = isset($item['unit_price']) ? (double)$item['unit_price'] : $service->price;
+                        
+                        $displayName = $service->name;
+                        if (isset($item['adults']) || isset($item['children'])) {
+                            $adultsCount = $item['adults'] ?? 0;
+                            $childrenCount = $item['children'] ?? 0;
+                            $displayName .= " ({$adultsCount} Adults, {$childrenCount} Children)";
+                        }
+
                         return [
-                            'amount' => (int)($service->price * 100), // Convert to centavos
+                            'amount' => (int)($unitPrice * 100), // Convert to centavos
                             'currency' => 'PHP',
-                            'name' => $service->name,
+                            'name' => $displayName,
                             'quantity' => $item['quantity'],
                         ];
                     }, $request->items),

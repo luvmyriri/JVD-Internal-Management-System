@@ -17,12 +17,20 @@ class Service extends Model
         'images',
         'is_active',
         'created_by',
+        'child_discount',
+        'has_booking_fields',
+        'adult_price',
+        'child_price',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'images' => 'array',
         'is_active' => 'boolean',
+        'child_discount' => 'decimal:2',
+        'has_booking_fields' => 'boolean',
+        'adult_price' => 'decimal:2',
+        'child_price' => 'decimal:2',
     ];
 
     public function creator()

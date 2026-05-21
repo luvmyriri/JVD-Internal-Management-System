@@ -33,6 +33,9 @@ import Swal from 'sweetalert2';
 interface CartItem {
   service: Service;
   quantity: number;
+  adults?: number;
+  childrenCount?: number;
+  customPrice?: number;
 }
 
 export default function POS() {
@@ -66,13 +69,21 @@ export default function POS() {
   const [serviceImages, setServiceImages] = useState<string[]>([]);
   const [newService, setNewService] = useState({
     name: '',
-    category: 'Travel',
+    category: 'Package',
     description: '',
     price: 0,
-    image_url: ''
+    image_url: '',
+    child_discount: 30,
+    has_booking_fields: false,
+    adult_price: 0,
+    child_price: 0
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
+  
+  // Booking passenger states
+  const [bookingAdults, setBookingAdults] = useState<number>(1);
+  const [bookingChildren, setBookingChildren] = useState<number>(0);
 
   // Constants
   const TAX_RATE = 0.12;
@@ -117,28 +128,34 @@ export default function POS() {
   };
 
   // Cart operations
-  const addToCart = (service: Service) => {
+  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number) => {
     setCart(prev => {
-      const existing = prev.find(item => item.service.id === service.id);
+      const existing = prev.find(item => 
+        item.service.id === service.id && 
+        item.adults === adults && 
+        item.childrenCount === childrenCount
+      );
       if (existing) {
         return prev.map(item => 
-          item.service.id === service.id 
+          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount)
             ? { ...item, quantity: item.quantity + 1 } 
             : item
         );
       }
-      return [...prev, { service, quantity: 1 }];
+      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice }];
     });
   };
 
-  const removeFromCart = (serviceId: number) => {
-    setCart(prev => prev.filter(item => item.service.id !== serviceId));
+  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number) => {
+    setCart(prev => prev.filter(item => 
+      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount)
+    ));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number) => {
+  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number) => {
     if (newQty < 1) return;
     setCart(prev => prev.map(item => {
-      if (item.service.id === serviceId) {
+      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount) {
         return { ...item, quantity: newQty };
       }
       return item;
@@ -146,9 +163,20 @@ export default function POS() {
   };
 
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + (item.service.price * item.quantity), 0);
+  const subtotal = cart.reduce((sum, item) => sum + ((item.customPrice ?? item.service.price) * item.quantity), 0);
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
+  const selectedDetailChildDiscount = selectedServiceForDetail?.child_discount !== undefined ? Number(selectedServiceForDetail.child_discount) : 30;
+  const selectedDetailAdultPrice = selectedServiceForDetail 
+    ? (selectedServiceForDetail.adult_price !== undefined && selectedServiceForDetail.adult_price !== null && Number(selectedServiceForDetail.adult_price) > 0 
+        ? Number(selectedServiceForDetail.adult_price) 
+        : Number(selectedServiceForDetail.price)) 
+    : 0;
+  const selectedDetailChildPrice = selectedServiceForDetail 
+    ? (selectedServiceForDetail.child_price !== undefined && selectedServiceForDetail.child_price !== null && Number(selectedServiceForDetail.child_price) > 0 
+        ? Number(selectedServiceForDetail.child_price) 
+        : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100))) 
+    : 0;
   const change = amountReceived !== '' && !isNaN(Number(amountReceived)) ? Math.max(0, Number(amountReceived) - total) : 0;
 
   const isContactValid = useMemo(() => {
@@ -193,7 +221,10 @@ export default function POS() {
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
         items: cart.map(item => ({
           service_id: item.service.id,
-          quantity: item.quantity
+          quantity: item.quantity,
+          unit_price: item.customPrice ?? item.service.price,
+          adults: item.adults,
+          children: item.childrenCount
         }))
       });
 
@@ -265,7 +296,11 @@ export default function POS() {
       category: service.category,
       description: service.description,
       price: Number(service.price),
-      image_url: '' // Placeholder to satisfy TS, actual images are handled separately
+      image_url: '', // Placeholder to satisfy TS, actual images are handled separately
+      child_discount: service.child_discount !== undefined ? Number(service.child_discount) : 30,
+      has_booking_fields: !!service.has_booking_fields,
+      adult_price: service.adult_price !== undefined && service.adult_price !== null ? Number(service.adult_price) : Number(service.price),
+      child_price: service.child_price !== undefined && service.child_price !== null ? Number(service.child_price) : Number(service.price) * 0.7
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
@@ -344,7 +379,7 @@ export default function POS() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
+                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
@@ -359,7 +394,13 @@ export default function POS() {
           {filteredServices.map((service) => (
             <div 
               key={service.id}
-              onClick={() => { setSelectedServiceForDetail(service); setDetailImageIndex(0); setShowDetailModal(true); }}
+              onClick={() => { 
+                setSelectedServiceForDetail(service); 
+                setDetailImageIndex(0); 
+                setBookingAdults(1); 
+                setBookingChildren(0); 
+                setShowDetailModal(true); 
+              }}
               className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col"
             >
               {/* Card Image Header */}
@@ -448,7 +489,18 @@ export default function POS() {
                 )}
                 
                 <button 
-                  onClick={(e) => { e.stopPropagation(); addToCart(service); }}
+                  onClick={(e) => { 
+                    e.stopPropagation(); 
+                    if (service.has_booking_fields) {
+                      setSelectedServiceForDetail(service); 
+                      setDetailImageIndex(0); 
+                      setBookingAdults(1); 
+                      setBookingChildren(0); 
+                      setShowDetailModal(true); 
+                    } else {
+                      addToCart(service); 
+                    }
+                  }}
                   className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
                 >
                   <LuPlus className="w-3.5 h-3.5" /> Add to Order
@@ -482,23 +534,28 @@ export default function POS() {
             ) : (
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={item.service.id} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                  <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1 pr-4">
                         <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>
-                        <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
+                        {item.adults !== undefined && (
+                          <p className="text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-1 uppercase tracking-tight">
+                            Guests: {item.adults} Adults {item.childrenCount ? `, ${item.childrenCount} Children` : ''}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.service.id)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                      <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount)} className="text-gray-300 hover:text-rose-500 transition-colors">
                         <LuTrash2 className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
                         <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                       </div>
-                      <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                      <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
                   </div>
                 ))}
@@ -923,7 +980,7 @@ export default function POS() {
                     value={newService.category}
                     onChange={e => setNewService({...newService, category: e.target.value})}
                   >
-                    <option value="Travel">Travel Package</option>
+                    <option value="Package">Travel Package</option>
                     <option value="Documentation">Documentation</option>
                     <option value="Transport">Transportation</option>
                     <option value="Other">Other Services</option>
@@ -931,19 +988,132 @@ export default function POS() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>
-                <div className="relative">
-                  <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
-                  <input 
-                    type="number" 
-                    placeholder="0.00"
-                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-xl font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
-                    value={newService.price}
-                    onChange={e => setNewService({...newService, price: Number(e.target.value)})}
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>
+                  <div className="relative">
+                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
+                    <input 
+                      type="number" 
+                      placeholder="0.00"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-xl font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.price}
+                      onChange={e => {
+                        const newPrice = Number(e.target.value);
+                        setNewService(prev => ({
+                          ...prev,
+                          price: newPrice,
+                          adult_price: prev.has_booking_fields && (prev.adult_price === 0 || prev.adult_price === prev.price) ? newPrice : prev.adult_price,
+                          child_price: prev.has_booking_fields && (prev.child_price === 0 || prev.child_price === prev.price * (1 - prev.child_discount / 100)) ? (newPrice * (1 - prev.child_discount / 100)) : prev.child_price
+                        }));
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Child Discount Rate (%)</label>
+                  <div className="relative">
+                    <input 
+                      type="number" 
+                      min="0"
+                      max="100"
+                      placeholder="e.g. 30"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 pr-16 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.child_discount}
+                      onChange={e => {
+                        const discount = Math.min(100, Math.max(0, Number(e.target.value)));
+                        setNewService(prev => ({
+                          ...prev,
+                          child_discount: discount,
+                          child_price: prev.has_booking_fields && (prev.child_price === 0 || prev.child_price === prev.price * (1 - prev.child_discount / 100)) ? (prev.price * (1 - discount / 100)) : prev.child_price
+                        }));
+                      }}
+                    />
+                    <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase tracking-widest">% OFF</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Toggle Booking Configuration */}
+              <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800/40 rounded-3xl border border-gray-100 dark:border-gray-800 transition-all">
+                <div className="space-y-1 flex-1 pr-4">
+                  <p className="text-xs font-black text-gray-900 dark:text-white uppercase leading-none">Adult & Child Guest Options</p>
+                  <p className="text-[10px] text-gray-400 font-bold mt-1">Enable passenger counters and set custom adult and child pricing rates for this service</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextVal = !newService.has_booking_fields;
+                    setNewService({
+                      ...newService,
+                      has_booking_fields: nextVal,
+                      adult_price: nextVal ? (newService.adult_price || newService.price) : 0,
+                      child_price: nextVal ? (newService.child_price || (newService.price * (1 - newService.child_discount / 100))) : 0
+                    });
+                  }}
+                  className={`w-14 h-8 rounded-full transition-all duration-300 p-1 flex items-center ${
+                    newService.has_booking_fields ? 'bg-blue-600 justify-end' : 'bg-gray-200 dark:bg-gray-700 justify-start'
+                  }`}
+                >
+                  <span className="w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300"></span>
+                </button>
+              </div>
+
+              {/* Dynamic Rates Configuration if Toggle is ON */}
+              {newService.has_booking_fields && (
+                <div className="p-6 bg-gray-50 dark:bg-gray-800/30 rounded-3xl border border-gray-100 dark:border-gray-800 space-y-6 animate-in slide-in-from-top-3 duration-300">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Guest Rates Setup</p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center pl-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Adult Price (₱)</label>
+                        <button
+                          type="button"
+                          onClick={() => setNewService({ ...newService, adult_price: newService.price })}
+                          className="text-[9px] font-black text-blue-600 dark:text-blue-400 hover:underline uppercase tracking-tight"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          className="w-full bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                          value={newService.adult_price || ''}
+                          onChange={e => setNewService({ ...newService, adult_price: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center pl-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Child Price (₱)</label>
+                        <button
+                          type="button"
+                          onClick={() => setNewService({ ...newService, child_price: newService.price * (1 - newService.child_discount / 100) })}
+                          className="text-[9px] font-black text-blue-600 dark:text-blue-400 hover:underline uppercase tracking-tight"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                      <div className="relative">
+                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          className="w-full bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                          value={newService.child_price || ''}
+                          onChange={e => setNewService({ ...newService, child_price: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Description</label>
@@ -991,7 +1161,7 @@ export default function POS() {
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button 
-                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); }}
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
@@ -1013,7 +1183,7 @@ export default function POS() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -1137,18 +1307,93 @@ export default function POS() {
                   </div>
                 )}
 
+                {/* Dynamic Passenger counter controls for booking types */}
+                {selectedServiceForDetail.has_booking_fields && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Booking Guest Configuration</p>
+                    
+                    {/* Adults counter */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Adults</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">₱{selectedDetailAdultPrice.toLocaleString()} / Pax</p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button 
+                          onClick={() => setBookingAdults(prev => Math.max(1, prev - 1))} 
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingAdults}</span>
+                        <button 
+                          onClick={() => setBookingAdults(prev => prev + 1)} 
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Children counter */}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Children</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">₱{selectedDetailChildPrice.toLocaleString()} / Pax ({selectedDetailChildDiscount}% OFF)</p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button 
+                          onClick={() => setBookingChildren(prev => Math.max(0, prev - 1))} 
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingChildren}</span>
+                        <button 
+                          onClick={() => setBookingChildren(prev => prev + 1)} 
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Package Investment</p>
+                  <p className="text-[10px] font-black text-gray-450 dark:text-gray-400 uppercase tracking-widest mb-2">Package Investment</p>
                   <h4 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
-                    ₱{Number(selectedServiceForDetail.price).toLocaleString()}
+                    ₱{((bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice)).toLocaleString()}
                   </h4>
-                  <p className="text-[10px] text-gray-400 font-medium mt-1">* VAT Inclusive Price</p>
+                  {selectedServiceForDetail.has_booking_fields && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 text-[10px] text-gray-400 font-medium space-y-1">
+                      <div className="flex justify-between">
+                        <span>Adults: {bookingAdults} x ₱{selectedDetailAdultPrice.toLocaleString()}</span>
+                        <span>₱{(bookingAdults * selectedDetailAdultPrice).toLocaleString()}</span>
+                      </div>
+                      {bookingChildren > 0 && (
+                        <div className="flex justify-between">
+                          <span>Children: {bookingChildren} x ₱{selectedDetailChildPrice.toLocaleString()}</span>
+                          <span>₱{(bookingChildren * selectedDetailChildPrice).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-gray-400 font-medium mt-2">* VAT Inclusive Price</p>
                 </div>
               </div>
 
               <div className="space-y-3">
                 <button 
-                  onClick={() => { addToCart(selectedServiceForDetail); setShowDetailModal(false); }}
+                  onClick={() => { 
+                    if (selectedServiceForDetail.has_booking_fields) {
+                      const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
+                      addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice); 
+                    } else {
+                      addToCart(selectedServiceForDetail); 
+                    }
+                    setShowDetailModal(false); 
+                  }}
                   className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <LuPlus className="w-5 h-5" /> Add to Current Order

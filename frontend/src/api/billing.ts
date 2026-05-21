@@ -9,6 +9,10 @@ export interface Service {
   images?: string[];
   is_active: boolean;
   created_by?: number;
+  child_discount?: number;
+  has_booking_fields?: boolean;
+  adult_price?: number;
+  child_price?: number;
   creator?: {
     id: number;
     first_name: string;
@@ -69,6 +73,10 @@ export const billingApi = {
     price: number;
     description: string;
     images?: string[];
+    child_discount?: number;
+    has_booking_fields?: boolean;
+    adult_price?: number;
+    child_price?: number;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -77,6 +85,10 @@ export const billingApi = {
     description: string;
     images?: string[];
     is_active?: boolean;
+    child_discount?: number;
+    has_booking_fields?: boolean;
+    adult_price?: number;
+    child_price?: number;
   }) => client.put(`/billing/services/${id}`, data),
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 
