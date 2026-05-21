@@ -9,6 +9,7 @@ use App\Models\Bus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Http\Services\AuditLogService;
 
 class BusController extends Controller
 {
@@ -103,7 +104,17 @@ class BusController extends Controller
             'plate_number'      => ['sometimes', 'string', 'max:20', 'unique:buses,plate_number,' . $bus->id],
         ]);
 
+        $oldValues = $bus->getOriginal();
         $bus->update($validated);
+
+        AuditLogService::log(
+            action: 'UPDATE_BUS',
+            module: 'fleet',
+            entityType: 'bus',
+            entityId: $bus->id,
+            old: $oldValues,
+            new: $bus->fresh()->toArray()
+        );
 
         return response()->json([
             'success' => true,

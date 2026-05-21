@@ -23,7 +23,14 @@ class PurchaseOrderTest extends TestCase
         $this->agent      = User::factory()->create(['role' => 'agent']);
         $this->accounting = User::factory()->create(['role' => 'accounting']);
         $this->superAdmin = User::factory()->superAdmin()->create();
-        $this->supplier   = Supplier::factory()->create();
+        $this->supplier   = Supplier::factory()->create(['accreditation_status' => 'accredited']);
+        $this->supplier->accreditations()->create([
+            'accreditation_type' => 'internal_vendor',
+            'issuing_body'       => 'JVD Management',
+            'issue_date'         => now(),
+            'expiry_date'        => now()->addYear(),
+            'status'             => 'active',
+        ]);
     }
 
     // ── Create ────────────────────────────────────────────

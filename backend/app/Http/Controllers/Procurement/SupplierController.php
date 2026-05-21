@@ -119,9 +119,24 @@ class SupplierController extends Controller
             'accreditation_status' => 'accredited',
         ]);
 
+        $supplier->accreditations()->updateOrCreate(
+            [
+                'accreditation_type' => 'internal_vendor',
+            ],
+            [
+                'issuing_body'   => 'JVD Management',
+                'issue_date'     => now(),
+                'expiry_date'    => now()->addYears(1),
+                'status'         => 'active',
+                'entity_name'    => $supplier->company_name,
+                'contact_person' => $supplier->contact_person,
+                'contact_email'  => $supplier->email,
+            ]
+        );
+
         return response()->json([
             'success' => true,
-            'data'    => new SupplierResource($supplier->fresh()),
+            'data'    => new SupplierResource($supplier->fresh(['accreditations'])),
             'message' => "Supplier '{$supplier->company_name}' verified and accredited.",
         ]);
     }
@@ -140,9 +155,14 @@ class SupplierController extends Controller
             'accreditation_status' => 'blacklisted',
         ]);
 
+        $supplier->accreditations()->update([
+            'status' => 'expired',
+            'expiry_date' => now()
+        ]);
+
         return response()->json([
             'success' => true,
-            'data'    => new SupplierResource($supplier->fresh()),
+            'data'    => new SupplierResource($supplier->fresh(['accreditations'])),
             'message' => "Supplier '{$supplier->company_name}' has been blacklisted. Reason: {$validated['reason']}",
         ]);
     }
