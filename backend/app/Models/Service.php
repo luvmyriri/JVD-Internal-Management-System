@@ -16,6 +16,7 @@ class Service extends Model
         'price',
         'images',
         'is_active',
+        'created_by',
     ];
 
     protected $casts = [
@@ -23,4 +24,9 @@ class Service extends Model
         'images' => 'array',
         'is_active' => 'boolean',
     ];
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 }

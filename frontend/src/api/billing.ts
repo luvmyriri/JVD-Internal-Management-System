@@ -8,6 +8,13 @@ export interface Service {
   price: number;
   images?: string[];
   is_active: boolean;
+  created_by?: number;
+  creator?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
 }
 
 export interface InvoiceItem {

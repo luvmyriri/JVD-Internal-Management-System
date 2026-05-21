@@ -64,7 +64,9 @@ class BillingController extends Controller
 
     public function getServices()
     {
-        $services = Service::where('is_active', true)->get();
+        $services = Service::with('creator:id,first_name,last_name,email')
+            ->where('is_active', true)
+            ->get();
 
         return response()->json([
             'success' => true,
@@ -112,8 +114,10 @@ class BillingController extends Controller
             'price' => $request->price,
             'description' => $request->description,
             'images' => $imageUrls,
-            'is_active' => true
+            'is_active' => true,
+            'created_by' => auth()->id(),
         ]);
+        $service->load('creator:id,first_name,last_name,email');
 
         return response()->json([
             'success' => true,

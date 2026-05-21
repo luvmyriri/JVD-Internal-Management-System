@@ -72,6 +72,7 @@ class ServiceSeeder extends Seeder
         ];
 
         foreach ($services as $service) {
+            $service['created_by'] = 1;
             \App\Models\Service::create($service);
         }
     }

@@ -28,6 +28,7 @@ import type { Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingScreen, Dropdown } from '../../components/ui';
+import Swal from 'sweetalert2';
 
 interface CartItem {
   service: Service;
@@ -71,6 +72,7 @@ export default function POS() {
     image_url: ''
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
+  const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
 
   // Constants
   const TAX_RATE = 0.12;
@@ -90,6 +92,29 @@ export default function POS() {
     };
     fetchServices();
   }, []);
+
+  // Card image slideshow controllers
+  const handlePrevImage = (e: React.MouseEvent, serviceId: number, maxImages: number) => {
+    e.stopPropagation();
+    setCardImageIndices(prev => {
+      const current = prev[serviceId] || 0;
+      return {
+        ...prev,
+        [serviceId]: current === 0 ? maxImages - 1 : current - 1
+      };
+    });
+  };
+
+  const handleNextImage = (e: React.MouseEvent, serviceId: number, maxImages: number) => {
+    e.stopPropagation();
+    setCardImageIndices(prev => {
+      const current = prev[serviceId] || 0;
+      return {
+        ...prev,
+        [serviceId]: (current + 1) % maxImages
+      };
+    });
+  };
 
   // Cart operations
   const addToCart = (service: Service) => {
@@ -197,14 +222,40 @@ export default function POS() {
   };
 
   const handleDeleteService = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this service? This cannot be undone.')) return;
-    try {
-      await billingApi.deleteService(id);
-      setServices(prev => prev.filter(s => s.id !== id));
-      setShowDetailModal(false);
-    } catch (err) {
-      alert('Failed to delete service.');
-    }
+    Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this service!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#2563eb',
+      cancelButtonColor: '#dc2626',
+      confirmButtonText: 'Yes, delete it!',
+      background: theme === 'dark' ? '#0f172a' : '#ffffff',
+      color: theme === 'dark' ? '#ffffff' : '#0f172a',
+    }).then(async (result) => {
+      if (result.isConfirmed) {
+        try {
+          await billingApi.deleteService(id);
+          setServices(prev => prev.filter(s => s.id !== id));
+          setShowDetailModal(false);
+          Swal.fire({
+            title: 'Deleted!',
+            text: 'The service has been successfully deleted.',
+            icon: 'success',
+            background: theme === 'dark' ? '#0f172a' : '#ffffff',
+            color: theme === 'dark' ? '#ffffff' : '#0f172a',
+          });
+        } catch (err) {
+          Swal.fire({
+            title: 'Error!',
+            text: 'Failed to delete the service.',
+            icon: 'error',
+            background: theme === 'dark' ? '#0f172a' : '#ffffff',
+            color: theme === 'dark' ? '#ffffff' : '#0f172a',
+          });
+        }
+      }
+    });
   };
 
   const handleOpenEditModal = (service: Service) => {
@@ -314,11 +365,32 @@ export default function POS() {
               {/* Card Image Header */}
               <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
                 {service.images && service.images.length > 0 ? (
-                  <img 
-                    src={service.images[0]?.startsWith('http') ? service.images[0] : `/storage/${service.images[0]}`} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    alt={service.name}
-                  />
+                  <>
+                    <img 
+                      src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http') 
+                        ? service.images[cardImageIndices[service.id] || 0] 
+                        : `http://localhost:8000/storage/${service.images[cardImageIndices[service.id] || 0]}`} 
+                      className="w-full h-full object-cover transition-transform duration-500"
+                      alt={service.name}
+                    />
+
+                    {service.images.length > 1 && (
+                      <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                        <button 
+                          onClick={(e) => handlePrevImage(e, service.id, service.images?.length || 1)}
+                          className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                        >
+                          <LuChevronLeft className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={(e) => handleNextImage(e, service.id, service.images?.length || 1)}
+                          className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                        >
+                          <LuChevronRight className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
                     <LuImage className="w-12 h-12 opacity-20" />
@@ -366,7 +438,14 @@ export default function POS() {
                   )}
                 </div>
                 <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
-                <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-4">{service.description}</p>
+                <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-2">{service.description}</p>
+                
+                {service.creator && (
+                  <div className="flex items-center gap-1.5 mb-4 text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 px-2 py-1 rounded-lg w-fit">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                    <span>Published by: {service.creator.first_name} {service.creator.last_name}</span>
+                  </div>
+                )}
                 
                 <button 
                   onClick={(e) => { e.stopPropagation(); addToCart(service); }}
@@ -876,14 +955,37 @@ export default function POS() {
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Image URL</label>
-                <input 
-                  type="text" 
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full bg-gray-50 dark:bg-gray-800/60 border-none rounded-2xl py-3 px-4 text-sm font-bold"
-                  value={newService.image_url}
-                  onChange={e => setNewService({...newService, image_url: e.target.value})}
-                />
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Image URL</label>
+                <div className="flex gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="Paste URL and press Enter or click Add..."
+                    className="flex-1 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                    value={newService.image_url}
+                    onChange={e => setNewService({...newService, image_url: e.target.value})}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (newService.image_url.trim()) {
+                          setServiceImages(prev => [...prev, newService.image_url.trim()]);
+                          setNewService({...newService, image_url: ''});
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newService.image_url.trim()) {
+                        setServiceImages(prev => [...prev, newService.image_url.trim()]);
+                        setNewService({...newService, image_url: ''});
+                      }
+                    }}
+                    className="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -938,7 +1040,7 @@ export default function POS() {
                     src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http') 
                       ? selectedServiceForDetail.images[detailImageIndex] 
                       : `http://localhost:8000/storage/${selectedServiceForDetail.images[detailImageIndex]}`} 
-                    className="w-full h-full object-cover" 
+                    className="w-full h-full object-contain p-6 mx-auto bg-gray-50 dark:bg-gray-800" 
                     alt={selectedServiceForDetail.name}
                   />
                   {selectedServiceForDetail.images.length > 1 && (
@@ -1015,6 +1117,25 @@ export default function POS() {
                     {selectedServiceForDetail.description}
                   </p>
                 </div>
+
+                {selectedServiceForDetail.creator && (
+                  <div>
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">Published By</p>
+                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800">
+                      <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs">
+                        {selectedServiceForDetail.creator.first_name[0]}{selectedServiceForDetail.creator.last_name[0]}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none">
+                          {selectedServiceForDetail.creator.first_name} {selectedServiceForDetail.creator.last_name}
+                        </p>
+                        <p className="text-[9px] text-gray-400 font-bold tracking-tight mt-1">
+                          {selectedServiceForDetail.creator.email}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Package Investment</p>
