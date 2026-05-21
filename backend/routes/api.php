@@ -93,7 +93,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // PROCUREMENT — Suppliers
     // (Super Admin, Admin, Accounting)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting')->group(function () {
+    Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
         Route::apiResource('suppliers', SupplierController::class)->except(['destroy']);
         // Supplier cross-check / counter-check verification (boss-mandated)
         Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
@@ -184,8 +184,14 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('buses',           [BusController::class, 'store'])->name('buses.store');
         Route::put('buses/{bus}',      [BusController::class, 'update'])->name('buses.update');
-        Route::patch('buses/{bus}',    [BusController::class, 'update']);
+    });
 
+    // Allow HR to assign drivers via patch
+    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
+        Route::patch('buses/{bus}',    [BusController::class, 'update']);
+    });
+
+    Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
@@ -200,9 +206,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // ACCOUNTING (Super Admin, Accounting)
+    // ACCOUNTING (Super Admin, Accounting, Agent)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,accounting')->group(function () {
+    Route::middleware('role:super_admin,accounting,agent')->group(function () {
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');

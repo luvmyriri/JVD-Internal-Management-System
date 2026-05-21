@@ -32,11 +32,11 @@ class SupplierTest extends TestCase
              ->assertJsonStructure(['data', 'meta']);
     }
 
-    public function test_agent_cannot_access_suppliers()
+    public function test_agent_can_access_suppliers()
     {
         $this->actingAs($this->agent)
              ->getJson('/api/suppliers')
-             ->assertForbidden();
+             ->assertOk();
     }
 
     public function test_accounting_can_create_supplier()

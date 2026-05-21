@@ -41,7 +41,7 @@ class PurchaseOrderTest extends TestCase
 
         $res->assertCreated()
             ->assertJsonPath('data.status', 'draft')
-            ->assertJsonStructure(['data' => ['po_number', 'items']]);
+            ->assertJsonStructure(['data' => ['po_number', 'line_items']]);
 
         $this->assertDatabaseHas('purchase_orders', ['status' => 'draft', 'created_by' => $this->agent->id]);
     }
@@ -133,7 +133,7 @@ class PurchaseOrderTest extends TestCase
         $this->actingAs($this->accounting)
              ->postJson("/api/purchase-orders/{$po->id}/verify", ['approved' => true])
              ->assertOk()
-             ->assertJsonPath('data.status', 'verified');
+             ->assertJsonPath('data.status', 'pending_ceo_approval');
     }
 
     public function test_agent_cannot_verify_po()
@@ -151,7 +151,7 @@ class PurchaseOrderTest extends TestCase
     public function test_super_admin_can_approve_po()
     {
         $po = PurchaseOrder::factory()->create([
-            'status'      => 'verified',
+            'status'      => 'pending_ceo_approval',
             'created_by'  => $this->agent->id,
             'supplier_id' => $this->supplier->id,
         ]);
@@ -165,7 +165,7 @@ class PurchaseOrderTest extends TestCase
     public function test_accounting_cannot_approve_po()
     {
         $po = PurchaseOrder::factory()->create([
-            'status'      => 'verified',
+            'status'      => 'pending_ceo_approval',
             'supplier_id' => $this->supplier->id,
         ]);
 

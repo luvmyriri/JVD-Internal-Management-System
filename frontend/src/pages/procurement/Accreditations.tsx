@@ -19,9 +19,9 @@ const ENTITY_ICONS: Record<string, React.ReactNode> = {
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  active: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  expired: 'bg-red-50 text-red-700 border border-red-200',
-  pending_renewal: 'bg-amber-50 text-amber-700 border border-amber-200',
+  active: 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+  expired: 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+  pending_renewal: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
 };
 
 const formatDocUrl = (url: string | undefined | null): string => {
@@ -40,7 +40,7 @@ const formatDocUrl = (url: string | undefined | null): string => {
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${STATUS_STYLE[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}>
       {status.replace('_', ' ')}
     </span>
   );
@@ -182,7 +182,7 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
             Cancel
           </button>
           <button form="accreditation-form" type="submit" disabled={!form.entity_name || !form.contact_email || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
             {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
             Create Accreditation
           </button>
@@ -267,7 +267,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
         <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Main Supporting Document</p>
           {acc.document_url ? (
-            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+            <div className="flex items-center justify-between p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800">
               <div className="flex items-center gap-2">
                 <LuFileText size={18} />
                 <span className="text-sm font-bold">Document Uploaded</span>
@@ -282,7 +282,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                   View
                 </a>
                 <span className="text-gray-300">|</span>
-                <button onClick={() => removeMutation.mutate({ id: acc.id, key: 'document_url' })} className="text-emerald-600 hover:text-emerald-800 text-xs font-bold underline">
+                <button onClick={() => removeMutation.mutate({ id: acc.id, key: 'document_url' })} className="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300 text-xs font-bold underline">
                   Remove
                 </button>
               </div>
@@ -313,7 +313,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                     href={formatDocUrl(url)}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    className="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50 transition-colors"
                   >
                     <LuFileText size={20} className="mb-1" />
                     <span className="text-[11px] font-black">{docName} Document</span>
@@ -452,7 +452,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
                       window.open(formatDocUrl(hasDoc as string), '_blank');
                     }
                   }}
-                  className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-105 hover:text-emerald-800 transition-all"
+                  className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-105 hover:text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 transition-all"
                   title={`View submitted ${doc} document`}
                 >
                   <LuFileText size={12} />
@@ -462,7 +462,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
             }
             
             return (
-              <label key={doc} className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600 transition group relative" title={`Upload ${doc}`}>
+              <label key={doc} className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600 dark:bg-gray-800/50 dark:text-gray-500 dark:border-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition group relative" title={`Upload ${doc}`}>
                 {uploadMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin text-blue-500" /> : <LuCloudUpload size={12} className="group-hover:text-blue-500 transition-colors" />}
                 <span className="group-hover:text-blue-600">{doc}</span>
                 <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => handleFileUpload(e, doc)} disabled={uploadMutation.isPending} />
@@ -473,7 +473,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
         <button 
           onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
           disabled={kycMutation.isPending}
-          className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:opacity-50 transition tooltip-trigger"
+          className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 disabled:opacity-50 transition tooltip-trigger"
           title="Send KYC Link"
         >
           {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}
@@ -503,7 +503,7 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
             <button 
               onClick={() => kycMutation.mutate()}
               disabled={kycMutation.isPending}
-              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20"
+              className="px-5 py-2.5 rounded-xl text-sm font-bold bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-60 transition-all flex items-center gap-2 shadow-lg shadow-blue-600/20 dark:shadow-blue-900/20"
             >
               {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}
               Yes, Send Link
@@ -856,11 +856,11 @@ export default function Accreditations() {
                     {['kyc', 'nda', 'terms'].map(doc => (
                        <div key={doc} className="flex-1">
                         {acc[`${doc}_document_url`] ? (
-                          <span className="flex items-center justify-center gap-1 w-full text-center text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 py-1.5 rounded-lg uppercase">
+                          <span className="flex items-center justify-center gap-1 w-full text-center text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 py-1.5 rounded-lg uppercase">
                             <LuFileText size={12} /> {doc} Attached
                           </span>
                         ) : (
-                          <label className="cursor-pointer flex items-center justify-center gap-1 w-full text-center text-[10px] bg-white text-blue-600 py-1.5 rounded-lg hover:bg-blue-50 transition font-bold border border-blue-200 uppercase shadow-sm">
+                          <label className="cursor-pointer flex items-center justify-center gap-1 w-full text-center text-[10px] bg-white text-blue-600 py-1.5 rounded-lg hover:bg-blue-50 dark:bg-gray-800 dark:text-blue-400 dark:hover:bg-gray-700 transition font-bold border border-blue-200 dark:border-gray-700 uppercase shadow-sm">
                             <LuCloudUpload size={12} /> {doc}
                             <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
                               const file = e.target.files?.[0];

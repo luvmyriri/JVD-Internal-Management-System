@@ -83,8 +83,20 @@ class JobOrderController extends Controller
     /**
      * Get a single Job Order with all relationships.
      */
-    public function show(JobOrder $jobOrder): JsonResponse
+    public function show(Request $request, JobOrder $jobOrder): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        } elseif (!$user->hasRole('super_admin', 'admin')) {
+            if ($jobOrder->created_by !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data'    => new JobOrderResource(
@@ -98,6 +110,18 @@ class JobOrderController extends Controller
      */
     public function update(Request $request, JobOrder $jobOrder): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        } elseif (!$user->hasRole('super_admin', 'admin')) {
+            if ($jobOrder->created_by !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
         // If a status change is requested, run through the service state machine
         if ($request->filled('status')) {
             try {

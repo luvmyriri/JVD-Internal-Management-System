@@ -54,11 +54,11 @@ export default function ProcurementOverview() {
   const statsData = data?.data?.data;
 
   const stats = [
-    { label: 'Active POs', value: statsData?.stats.active_pos ?? 0, change: '+0', positive: true, icon: <LuShoppingCart />, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { label: 'Total Suppliers', value: statsData?.stats.total_suppliers ?? 0, change: '+0', positive: true, icon: <LuTruck />, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { label: 'Pending POs', value: statsData?.stats.pending_pos ?? 0, change: '0', positive: true, icon: <LuClock />, color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'Pending KYC / Accreditations', value: statsData?.stats.pending_accreditations ?? 0, change: '+0', positive: false, icon: <LuShieldAlert />, color: 'text-red-600', bg: 'bg-red-50' },
-    { label: 'Active Accreditations', value: statsData?.stats.active_accreditations ?? 0, change: '+0', positive: true, icon: <LuShieldCheck />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Active POs', value: statsData?.stats.active_pos ?? 0, change: '+0', positive: true, icon: <LuShoppingCart />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
+    { label: 'Total Suppliers', value: statsData?.stats.total_suppliers ?? 0, change: '+0', positive: true, icon: <LuTruck />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
+    { label: 'Pending POs', value: statsData?.stats.pending_pos ?? 0, change: '0', positive: true, icon: <LuClock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
+    { label: 'Pending KYC / Accreditations', value: statsData?.stats.pending_accreditations ?? 0, change: '+0', positive: false, icon: <LuShieldAlert />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
+    { label: 'Active Accreditations', value: statsData?.stats.active_accreditations ?? 0, change: '+0', positive: true, icon: <LuShieldCheck />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
   ];
 
   if (isLoading) {

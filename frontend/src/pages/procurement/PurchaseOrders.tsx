@@ -15,17 +15,17 @@ import { Pagination, Dropdown } from '../../components/ui';
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<string, string> = {
-  draft:                     'bg-gray-100 text-gray-600',
-  pending_accounting_review: 'bg-amber-100 text-amber-700',
-  verified:                  'bg-blue-100 text-blue-700',
-  pending_ceo_approval:      'bg-purple-100 text-purple-700',
-  approved:                  'bg-emerald-100 text-emerald-700',
-  rejected:                  'bg-red-100 text-red-700',
+  draft:                     'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
+  pending_accounting_review: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  verified:                  'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  pending_ceo_approval:      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  approved:                  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  rejected:                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
       {PO_STATUS_LABELS[status] ?? status}
     </span>
   );
@@ -181,7 +181,7 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button form="po-form" type="submit" disabled={!canSubmit || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50">
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
             {mutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuFileText size={16} />} Create Draft PO
           </button>
         </div>
@@ -236,10 +236,10 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
                       <td className="px-4 py-3 font-medium text-gray-800">{li.item_name}</td>
                       <td className="px-4 py-3">
                         {li.part_number ? (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 text-[10px] font-mono font-bold">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-mono font-bold">
                             <LuHash size={9} />{li.part_number}
                           </span>
-                        ) : <span className="text-gray-300 text-xs">—</span>}
+                        ) : <span className="text-gray-300 dark:text-gray-600 text-xs">—</span>}
                       </td>
                       <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{li.quantity}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-gray-400 text-xs">{li.unit_of_measure}</td>
@@ -260,9 +260,9 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
           {/* Rejection Notes */}
           {po.rejection_notes && (
-            <div className="bg-red-50 border border-red-100 rounded-2xl px-5 py-4">
-              <p className="text-xs font-bold text-red-700 mb-1">Rejection Notes</p>
-              <p className="text-sm text-red-800">{po.rejection_notes}</p>
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-900/50 rounded-2xl px-5 py-4">
+              <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-1">Rejection Notes</p>
+              <p className="text-sm text-red-800 dark:text-red-300">{po.rejection_notes}</p>
             </div>
           )}
 
@@ -303,10 +303,10 @@ function PORow({
   onApprove: (id: number) => void;
 }) {
   return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 dark:border-gray-800 group last:border-0">
       <td className="px-8 py-6">
         <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0 shadow-sm shadow-blue-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-sm shadow-blue-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
           <span className="font-black text-gray-900 dark:text-white tracking-tight">{po.po_number}</span>
         </div>
       </td>
@@ -408,7 +408,7 @@ export default function PurchaseOrders() {
           </p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
           <LuPlus size={16} /> New PO
         </button>
       </div>
@@ -417,8 +417,8 @@ export default function PurchaseOrders() {
       <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
         {['Draft', 'Accounting Review', 'Verified', 'CEO Approval', 'Approved'].map((s, i, arr) => (
           <div key={s} className="flex items-center gap-4 shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 whitespace-nowrap">{s}</span>
-            {i < arr.length - 1 && <LuArrowRight size={14} className="text-gray-200" />}
+            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 whitespace-nowrap">{s}</span>
+            {i < arr.length - 1 && <LuArrowRight size={14} className="text-gray-200 dark:text-gray-700" />}
           </div>
         ))}
       </div>
@@ -457,7 +457,7 @@ export default function PurchaseOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800">
+            <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
               <tr>
                 {['PO Number', 'Supplier', 'Status', 'Amount', 'Date', ''].map(h => (
                   <th key={h} className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{h}</th>

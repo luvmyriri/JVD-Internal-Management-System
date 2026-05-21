@@ -32,7 +32,7 @@ class AuditLogController extends Controller
         }
 
         if ($request->filled('module')) {
-            $query->where('module', 'ilike', '%' . $request->module . '%');
+            $query->where('module', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', '%' . $request->module . '%');
         }
 
         if ($request->filled('action')) {

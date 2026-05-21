@@ -21,10 +21,14 @@ class SupplierController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('company_name', 'ilike', "%{$search}%")
-                  ->orWhere('contact_person', 'ilike', "%{$search}%")
-                  ->orWhere('email', 'ilike', "%{$search}%");
+                $q->where('company_name', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', "%{$search}%")
+                  ->orWhere('contact_person', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', "%{$search}%")
+                  ->orWhere('email', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', "%{$search}%");
             });
+        }
+
+        if ($request->filled('accreditation_status')) {
+            $query->where('accreditation_status', $request->accreditation_status);
         }
 
         $suppliers = $query->orderBy('company_name')

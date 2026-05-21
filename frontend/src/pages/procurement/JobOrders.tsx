@@ -20,25 +20,25 @@ import { Pagination, Dropdown } from '../../components/ui';
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<string, string> = {
-  created: 'bg-sky-100 text-sky-700',
-  confirmed: 'bg-blue-100 text-blue-700',
-  in_progress: 'bg-purple-100 text-purple-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-gray-100 text-gray-500',
+  created: 'bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400',
+  confirmed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  in_progress: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  cancelled: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
 };
 
 const serviceTypeStyles: Record<string, string> = {
-  bus_rental: 'bg-indigo-50 text-indigo-600',
-  field_trip: 'bg-teal-50 text-teal-600',
-  corporate_transport: 'bg-blue-50 text-blue-600',
-  travel_package: 'bg-violet-50 text-violet-600',
-  event: 'bg-pink-50 text-pink-600',
-  maintenance: 'bg-orange-50 text-orange-600',
+  bus_rental: 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400',
+  field_trip: 'bg-teal-50 text-teal-600 dark:bg-teal-900/30 dark:text-teal-400',
+  corporate_transport: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+  travel_package: 'bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
+  event: 'bg-pink-50 text-pink-600 dark:bg-pink-900/30 dark:text-pink-400',
+  maintenance: 'bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
       {JO_STATUS_LABELS[status] ?? status}
     </span>
   );
@@ -47,7 +47,7 @@ function StatusBadge({ status }: { status: string }) {
 function ServiceTypeBadge({ type }: { type: string }) {
   const isMainenance = type === 'maintenance';
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${serviceTypeStyles[type] ?? 'bg-gray-50 text-gray-600'}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${serviceTypeStyles[type] ?? 'bg-gray-50 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
       {isMainenance && <LuWrench size={9} />}
       {!isMainenance && <LuUsers size={9} />}
       {SERVICE_TYPE_LABELS[type] ?? type}
@@ -121,8 +121,8 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
             </div>
 
             {isMaintenanceType && (
-              <div className="bg-orange-50 border border-orange-100 rounded-2xl px-5 py-4 text-xs text-orange-700 leading-relaxed">
-                <strong className="block mb-1 text-orange-800">PMS Maintenance JO</strong>
+              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/50 rounded-2xl px-5 py-4 text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
+                <strong className="block mb-1 text-orange-800 dark:text-orange-300">PMS Maintenance JO</strong>
                 This will be linked to a Work Order. A PO will only be issued if external parts are required.
               </div>
             )}
@@ -201,7 +201,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button form="jo-form" type="submit" disabled={!canSubmit || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50">
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
             {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />} Create J.O.
           </button>
         </div>
@@ -218,7 +218,7 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-[1.5rem] bg-sky-50 flex items-center justify-center text-sky-600 shadow-sm">
+            <div className="w-14 h-14 rounded-[1.5rem] bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shadow-sm">
               <LuClipboardList size={24} />
             </div>
             <div>
@@ -310,37 +310,37 @@ function JORow({
   onComplete: (id: number) => void;
 }) {
   return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
-      <td className="px-8 py-6">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 flex items-center justify-center text-sky-600 shrink-0 shadow-sm shadow-sky-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-sm shadow-sky-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
             <LuClipboardList size={18} />
           </div>
           <span className="font-black text-gray-900 dark:text-white tracking-tight">{jo.jo_number}</span>
         </div>
       </td>
-      <td className="px-8 py-6"><ServiceTypeBadge type={jo.service_type} /></td>
-      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><ServiceTypeBadge type={jo.service_type} /></td>
+      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800">
         {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
       </td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
           <LuMapPin size={12} className="shrink-0" /> Destination
         </div>
         <div className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px]">{jo.destination}</div>
       </td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
           <LuCalendar size={12} /> Schedule
         </div>
         <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{fmt(jo.service_date)}</div>
       </td>
-      <td className="px-8 py-6"><StatusBadge status={jo.status} /></td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><StatusBadge status={jo.status} /></td>
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="text-gray-900 dark:text-white font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
       </td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <Dropdown
           items={[
             {
@@ -426,7 +426,7 @@ export default function JobOrders() {
           </p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/20">
           <LuPlus size={16} /> New J.O.
         </button>
       </div>
@@ -476,14 +476,14 @@ export default function JobOrders() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
+              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
                 <tr>
                   {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
                     <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className="">
                 {jos.map(jo => (
                   <JORow
                     key={jo.id}

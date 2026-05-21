@@ -8,6 +8,7 @@ use App\Http\Resources\BusResource;
 use App\Models\Bus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class BusController extends Controller
 {
@@ -18,6 +19,11 @@ class BusController extends Controller
     {
         $query = Bus::with('driver');
 
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            $query->where('assigned_driver', $user->id);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -25,8 +31,8 @@ class BusController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('plate_number', 'ilike', "%{$search}%")
-                  ->orWhere('model', 'ilike', "%{$search}%");
+                $q->where('plate_number', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', "%{$search}%")
+                  ->orWhere('model', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', "%{$search}%");
             });
         }
 
@@ -68,8 +74,13 @@ class BusController extends Controller
     /**
      * Get a single bus with its driver and work order history.
      */
-    public function show(Bus $bus): JsonResponse
+    public function show(Request $request, Bus $bus): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver') && $bus->assigned_driver !== $user->id) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         return response()->json([
             'success' => true,
             'data'    => new BusResource($bus->load(['driver', 'workOrders'])),
@@ -88,7 +99,7 @@ class BusController extends Controller
             'total_mileage'     => ['sometimes', 'numeric', 'min:0'],
             'last_service_date' => ['nullable', 'date'],
             'next_service_due'  => ['nullable', 'date'],
-            'assigned_driver'   => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_driver'   => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
             'plate_number'      => ['sometimes', 'string', 'max:20', 'unique:buses,plate_number,' . $bus->id],
         ]);
 

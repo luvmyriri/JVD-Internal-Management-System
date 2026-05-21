@@ -30,7 +30,7 @@ class AccreditationController extends Controller
         }
 
         if ($request->has('search')) {
-            $query->where('entity_name', 'ilike', '%' . $request->search . '%');
+            $query->where('entity_name', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', '%' . $request->search . '%');
         }
 
         $accreditations = $query->latest()->paginate($request->per_page ?? 20);

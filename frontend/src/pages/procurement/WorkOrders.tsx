@@ -20,22 +20,22 @@ import { Pagination, Dropdown } from '../../components/ui';
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-700',
-  open:             'bg-blue-100 text-blue-700',
-  in_progress:      'bg-purple-100 text-purple-700',
-  completed:        'bg-emerald-100 text-emerald-700',
-  cancelled:        'bg-gray-100 text-gray-500',
+  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  open:             'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  in_progress:      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  completed:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  cancelled:        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
 };
 
 const priorityStyles: Record<string, string> = {
-  routine:  'bg-gray-50 text-gray-500 border border-gray-200',
-  urgent:   'bg-orange-50 text-orange-600 border border-orange-200',
-  critical: 'bg-red-50 text-red-600 border border-red-200',
+  routine:  'bg-gray-50 text-gray-500 border border-gray-200 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-400',
+  urgent:   'bg-orange-50 text-orange-600 border border-orange-200 dark:bg-orange-900/30 dark:border-orange-800 dark:text-orange-400',
+  critical: 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/30 dark:border-red-800 dark:text-red-400',
 };
 
 function StatusBadge({ status }: { status: string }) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'}`}>
       {WO_STATUS_LABELS[status] ?? status}
     </span>
   );
@@ -78,12 +78,12 @@ function ApprovalModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={18} /></button>
         </div>
 
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-5 py-4 mb-5">
-          <div className="flex items-center gap-2 text-amber-700 text-xs font-bold mb-1"><LuTriangleAlert size={13} /> Auto-Generated Work Order</div>
-          <p className="text-xs text-amber-800">{wo.description}</p>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-900/50 rounded-2xl px-5 py-4 mb-5">
+          <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400 text-xs font-bold mb-1"><LuTriangleAlert size={13} /> Auto-Generated Work Order</div>
+          <p className="text-xs text-amber-800 dark:text-amber-300">{wo.description}</p>
           <div className="flex items-center gap-2 mt-2">
             <PriorityBadge priority={wo.priority} />
-            <span className="text-xs text-amber-700">Bus: {wo.bus?.plate_number ?? `#${wo.bus_id}`}</span>
+            <span className="text-xs text-amber-700 dark:text-amber-400">Bus: {wo.bus?.plate_number ?? `#${wo.bus_id}`}</span>
           </div>
         </div>
 
@@ -129,7 +129,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-[1.5rem] bg-purple-50 flex items-center justify-center text-purple-600 shadow-sm">
+            <div className="w-14 h-14 rounded-[1.5rem] bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shadow-sm">
               <LuWrench size={24} />
             </div>
             <div>
@@ -181,7 +181,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
             <div className="space-y-2">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned To</p>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
-                <div className="w-5 h-5 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 text-[10px]">
+                <div className="w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 text-[10px]">
                   {wo.assignee ? wo.assignee.first_name.charAt(0) : '?'}
                 </div>
                 {wo.assignee ? `${wo.assignee.first_name} ${wo.assignee.last_name}` : 'Unassigned'}
@@ -285,7 +285,7 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
             Cancel
           </button>
           <button form="wo-form" type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50">
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
             {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />} Submit Request
           </button>
         </div>
@@ -308,10 +308,10 @@ function WORow({
   onComplete: (id: number) => void;
 }) {
   return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 group last:border-0">
-      <td className="px-8 py-6">
+    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 shadow-sm shadow-purple-200/20 group-hover:bg-white dark:bg-gray-900 group-hover:shadow-md transition-all">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
             <LuWrench size={18} />
           </div>
           <div>
@@ -322,14 +322,14 @@ function WORow({
           </div>
         </div>
       </td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
         <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'}</div>
       </td>
-      <td className="px-8 py-6"><PriorityBadge priority={wo.priority} /></td>
-      <td className="px-8 py-6"><StatusBadge status={wo.status} /></td>
-      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[300px] leading-relaxed">{wo.description}</td>
-      <td className="px-8 py-6">
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><PriorityBadge priority={wo.priority} /></td>
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><StatusBadge status={wo.status} /></td>
+      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[300px] leading-relaxed border-b border-gray-50 dark:border-gray-800">{wo.description}</td>
+      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <Dropdown 
           items={[
             { 
@@ -411,16 +411,16 @@ export default function WorkOrders() {
           </p>
         </div>
         <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/20">
           <LuPlus size={16} /> Request W.O.
         </button>
       </div>
 
       {/* Pending approval banner */}
       {pendingCount > 0 && (
-        <div className="flex items-center gap-4 bg-amber-50 border border-amber-200 rounded-[1.5rem] px-6 py-4 shadow-sm shadow-amber-200/20">
-          <LuClock size={18} className="text-amber-600 shrink-0" />
-          <p className="text-sm font-bold text-amber-800">
+        <div className="flex items-center gap-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-900/50 rounded-[1.5rem] px-6 py-4 shadow-sm shadow-amber-200/20 dark:shadow-none">
+          <LuClock size={18} className="text-amber-600 dark:text-amber-500 shrink-0" />
+          <p className="text-sm font-bold text-amber-800 dark:text-amber-400">
             {pendingCount} auto-generated work order{pendingCount > 1 ? 's' : ''} pending your approval.
           </p>
         </div>
@@ -461,14 +461,14 @@ export default function WorkOrders() {
           </div>
         ) : (
           <table className="w-full">
-            <thead className="bg-gray-50/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
+            <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
               <tr>
                 {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
                   <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+            <tbody className="">
               {wos.map(wo => (
                 <WORow 
                   key={wo.id} 

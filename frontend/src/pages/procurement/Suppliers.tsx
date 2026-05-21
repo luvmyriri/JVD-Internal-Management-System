@@ -18,15 +18,15 @@ import { Modal, Pagination, Button } from '../../components/ui';
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 const accreditationStyle: Record<string, string> = {
-  accredited:  'bg-emerald-50 text-emerald-700 border border-emerald-200',
-  pending:     'bg-amber-50 text-amber-700 border border-amber-200',
-  suspended:   'bg-orange-50 text-orange-700 border border-orange-200',
-  blacklisted: 'bg-red-50 text-red-700 border border-red-200',
+  accredited:  'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
+  pending:     'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+  suspended:   'bg-orange-50 text-orange-700 border border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+  blacklisted: 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
 };
 
 function AccreditationBadge({ status }: { status: string }) {
   return (
-    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${accreditationStyle[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
+    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${accreditationStyle[status] ?? 'bg-gray-50 text-gray-600 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}>
       {status === 'accredited' && <LuCircleCheckBig size={10} />}
       {status === 'blacklisted' && <LuBan size={10} />}
       {status === 'pending' && <LuTriangleAlert size={10} />}
@@ -176,7 +176,7 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
             Cancel
           </button>
           <button form="supplier-form" type="submit" disabled={!form.company_name || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
             {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
             Create Supplier
           </button>
@@ -275,7 +275,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
       <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all p-8 flex flex-col gap-6">
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
               <LuBuilding2 size={20} />
             </div>
             <div>
@@ -306,10 +306,10 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             <span className="px-2.5 py-1 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-[10px] font-semibold text-gray-600 dark:text-gray-300">{supplier.payment_terms}</span>
           )}
           {supplier.is_consignment && (
-            <span className="px-2.5 py-1 rounded-full bg-purple-50 border border-purple-200 text-[10px] font-semibold text-purple-600">Consignment</span>
+            <span className="px-2.5 py-1 rounded-full bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 text-[10px] font-semibold text-purple-600 dark:text-purple-400">Consignment</span>
           )}
           {(supplier.purchase_orders_count ?? 0) > 0 && (
-            <span className="px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-[10px] font-semibold text-blue-600">{supplier.purchase_orders_count} POs</span>
+            <span className="px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 text-[10px] font-semibold text-blue-600 dark:text-blue-400">{supplier.purchase_orders_count} POs</span>
           )}
         </div>
 
@@ -322,7 +322,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             </button>
           )}
           {supplier.accreditation_status === 'accredited' && (
-            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
               <LuShieldCheck size={12} /> Verified
             </div>
           )}
@@ -333,7 +333,7 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
             </button>
           )}
           {supplier.accreditation_status === 'blacklisted' && (
-            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-bold border border-red-200">
+            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold border border-red-200 dark:border-red-800">
               <LuShieldX size={12} /> Blacklisted
             </div>
           )}
@@ -615,7 +615,7 @@ export default function Suppliers() {
             </div>
             
             <button onClick={() => setShowAdd(true)}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
               <LuPlus size={16} /> Add Supplier
             </button>
 
@@ -632,7 +632,7 @@ export default function Suppliers() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md flex-1">
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 max-w-md flex-1">
           <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
             <LuSearch size={18} />
           </div>
@@ -644,13 +644,13 @@ export default function Suppliers() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 bg-gray-100/50 p-1.5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800">
+        <div className="flex gap-1.5 bg-gray-100/50 dark:bg-gray-900/50 p-1.5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800 overflow-x-auto hide-scrollbar">
           {(['all', 'accredited', 'pending', 'blacklisted'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-5 py-2 rounded-[1rem] text-[10px] font-black uppercase tracking-widest transition-all ${
+              className={`px-5 py-2 rounded-[1rem] text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${
                 filter === f 
-                ? 'bg-white text-gray-900 shadow-sm' 
-                : 'text-gray-400 hover:text-gray-600'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm' 
+                : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
               }`}>
               {f}
             </button>
@@ -716,7 +716,7 @@ export default function Suppliers() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase border border-blue-100">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase border border-blue-100 dark:border-blue-800">
                             {sup.payment_terms}
                           </span>
                           {sup.is_consignment && (
@@ -737,7 +737,7 @@ export default function Suppliers() {
             <Button variant="secondary" onClick={() => setIsPreviewModalOpen(false)}>
               Abort Upload
             </Button>
-            <Button onClick={handleBulkUploadConfirm} className="px-8 shadow-lg shadow-blue-200">
+            <Button onClick={handleBulkUploadConfirm} className="px-8 shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
               Confirm & Register All
             </Button>
           </div>

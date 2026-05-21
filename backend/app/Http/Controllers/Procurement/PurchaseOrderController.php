@@ -160,6 +160,13 @@ class PurchaseOrderController extends Controller
      */
     public function approve(ReviewPurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
+        if (!auth()->user()->hasRole('super_admin', 'admin')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only super admin or admin can approve P.O.s.',
+            ], 403);
+        }
+
         if ($purchaseOrder->status !== 'pending_ceo_approval') {
             return response()->json([
                 'success' => false,

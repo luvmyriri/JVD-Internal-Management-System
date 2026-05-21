@@ -27,7 +27,7 @@ class InventoryController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('item_name', 'ilike', '%' . $request->search . '%');
+            $query->where('item_name', \DB::connection()->getDriverName() === 'sqlite' ? 'like' : 'ilike', '%' . $request->search . '%');
         }
 
         $items = $query->orderBy('category')

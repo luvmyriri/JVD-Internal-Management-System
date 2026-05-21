@@ -25,6 +25,16 @@ class WorkOrderController extends Controller
     {
         $query = WorkOrder::with(['bus', 'assignee']);
 
+        $user = $request->user();
+
+        if ($user->hasRole('driver')) {
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus) {
+                return response()->json(['success' => true, 'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'last_page' => 1, 'per_page' => 20]]);
+            }
+            $query->where('bus_id', $assignedBus->id);
+        }
+
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -69,8 +79,16 @@ class WorkOrderController extends Controller
     /**
      * Get a single Work Order.
      */
-    public function show(WorkOrder $workOrder): JsonResponse
+    public function show(Request $request, WorkOrder $workOrder): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus || $assignedBus->id !== $workOrder->bus_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data'    => new WorkOrderResource($workOrder->load(['bus', 'assignee'])),
@@ -84,6 +102,14 @@ class WorkOrderController extends Controller
      */
     public function update(Request $request, WorkOrder $workOrder): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
+            if (!$assignedBus || $assignedBus->id !== $workOrder->bus_id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+            }
+        }
+
         $wasCompleted = false;
 
         if ($request->filled('status')) {

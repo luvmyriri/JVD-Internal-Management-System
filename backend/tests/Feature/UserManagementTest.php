@@ -58,7 +58,7 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin)
              ->postJson('/api/users', $payload)
              ->assertCreated()
-             ->assertJsonPath('data.email', 'maria.santos@jvd.com');
+             ->assertJsonPath('data.user.email', 'maria.santos@jvd.com');
     }
 
     public function test_cannot_create_user_with_duplicate_email()
@@ -87,7 +87,9 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin)
              ->postJson("/api/users/{$target->id}/deactivate")
              ->assertOk()
-             ->assertJsonPath('data.is_active', false);
+             ->assertJsonPath('success', true);
+
+        $this->assertFalse((bool)$target->fresh()->is_active);
     }
 
     public function test_admin_cannot_deactivate_super_admin()
@@ -106,7 +108,9 @@ class UserManagementTest extends TestCase
         $this->actingAs($this->admin)
              ->postJson("/api/users/{$target->id}/activate")
              ->assertOk()
-             ->assertJsonPath('data.is_active', true);
+             ->assertJsonPath('success', true);
+             
+        $this->assertTrue((bool)$target->fresh()->is_active);
     }
 
     // ── Reset Password ────────────────────────────────────
