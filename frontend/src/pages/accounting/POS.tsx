@@ -27,8 +27,7 @@ import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingScreen, Dropdown } from '../../components/ui';
-import Swal from 'sweetalert2';
+import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
 
 interface CartItem {
   service: Service;
@@ -73,6 +72,10 @@ export default function POS() {
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
+
+  // Confirm dialog state
+  const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
+  const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string; variant: 'success' | 'error' }>({ open: false, title: '', message: '', variant: 'success' });
 
   // Constants
   const TAX_RATE = 0.12;
@@ -221,41 +224,20 @@ export default function POS() {
     }
   };
 
-  const handleDeleteService = async (id: number) => {
-    Swal.fire({
-      title: 'Are you sure?',
-      text: "You won't be able to revert this service!",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#2563eb',
-      cancelButtonColor: '#dc2626',
-      confirmButtonText: 'Yes, delete it!',
-      background: theme === 'dark' ? '#0f172a' : '#ffffff',
-      color: theme === 'dark' ? '#ffffff' : '#0f172a',
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        try {
-          await billingApi.deleteService(id);
-          setServices(prev => prev.filter(s => s.id !== id));
-          setShowDetailModal(false);
-          Swal.fire({
-            title: 'Deleted!',
-            text: 'The service has been successfully deleted.',
-            icon: 'success',
-            background: theme === 'dark' ? '#0f172a' : '#ffffff',
-            color: theme === 'dark' ? '#ffffff' : '#0f172a',
-          });
-        } catch (err) {
-          Swal.fire({
-            title: 'Error!',
-            text: 'Failed to delete the service.',
-            icon: 'error',
-            background: theme === 'dark' ? '#0f172a' : '#ffffff',
-            color: theme === 'dark' ? '#ffffff' : '#0f172a',
-          });
-        }
-      }
-    });
+  const handleDeleteService = (id: number) => {
+    setConfirmDelete({ open: true, id });
+  };
+
+  const executeDeleteService = async () => {
+    if (confirmDelete.id === null) return;
+    try {
+      await billingApi.deleteService(confirmDelete.id);
+      setServices(prev => prev.filter(s => s.id !== confirmDelete.id));
+      setShowDetailModal(false);
+      setAlertDialog({ open: true, title: 'Deleted!', message: 'The service has been successfully deleted.', variant: 'success' });
+    } catch (err) {
+      setAlertDialog({ open: true, title: 'Error!', message: 'Failed to delete the service.', variant: 'error' });
+    }
   };
 
   const handleOpenEditModal = (service: Service) => {
@@ -1242,6 +1224,27 @@ export default function POS() {
           }
         }
       ` }} />
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDelete.open}
+        onClose={() => setConfirmDelete({ open: false, id: null })}
+        onConfirm={executeDeleteService}
+        title="Are you sure?"
+        message="You won't be able to revert this service!"
+        confirmText="Yes, delete it!"
+        variant="warning"
+      />
+
+      {/* Success / Error Alert Dialog */}
+      <ConfirmDialog
+        isOpen={alertDialog.open}
+        onClose={() => setAlertDialog(prev => ({ ...prev, open: false }))}
+        title={alertDialog.title}
+        message={alertDialog.message}
+        variant={alertDialog.variant}
+        alert
+      />
 
     </div>
   );

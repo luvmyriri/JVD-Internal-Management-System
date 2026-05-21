@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPackage, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuArrowDownToLine
@@ -151,7 +151,7 @@ export default function Supplies() {
           </p>
         </div>
         <button onClick={() => { setEditingItem(undefined); setShowModal(true); }}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200">
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-600/20 dark:shadow-blue-900/30">
           <LuPlus size={16} /> Add Item
         </button>
       </div>
@@ -175,8 +175,8 @@ export default function Supplies() {
           {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
         </select>
         <button onClick={() => setLowStockOnly(!lowStockOnly)}
-          className={`px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 border ${lowStockOnly ? 'bg-white text-amber-600 border-amber-200 shadow-sm' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>
-          <LuTriangleAlert size={14} className={lowStockOnly ? 'text-amber-600' : 'text-gray-400'} />
+          className={`px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 border ${lowStockOnly ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30 shadow-sm' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+          <LuTriangleAlert size={14} className={lowStockOnly ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'} />
           Low Stock Only
         </button>
       </div>
@@ -184,14 +184,14 @@ export default function Supplies() {
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-              <tr>
-                <th className="px-8 py-5">Item Name</th>
-                <th className="px-8 py-5">Category</th>
-                <th className="px-8 py-5 text-center">In Stock</th>
-                <th className="px-8 py-5 text-center">Status</th>
-                <th className="px-8 py-5 text-right">Unit Price</th>
-                <th className="px-8 py-5 text-center">Actions</th>
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Item Name</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Category</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">In Stock</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Status</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">Unit Price</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">

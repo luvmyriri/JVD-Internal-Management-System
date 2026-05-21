@@ -6,3 +6,4 @@ export { default as AddressSelector } from './AddressSelector';
 export { default as Pagination } from './Pagination';
 export { default as Dropdown } from './Dropdown';
 export { default as LoadingScreen } from './LoadingScreen';
+export { default as ConfirmDialog } from './ConfirmDialog';
