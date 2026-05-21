@@ -962,7 +962,7 @@ export default function Employees() {
               type="submit" 
               isLoading={createUserMutation.isPending || updateUserMutation.isPending}
             >
-              {selectedUser ? 'Commit Changes' : 'Register Employee'}
+              {selectedUser ? 'Save' : 'Register Employee'}
             </Button>
           </div>
         </form>

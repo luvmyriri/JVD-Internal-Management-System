@@ -105,6 +105,14 @@ class BusController extends Controller
         ]);
 
         $oldValues = $bus->getOriginal();
+        
+        // Ensure atomic driver assignment: a driver can only be assigned to one bus at a time
+        if (array_key_exists('assigned_driver', $validated) && $validated['assigned_driver'] !== null) {
+            Bus::where('assigned_driver', $validated['assigned_driver'])
+               ->where('id', '!=', $bus->id)
+               ->update(['assigned_driver' => null]);
+        }
+
         $bus->update($validated);
 
         AuditLogService::log(

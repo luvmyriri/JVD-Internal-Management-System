@@ -24,6 +24,7 @@ class User extends Authenticatable
         'avatar_url',
         'role',
         'department',
+        'custom_permissions',
         'totp_secret',
         'is_active',
         'last_login',
@@ -51,6 +52,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
+            'custom_permissions' => 'array',
         ];
     }
 
@@ -90,5 +92,34 @@ class User extends Authenticatable
     public function hasRole(string ...$roles): bool
     {
         return in_array($this->role, $roles);
+    }
+
+    public function getAllPermissions(): array
+    {
+        $rolePermissions = RolePermission::getForRole($this->role);
+        $custom = $this->custom_permissions ?? [];
+
+        // If no custom permissions, just return role permissions
+        if (empty($custom)) {
+            return $rolePermissions;
+        }
+
+        // Merge custom permissions overriding role permissions
+        // Loop through custom permissions and override the boolean flags
+        foreach ($custom as $module => $actions) {
+            if (!isset($rolePermissions[$module])) {
+                $rolePermissions[$module] = [
+                    'can_view' => false,
+                    'can_create' => false,
+                    'can_edit' => false,
+                    'can_delete' => false,
+                ];
+            }
+            foreach ($actions as $action => $value) {
+                $rolePermissions[$module][$action] = (bool) $value;
+            }
+        }
+
+        return $rolePermissions;
     }
 }

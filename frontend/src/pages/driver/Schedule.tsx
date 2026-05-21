@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -23,7 +23,7 @@ const STATUS_COLOR: Record<string, string> = {
   completed: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400',
   cancelled: 'bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400',
 };
-const STATUS_ICON: Record<string, JSX.Element> = {
+const STATUS_ICON: Record<string, React.ReactNode> = {
   draft: <LuCircle size={12} />, confirmed: <LuCircleDot size={12} />,
   in_progress: <LuCircleDot size={12} />, completed: <LuCircleCheck size={12} />,
   cancelled: <LuCircle size={12} />,
@@ -87,8 +87,12 @@ export default function DriverSchedule() {
     dayMap[toYMD(d)] = [];
   }
   trips.forEach(t => {
-    if (t.service_date && dayMap[t.service_date]) {
-      dayMap[t.service_date].push(t);
+    if (t.service_date) {
+      const d = new Date(t.service_date);
+      const dateKey = toYMD(d);
+      if (dayMap[dateKey]) {
+        dayMap[dateKey].push(t);
+      }
     }
   });
 

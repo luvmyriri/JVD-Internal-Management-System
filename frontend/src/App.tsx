@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
@@ -30,6 +30,7 @@ import Employees from './pages/hr/Employees';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
+import RolePermissions from './pages/admin/RolePermissions';
 import DriverSchedule from './pages/driver/Schedule';
 import DriverTrips from './pages/driver/Trips';
 import DriverBus from './pages/driver/Bus';
@@ -49,7 +50,11 @@ const queryClient = new QueryClient({
 });
 
 const DefaultRedirect = () => {
-  const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+  const { user } = useAuth();
+  let defaultLandingPage = localStorage.getItem('jvd_landing_page');
+  if (!defaultLandingPage) {
+    defaultLandingPage = user?.role === 'driver' ? '/driver/schedule' : '/dashboard';
+  }
   return <Navigate to={defaultLandingPage} replace />;
 };
 
@@ -110,6 +115,7 @@ export default function App() {
                 <Route path="/admin/users" element={<Users />} />
                 <Route path="/admin/audit-logs" element={<AuditLogs />} />
                 <Route path="/admin/settings" element={<Settings />} />
+                <Route path="/admin/role-permissions" element={<RolePermissions />} />
 
                 {/* Driver */}
                 <Route path="/driver/schedule" element={<DriverSchedule />} />

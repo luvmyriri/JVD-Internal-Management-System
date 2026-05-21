@@ -19,6 +19,7 @@ use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Travel\LegalDocumentController;
 use App\Http\Controllers\Fleet\BusController;
 use App\Http\Controllers\Procurement\AccreditationController;
+use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Inventory\InventoryController;
 use App\Http\Controllers\Auth\ProfileController;
 
@@ -29,6 +30,7 @@ use App\Http\Controllers\Auth\ProfileController;
 |
 | All routes are prefixed with /api automatically by Laravel.
 | Middleware groups follow the RBAC matrix from Architecture § 3.
+| Dynamic permissions are managed via role_permissions table.
 |
 | Route naming convention: module.action (e.g., auth.login, users.store)
 |
@@ -81,19 +83,17 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
 
 
     // ──────────────────────────────────────
-    // ADMINISTRATION (Super Admin + Admin + HR)
+    // ADMINISTRATION — Audit Logs (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
-
-        // Audit Logs (read-only)
+    Route::middleware('role:super_admin,admin,human_resource,admin:view')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 
     // ──────────────────────────────────────
     // PROCUREMENT — Suppliers
-    // (Super Admin, Admin, Accounting)
+    // (dynamic permissions via procurement module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+    Route::middleware('role:super_admin,admin,accounting,agent,procurement:view')->group(function () {
         Route::apiResource('suppliers', SupplierController::class)->except(['destroy']);
         // Supplier cross-check / counter-check verification (boss-mandated)
         Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
@@ -102,9 +102,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
 
     // ──────────────────────────────────────
     // PROCUREMENT — Purchase Orders
-    // (Super Admin, Admin, Accounting, Agent)
+    // (dynamic permissions via procurement module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+    Route::middleware('role:super_admin,admin,accounting,agent,procurement:view')->group(function () {
         Route::get('/procurement/overview', [\App\Http\Controllers\Procurement\OverviewController::class, 'getStats'])->name('procurement.overview');
         Route::apiResource('purchase-orders', PurchaseOrderController::class)->except(['destroy', 'update']);
         Route::post('/purchase-orders/{purchaseOrder}/submit',  [PurchaseOrderController::class, 'submit'])->name('purchase-orders.submit');
@@ -114,18 +114,15 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
 
     // ──────────────────────────────────────
     // OPERATIONS — Job Orders & Work Orders
-    // (Super Admin, Admin, Agent)
+    // (dynamic permissions via operations module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent,driver')->group(function () {
+    Route::middleware('role:super_admin,admin,agent,driver,operations:view')->group(function () {
         Route::apiResource('job-orders',  JobOrderController::class)->except(['destroy']);
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
     });
 
     // ──────────────────────────────────────
     // PMS WORK ORDER APPROVAL
-    // Designated employee approves/rejects auto-generated WOs
-    // before any maintenance work proceeds (boss-mandated)
-    // (Super Admin, Admin — designated approvers)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('/work-orders/{workOrder}/approve', [WorkOrderController::class, 'approve'])->name('work-orders.approve');
@@ -139,9 +136,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
 
     // ──────────────────────────────────────
     // TRAVEL — Customers, Passengers, Passport Cases
-    // (Super Admin, Admin, Agent)
+    // (dynamic permissions via travel module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent')->group(function () {
+    Route::middleware('role:super_admin,admin,agent,travel:view')->group(function () {
         Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
         Route::get('/customers/{customer}/passports', [CustomerPassportController::class, 'index']);
         Route::post('/customers/{customer}/passports', [CustomerPassportController::class, 'store']);
@@ -174,10 +171,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
 
     // ──────────────────────────────────────
     // FLEET & ACCREDITATIONS
-    // (Super Admin, Admin)
+    // (dynamic permissions via fleet / accreditations modules)
     // ──────────────────────────────────────
     // Drivers can read buses (for My Bus page)
-    Route::middleware('role:super_admin,admin,driver')->group(function () {
+    Route::middleware('role:super_admin,admin,driver,fleet:view')->group(function () {
         Route::get('buses',       [BusController::class, 'index'])->name('buses.index');
         Route::get('buses/{bus}', [BusController::class, 'show'])->name('buses.show');
     });
@@ -191,24 +188,23 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::patch('buses/{bus}',    [BusController::class, 'update']);
     });
 
-    Route::middleware('role:super_admin,admin')->group(function () {
+    Route::middleware('role:super_admin,admin,accreditations:view')->group(function () {
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
         Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
     });
 
     // ──────────────────────────────────────
-    // INVENTORY
-    // (Super Admin, Admin, Agent)
+    // INVENTORY (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent')->group(function () {
+    Route::middleware('role:super_admin,admin,agent,inventory:view')->group(function () {
         Route::apiResource('inventory', InventoryController::class)->except(['destroy']);
     });
 
     // ──────────────────────────────────────
-    // ACCOUNTING (Super Admin, Accounting, Agent)
+    // ACCOUNTING (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,accounting,agent')->group(function () {
+    Route::middleware('role:super_admin,accounting,agent,accounting:view')->group(function () {
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
@@ -221,9 +217,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // HR (Super Admin, Admin, HR)
+    // HR (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
+    Route::middleware('role:super_admin,admin,human_resource,hr:view')->group(function () {
         // User/Employee Management
         Route::apiResource('users', UserController::class)->except(['destroy']);
         Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
@@ -231,10 +227,19 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
     });
 
-    // Super Admin exclusive configurations
+    // ──────────────────────────────────────
+    // SUPER ADMIN EXCLUSIVE
+    // ──────────────────────────────────────
     Route::middleware('role:super_admin')->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
         // Super Admin can directly set a specific password for any user
         Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
+
+        // Role Permissions Management (Super Admin only)
+        Route::get('/role-permissions',              [RolePermissionController::class, 'index'])->name('role-permissions.index');
+        Route::get('/role-permissions/{role}',        [RolePermissionController::class, 'show'])->name('role-permissions.show');
+        Route::put('/role-permissions/{role}',        [RolePermissionController::class, 'update'])->name('role-permissions.update');
+        Route::post('/role-permissions/{role}/reset', [RolePermissionController::class, 'reset'])->name('role-permissions.reset');
     });
 });
+

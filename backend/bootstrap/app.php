@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Apply audit logging to all API routes
         $middleware->api(append: [
             \App\Http\Middleware\AuditLogger::class,
+            \App\Http\Middleware\TrackUserOnlineStatus::class,
         ]);
 
         $middleware->statefulApi();
