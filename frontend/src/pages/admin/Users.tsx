@@ -124,6 +124,7 @@ interface User {
   last_login: string | null;
   created_at: string;
   custom_permissions?: any;
+  effective_permissions?: any;
 }
 
 const ROLES = [
@@ -1185,7 +1186,7 @@ export default function Users() {
                     <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl space-y-2">
                       <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Effective Permissions</span>
                       <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(selectedUser.effective_permissions).map(([mod, perms]) => {
+                        {Object.entries(selectedUser.effective_permissions).map(([mod, perms]: [string, any]) => {
                            if (!perms.can_view) return null;
                            let level = "View";
                            if (perms.can_create && perms.can_edit && perms.can_delete) level = "Full";
