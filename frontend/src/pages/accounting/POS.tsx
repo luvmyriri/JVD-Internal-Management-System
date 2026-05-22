@@ -1,12 +1,12 @@
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  LuSearch, 
-  LuShoppingCart, 
-  LuUser, 
-  LuPlus, 
-  LuMinus, 
-  LuTrash2, 
-  LuCreditCard, 
+import {
+  LuSearch,
+  LuShoppingCart,
+  LuUser,
+  LuPlus,
+  LuMinus,
+  LuTrash2,
+  LuCreditCard,
   LuPrinter,
   LuCheck,
   LuX,
@@ -58,7 +58,7 @@ export default function POS() {
   const [amountReceived, setAmountReceived] = useState<number | string>('');
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
-  
+
   // Service Management State
   const [showAddService, setShowAddService] = useState(false);
   const [isEditingService, setIsEditingService] = useState(false);
@@ -79,7 +79,7 @@ export default function POS() {
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
-  
+
   // Booking passenger states
   const [bookingAdults, setBookingAdults] = useState<number>(1);
   const [bookingChildren, setBookingChildren] = useState<number>(0);
@@ -133,15 +133,15 @@ export default function POS() {
   // Cart operations
   const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number) => {
     setCart(prev => {
-      const existing = prev.find(item => 
-        item.service.id === service.id && 
-        item.adults === adults && 
+      const existing = prev.find(item =>
+        item.service.id === service.id &&
+        item.adults === adults &&
         item.childrenCount === childrenCount
       );
       if (existing) {
-        return prev.map(item => 
+        return prev.map(item =>
           (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount)
-            ? { ...item, quantity: item.quantity + 1 } 
+            ? { ...item, quantity: item.quantity + 1 }
             : item
         );
       }
@@ -150,7 +150,7 @@ export default function POS() {
   };
 
   const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number) => {
-    setCart(prev => prev.filter(item => 
+    setCart(prev => prev.filter(item =>
       !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount)
     ));
   };
@@ -170,15 +170,15 @@ export default function POS() {
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
   const selectedDetailChildDiscount = selectedServiceForDetail?.child_discount !== undefined ? Number(selectedServiceForDetail.child_discount) : 30;
-  const selectedDetailAdultPrice = selectedServiceForDetail 
-    ? (selectedServiceForDetail.adult_price !== undefined && selectedServiceForDetail.adult_price !== null && Number(selectedServiceForDetail.adult_price) > 0 
-        ? Number(selectedServiceForDetail.adult_price) 
-        : Number(selectedServiceForDetail.price)) 
+  const selectedDetailAdultPrice = selectedServiceForDetail
+    ? (selectedServiceForDetail.adult_price !== undefined && selectedServiceForDetail.adult_price !== null && Number(selectedServiceForDetail.adult_price) > 0
+      ? Number(selectedServiceForDetail.adult_price)
+      : Number(selectedServiceForDetail.price))
     : 0;
-  const selectedDetailChildPrice = selectedServiceForDetail 
-    ? (selectedServiceForDetail.child_price !== undefined && selectedServiceForDetail.child_price !== null && Number(selectedServiceForDetail.child_price) > 0 
-        ? Number(selectedServiceForDetail.child_price) 
-        : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100))) 
+  const selectedDetailChildPrice = selectedServiceForDetail
+    ? (selectedServiceForDetail.child_price !== undefined && selectedServiceForDetail.child_price !== null && Number(selectedServiceForDetail.child_price) > 0
+      ? Number(selectedServiceForDetail.child_price)
+      : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100)))
     : 0;
   const change = amountReceived !== '' && !isNaN(Number(amountReceived)) ? Math.max(0, Number(amountReceived) - total) : 0;
 
@@ -198,7 +198,7 @@ export default function POS() {
   const filteredServices = useMemo(() => {
     return services.filter(service => {
       const matchesSearch = (service.name?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-                          (service.category?.toLowerCase() || '').includes(searchTerm.toLowerCase());
+        (service.category?.toLowerCase() || '').includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || service.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
@@ -211,7 +211,7 @@ export default function POS() {
       alert('Please correct the validation errors in customer details.');
       return;
     }
-    
+
     setIsProcessing(true);
     try {
       const response = await billingApi.createInvoice({
@@ -235,7 +235,7 @@ export default function POS() {
       setReceiptAmountReceived(amountReceived);
       setReceiptChange(change);
       setShowReceipt(true);
-      
+
       if (response.data.data.payment_url) {
         window.open(response.data.data.payment_url, '_blank');
       }
@@ -286,7 +286,7 @@ export default function POS() {
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
-    const existingImages = service.images?.map(img => 
+    const existingImages = service.images?.map(img =>
       img.startsWith('http') ? img : `http://localhost:8000/storage/${img}`
     ) || [];
     setServiceImages(existingImages);
@@ -307,7 +307,7 @@ export default function POS() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="relative flex-1">
               <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input 
+              <input
                 type="text"
                 placeholder="Search services or categories..."
                 className="w-full pl-12 pr-4 py-5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
@@ -320,18 +320,17 @@ export default function POS() {
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                    selectedCategory === cat 
-                    ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10' 
-                    : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                  }`}
+                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat
+                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
+                      : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                    }`}
                 >
                   {cat}
                 </button>
               ))}
             </div>
             {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-              <button 
+              <button
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
@@ -357,7 +356,7 @@ export default function POS() {
               We couldn't find any services matching your current filters. Adjust your search or add a new product to get started.
             </p>
             {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-              <button 
+              <button
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
@@ -372,125 +371,125 @@ export default function POS() {
             )}
           </div>
         ) : (
-        <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
-          {filteredServices.map((service) => (
-            <div 
-              key={service.id}
-              onClick={() => { 
-                setSelectedServiceForDetail(service); 
-                setDetailImageIndex(0); 
-                setBookingAdults(1); 
-                setBookingChildren(0); 
-                setShowDetailModal(true); 
-              }}
-              className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col"
-            >
-              {/* Card Image Header */}
-              <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
-                {service.images && service.images.length > 0 ? (
-                  <>
-                    <img 
-                      src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http') 
-                        ? service.images[cardImageIndices[service.id] || 0] 
-                        : `http://localhost:8000/storage/${service.images[cardImageIndices[service.id] || 0]}`} 
-                      className="w-full h-full object-cover transition-transform duration-500"
-                      alt={service.name}
-                    />
+          <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
+            {filteredServices.map((service) => (
+              <div
+                key={service.id}
+                onClick={() => {
+                  setSelectedServiceForDetail(service);
+                  setDetailImageIndex(0);
+                  setBookingAdults(1);
+                  setBookingChildren(0);
+                  setShowDetailModal(true);
+                }}
+                className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col"
+              >
+                {/* Card Image Header */}
+                <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+                  {service.images && service.images.length > 0 ? (
+                    <>
+                      <img
+                        src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http')
+                          ? service.images[cardImageIndices[service.id] || 0]
+                          : `http://localhost:8000/storage/${service.images[cardImageIndices[service.id] || 0]}`}
+                        className="w-full h-full object-cover transition-transform duration-500"
+                        alt={service.name}
+                      />
 
-                    {service.images.length > 1 && (
-                      <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                        <button 
-                          onClick={(e) => handlePrevImage(e, service.id, service.images?.length || 1)}
-                          className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
-                        >
-                          <LuChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-                        <button 
-                          onClick={(e) => handleNextImage(e, service.id, service.images?.length || 1)}
-                          className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
-                        >
-                          <LuChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
-                    <LuImage className="w-12 h-12 opacity-20" />
-                  </div>
-                )}
-
-                <div className="absolute top-4 right-4 flex gap-2 z-20">
-                   <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
-                      <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
-                   </div>
-                   {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-                     <Dropdown 
-                       items={[
-                         { 
-                           label: 'Edit Service', 
-                           icon: <Pencil size={14} />, 
-                           onClick: () => handleOpenEditModal(service) 
-                         },
-                         { 
-                           label: 'Delete', 
-                           icon: <Trash2 size={14} />, 
-                           onClick: () => handleDeleteService(service.id),
-                           variant: 'danger' 
-                         },
-                       ]}
-                     />
-                   )}
-                </div>
-
-                {/* View Overlay */}
-                <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                  <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
-                    <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 flex-1 flex flex-col">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{service.category}</p>
-                  {service.images && service.images.length > 1 && (
-                    <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                      +{service.images.length - 1} Images
-                    </span>
+                      {service.images.length > 1 && (
+                        <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                          <button
+                            onClick={(e) => handlePrevImage(e, service.id, service.images?.length || 1)}
+                            className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                          >
+                            <LuChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={(e) => handleNextImage(e, service.id, service.images?.length || 1)}
+                            className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                          >
+                            <LuChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
+                      <LuImage className="w-12 h-12 opacity-20" />
+                    </div>
                   )}
-                </div>
-                <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
-                <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-2">{service.description}</p>
-                
-                {service.creator && (
-                  <div className="flex items-center gap-1.5 mb-4 text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 px-2 py-1 rounded-lg w-fit">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                    <span>Published by: {service.creator.first_name} {service.creator.last_name}</span>
+
+                  <div className="absolute top-4 right-4 flex gap-2 z-20">
+                    <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
+                      <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                    </div>
+                    {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
+                      <Dropdown
+                        items={[
+                          {
+                            label: 'Edit Service',
+                            icon: <Pencil size={14} />,
+                            onClick: () => handleOpenEditModal(service)
+                          },
+                          {
+                            label: 'Delete',
+                            icon: <Trash2 size={14} />,
+                            onClick: () => handleDeleteService(service.id),
+                            variant: 'danger'
+                          },
+                        ]}
+                      />
+                    )}
                   </div>
-                )}
-                
-                <button 
-                  onClick={(e) => { 
-                    e.stopPropagation(); 
-                    if (service.has_booking_fields) {
-                      setSelectedServiceForDetail(service); 
-                      setDetailImageIndex(0); 
-                      setBookingAdults(1); 
-                      setBookingChildren(0); 
-                      setShowDetailModal(true); 
-                    } else {
-                      addToCart(service); 
-                    }
-                  }}
-                  className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
-                >
-                  <LuPlus className="w-3.5 h-3.5" /> Add to Order
-                </button>
+
+                  {/* View Overlay */}
+                  <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
+                      <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{service.category}</p>
+                    {service.images && service.images.length > 1 && (
+                      <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                        +{service.images.length - 1} Images
+                      </span>
+                    )}
+                  </div>
+                  <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
+                  <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-2">{service.description}</p>
+
+                  {service.creator && (
+                    <div className="flex items-center gap-1.5 mb-4 text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 px-2 py-1 rounded-lg w-fit">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                      <span>Published by: {service.creator.first_name} {service.creator.last_name}</span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (service.has_booking_fields) {
+                        setSelectedServiceForDetail(service);
+                        setDetailImageIndex(0);
+                        setBookingAdults(1);
+                        setBookingChildren(0);
+                        setShowDetailModal(true);
+                      } else {
+                        addToCart(service);
+                      }
+                    }}
+                    className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                  >
+                    <LuPlus className="w-3.5 h-3.5" /> Add to Order
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         )}
       </div>
 
@@ -550,8 +549,8 @@ export default function POS() {
             <div className="space-y-3">
               <div className="relative group">
                 <LuUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Customer Name"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={customerName}
@@ -560,14 +559,13 @@ export default function POS() {
               </div>
               <div className="relative group">
                 <LuPhone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerContact && !isContactValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder="Contact Number"
-                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${
-                    customerContact && !isContactValid 
-                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5' 
-                    : 'border-gray-100 dark:border-gray-700'
-                  }`}
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerContact && !isContactValid
+                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                      : 'border-gray-100 dark:border-gray-700'
+                    }`}
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
                 />
@@ -582,14 +580,13 @@ export default function POS() {
               </div>
               <div className="relative group">
                 <LuMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerEmail && !isEmailValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   placeholder="Email Address"
-                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${
-                    customerEmail && !isEmailValid 
-                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5' 
-                    : 'border-gray-100 dark:border-gray-700'
-                  }`}
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerEmail && !isEmailValid
+                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                      : 'border-gray-100 dark:border-gray-700'
+                    }`}
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
                 />
@@ -604,7 +601,7 @@ export default function POS() {
               </div>
               <div className="relative group">
                 <LuMapPin className="absolute left-4 top-4 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                <textarea 
+                <textarea
                   placeholder="Full Address"
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[80px] dark:text-white"
                   value={customerAddress}
@@ -617,24 +614,22 @@ export default function POS() {
           <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment Method</p>
             <div className="grid grid-cols-2 gap-3">
-              <button 
+              <button
                 onClick={() => setPaymentMethod('Cash')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  paymentMethod === 'Cash' 
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20' 
-                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
-                }`}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'Cash'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                  }`}
               >
                 <LuWallet className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase tracking-widest">Cash</span>
               </button>
-              <button 
+              <button
                 onClick={() => setPaymentMethod('GCash')}
-                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${
-                  paymentMethod === 'GCash' 
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20' 
-                  : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
-                }`}
+                className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'GCash'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                  }`}
               >
                 <LuCreditCard className="w-5 h-5" />
                 <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
@@ -647,8 +642,8 @@ export default function POS() {
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Amount Received</p>
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-black text-sm">₱</span>
-                <input 
-                  type="number" 
+                <input
+                  type="number"
                   placeholder="0.00"
                   className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 dark:text-gray-200"
                   value={amountReceived}
@@ -681,7 +676,7 @@ export default function POS() {
             </div>
           </div>
 
-          <button 
+          <button
             disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total)) || !isContactValid || !isEmailValid}
             onClick={handleCheckout}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
@@ -698,7 +693,7 @@ export default function POS() {
       {showReceipt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
           <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
-            
+
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
               <div className="flex items-center gap-3">
@@ -711,13 +706,13 @@ export default function POS() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   onClick={() => window.print()}
                   className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
                 >
                   <LuPrinter className="w-4 h-4" /> Print Invoice
                 </button>
-                <button 
+                <button
                   onClick={() => setShowReceipt(false)}
                   className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-800 rounded-2xl transition-all text-gray-400 hover:text-gray-900 dark:text-white"
                 >
@@ -729,7 +724,7 @@ export default function POS() {
             {/* Invoice Content (Scrollable wrapper with dark/light background) */}
             <div className="flex-1 overflow-y-auto p-8 bg-gray-100 dark:bg-gray-950 flex justify-center print-wrapper no-scrollbar">
               {/* Premium Paper Receipt Sheet (Always Light Theme for a real receipt feel) */}
-              <div 
+              <div
                 className="w-full max-w-xl bg-white text-gray-900 border border-gray-200/80 shadow-2xl rounded-[2rem] p-10 relative overflow-hidden flex flex-col"
                 id="printable-invoice"
                 style={{
@@ -747,7 +742,7 @@ export default function POS() {
                     <div className="flex flex-col items-start">
                       <img src="/JVDlogo-removebg-preview.png" alt="JVD Logo" className="h-16 mb-2 object-contain" />
                       <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.4em] mb-6 pl-1">Management System</p>
-                      
+
                       <div className="space-y-1 pl-1 text-left">
                         <p className="text-[11px] text-gray-800 font-bold max-w-[300px] leading-relaxed">UNIT 6 -Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City</p>
                         <div className="flex flex-col gap-0.5 mt-2">
@@ -765,8 +760,8 @@ export default function POS() {
                     <h2 className="text-4xl font-black text-gray-900 uppercase tracking-tighter mb-2">INVOICE</h2>
                     <p className="text-sm font-black text-blue-600">#{lastInvoice?.invoice_number}</p>
                     <p className="text-xs text-gray-400 mt-4 font-bold uppercase tracking-widest">
-                      {new Date(lastInvoice?.created_at).toLocaleDateString('en-US', { 
-                        year: 'numeric', month: 'long', day: 'numeric' 
+                      {new Date(lastInvoice?.created_at).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
                       })}
                     </p>
                   </div>
@@ -871,13 +866,13 @@ export default function POS() {
 
             {/* Modal Footer (Not Printed) */}
             <div className="p-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 flex gap-4 shrink-0 no-print">
-              <button 
+              <button
                 onClick={() => window.print()}
                 className="flex-1 flex items-center justify-center gap-3 py-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-600 hover:text-blue-600 text-gray-900 dark:text-white rounded-[2rem] font-black text-xs uppercase transition-all shadow-sm active:scale-95"
               >
                 <LuPrinter className="w-5 h-5" /> Print or Save as PDF
               </button>
-              <button 
+              <button
                 onClick={() => setShowReceipt(false)}
                 className="flex-1 flex items-center justify-center gap-3 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xs uppercase shadow-xl shadow-blue-600/20 transition-all active:scale-95"
               >
@@ -901,7 +896,7 @@ export default function POS() {
                 <LuX className="w-6 h-6" />
               </button>
             </div>
-            
+
             <div className="p-8 space-y-6 overflow-y-auto flex-1">
               {/* Image Upload Area */}
               <div className="space-y-4">
@@ -910,7 +905,7 @@ export default function POS() {
                   {serviceImages.map((img, idx) => (
                     <div key={idx} className="relative group aspect-square rounded-2xl overflow-hidden border border-gray-100 dark:border-gray-800 shadow-sm bg-gray-50 dark:bg-gray-800">
                       <img src={img} className="w-full h-full object-cover" />
-                      <button 
+                      <button
                         onClick={() => setServiceImages(prev => prev.filter((_, i) => i !== idx))}
                         className="absolute inset-0 bg-rose-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                       >
@@ -918,7 +913,7 @@ export default function POS() {
                       </button>
                     </div>
                   ))}
-                  <button 
+                  <button
                     onClick={() => {
                       const input = document.createElement('input');
                       input.type = 'file';
@@ -947,20 +942,20 @@ export default function POS() {
               <div className="grid grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Name</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. Boracay Luxury Package"
                     className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                     value={newService.name}
-                    onChange={e => setNewService({...newService, name: e.target.value})}
+                    onChange={e => setNewService({ ...newService, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Category</label>
-                  <select 
+                  <select
                     className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none appearance-none"
                     value={newService.category}
-                    onChange={e => setNewService({...newService, category: e.target.value})}
+                    onChange={e => setNewService({ ...newService, category: e.target.value })}
                   >
                     <option value="Package">Travel Package</option>
                     <option value="Documentation">Documentation</option>
@@ -975,8 +970,8 @@ export default function POS() {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>
                   <div className="relative">
                     <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       placeholder="0.00"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-xl font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.price}
@@ -996,8 +991,8 @@ export default function POS() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Child Discount Rate (%)</label>
                   <div className="relative">
-                    <input 
-                      type="number" 
+                    <input
+                      type="number"
                       min="0"
                       max="100"
                       placeholder="e.g. 30"
@@ -1034,9 +1029,8 @@ export default function POS() {
                       child_price: nextVal ? (newService.child_price || (newService.price * (1 - newService.child_discount / 100))) : 0
                     });
                   }}
-                  className={`w-14 h-8 rounded-full transition-all duration-300 p-1 flex items-center ${
-                    newService.has_booking_fields ? 'bg-blue-600 justify-end' : 'bg-gray-200 dark:bg-gray-700 justify-start'
-                  }`}
+                  className={`w-14 h-8 rounded-full transition-all duration-300 p-1 flex items-center ${newService.has_booking_fields ? 'bg-blue-600 justify-end' : 'bg-gray-200 dark:bg-gray-700 justify-start'
+                    }`}
                 >
                   <span className="w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300"></span>
                 </button>
@@ -1046,7 +1040,7 @@ export default function POS() {
               {newService.has_booking_fields && (
                 <div className="p-6 bg-gray-50 dark:bg-gray-800/30 rounded-3xl border border-gray-100 dark:border-gray-800 space-y-6 animate-in slide-in-from-top-3 duration-300">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Guest Rates Setup</p>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-2">
                       <div className="flex justify-between items-center pl-1">
@@ -1099,28 +1093,28 @@ export default function POS() {
 
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Description</label>
-                <textarea 
+                <textarea
                   placeholder="Provide detailed information about the service or package inclusions..."
                   className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-[2rem] py-5 px-6 text-sm font-medium dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none min-h-[120px]"
                   value={newService.description}
-                  onChange={e => setNewService({...newService, description: e.target.value})}
+                  onChange={e => setNewService({ ...newService, description: e.target.value })}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Image URL</label>
                 <div className="flex gap-2">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Paste URL and press Enter or click Add..."
                     className="flex-1 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                     value={newService.image_url}
-                    onChange={e => setNewService({...newService, image_url: e.target.value})}
+                    onChange={e => setNewService({ ...newService, image_url: e.target.value })}
                     onKeyDown={e => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         if (newService.image_url.trim()) {
                           setServiceImages(prev => [...prev, newService.image_url.trim()]);
-                          setNewService({...newService, image_url: ''});
+                          setNewService({ ...newService, image_url: '' });
                         }
                       }
                     }}
@@ -1130,7 +1124,7 @@ export default function POS() {
                     onClick={() => {
                       if (newService.image_url.trim()) {
                         setServiceImages(prev => [...prev, newService.image_url.trim()]);
-                        setNewService({...newService, image_url: ''});
+                        setNewService({ ...newService, image_url: '' });
                       }
                     }}
                     className="px-6 py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all"
@@ -1142,19 +1136,19 @@ export default function POS() {
             </div>
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
-              <button 
+              <button
                 onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={async () => {
                   try {
                     if (isEditingService && editingServiceId) {
-                      await billingApi.updateService(editingServiceId, {...newService, images: serviceImages});
+                      await billingApi.updateService(editingServiceId, { ...newService, images: serviceImages });
                     } else {
-                      await billingApi.createService({...newService, images: serviceImages});
+                      await billingApi.createService({ ...newService, images: serviceImages });
                     }
                     const response = await billingApi.getServices();
                     if (response?.data?.data && Array.isArray(response.data.data)) {
@@ -1188,18 +1182,18 @@ export default function POS() {
             <div className="flex-1 bg-gray-50 dark:bg-gray-800 relative group">
               {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
                 <>
-                  <img 
-                    src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http') 
-                      ? selectedServiceForDetail.images[detailImageIndex] 
-                      : `http://localhost:8000/storage/${selectedServiceForDetail.images[detailImageIndex]}`} 
-                    className="w-full h-full object-contain p-6 mx-auto bg-gray-50 dark:bg-gray-800" 
+                  <img
+                    src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http')
+                      ? selectedServiceForDetail.images[detailImageIndex]
+                      : `http://localhost:8000/storage/${selectedServiceForDetail.images[detailImageIndex]}`}
+                    className="w-full h-full object-contain p-6 mx-auto bg-gray-50 dark:bg-gray-800"
                     alt={selectedServiceForDetail.name}
                   />
                   {selectedServiceForDetail.images.length > 1 && (
                     <div className="absolute inset-x-0 bottom-8 flex justify-center gap-2">
                       {selectedServiceForDetail.images.map((_, i) => (
-                        <button 
-                          key={i} 
+                        <button
+                          key={i}
                           onClick={() => setDetailImageIndex(i)}
                           className={`w-3 h-3 rounded-full border-2 border-white transition-all ${detailImageIndex === i ? 'bg-blue-600 w-8' : 'bg-white/50'}`}
                         />
@@ -1219,7 +1213,7 @@ export default function POS() {
                   <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Preview Available</p>
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => setShowDetailModal(false)}
                 className="absolute top-6 right-6 p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md border border-white/20 rounded-2xl text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
               >
@@ -1231,27 +1225,26 @@ export default function POS() {
             <div className="w-full md:w-[400px] p-10 flex flex-col border-l border-gray-100 dark:border-gray-800 relative">
               <div className="mb-8">
                 <div className="flex items-center justify-between">
-                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                    selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600' :
-                    selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
-                    'bg-violet-50 text-violet-600'
-                  }`}>
+                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600' :
+                      selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
+                        'bg-violet-50 text-violet-600'
+                    }`}>
                     {selectedServiceForDetail.category}
                   </span>
-                  
+
                   {(user?.role === 'super_admin' || user?.role === 'admin') && (
-                    <Dropdown 
+                    <Dropdown
                       items={[
-                        { 
-                          label: 'Edit Service', 
-                          icon: <Pencil size={16} />, 
-                          onClick: () => handleOpenEditModal(selectedServiceForDetail) 
+                        {
+                          label: 'Edit Service',
+                          icon: <Pencil size={16} />,
+                          onClick: () => handleOpenEditModal(selectedServiceForDetail)
                         },
-                        { 
-                          label: 'Delete Service', 
-                          icon: <Trash2 size={16} />, 
+                        {
+                          label: 'Delete Service',
+                          icon: <Trash2 size={16} />,
                           onClick: () => handleDeleteService(selectedServiceForDetail.id),
-                          variant: 'danger' 
+                          variant: 'danger'
                         },
                       ]}
                     />
@@ -1293,7 +1286,7 @@ export default function POS() {
                 {selectedServiceForDetail.has_booking_fields && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Booking Guest Configuration</p>
-                    
+
                     {/* Adults counter */}
                     <div className="flex items-center justify-between">
                       <div>
@@ -1301,15 +1294,15 @@ export default function POS() {
                         <p className="text-[9px] text-gray-400 font-bold mt-1">₱{selectedDetailAdultPrice.toLocaleString()} / Pax</p>
                       </div>
                       <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button 
-                          onClick={() => setBookingAdults(prev => Math.max(1, prev - 1))} 
+                        <button
+                          onClick={() => setBookingAdults(prev => Math.max(1, prev - 1))}
                           className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
                         >
                           <LuMinus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingAdults}</span>
-                        <button 
-                          onClick={() => setBookingAdults(prev => prev + 1)} 
+
+                        <button
+                          onClick={() => setBookingAdults(prev => prev + 1)}
                           className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
                         >
                           <LuPlus className="w-3.5 h-3.5" />
@@ -1324,15 +1317,15 @@ export default function POS() {
                         <p className="text-[9px] text-gray-400 font-bold mt-1">₱{selectedDetailChildPrice.toLocaleString()} / Pax ({selectedDetailChildDiscount}% OFF)</p>
                       </div>
                       <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button 
-                          onClick={() => setBookingChildren(prev => Math.max(0, prev - 1))} 
+                        <button
+                          onClick={() => setBookingChildren(prev => Math.max(0, prev - 1))}
                           className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
                         >
                           <LuMinus className="w-3.5 h-3.5" />
                         </button>
                         <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingChildren}</span>
-                        <button 
-                          onClick={() => setBookingChildren(prev => prev + 1)} 
+                        <button
+                          onClick={() => setBookingChildren(prev => prev + 1)}
                           className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
                         >
                           <LuPlus className="w-3.5 h-3.5" />
@@ -1366,21 +1359,21 @@ export default function POS() {
               </div>
 
               <div className="space-y-3">
-                <button 
-                  onClick={() => { 
+                <button
+                  onClick={() => {
                     if (selectedServiceForDetail.has_booking_fields) {
                       const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                      addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice); 
+                      addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice);
                     } else {
-                      addToCart(selectedServiceForDetail); 
+                      addToCart(selectedServiceForDetail);
                     }
-                    setShowDetailModal(false); 
+                    setShowDetailModal(false);
                   }}
                   className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <LuPlus className="w-5 h-5" /> Add to Current Order
                 </button>
-                <button 
+                <button
                   onClick={() => setShowDetailModal(false)}
                   className="w-full py-5 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
                 >
@@ -1393,7 +1386,8 @@ export default function POS() {
       )}
 
       {/* Print Styles */}
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media print {
           /* Hide everything by default */
           body * {
