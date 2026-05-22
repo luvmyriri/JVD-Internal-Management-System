@@ -121,7 +121,7 @@ class SupplierController extends Controller
 
         $supplier->accreditations()->updateOrCreate(
             [
-                'accreditation_type' => 'internal_vendor',
+                'accreditation_type' => 'Supplier Verification',
             ],
             [
                 'issuing_body'   => 'JVD Management',
@@ -164,6 +164,23 @@ class SupplierController extends Controller
             'success' => true,
             'data'    => new SupplierResource($supplier->fresh(['accreditations'])),
             'message' => "Supplier '{$supplier->company_name}' has been blacklisted. Reason: {$validated['reason']}",
+        ]);
+    }
+
+    /**
+     * Delete a supplier and their linked accreditations.
+     */
+    public function destroy(Supplier $supplier): JsonResponse
+    {
+        // Delete all associated accreditations
+        $supplier->accreditations()->delete();
+
+        // Delete the supplier
+        $supplier->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Supplier '{$supplier->company_name}' and all associated compliance records have been successfully deleted."
         ]);
     }
 }

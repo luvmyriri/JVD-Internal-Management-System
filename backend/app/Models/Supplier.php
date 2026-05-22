@@ -30,11 +30,58 @@ class Supplier extends Model
         ];
     }
 
+    /**
+     * The "booted" method of the model.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (Supplier $supplier) {
+            // Auto-create matching Accreditation record if one doesn't exist
+            $exists = $supplier->accreditations()
+                ->where('accreditation_type', 'Supplier Verification')
+                ->exists();
+
+            if (!$exists) {
+                $supplier->accreditations()->create([
+                    'accreditation_type' => 'Supplier Verification',
+                    'issuing_body'       => 'JVD Management',
+                    'status'             => 'pending_renewal',
+                    'entity_name'        => $supplier->company_name,
+                    'contact_person'     => $supplier->contact_person,
+                    'contact_email'      => $supplier->email,
+                    'issue_date'         => now(),
+                    'expiry_date'        => now()->addYears(1),
+                ]);
+            }
+        });
+
+        static::updated(function (Supplier $supplier) {
+            // Keep associated Accreditations in sync
+            $supplier->accreditations()
+                     ->where('accreditation_type', 'Supplier Verification')
+                     ->update([
+                         'entity_name'    => $supplier->company_name,
+                         'contact_person' => $supplier->contact_person,
+                         'contact_email'  => $supplier->email,
+                     ]);
+        });
+
+        static::deleted(function (Supplier $supplier) {
+            // Cascade delete all associated accreditations
+            $supplier->accreditations()->delete();
+        });
+    }
+
     // ── Relationships ───────────────────────────────────────────────
 
     public function purchaseOrders()
     {
         return $this->hasMany(PurchaseOrder::class);
+    }
+
+    public function procurementDocuments()
+    {
+        return $this->hasMany(ProcurementDocument::class);
     }
 
     public function verifier()

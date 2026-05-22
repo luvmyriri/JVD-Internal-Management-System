@@ -22,6 +22,7 @@ use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Inventory\InventoryController;
 use App\Http\Controllers\Auth\ProfileController;
+use App\Http\Controllers\Procurement\ProcurementDocumentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -94,10 +95,11 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // (dynamic permissions via procurement module)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,accounting,agent,procurement:view')->group(function () {
-        Route::apiResource('suppliers', SupplierController::class)->except(['destroy']);
+        Route::apiResource('suppliers', SupplierController::class);
         // Supplier cross-check / counter-check verification (boss-mandated)
         Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
         Route::post('/suppliers/{supplier}/blacklist', [SupplierController::class, 'blacklist'])->name('suppliers.blacklist');
+        Route::apiResource('procurement-documents', ProcurementDocumentController::class);
     });
 
     // ──────────────────────────────────────
@@ -191,7 +193,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     Route::middleware('role:super_admin,admin,accreditations:view')->group(function () {
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
-        Route::apiResource('accreditations', AccreditationController::class)->except(['destroy']);
+        Route::apiResource('accreditations', AccreditationController::class);
     });
 
     // ──────────────────────────────────────

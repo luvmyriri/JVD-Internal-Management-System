@@ -75,6 +75,16 @@ class User extends Authenticatable
         return $this->hasMany(AuditLog::class);
     }
 
+    public function driverDocuments()
+    {
+        return $this->hasMany(ProcurementDocument::class, 'driver_id');
+    }
+
+    public function uploadedDocuments()
+    {
+        return $this->hasMany(ProcurementDocument::class, 'uploaded_by');
+    }
+
     // ──────────────────────────────────────────
     // Role helpers
     // ──────────────────────────────────────────

@@ -848,7 +848,7 @@ export default function Dashboard() {
                   <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
                   <Tooltip
-                    formatter={(v: number) => [`${v}%`, 'Utilization']}
+                    formatter={(v: any) => [`${v}%`, 'Utilization']}
                     contentStyle={{
                       backgroundColor: theme === 'dark' ? '#111827' : '#fff',
                       border: '1px solid',

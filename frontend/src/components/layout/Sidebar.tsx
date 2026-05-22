@@ -63,6 +63,7 @@ const navigation: NavSection[] = [
       { label: 'Purchase Orders', path: '/procurement/purchase-orders', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
       { label: 'Suppliers', path: '/procurement/suppliers', icon: <LuTruck />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
       { label: 'Accreditations', path: '/procurement/accreditations', icon: <LuShieldCheck />, roles: ['super_admin', 'admin', 'agent'], module: 'accreditations' },
+      { label: 'Documents', path: '/procurement/documents', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
     ],
   },
   {

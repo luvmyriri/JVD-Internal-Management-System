@@ -25,4 +25,9 @@ class InventoryItem extends Model
     {
         return $this->quantity <= $this->reorder_level;
     }
+
+    public function procurementDocuments()
+    {
+        return $this->hasMany(ProcurementDocument::class);
+    }
 }
