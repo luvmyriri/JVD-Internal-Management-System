@@ -28,7 +28,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->statefulApi();
         
-        $middleware->validateCsrfTokens(except: [
+        $middleware->preventRequestForgery(except: [
             'api/admin/settings/landing-page',
             'api/accreditations/*/submit-kyc',
             'api/accreditations/*/submit-kyc/upload/*',
