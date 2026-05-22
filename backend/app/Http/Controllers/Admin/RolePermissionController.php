@@ -134,8 +134,6 @@ class RolePermissionController extends Controller
         RolePermission::where('role', $role)->delete();
 
         // Re-run seeder for this role
-        $seeder = new \Database\Seeders\RolePermissionSeeder();
-        $seeder->setCommand(new \Symfony\Component\Console\Output\NullOutput());
         // We can't easily call run() for one role, so just run the full seeder
         // and it will updateOrCreate, which is idempotent
         \Artisan::call('db:seed', ['--class' => 'RolePermissionSeeder', '--force' => true]);
