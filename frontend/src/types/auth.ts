@@ -24,6 +24,7 @@ export interface LoginResponse {
     requires_2fa: boolean;
     requires_2fa_setup?: boolean;
     requires_password_change: boolean;
+    permissions?: RolePermissions;
     setup_data?: {
       qr_code_url: string;
       secret: string;
@@ -63,9 +64,21 @@ export interface User {
   role: UserRole;
   department: string;
   is_active: boolean;
+  is_online?: boolean;
+  custom_permissions?: any;
+  effective_permissions?: RolePermissions;
   must_change_password: boolean;
   last_login: string | null;
   created_by: number | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface RolePermissions {
+  [module: string]: {
+    can_view: boolean;
+    can_create: boolean;
+    can_edit: boolean;
+    can_delete: boolean;
+  };
 }

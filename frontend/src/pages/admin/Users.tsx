@@ -38,7 +38,9 @@ import {
   useSetPassword,
 } from '../../hooks/useUsers';
 import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
-import { useHasRole } from '../../hooks/useHasRole';
+import { useQuery } from '@tanstack/react-query';
+import { rolePermissionsApi, type ModulePermission } from '../../api/rolePermissions';
+
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
@@ -117,9 +119,12 @@ interface User {
   role: 'super_admin' | 'admin' | 'human_resource' | 'accounting' | 'agent' | 'driver';
   department: string;
   is_active: boolean;
+  is_online?: boolean;
   avatar_url: string | null;
   last_login: string | null;
   created_at: string;
+  custom_permissions?: any;
+  effective_permissions?: any;
 }
 
 const ROLES = [
@@ -157,12 +162,13 @@ export default function Users() {
   const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
   const [showNewPw, setShowNewPw] = useState(false);
   const [assignedBusId, setAssignedBusId] = useState<number | ''>('');
+  const [customPermissions, setCustomPermissions] = useState<Record<string, ModulePermission>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasPermission } = useAuth();
   const isSuperAdmin = currentUser?.role === 'super_admin';
-  const isAdmin = useHasRole(['super_admin', 'admin']);
-  const canManage = isAdmin;
+  const canCreateUser = hasPermission('users', 'can_create');
+  const canEditUser = hasPermission('users', 'can_edit');
 
   const { data: usersData, isLoading } = useUsers({ 
     search, 
@@ -170,6 +176,16 @@ export default function Users() {
     page,
     per_page: 10 
   });
+
+  const { data: configData } = useQuery({
+    queryKey: ['role-permissions-config'],
+    queryFn: async () => {
+      const response = await rolePermissionsApi.index();
+      return response.data;
+    },
+    enabled: isSuperAdmin, // Only fetch if super admin
+  });
+  const modules = Object.keys(configData?.meta?.modules || {});
 
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
@@ -211,8 +227,11 @@ export default function Users() {
     if (user) {
       const currentBus = allBuses.find((b: any) => b.driver?.id === user.id);
       setAssignedBusId(currentBus ? currentBus.id : '');
+      // Safely parse or cast custom_permissions
+      setCustomPermissions(user.custom_permissions ? (typeof user.custom_permissions === 'string' ? JSON.parse(user.custom_permissions) : user.custom_permissions) : {});
     } else {
       setAssignedBusId('');
+      setCustomPermissions({});
     }
     setIsModalOpen(true);
   };
@@ -240,7 +259,13 @@ export default function Users() {
             data: { new_password: newPassword, new_password_confirmation: newPasswordConfirm },
           });
         }
-        await updateUserMutation.mutateAsync({ id: selectedUser.id, data });
+        
+        const updateData = { ...data };
+        if (isSuperAdmin) {
+            updateData.custom_permissions = customPermissions;
+        }
+        
+        await updateUserMutation.mutateAsync({ id: selectedUser.id, data: updateData });
 
         // Handle bus assignment for driver role
         const currentRole = data.role;
@@ -250,13 +275,12 @@ export default function Users() {
         if (currentRole === 'driver') {
           // Role is driver — sync the bus
           if (assignedBusId !== prevBusId) {
-            // Unassign from old bus
-            if (prevBusId) {
-              await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
-            }
-            // Assign to new bus
             if (assignedBusId) {
+              // Assign to new bus (backend atomically handles unassignment from any previous bus)
               await assignDriverToBus.mutateAsync({ busId: Number(assignedBusId), driverId: selectedUser.id });
+            } else if (prevBusId) {
+              // If new assignment is empty, unassign from the previous bus
+              await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
             }
           }
         } else if (prevBusId) {
@@ -266,6 +290,7 @@ export default function Users() {
         setIsModalOpen(false);
         setNewPassword('');
         setNewPasswordConfirm('');
+        setCustomPermissions({});
         reset();
       } else {
         const sendInvite = data.send_invitation !== false;
@@ -508,7 +533,7 @@ export default function Users() {
             System Administration Portal
           </p>
         </div>
-        {canManage && (
+        {canCreateUser && (
           <div className="flex items-center gap-3">
             <div className="flex bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[1.5rem] p-1 shadow-sm overflow-hidden">
                <button 
@@ -549,7 +574,7 @@ export default function Users() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
           { label: 'Total Users', value: usersData?.meta?.total || 0, icon: LuUsers, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-300/40 dark:shadow-blue-900/40' },
-          { label: 'Active Now', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/40 dark:shadow-emerald-900/40' },
+          { label: 'Active Now', value: usersData?.data?.filter((u: User) => u.is_online).length || 0, icon: LuUserCheck, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/40 dark:shadow-emerald-900/40' },
           { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, from: 'from-violet-500', to: 'to-purple-700', shadow: 'shadow-violet-300/40 dark:shadow-violet-900/40' },
           { label: 'Access Control', value: ROLES.length, icon: LuLock, from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-amber-300/40 dark:shadow-amber-900/40' },
         ].map((stat, i) => (
@@ -641,7 +666,8 @@ export default function Users() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ delay: idx * 0.03 }}
                       key={user.id} 
-                      className="group hover:bg-blue-50/30 dark:hover:bg-gray-800/50 transition-all border-b border-gray-50 dark:border-gray-800/50 last:border-0"
+                      className="group relative hover:bg-blue-50/30 dark:hover:bg-gray-800/50 transition-all border-b border-gray-50 dark:border-gray-800/50 last:border-0"
+                      style={{ zIndex: 50 - idx }}
                     >
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
@@ -651,7 +677,7 @@ export default function Users() {
                               className="w-11 h-11 rounded-2xl border-2 border-white dark:border-gray-800 shadow-sm object-cover" 
                               alt="" 
                             />
-                            {user.is_active && (
+                            {user.is_online && (
                               <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-gray-800 rounded-full shadow-sm" />
                             )}
                           </div>
@@ -682,8 +708,8 @@ export default function Users() {
                       </td>
                       <td className="px-8 py-6">
                         <StatusBadge 
-                          status={user.is_active ? 'Active' : 'Deactivated'}
-                          variant={user.is_active ? 'success' : 'danger'}
+                          status={!user.is_active ? 'Deactivated' : (user.is_online ? 'Active' : 'Offline')}
+                          variant={!user.is_active ? 'danger' : (user.is_online ? 'success' : 'neutral')}
                         />
                       </td>
                       <td className="px-8 py-6">
@@ -695,7 +721,7 @@ export default function Users() {
                                 icon: <LuEye size={16} />, 
                                 onClick: () => handleViewUser(user) 
                               },
-                              ...(canManage ? [
+                              ...(canEditUser ? [
                                 { 
                                   label: 'Edit User', 
                                   icon: <LuPencil size={16} />, 
@@ -738,7 +764,7 @@ export default function Users() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedUser ? 'Modify User' : 'Add User'}
-        size="md"
+        size="lg"
       >
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-2">
           <div className="grid grid-cols-2 gap-4">
@@ -932,27 +958,120 @@ export default function Users() {
             </div>
           )}
 
+          {/* ── Super Admin: Custom Permissions ── */}
+          {selectedUser && isSuperAdmin && (
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+                <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
+                  <LuShieldCheck size={12} /> Custom Permissions (Overrides Role)
+                </span>
+                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                 {modules.map((module: string) => {
+                     const perms = customPermissions[module];
+                     
+                     // Determine current access level
+                     let accessLevel = 'default';
+                     if (perms) {
+                         if (!perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
+                             accessLevel = 'none';
+                         } else if (perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
+                             accessLevel = 'view';
+                         } else {
+                             accessLevel = 'full';
+                         }
+                     }
+
+                     const basePerms = configData?.data?.[selectedUser?.role || watchedRole]?.[module];
+                     let baseAccessLevel = 'none';
+                     if (basePerms) {
+                         if (basePerms.can_view && !basePerms.can_create && !basePerms.can_edit && !basePerms.can_delete) {
+                             baseAccessLevel = 'view';
+                         } else if (basePerms.can_view) {
+                             baseAccessLevel = 'full';
+                         }
+                     }
+
+                     const effectiveAccessLevel = accessLevel === 'default' ? baseAccessLevel : accessLevel;
+
+                     const handleLevelChange = (level: string) => {
+                         setCustomPermissions(prev => {
+                             const updated = { ...prev };
+                             if (level === 'default') {
+                                 delete updated[module];
+                             } else if (level === 'none') {
+                                 updated[module] = { can_view: false, can_create: false, can_edit: false, can_delete: false };
+                             } else if (level === 'view') {
+                                 updated[module] = { can_view: true, can_create: false, can_edit: false, can_delete: false };
+                             } else if (level === 'full') {
+                                 updated[module] = { can_view: true, can_create: true, can_edit: true, can_delete: true };
+                             }
+                             return updated;
+                         });
+                     };
+
+                     const moduleName = configData?.meta?.modules?.[module] || module.replace('_', ' ');
+
+                     return (
+                         <div key={module} className={cn(
+                           "flex flex-col p-2.5 rounded-xl border transition-colors",
+                           effectiveAccessLevel === 'none' ? "bg-gray-50/50 border-gray-100 dark:bg-gray-800/50 dark:border-gray-700" :
+                           effectiveAccessLevel === 'view' ? "bg-blue-50/50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/30" :
+                           "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800/30"
+                         )}>
+                             <div className="flex items-center gap-1.5 mb-2">
+                                <div className={cn(
+                                    "w-1.5 h-1.5 rounded-full shrink-0",
+                                    effectiveAccessLevel === 'none' ? 'bg-red-400' : 
+                                    effectiveAccessLevel === 'view' ? 'bg-blue-400' : 'bg-emerald-400'
+                                )} />
+                                <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 capitalize truncate">
+                                  {moduleName}
+                                </span>
+                             </div>
+                             
+                             <select
+                               value={accessLevel}
+                               onChange={(e) => handleLevelChange(e.target.value)}
+                               className="w-full text-[10px] font-bold p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                             >
+                               <option value="default">Default ({baseAccessLevel})</option>
+                               <option value="none">No Access</option>
+                               <option value="view">View Only</option>
+                               <option value="full">Full Access</option>
+                             </select>
+                         </div>
+                     );
+                 })}
+              </div>
+            </div>
+          )}
+
           {!selectedUser && (
             <div className="space-y-4">
-              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-blue-50/50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
-                <div className="relative flex items-center">
+              <label htmlFor="send_invitation" className="flex items-center gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-blue-50/50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+                <div className="flex-1">
+                  <div className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest">
+                    Send Account Invitation
+                  </div>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">
+                    Invite user via email to set their own password
+                  </p>
+                </div>
+                <div className="relative inline-flex items-center cursor-pointer shrink-0">
                   <input
                     type="checkbox"
                     {...register('send_invitation')}
                     id="send_invitation"
-                    className="w-5 h-5 rounded-lg border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                    className="sr-only peer"
                     defaultChecked={true}
                   />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
                 </div>
-                <div className="flex-1">
-                  <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest cursor-pointer">
-                    Send Account Invitation
-                  </label>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                    Invite user via email to set their own password
-                  </p>
-                </div>
-              </div>
+              </label>
 
               <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
                 <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
@@ -969,7 +1088,7 @@ export default function Users() {
               type="submit" 
               isLoading={createUserMutation.isPending || updateUserMutation.isPending}
             >
-              {selectedUser ? 'Commit Changes' : 'Register User'}
+              {selectedUser ? 'Save' : 'Register User'}
             </Button>
           </div>
         </form>
@@ -1062,6 +1181,32 @@ export default function Users() {
                       <LuGlobe size={12} className="text-gray-400 dark:text-gray-500 dark:text-gray-400" /> Internal Network
                     </span>
                   </div>
+
+                  {selectedUser.effective_permissions && Object.keys(selectedUser.effective_permissions).length > 0 && (
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl space-y-2">
+                      <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Effective Permissions</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {Object.entries(selectedUser.effective_permissions).map(([mod, perms]: [string, any]) => {
+                           if (!perms.can_view) return null;
+                           let level = "View";
+                           if (perms.can_create && perms.can_edit && perms.can_delete) level = "Full";
+                           else if (perms.can_create || perms.can_edit) level = "Limited";
+                           
+                           return (
+                             <div key={mod} className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-[10px] font-bold text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
+                               {mod.replace('_', ' ')} 
+                               <span className={cn(
+                                 "text-[9px] px-1 rounded-sm",
+                                 level === 'Full' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400" :
+                                 level === 'View' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400" :
+                                 "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                               )}>{level}</span>
+                             </div>
+                           );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1074,7 +1219,7 @@ export default function Users() {
               >
                 Close Profile
               </Button>
-              {canManage && (
+              {canEditUser && (
                 <Button 
                   onClick={() => { setIsViewModalOpen(false); handleOpenModal(selectedUser); }}
                   className="px-8 flex items-center gap-2 shadow-lg shadow-blue-100 dark:shadow-none"

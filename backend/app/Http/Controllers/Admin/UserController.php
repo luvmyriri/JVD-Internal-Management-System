@@ -23,7 +23,7 @@ class UserController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = User::query();
+        $query = User::with('tokens');
 
 
         // Filter by role (filled() ignores empty strings — prevents WHERE role = '' returning zero results)
@@ -139,6 +139,7 @@ class UserController extends Controller
             'last_name' => ['sometimes', 'string', 'max:100'],
             'role' => ['sometimes', 'in:admin,human_resource,accounting,agent,driver'],
             'department' => ['nullable', 'string', 'max:100'],
+            'custom_permissions' => ['nullable', 'array'],
         ]);
 
         $oldValues = $user->getOriginal();

@@ -139,8 +139,11 @@ export default function Login() {
         setUserId(data.user.id);
         setStep('2fa');
       } else {
-        login(data.token, data.user);
-        const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+        login(data.token, data.user, data.permissions);
+        let defaultLandingPage = localStorage.getItem('jvd_landing_page');
+        if (!defaultLandingPage) {
+          defaultLandingPage = data.user.role === 'driver' ? '/driver/schedule' : '/dashboard';
+        }
         navigate(defaultLandingPage);
       }
     } catch (err: any) {
@@ -168,7 +171,7 @@ export default function Login() {
         code: totpCode,
       });
       const { data } = response.data;
-      login(data.token, data.user);
+      login(data.token, data.user, data.permissions);
       const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
       navigate(defaultLandingPage);
     } catch (err: unknown) {
@@ -191,7 +194,7 @@ export default function Login() {
         secret: setupData!.secret,
       });
       const { data } = response.data;
-      login(data.token, data.user);
+      login(data.token, data.user, data.permissions);
       const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
       navigate(defaultLandingPage);
     } catch (err: unknown) {

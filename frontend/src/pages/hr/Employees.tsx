@@ -574,12 +574,12 @@ export default function Employees() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-                  <th className="px-8 py-5">Employee & ID</th>
-                  <th className="px-8 py-5">Department</th>
-                  <th className="px-8 py-5">Role</th>
-                  <th className="px-8 py-5">Status</th>
-                  <th className="px-8 py-5 text-center">Actions</th>
+                <tr className="border-b border-gray-100 dark:border-gray-800">
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Employee & ID</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Department</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Role</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
+                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
@@ -962,7 +962,7 @@ export default function Employees() {
               type="submit" 
               isLoading={createUserMutation.isPending || updateUserMutation.isPending}
             >
-              {selectedUser ? 'Commit Changes' : 'Register Employee'}
+              {selectedUser ? 'Save' : 'Register Employee'}
             </Button>
           </div>
         </form>

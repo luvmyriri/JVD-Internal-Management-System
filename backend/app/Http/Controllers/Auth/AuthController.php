@@ -72,6 +72,7 @@ class AuthController extends Controller
                 'data' => [
                     'user' => new UserResource($user),
                     'token' => $token,
+                    'permissions' => $user->getAllPermissions(),
                     'requires_2fa' => false,
                     'requires_password_change' => $user->must_change_password,
                 ],
@@ -150,6 +151,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => new UserResource($user),
                 'token' => $token,
+                'permissions' => $user->getAllPermissions(),
                 'requires_2fa' => false,
                 'requires_password_change' => $user->must_change_password,
             ],
@@ -190,6 +192,7 @@ class AuthController extends Controller
             'data' => [
                 'user' => new UserResource($user),
                 'token' => $token,
+                'permissions' => $user->getAllPermissions(),
                 'requires_password_change' => $user->must_change_password,
             ],
             'message' => '2FA Setup Complete.',
@@ -197,13 +200,16 @@ class AuthController extends Controller
     }
 
     /**
-     * Get the currently authenticated user.
+     * Get the currently authenticated user with resolved permissions.
      */
     public function me(): JsonResponse
     {
+        $user = auth()->user();
+
         return response()->json([
             'success' => true,
-            'data' => new UserResource(auth()->user()),
+            'data' => new UserResource($user),
+            'permissions' => $user->getAllPermissions(),
         ]);
     }
 

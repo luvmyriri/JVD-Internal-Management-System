@@ -410,13 +410,13 @@ export default function Fleet() {
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-gray-50/50 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-                <th className="px-8 py-5">Plate & Model</th>
-                <th className="px-8 py-5">Capacity</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5">Driver</th>
-                <th className="px-8 py-5 text-right">Mileage</th>
-                <th className="px-8 py-5 text-center">Actions</th>
+              <tr className="border-b border-gray-100 dark:border-gray-800">
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Plate & Model</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Capacity</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Driver</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">Mileage</th>
+                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
