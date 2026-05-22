@@ -2,8 +2,11 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { EntityPreviewProvider } from './context/EntityPreviewContext';
 import { AuthGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
+import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
+import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
 import { Toaster } from 'react-hot-toast';
 
 // Pages
@@ -18,6 +21,7 @@ import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
 import Accreditations from './pages/procurement/Accreditations';
 import Suppliers from './pages/procurement/Suppliers';
+import ProcurementDocuments from './pages/procurement/ProcurementDocuments';
 import Supplies from './pages/inventory/Supplies';
 import Fleet from './pages/inventory/Fleet';
 import PMS from './pages/inventory/PMS';
@@ -63,9 +67,10 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              {/* Public */}
+          <EntityPreviewProvider>
+            <AuthProvider>
+              <Routes>
+                {/* Public */}
               <Route path="/login" element={<Login />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/kyc-submission" element={<KycSubmission />} />
@@ -95,6 +100,7 @@ export default function App() {
                 <Route path="/procurement/work-orders" element={<WorkOrders />} />
                 <Route path="/procurement/accreditations" element={<Accreditations />} />
                 <Route path="/procurement/suppliers" element={<Suppliers />} />
+                <Route path="/procurement/documents" element={<ProcurementDocuments />} />
 
                 {/* Inventory */}
                 <Route path="/inventory/supplies" element={<Supplies />} />
@@ -127,8 +133,11 @@ export default function App() {
             </Routes>
             <Toaster position="top-right" />
             <ForceChangePasswordModal />
+            <EntityPreviewPanel />
+            <FloatingCrossChecker />
           </AuthProvider>
-        </BrowserRouter>
+        </EntityPreviewProvider>
+      </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
   );

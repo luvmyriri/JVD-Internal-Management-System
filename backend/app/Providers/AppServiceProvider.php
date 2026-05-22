@@ -30,6 +30,13 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(JobOrder::class, JobOrderPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
+
+        // Polymorphic Morph Map alignment for Accreditations
+        \Illuminate\Database\Eloquent\Relations\Relation::morphMap([
+            'supplier' => \App\Models\Supplier::class,
+            'bus'      => \App\Models\Bus::class,
+            'driver'   => \App\Models\User::class,
+        ]);
     }
 }
 

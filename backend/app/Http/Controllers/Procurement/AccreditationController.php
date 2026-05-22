@@ -60,9 +60,52 @@ class AccreditationController extends Controller
             'contact_email' => 'required|email',
         ]);
 
-        // Simulating the entity ID for now if we don't have exact relations (e.g. they aren't created yet)
-        $validated['entity_id'] = random_int(1000, 9999);
         $validated['status'] = 'pending_renewal'; // Initial state waiting for KYC
+
+        if (empty($validated['issue_date'])) {
+            $validated['issue_date'] = now()->toDateString();
+        }
+        if (empty($validated['expiry_date'])) {
+            $validated['expiry_date'] = now()->addYears(1)->toDateString();
+        }
+        if (empty($validated['issuing_body'])) {
+            $validated['issuing_body'] = 'JVD Management';
+        }
+
+        if ($validated['entity_type'] === 'supplier') {
+            // Find existing supplier by name or email
+            $supplier = \App\Models\Supplier::where('company_name', $validated['entity_name'])
+                ->orWhere('email', $validated['contact_email'])
+                ->first();
+
+            if (!$supplier) {
+                // Auto-create Supplier
+                $supplier = \App\Models\Supplier::create([
+                    'company_name'         => $validated['entity_name'],
+                    'contact_person'       => $validated['contact_person'],
+                    'email'                => $validated['contact_email'],
+                    'accreditation_status' => 'pending',
+                    'is_verified'          => false,
+                ]);
+            } else {
+                // Update empty contact fields to ensure perfect sync
+                $updates = [];
+                if (empty($supplier->contact_person) && !empty($validated['contact_person'])) {
+                    $updates['contact_person'] = $validated['contact_person'];
+                }
+                if (empty($supplier->email) && !empty($validated['contact_email'])) {
+                    $updates['email'] = $validated['contact_email'];
+                }
+                if (!empty($updates)) {
+                    $supplier->update($updates);
+                }
+            }
+
+            $validated['entity_id'] = $supplier->id;
+        } else {
+            // Fallback for non-supplier entities (like driver, bus, client)
+            $validated['entity_id'] = random_int(1000, 9999);
+        }
 
         $accreditation = Accreditation::create($validated);
 
@@ -80,7 +123,6 @@ class AccreditationController extends Controller
             'data'    => new AccreditationResource($accreditation),
         ]);
     }
-
     public function update(Request $request, Accreditation $accreditation)
     {
         $validated = $request->validate([
@@ -92,6 +134,30 @@ class AccreditationController extends Controller
         ]);
 
         $accreditation->update($validated);
+
+        if ($accreditation->entity_type === 'supplier' && $accreditation->entity_id) {
+            $supplier = \App\Models\Supplier::find($accreditation->entity_id);
+            if ($supplier) {
+                if ($accreditation->status === 'active') {
+                    $supplier->update([
+                        'accreditation_status' => 'accredited',
+                        'is_verified'          => true,
+                        'verified_at'          => now(),
+                        'verified_by'          => auth()->id() ?: 1,
+                    ]);
+                } elseif ($accreditation->status === 'expired') {
+                    $supplier->update([
+                        'accreditation_status' => 'suspended',
+                        'is_verified'          => false,
+                    ]);
+                } elseif ($accreditation->status === 'pending_renewal') {
+                    $supplier->update([
+                        'accreditation_status' => 'pending',
+                        'is_verified'          => false,
+                    ]);
+                }
+            }
+        }
         
         return response()->json([
             'success' => true,
@@ -162,6 +228,18 @@ class AccreditationController extends Controller
         $accreditation->update(array_merge($validated, [
             'status' => 'active', // Set active upon submission
         ]));
+
+        if ($accreditation->entity_type === 'supplier' && $accreditation->entity_id) {
+            $supplier = \App\Models\Supplier::find($accreditation->entity_id);
+            if ($supplier) {
+                $supplier->update([
+                    'accreditation_status' => 'accredited',
+                    'is_verified'          => true,
+                    'verified_at'          => now(),
+                    'verified_by'          => 1, // System verified upon compliance upload
+                ]);
+            }
+        }
 
         \App\Http\Services\NotificationService::notifyKycSubmission($accreditation);
 

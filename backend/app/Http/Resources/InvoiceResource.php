@@ -41,6 +41,8 @@ class InvoiceResource extends JsonResource
                         'quantity' => $item->quantity,
                         'unit_price' => (float) $item->unit_price,
                         'total_price' => (float) $item->total_price,
+                        'adults' => $item->adults,
+                        'children' => $item->children,
                         'service' => [
                             'id' => $item->service->id ?? null,
                             'name' => $item->service->name ?? 'N/A',
