@@ -153,17 +153,10 @@ export default function Billing() {
         Volume
       </div>
     </div>
-      </div>
+    </div>
 
       {/* Content Container (Main Panel) */}
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800/80 shadow-md p-6 sm:p-8 space-y-6">
-
-    {/* Table Header / Controls */}
-    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-6 border-b border-gray-100 dark:border-gray-800/60">
-      <div>
-        <h2 className="text-lg font-black text-gray-950 dark:text-white uppercase tracking-tight">Billing Registry</h2>
-        <p className="text-[10px] text-gray-400 font-bold tracking-widest uppercase mt-0.5">Manage and track all transactions</p>
-      </div>
 
       <div className="flex flex-wrap items-center gap-4">
         {/* Pill-shaped Search Input */}
@@ -194,8 +187,6 @@ export default function Billing() {
           ))}
         </div>
       </div>
-    </div>
-
     {/* Data Table */}
     <div className="overflow-x-auto custom-scrollbar">
       <table className="w-full text-left border-collapse">
