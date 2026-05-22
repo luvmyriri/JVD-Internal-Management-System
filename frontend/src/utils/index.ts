@@ -57,12 +57,18 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 /**
- * Get full URL for avatar, prepending backend base if relative.
+ * Get full URL for avatar, handling both absolute and relative paths.
+ * - External URLs (http/https) are returned unchanged
+ * - Relative /storage paths are returned as-is so the Vite dev proxy serves them
+ * - Other relative paths get the backend base URL prepended
  */
 export function getAvatarUrl(path: string | null | undefined): string | null {
   if (!path) return null;
+  // External URLs — return as-is
   if (path.startsWith('http')) return path;
-  
+  // Storage paths — return relative so Vite proxy forwards to backend
+  if (path.startsWith('/storage')) return path;
+  // Other relative paths — prepend backend base URL
   const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
   return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }

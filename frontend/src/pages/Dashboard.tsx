@@ -504,7 +504,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 relative z-20 shrink-0">
 
         {/* KPI 1: Total Users */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[82px]">
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="flex items-start justify-between">
             <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuUsers className="w-3 text-white" />
@@ -522,14 +522,11 @@ export default function Dashboard() {
               <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Total Users</p>
               <p className="text-2xl font-black leading-none">234</p>
             </div>
-            <span className="text-[7px] font-black bg-blue-400/30 text-blue-100 border border-blue-300/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              Active: 89%
-            </span>
           </div>
         </div>
 
         {/* KPI 2: User Distribution */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[82px]">
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="flex items-start justify-between">
             <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuUsers className="w-3 text-white" />
@@ -541,14 +538,11 @@ export default function Dashboard() {
               <p className="text-[8px] font-black uppercase tracking-widest opacity-70">User Distribution</p>
               <p className="text-2xl font-black leading-none">5 Roles</p>
             </div>
-            <span className="text-[7px] font-black bg-amber-500/30 text-amber-100 border border-amber-300/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              Driver: 40%
-            </span>
           </div>
         </div>
 
         {/* KPI 3: Total Customers */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[82px]">
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="flex items-start justify-between">
             <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuGlobe className="w-3 text-white" />
@@ -566,14 +560,11 @@ export default function Dashboard() {
               <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Total Customers</p>
               <p className="text-2xl font-black leading-none">1,456</p>
             </div>
-            <span className="text-[7px] font-black bg-purple-400/30 text-purple-100 border border-purple-300/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              +15% YoY
-            </span>
           </div>
         </div>
 
         {/* KPI 4: Monthly Revenue */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[82px]">
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="flex items-start justify-between">
             <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuBanknote className="w-3 text-white" />
@@ -592,9 +583,6 @@ export default function Dashboard() {
               <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Monthly Revenue</p>
               <p className="text-2xl font-black leading-none">&#8369;2.3M</p>
             </div>
-            <span className="text-[7px] font-black bg-emerald-500/30 text-emerald-100 border border-emerald-400/30 px-1.5 py-0.5 rounded-full uppercase tracking-wider">
-              Goal: 92%
-            </span>
           </div>
         </div>
       </div>
@@ -618,7 +606,7 @@ export default function Dashboard() {
                   <LuFlame className="w-3 h-3 text-orange-500" />
                   Peak Client Activity
                 </h3>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Client density per day Â· hour</p>
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Client density per day · hour</p>
               </div>
             </div>
 
@@ -640,7 +628,7 @@ export default function Dashboard() {
                     <div
                       key={`block-${day}-${hourIdx}`}
                       className={`h-[18px] rounded-[3px] transition-all duration-300 hover:scale-110 cursor-pointer ${getHeatmapColor(dataVal, theme)}`}
-                      title={`${day} at ${hourIdx * 2}:00 â€” Density: ${dataVal}%`}
+                      title={`${day} at ${hourIdx * 2}:00 — Density: ${dataVal}%`}
                     />
                   ))
                 ])}
