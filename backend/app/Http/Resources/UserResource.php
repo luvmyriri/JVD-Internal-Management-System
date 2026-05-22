@@ -19,7 +19,7 @@ class UserResource extends JsonResource
             'email' => $this->email,
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
-            'avatar_url' => $this->avatar_url ? (str_starts_with($this->avatar_url, 'http') ? $this->avatar_url : asset($this->avatar_url)) : null,
+            'avatar_url' => $this->avatar_url ?: null,
             'role' => $this->role,
             'department' => $this->department,
             'is_active' => $this->is_active,

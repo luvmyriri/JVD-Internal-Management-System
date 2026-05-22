@@ -81,6 +81,18 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/simulate',        [\App\Http\Controllers\NotificationController::class, 'simulate'])->name('notifications.simulate');
     });
 
+    // Chat Users Directory (accessible to all authenticated roles)
+    Route::get('/chat/users', [UserController::class, 'chatUsers'])->name('users.chat');
+
+    // Chat Routing
+    Route::prefix('chat')->group(function () {
+        Route::get('/messages', [App\Http\Controllers\ChatController::class, 'index'])->name('chat.messages');
+        Route::post('/messages', [App\Http\Controllers\ChatController::class, 'sendMessage'])->name('chat.messages.send');
+        Route::post('/groups', [App\Http\Controllers\ChatController::class, 'createGroup'])->name('chat.groups.create');
+        Route::post('/read', [App\Http\Controllers\ChatController::class, 'markAsRead'])->name('chat.read');
+        Route::delete('/conversation', [App\Http\Controllers\ChatController::class, 'deleteConversation'])->name('chat.conversation.delete');
+    });
+
 
     // ──────────────────────────────────────
     // ADMINISTRATION — Audit Logs (dynamic permissions)

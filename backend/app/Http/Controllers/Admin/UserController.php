@@ -58,6 +58,20 @@ class UserController extends Controller
     }
 
     /**
+     * List all users for the chat directory (active only, no pagination).
+     * Accessible by all authenticated users.
+     */
+    public function chatUsers(Request $request): JsonResponse
+    {
+        $users = User::where('is_active', true)->orderBy('first_name', 'asc')->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => UserResource::collection($users)->resolve(),
+        ]);
+    }
+
+    /**
      * Show a single user.
      */
     public function show(User $user): JsonResponse

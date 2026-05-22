@@ -1,5 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import Swal from 'sweetalert2';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials, getAvatarUrl } from '../../utils';
 import client from '../../api/client';
@@ -19,7 +20,13 @@ import {
   LuMessageCircle,
   LuSearch,
   LuSend,
-  LuMinus
+  LuMinus,
+  LuUsers,
+  LuMaximize2,
+  LuTrash2,
+  LuPaperclip,
+  LuFileText,
+  LuDownload
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 
@@ -36,9 +43,15 @@ interface NotificationItem {
 interface MessageDetail {
   id: string;
   sender: 'user' | 'peer';
+  senderName?: string;
+  senderAvatar?: string;
   text: string;
   time: string;
-  status: 'sent' | 'delivered' | 'seen';
+  timestamp?: number;
+  status: 'sending' | 'sent' | 'delivered' | 'seen';
+  attachmentPath?: string;
+  attachmentName?: string;
+  attachmentType?: string;
 }
 
 interface MessageItem {
@@ -50,10 +63,64 @@ interface MessageItem {
   time: string;
   read: boolean;
   online: boolean;
-  typing?: boolean;
+  typing: boolean;
   messages: MessageDetail[];
+  lastMessageTimestamp: number;
+  hasActualMessages?: boolean;
 }
 
+const formatMessageTime = (dateString: string) => {
+  if (!dateString) return 'Just now';
+  try {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  } catch (e) {
+    return 'Just now';
+  }
+};
+
+const formatConvoTimestamp = (timestamp?: number) => {
+  if (!timestamp) return 'Just now';
+  const date = new Date(timestamp);
+  const now = new Date();
+  
+  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 60 && date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+    return `Today at ${timeStr}`;
+  }
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24 && date.getDate() === now.getDate() && date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear()) {
+    return `Today at ${timeStr}`;
+  }
+  
+  // Yesterday logic
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.getDate() === yesterday.getDate() && date.getMonth() === yesterday.getMonth() && date.getFullYear() === yesterday.getFullYear()) {
+    return `Yesterday at ${timeStr}`;
+  }
+  
+  return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
+};
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -68,92 +135,33 @@ export default function Header() {
   const [messagesOpen, setMessagesOpen] = useState(false);
   const [messageSearch, setMessageSearch] = useState('');
   const [activeChats, setActiveChats] = useState<Array<{ id: string; minimized: boolean }>>([]);
-  const [messages, setMessages] = useState<MessageItem[]>([
-    {
-      id: 'msg-1',
-      senderName: 'Lamsen (Procurement)',
-      senderInitials: 'VL',
-      senderColor: 'from-purple-500 to-indigo-500',
-      time: '2 mins ago',
-      read: false,
-      online: true,
-      typing: false,
-      messages: [
-        {
-          id: '1',
-          sender: 'peer',
-          text: 'Hey Emman, I just uploaded the new bus fleet report. Can you verify the pricing fields?',
-          time: '2 mins ago',
-          status: 'seen'
-        }
-      ]
-    },
-    {
-      id: 'msg-2',
-      senderName: 'Val (Operations)',
-      senderInitials: 'VM',
-      senderColor: 'from-pink-500 to-rose-500',
-      time: '25 mins ago',
-      read: false,
-      online: true,
-      typing: false,
-      messages: [
-        {
-          id: '1',
-          sender: 'peer',
-          text: 'The login page branding looks amazing! The glowing JVD logo is a really great touch.',
-          time: '25 mins ago',
-          status: 'seen'
-        }
-      ]
-    },
-    {
-      id: 'msg-3',
-      senderName: 'Greg (Accounting)',
-      senderInitials: 'GC',
-      senderColor: 'from-amber-500 to-orange-500',
-      time: '2 hours ago',
-      read: true,
-      online: false,
-      typing: false,
-      messages: [
-        {
-          id: '1',
-          sender: 'peer',
-          text: 'Can we check the POS billing discount calculation tomorrow morning? I noticed a small discrepancy.',
-          time: '2 hours ago',
-          status: 'seen'
-        }
-      ]
-    },
-    {
-      id: 'msg-4',
-      senderName: 'System Administrator',
-      senderInitials: 'SA',
-      senderColor: 'from-blue-500 to-cyan-500',
-      time: '1 day ago',
-      read: true,
-      online: true,
-      typing: false,
-      messages: [
-        {
-          id: '1',
-          sender: 'peer',
-          text: 'Your system access permissions have been updated to Full Administrator role.',
-          time: '1 day ago',
-          status: 'seen'
-        }
-      ]
-    }
-  ]);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [groupName, setGroupName] = useState('');
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [messages, setMessages] = useState<MessageItem[]>([]);
+  const [activeImagePreview, setActiveImagePreview] = useState<{ path: string; name: string } | null>(null);
 
   const unreadMessagesCount = messages.filter(m => !m.read).length;
 
-  const handleMarkAllMessagesRead = () => {
+  const handleMarkAllMessagesRead = async () => {
     setMessages(prev => prev.map(m => ({ ...m, read: true })));
+    try {
+      const unreadThreads = messages.filter(m => !m.read);
+      await Promise.all(unreadThreads.map(async (msg) => {
+        let payload: any = {};
+        if (msg.id.startsWith('user-')) {
+          payload.sender_id = parseInt(msg.id.replace('user-', ''));
+        } else if (msg.id.startsWith('group-')) {
+          payload.group_id = msg.id;
+        }
+        return client.post('/chat/read', payload);
+      }));
+    } catch (error) {
+      console.error('Failed to mark all as read', error);
+    }
   };
 
-  const handleMessageClick = (msg: MessageItem) => {
+  const handleMessageClick = async (msg: MessageItem) => {
     setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, read: true } : m));
     
     setActiveChats(prev => {
@@ -167,6 +175,18 @@ export default function Header() {
       return [...filtered, { id: msg.id, minimized: false }];
     });
     setMessagesOpen(false);
+
+    try {
+      let payload: any = {};
+      if (msg.id.startsWith('user-')) {
+        payload.sender_id = parseInt(msg.id.replace('user-', ''));
+      } else if (msg.id.startsWith('group-')) {
+        payload.group_id = msg.id;
+      }
+      await client.post('/chat/read', payload);
+    } catch (error) {
+      console.error('Failed to mark thread as read', error);
+    }
   };
 
   const playMessageSound = (isIncoming: boolean) => {
@@ -215,43 +235,24 @@ export default function Header() {
     }
   };
 
-  const getMockResponse = (peerId: string, userMessage: string): string => {
-    const msg = userMessage.toLowerCase();
-    if (peerId === 'msg-1') {
-      if (msg.includes('verify') || msg.includes('bus') || msg.includes('fleet') || msg.includes('check') || msg.includes('price')) {
-        return "Awesome, thanks for checking that! Let me know if everything matches the invoice.";
-      }
-      return "Got it! I am finalizing the procurement logs right now. I will be online if you need anything else.";
-    }
-    if (peerId === 'msg-2') {
-      if (msg.includes('logo') || msg.includes('branding') || msg.includes('nice') || msg.includes('thanks') || msg.includes('amazing')) {
-        return "Totally! It cycles through the JVD brand colors really nicely now. Glad you liked it!";
-      }
-      return "Absolutely, Emman! Let's catch up in the afternoon sync to review the next portal updates.";
-    }
-    if (peerId === 'msg-3') {
-      if (msg.includes('pos') || msg.includes('billing') || msg.includes('discount') || msg.includes('price') || msg.includes('check')) {
-        return "Yes, exactly! Let's double check the calculations together tomorrow. I'll prepare the report.";
-      }
-      return "Great! Talk to you tomorrow morning, let's keep the transaction registry accurate.";
-    }
-    return "System log: Command executed successfully. All permissions are operating within standard authorization levels.";
-  };
+  const handleSendMessage = async (msgId: string, text: string, file?: File) => {
+    if (!text.trim() && !file) return;
 
-  const handleSendMessage = (msgId: string, text: string) => {
-    if (!text.trim()) return;
-
-    const newMsgId = Math.random().toString(36).substring(7);
+    const optimisticMsgId = `optimistic-${Date.now()}`;
     const newMsg: MessageDetail = {
-      id: newMsgId,
+      id: optimisticMsgId,
       sender: 'user',
-      text,
+      text: text.trim(),
       time: 'Just now',
-      status: 'sent'
+      status: 'sending',
+      attachmentPath: file ? URL.createObjectURL(file) : undefined,
+      attachmentName: file ? file.name : undefined,
+      attachmentType: file ? file.type : undefined
     };
 
     playMessageSound(false);
 
+    // Optimistically update the message thread
     setMessages(prev => prev.map(m => {
       if (m.id === msgId) {
         return {
@@ -263,61 +264,81 @@ export default function Header() {
       return m;
     }));
 
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => {
-        if (m.id === msgId) {
+    try {
+      const formData = new FormData();
+      if (text.trim()) {
+        formData.append('text', text.trim());
+      }
+      if (file) {
+        formData.append('attachment', file);
+      }
+      if (msgId.startsWith('user-')) {
+        formData.append('receiver_id', msgId.replace('user-', ''));
+      } else if (msgId.startsWith('group-')) {
+        formData.append('group_id', msgId);
+      }
+
+      const response = await client.post('/chat/messages', formData);
+      
+      if (response.data?.status === 'success') {
+        // Mark the optimistic message as 'sent' — the background poller
+        // will replace it with the real DB message within 2s.
+        setMessages(prev => prev.map(thread => {
+          if (thread.id !== msgId) return thread;
           return {
-            ...m,
-            messages: m.messages.map(item => item.id === newMsgId ? { ...item, status: 'delivered' } : item)
+            ...thread,
+            messages: thread.messages.map(m =>
+              m.id === optimisticMsgId ? { ...m, status: 'sent' as const } : m
+            )
           };
-        }
-        return m;
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to send message to backend', error);
+      // On error mark the optimistic message as failed by removing it gracefully
+      setMessages(prev => prev.map(thread => {
+        if (thread.id !== msgId) return thread;
+        return {
+          ...thread,
+          messages: thread.messages.filter(m => m.id !== optimisticMsgId)
+        };
       }));
-    }, 600);
+    }
+  };
 
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => {
-        if (m.id === msgId) {
-          return {
-            ...m,
-            messages: m.messages.map(item => item.id === newMsgId ? { ...item, status: 'seen' } : item)
-          };
-        }
-        return m;
-      }));
-    }, 1200);
+  const handleDeleteConversation = async (msg: MessageItem, e: React.MouseEvent) => {
+    e.stopPropagation();
 
-    setTimeout(() => {
-      setMessages(prev => prev.map(m => {
-        if (m.id === msgId) {
-          return { ...m, typing: true };
-        }
-        return m;
-      }));
-    }, 1800);
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: 'Do you want to delete this conversation?',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ef4444',
+      cancelButtonColor: '#6b7280',
+      confirmButtonText: 'Yes, delete it!',
+      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    });
 
-    setTimeout(() => {
-      playMessageSound(true);
+    if (!result.isConfirmed) return;
 
-      const peerResponse: MessageDetail = {
-        id: Math.random().toString(36).substring(7),
-        sender: 'peer',
-        text: getMockResponse(msgId, text),
-        time: 'Just now',
-        status: 'seen'
-      };
+    // Optimistically update frontend state
+    setMessages(prev => prev.filter(m => m.id !== msg.id));
 
-      setMessages(prev => prev.map(m => {
-        if (m.id === msgId) {
-          return {
-            ...m,
-            typing: false,
-            messages: [...m.messages, peerResponse]
-          };
-        }
-        return m;
-      }));
-    }, 3500);
+    try {
+      let payload: any = {};
+      if (msg.id.startsWith('user-')) {
+        payload.sender_id = parseInt(msg.id.replace('user-', ''));
+      } else {
+        payload.group_id = msg.id;
+      }
+
+      await client.delete('/chat/conversation', { data: payload });
+    } catch (error) {
+      console.error('Failed to delete conversation', error);
+      fetchUsersAndMapToChats();
+    }
   };
 
 
@@ -333,12 +354,490 @@ export default function Header() {
     }
   };
 
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-      const interval = setInterval(fetchNotifications, 15000); // Live poll every 15 seconds
-      return () => clearInterval(interval);
+  const fetchUsersAndMapToChats = async () => {
+    try {
+      const [usersResponse, messagesResponse] = await Promise.all([
+        client.get('/chat/users'),
+        client.get('/chat/messages')
+      ]);
+
+      const userList = Array.isArray(usersResponse.data) 
+        ? usersResponse.data 
+        : (Array.isArray(usersResponse.data?.data) ? usersResponse.data.data : []);
+
+      let dbMessages: any[] = [];
+      let dbGroups: any[] = [];
+      if (messagesResponse.data?.status === 'success') {
+        dbMessages = messagesResponse.data.messages || [];
+        dbGroups = messagesResponse.data.groups || [];
+      }
+
+      const currentUserId = user?.id;
+
+      // Play sound for incoming message if a newer message exists from another user
+      if (messages.length > 0) {
+        let maxExistingTimestamp = 0;
+        messages.forEach(thread => {
+          thread.messages.forEach(msg => {
+            if (msg.timestamp && !msg.id.startsWith('welcome-') && !msg.id.startsWith('optimistic-')) {
+              if (msg.timestamp > maxExistingTimestamp) {
+                maxExistingTimestamp = msg.timestamp;
+              }
+            }
+          });
+        });
+
+        const hasNewIncoming = dbMessages.some((m: any) => {
+          if (m.sender_id === currentUserId) return false;
+          const msgTime = new Date(m.created_at).getTime();
+          return msgTime > maxExistingTimestamp;
+        });
+
+        if (hasNewIncoming && maxExistingTimestamp > 0) {
+          playMessageSound(true);
+        }
+      }
+
+      setMessages(prev => {
+        // Map users (one-to-one chats)
+        const otherUsers = userList.filter((u: any) => u.id !== currentUserId);
+        
+        const directThreads = otherUsers.map((u: any) => {
+          const userIdStr = `user-${u.id}`;
+          const existingThread = prev.find(t => t.id === userIdStr);
+          
+          const fName = u.first_name || '';
+          const lName = u.last_name || '';
+          const initials = `${fName.charAt(0)}${lName.charAt(0)}`.toUpperCase() || 'US';
+          
+          const gradients = [
+            'from-purple-500 to-indigo-500',
+            'from-pink-500 to-rose-500',
+            'from-amber-500 to-orange-500',
+            'from-blue-500 to-cyan-500',
+            'from-emerald-500 to-teal-500',
+            'from-violet-500 to-fuchsia-500'
+          ];
+          const senderColor = gradients[u.id % gradients.length];
+          const senderName = `${fName} ${lName}`;
+
+          // Filter actual database messages between current user and this user
+          const userMsgs = dbMessages.filter((m: any) => 
+            !m.group_id && 
+            ((m.sender_id === currentUserId && m.receiver_id === u.id) || 
+             (m.sender_id === u.id && m.receiver_id === currentUserId))
+          );
+
+          let mappedMessages: MessageDetail[] = [];
+          let lastMessageTime = 'Just now';
+          let isRead = true;
+          let lastMessageTimestamp = 0;
+
+          if (userMsgs.length > 0) {
+            mappedMessages = userMsgs.map((m: any) => ({
+              id: String(m.id),
+              sender: m.sender_id === currentUserId ? 'user' : 'peer',
+              text: m.text,
+              time: formatMessageTime(m.created_at),
+              timestamp: new Date(m.created_at).getTime(),
+              status: m.read_at ? 'seen' : 'sent',
+              attachmentPath: m.attachment_path || undefined,
+              attachmentName: m.attachment_name || undefined,
+              attachmentType: m.attachment_type || undefined
+            }));
+            const lastMsg = userMsgs[userMsgs.length - 1];
+            lastMessageTime = formatMessageTime(lastMsg.created_at);
+            isRead = lastMsg.sender_id === currentUserId ? true : (lastMsg.read_at ? true : false);
+            lastMessageTimestamp = new Date(lastMsg.created_at).getTime();
+          } else {
+            // Generate fallback welcome message
+            let initialMsgText = `Hi there! I am ${fName} from the ${u.department || 'JVD'} team. Let me know if you need any assistance!`;
+            if (u.email === 'minda@jvd.com' || u.email === 'minda.lamsen@jvd.com') {
+              initialMsgText = 'Hey Emman, I just uploaded the new bus fleet report. Can you verify the pricing fields?';
+            } else if (u.email === 'jaymart@jvd.com' || u.email === 'jaymart.lamsen@jvd.com') {
+              initialMsgText = 'Can we check the POS billing discount calculation tomorrow morning? I noticed a small discrepancy.';
+            } else if (u.email === 'hr@jvd.com' || u.email === 'sarah.hr@jvd.com') {
+              initialMsgText = 'The employee records and contract templates are now updated in the system.';
+            } else if (u.email === 'driver@jvd.com' || u.email === 'driver1@jvd.com') {
+              initialMsgText = 'I checked my scheduled trips and assigned bus. Everything is clear and ready for tomorrow!';
+            }
+
+            mappedMessages = [{
+              id: `welcome-${u.id}`,
+              sender: 'peer',
+              text: initialMsgText,
+              time: 'Just now',
+              timestamp: Date.now() - 3600000,
+              status: 'seen'
+            }];
+            isRead = existingThread ? existingThread.read : true;
+            lastMessageTimestamp = Date.now() - 3600000;
+          }
+
+          if (existingThread) {
+            const optimisticMsgs = existingThread.messages.filter(m => {
+              if (!String(m.id).startsWith('optimistic-')) return false;
+              const msgTime = parseInt(m.id.split('-')[1] || '0');
+              // Keep optimistic messages for up to 30 seconds
+              if (Date.now() - msgTime > 30000) return false;
+
+              const alreadyInDb = userMsgs.some((dbM: any) => {
+                if (dbM.sender_id !== currentUserId) return false;
+                const dbTime = new Date(dbM.created_at).getTime();
+                // Allow 45s window for slow network
+                if (Math.abs(dbTime - msgTime) > 45000) return false;
+                
+                const isSameText = m.text ? m.text === dbM.text : true;
+                const isSameAttachment = m.attachmentName ? dbM.attachment_name === m.attachmentName : true;
+                return isSameText && isSameAttachment;
+              });
+
+              return !alreadyInDb;
+            });
+            
+            if (optimisticMsgs.length > 0) {
+              mappedMessages = [...mappedMessages, ...optimisticMsgs];
+              const lastOpt = optimisticMsgs[optimisticMsgs.length - 1];
+              lastMessageTime = lastOpt.time || 'Just now';
+              lastMessageTimestamp = parseInt(lastOpt.id.split('-')[1] || '0');
+              isRead = true;
+            }
+          }
+
+          return {
+            id: userIdStr,
+            senderName,
+            senderAvatar: u.avatar_url,
+            senderInitials: initials,
+            senderColor,
+            time: lastMessageTime,
+            read: isRead,
+            online: u.is_active ? true : false,
+            typing: existingThread?.typing || false,
+            messages: mappedMessages,
+            lastMessageTimestamp,
+            hasActualMessages: userMsgs.length > 0
+          };
+        });
+
+        // Map group chats
+        const groupThreads = dbGroups.map((g: any) => {
+          const groupIdStr = g.group_id;
+          const existingThread = prev.find(t => t.id === groupIdStr);
+
+          const groupInitials = g.name.split(' ').map((w: string) => w.charAt(0)).join('').toUpperCase().substring(0, 2) || 'GP';
+          const colors = [
+            'from-indigo-500 to-cyan-500',
+            'from-purple-500 to-pink-500',
+            'from-emerald-500 to-teal-500',
+            'from-amber-500 to-rose-500'
+          ];
+          const groupColor = colors[groupIdStr.length % colors.length];
+
+          const groupMsgs = dbMessages.filter((m: any) => m.group_id === g.group_id);
+
+          let mappedMessages: MessageDetail[] = [];
+          let lastMessageTime = 'Just now';
+          let isRead = true;
+          let lastMessageTimestamp = 0;
+
+          if (groupMsgs.length > 0) {
+            mappedMessages = groupMsgs.map((m: any) => ({
+              id: String(m.id),
+              sender: m.sender_id === currentUserId ? 'user' : 'peer',
+              senderName: m.sender ? `${m.sender.first_name} ${m.sender.last_name}` : undefined,
+              senderAvatar: m.sender?.avatar_url || undefined,
+              text: m.text,
+              time: formatMessageTime(m.created_at),
+              timestamp: new Date(m.created_at).getTime(),
+              status: m.read_at ? 'seen' : 'sent',
+              attachmentPath: m.attachment_path || undefined,
+              attachmentName: m.attachment_name || undefined,
+              attachmentType: m.attachment_type || undefined
+            }));
+            const lastMsg = groupMsgs[groupMsgs.length - 1];
+            lastMessageTime = formatMessageTime(lastMsg.created_at);
+            isRead = lastMsg.sender_id === currentUserId ? true : (lastMsg.read_at ? true : false);
+            lastMessageTimestamp = new Date(lastMsg.created_at).getTime();
+          } else {
+            mappedMessages = [{
+              id: `welcome-group-${g.group_id}`,
+              sender: 'peer',
+              senderName: 'System',
+              text: `Welcome to the group!`,
+              time: 'Just now',
+              timestamp: new Date(g.created_at || 0).getTime(),
+              status: 'seen'
+            }];
+            isRead = existingThread ? existingThread.read : true;
+            lastMessageTimestamp = new Date(g.created_at || 0).getTime();
+          }
+
+          if (existingThread) {
+            const optimisticMsgs = existingThread.messages.filter(m => {
+              if (!String(m.id).startsWith('optimistic-')) return false;
+              const msgTime = parseInt(m.id.split('-')[1] || '0');
+              // Keep optimistic messages for up to 30 seconds
+              if (Date.now() - msgTime > 30000) return false;
+
+              const alreadyInDb = groupMsgs.some((dbM: any) => {
+                if (dbM.sender_id !== currentUserId) return false;
+                const dbTime = new Date(dbM.created_at).getTime();
+                // Allow 45s window for slow network
+                if (Math.abs(dbTime - msgTime) > 45000) return false;
+                
+                const isSameText = m.text ? m.text === dbM.text : true;
+                const isSameAttachment = m.attachmentName ? dbM.attachment_name === m.attachmentName : true;
+                return isSameText && isSameAttachment;
+              });
+
+              return !alreadyInDb;
+            });
+            
+            if (optimisticMsgs.length > 0) {
+              mappedMessages = [...mappedMessages, ...optimisticMsgs];
+              const lastOpt = optimisticMsgs[optimisticMsgs.length - 1];
+              lastMessageTime = lastOpt.time || 'Just now';
+              lastMessageTimestamp = parseInt(lastOpt.id.split('-')[1] || '0');
+              isRead = true;
+            }
+          }
+
+          return {
+            id: groupIdStr,
+            senderName: g.name,
+            senderInitials: groupInitials,
+            senderColor: groupColor,
+            time: lastMessageTime,
+            read: isRead,
+            online: true,
+            typing: existingThread?.typing || false,
+            messages: mappedMessages,
+            lastMessageTimestamp,
+            hasActualMessages: groupMsgs.length > 0
+          };
+        });
+
+        // Combine direct threads and group threads
+        const combined = [...groupThreads, ...directThreads];
+
+        // Sort combined threads:
+        // 1. Unread messages first
+        // 2. Then by actual message history presence and timestamp
+        // 3. Then alphabetical directory fallback
+        combined.sort((a, b) => {
+          if (!a.read && b.read) return -1;
+          if (a.read && !b.read) return 1;
+
+          if (a.hasActualMessages && !b.hasActualMessages) return -1;
+          if (!a.hasActualMessages && b.hasActualMessages) return 1;
+
+          if (a.hasActualMessages && b.hasActualMessages) {
+            return (b.lastMessageTimestamp || 0) - (a.lastMessageTimestamp || 0);
+          }
+
+          return a.senderName.localeCompare(b.senderName);
+        });
+
+        return combined;
+      });
+    } catch (error) {
+      console.error('Failed to fetch users and map chats', error);
     }
+  };
+
+  const handleCreateGroupChat = async () => {
+    if (!groupName.trim() || selectedUserIds.length === 0) return;
+    
+    try {
+      const memberIds = selectedUserIds
+        .filter(uid => uid.startsWith('user-'))
+        .map(uid => parseInt(uid.replace('user-', '')));
+
+      const response = await client.post('/chat/groups', {
+        name: groupName.trim(),
+        members: memberIds
+      });
+
+      if (response.data?.status === 'success') {
+        const newGroup = response.data.group;
+        const newGroupId = newGroup.group_id;
+
+        await fetchUsersAndMapToChats();
+
+        setIsCreatingGroup(false);
+        setGroupName('');
+        setSelectedUserIds([]);
+
+        setActiveChats(prev => {
+          const filtered = prev.filter(c => c.id !== newGroupId);
+          if (filtered.length >= 3) {
+            filtered.shift();
+          }
+          return [...filtered, { id: newGroupId, minimized: false }];
+        });
+      }
+    } catch (error) {
+      console.error('Failed to create group chat on backend', error);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    // Initial load
+    fetchNotifications();
+    fetchUsersAndMapToChats();
+
+    let ws: WebSocket | null = null;
+    let wsConnected = false;
+    let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    const connectWs = () => {
+      try {
+        ws = new WebSocket('ws://localhost:6001');
+
+        ws.onopen = () => {
+          wsConnected = true;
+          console.log('[Chat WS] Connected');
+        };
+
+        ws.onmessage = (event) => {
+          try {
+            const payload = JSON.parse(event.data);
+            if (payload.type !== 'new_message') return;
+
+            const msg = payload.data?.message;
+            if (!msg) return;
+
+            const senderId = payload.data?.sender_id;
+            const receiverId = payload.data?.receiver_id;
+            const groupId = payload.data?.group_id;
+            const currentUserId = user?.id;
+
+            // Determine which thread this belongs to
+            const threadId = groupId
+              ? groupId
+              : senderId === currentUserId
+                ? `user-${receiverId}`
+                : `user-${senderId}`;
+
+            const isFromSelf = senderId === currentUserId;
+
+            setMessages(prev => {
+              const thread = prev.find(t => t.id === threadId);
+              if (!thread) {
+                // Thread not found — do a full reload to pick up new threads
+                fetchUsersAndMapToChats();
+                return prev;
+              }
+
+              // If from self — find and replace any optimistic message
+              // If from peer — append as a new message
+              let updatedMessages: typeof thread.messages;
+
+              if (isFromSelf) {
+                // Replace the optimistic placeholder (matched by text/attachment)
+                const optimisticIdx = thread.messages.findIndex(m =>
+                  String(m.id).startsWith('optimistic-') &&
+                  (m.text ? m.text === msg.text : true) &&
+                  (m.attachmentName ? m.attachmentName === msg.attachment_name : true)
+                );
+                if (optimisticIdx !== -1) {
+                  updatedMessages = thread.messages.map((m, i) =>
+                    i === optimisticIdx
+                      ? {
+                          id: String(msg.id),
+                          sender: 'user' as const,
+                          text: msg.text || '',
+                          time: 'Just now',
+                          timestamp: new Date(msg.created_at).getTime(),
+                          status: 'sent' as const,
+                          attachmentPath: msg.attachment_path || undefined,
+                          attachmentName: msg.attachment_name || undefined,
+                          attachmentType: msg.attachment_type || undefined,
+                        }
+                      : m
+                  );
+                } else {
+                  // No optimistic found — just ensure it's not a duplicate
+                  const alreadyExists = thread.messages.some(m => String(m.id) === String(msg.id));
+                  if (alreadyExists) return prev;
+                  updatedMessages = [...thread.messages, {
+                    id: String(msg.id),
+                    sender: 'user' as const,
+                    text: msg.text || '',
+                    time: 'Just now',
+                    timestamp: new Date(msg.created_at).getTime(),
+                    status: 'sent' as const,
+                    attachmentPath: msg.attachment_path || undefined,
+                    attachmentName: msg.attachment_name || undefined,
+                    attachmentType: msg.attachment_type || undefined,
+                  }];
+                }
+              } else {
+                // Incoming message from peer
+                const alreadyExists = thread.messages.some(m => String(m.id) === String(msg.id));
+                if (alreadyExists) return prev;
+                playMessageSound(true);
+                updatedMessages = [...thread.messages, {
+                  id: String(msg.id),
+                  sender: 'peer' as const,
+                  senderName: msg.sender ? `${msg.sender.first_name} ${msg.sender.last_name}` : undefined,
+                  senderAvatar: msg.sender?.avatar_url || undefined,
+                  text: msg.text || '',
+                  time: 'Just now',
+                  timestamp: new Date(msg.created_at).getTime(),
+                  status: 'sent' as const,
+                  attachmentPath: msg.attachment_path || undefined,
+                  attachmentName: msg.attachment_name || undefined,
+                  attachmentType: msg.attachment_type || undefined,
+                }];
+              }
+
+              return prev.map(t =>
+                t.id === threadId
+                  ? { ...t, messages: updatedMessages, time: 'Just now', read: isFromSelf ? t.read : false }
+                  : t
+              );
+            });
+          } catch (e) {
+            console.error('[Chat WS] Parse error', e);
+          }
+        };
+
+        ws.onclose = () => {
+          wsConnected = false;
+          console.log('[Chat WS] Disconnected — will retry in 5s');
+          reconnectTimeout = setTimeout(connectWs, 5000);
+        };
+
+        ws.onerror = () => {
+          ws?.close();
+        };
+      } catch {
+        // WebSocket not available — silently fail
+      }
+    };
+
+    connectWs();
+
+    // Fallback polling — 12s when WS is connected, 3s when WS is offline
+    const poll = setInterval(() => {
+      fetchNotifications();
+      if (!wsConnected) {
+        fetchUsersAndMapToChats();
+      }
+    }, wsConnected ? 12000 : 3000);
+
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) {
+        ws.onclose = null; // prevent reconnect on intentional close
+        ws.close();
+      }
+      clearInterval(poll);
+    };
   }, [user]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -497,118 +996,331 @@ export default function Header() {
                   ? 'bg-gray-900 border-gray-800 text-white' 
                   : 'bg-white border-gray-100 text-slate-800'
               }`}>
-                {/* Header */}
-                <div className={`p-4 border-b flex flex-col gap-3.5 ${
-                  theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="font-bold text-sm uppercase tracking-wide">Chats</h3>
-                      <p className="text-[10px] text-gray-400 font-medium mt-0.5">{unreadMessagesCount} unread message{unreadMessagesCount !== 1 ? 's' : ''}</p>
-                    </div>
-                    {unreadMessagesCount > 0 && (
+                {isCreatingGroup ? (
+                  /* Create Group Form */
+                  <div className="p-4 flex flex-col gap-4">
+                    <div className="flex items-center justify-between border-b pb-2 dark:border-gray-800 border-gray-150">
+                      <h3 className="font-bold text-xs uppercase tracking-wider flex items-center gap-1.5">
+                        <LuUsers className="w-4 h-4 text-blue-600 animate-pulse" />
+                        Create Group Chat
+                      </h3>
                       <button
-                        onClick={handleMarkAllMessagesRead}
-                        className="text-xs text-blue-600 hover:text-blue-500 font-bold tracking-wide uppercase transition"
+                        onClick={() => {
+                          setIsCreatingGroup(false);
+                          setGroupName('');
+                          setSelectedUserIds([]);
+                        }}
+                        className="text-[10px] font-bold text-red-500 uppercase tracking-wider hover:underline"
                       >
-                        Mark all as read
+                        Cancel
                       </button>
-                    )}
-                  </div>
-                  
-                  {/* Search Bar */}
-                  <div className="relative flex items-center">
-                    <LuSearch className="absolute left-3 w-4 h-4 text-gray-400 dark:text-gray-500" />
-                    <input
-                      type="text"
-                      value={messageSearch}
-                      onChange={(e) => setMessageSearch(e.target.value)}
-                      placeholder="Search messages..."
-                      className={`w-full text-xs pl-9 pr-3.5 py-2 rounded-xl outline-none border transition ${
-                        theme === 'dark' 
-                          ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500' 
-                          : 'bg-gray-50 border-gray-200 text-slate-800 placeholder-gray-400 focus:border-blue-500'
-                      }`}
-                    />
-                  </div>
-                </div>
+                    </div>
 
-                {/* Messages Scroll Area */}
-                <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
-                  {messages.filter(m => 
-                    m.senderName.toLowerCase().includes(messageSearch.toLowerCase()) ||
-                    (m.messages[m.messages.length - 1]?.text || '').toLowerCase().includes(messageSearch.toLowerCase())
-                  ).length > 0 ? (
-                    messages.filter(m => 
-                      m.senderName.toLowerCase().includes(messageSearch.toLowerCase()) ||
-                      (m.messages[m.messages.length - 1]?.text || '').toLowerCase().includes(messageSearch.toLowerCase())
-                    ).map(msg => {
-                      const lastMessage = msg.messages[msg.messages.length - 1];
-                      return (
-                        <div
-                          key={msg.id}
-                          onClick={() => handleMessageClick(msg)}
-                          className={`p-4 flex gap-3.5 relative group cursor-pointer transition ${
-                            !msg.read 
-                              ? (theme === 'dark' ? 'bg-blue-950/10 hover:bg-blue-950/20' : 'bg-blue-50/25 hover:bg-blue-50/45')
-                              : (theme === 'dark' ? 'hover:bg-gray-800/40' : 'hover:bg-gray-50')
+                    <div className="space-y-3.5">
+                      {/* Group Name */}
+                      <div className="flex flex-col gap-1">
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Group Name</label>
+                        <input
+                          type="text"
+                          value={groupName}
+                          onChange={(e) => setGroupName(e.target.value)}
+                          placeholder="e.g. Fleet Ops, Weekend Shift"
+                          className={`w-full text-xs px-3.5 py-2.5 rounded-xl border outline-none transition ${
+                            theme === 'dark'
+                              ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500 focus:border-blue-500'
+                              : 'bg-gray-55 border-gray-200 text-slate-850 placeholder-gray-400 focus:border-blue-500'
                           }`}
-                        >
-                          {/* Left Avatar Badge */}
-                          <div className="relative shrink-0">
-                            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-white bg-gradient-to-tr ${msg.senderColor}`}>
-                              {msg.senderInitials}
-                            </div>
-                            {msg.online && (
-                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full" />
-                            )}
-                          </div>
-
-                          {/* Message Body */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-1.5">
-                              <p className={`text-xs truncate ${msg.read ? 'text-gray-500 dark:text-gray-400 font-semibold' : 'text-slate-900 dark:text-white font-black'}`}>{msg.senderName}</p>
-                              <p className="text-[9px] text-gray-400 dark:text-gray-550 shrink-0 font-medium">{msg.time}</p>
-                            </div>
-                            <p className={`text-[11px] mt-1 leading-normal truncate ${msg.read ? 'text-gray-400 dark:text-gray-500 font-medium' : 'text-slate-850 dark:text-gray-200 font-bold'}`}>{lastMessage?.text || 'No messages'}</p>
-                          </div>
-
-                          {/* Unread dot */}
-                          {!msg.read && (
-                            <div className="flex items-center shrink-0 pl-1.5">
-                              <span className="w-2.5 h-2.5 bg-blue-600 rounded-full" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  ) : (
-                    /* Empty State */
-                    <div className="py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
-                      <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-350 dark:text-gray-500">
-                        <LuInbox className="w-6 h-6" />
+                          autoFocus
+                        />
                       </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">No chats found</p>
-                        <p className="text-[10px] text-gray-400 font-medium mt-1 leading-normal">No messages match your search filter.</p>
+
+                      {/* Select Members */}
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] font-black uppercase text-gray-400 tracking-wider">Select Members ({selectedUserIds.length})</label>
+                        <div className="max-h-[180px] overflow-y-auto border rounded-xl divide-y dark:divide-gray-850 dark:border-gray-800 border-gray-150 custom-scrollbar divide-gray-100">
+                          {messages.filter(m => m.id.startsWith('user-')).map(u => {
+                            const isChecked = selectedUserIds.includes(u.id);
+                            return (
+                              <label
+                                key={u.id}
+                                className={`flex items-center justify-between p-2.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/40 transition select-none ${
+                                  isChecked ? (theme === 'dark' ? 'bg-blue-950/20' : 'bg-blue-50/30') : ''
+                                }`}
+                              >
+                                <div className="flex items-center gap-2.5 max-w-[80%]">
+                                  {u.senderAvatar ? (
+                                    <div className="w-6 h-6 rounded-full overflow-hidden shrink-0 border border-gray-200 dark:border-gray-850">
+                                      <img src={getAvatarUrl(u.senderAvatar) || ''} alt={u.senderName} className="w-full h-full object-cover" />
+                                    </div>
+                                  ) : (
+                                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 bg-gradient-to-tr ${u.senderColor}`}>
+                                      {u.senderInitials}
+                                    </div>
+                                  )}
+                                  <span className="text-xs font-semibold truncate text-gray-805 dark:text-gray-200">{u.senderName}</span>
+                                </div>
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={() => {
+                                    setSelectedUserIds(prev =>
+                                      isChecked ? prev.filter(id => id !== u.id) : [...prev, u.id]
+                                    );
+                                  }}
+                                  className="rounded border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                />
+                              </label>
+                            );
+                          })}
+                        </div>
                       </div>
                     </div>
-                  )}
-                </div>
 
-                {/* Bottom Control Bar */}
-                <div className={`p-3 border-t bg-gray-50/50 dark:bg-gray-950/30 flex items-center justify-center ${
-                  theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
-                }`}>
-                  <button
-                    onClick={() => {
-                      setMessagesOpen(false);
-                    }}
-                    className="w-full py-2 px-3 text-center text-[10px] font-bold text-blue-600 hover:text-blue-500 uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    Open Messages in Chat
-                  </button>
-                </div>
+                    <div className="flex items-center gap-2 justify-end pt-2.5 border-t border-gray-150 dark:border-gray-800">
+                      <button
+                        onClick={() => {
+                          setIsCreatingGroup(false);
+                          setGroupName('');
+                          setSelectedUserIds([]);
+                        }}
+                        className={`px-3.5 py-2 text-[10px] font-bold rounded-xl uppercase tracking-wider transition ${
+                          theme === 'dark' ? 'hover:bg-gray-850 text-gray-400' : 'hover:bg-gray-100 text-gray-550'
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleCreateGroupChat}
+                        disabled={!groupName.trim() || selectedUserIds.length === 0}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
+                      >
+                        Create Group
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Unified Header */}
+                    <div className={`px-4 pt-4 pb-3 border-b flex items-center justify-between ${
+                      theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-xs font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                          Inbox
+                        </h3>
+                        {unreadMessagesCount > 0 && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-blue-600 text-white animate-pulse">
+                            {unreadMessagesCount}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setIsCreatingGroup(true)}
+                          className="text-[10px] text-blue-600 hover:text-blue-500 dark:text-blue-400 dark:hover:text-blue-300 font-black tracking-wide uppercase transition flex items-center gap-1 cursor-pointer"
+                          title="Create a new Group Chat"
+                        >
+                          <LuUsers className="w-3.5 h-3.5" />
+                          Create Group
+                        </button>
+                        {unreadMessagesCount > 0 && (
+                          <button
+                            onClick={handleMarkAllMessagesRead}
+                            className="text-[10px] text-gray-400 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-400 font-black tracking-wide uppercase transition pl-1.5 border-l border-gray-200 dark:border-gray-800"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div className={`p-3 border-b bg-gray-50/30 dark:bg-gray-950/10 ${theme === 'dark' ? 'border-gray-800' : 'border-gray-100'}`}>
+                      <div className="relative flex items-center">
+                        <LuSearch className="absolute left-3 w-4 h-4 text-gray-400 dark:text-gray-550" />
+                        <input
+                          type="text"
+                          value={messageSearch}
+                          onChange={(e) => setMessageSearch(e.target.value)}
+                          placeholder="Search chats or directory..."
+                          className={`w-full text-xs pl-9 pr-3.5 py-2.5 rounded-xl outline-none border transition ${
+                            theme === 'dark' 
+                              ? 'bg-gray-850 border-gray-700 text-white placeholder-gray-550 focus:border-blue-550' 
+                              : 'bg-gray-50 border-gray-200 text-slate-800 placeholder-gray-400 focus:border-blue-500'
+                          }`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Messages Scroll Area */}
+                    <div className="max-h-[360px] overflow-y-auto divide-y divide-gray-100 dark:divide-gray-850 custom-scrollbar">
+                      {(() => {
+                        const filteredActive = messages.filter(m => {
+                          const matchesSearch = m.senderName.toLowerCase().includes(messageSearch.toLowerCase()) ||
+                            (m.messages[m.messages.length - 1]?.text || '').toLowerCase().includes(messageSearch.toLowerCase());
+                          return matchesSearch && m.hasActualMessages;
+                        });
+
+                        const filteredDirectory = messages.filter(m => {
+                          const matchesSearch = m.senderName.toLowerCase().includes(messageSearch.toLowerCase());
+                          // Only include non-active user chats (not groups)
+                          return matchesSearch && !m.hasActualMessages && m.id.startsWith('user-');
+                        });
+
+                        if (filteredActive.length === 0 && filteredDirectory.length === 0) {
+                          return (
+                            /* Empty State */
+                            <div className="py-12 px-6 flex flex-col items-center justify-center text-center gap-3">
+                              <div className="w-12 h-12 bg-slate-50 dark:bg-gray-800 rounded-2xl flex items-center justify-center text-gray-350 dark:text-gray-500">
+                                <LuInbox className="w-6 h-6" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">
+                                  No results found
+                                </p>
+                                <p className="text-[10px] text-gray-400 font-medium mt-1 leading-normal">
+                                  No active chats or colleagues match your search.
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <>
+                            {/* Active Chats Section */}
+                            {filteredActive.length > 0 && (
+                              <div className="flex flex-col">
+                                <div className="text-[9px] font-black tracking-widest text-gray-400 dark:text-gray-500 uppercase px-4 pt-3 pb-1 select-none">
+                                  Active Conversations
+                                </div>
+                                {filteredActive.map(msg => {
+                                  const lastMessage = msg.messages[msg.messages.length - 1];
+                                  return (
+                                    <div
+                                      key={msg.id}
+                                      onClick={() => handleMessageClick(msg)}
+                                      className={`p-4 flex gap-3.5 relative group cursor-pointer transition ${
+                                        !msg.read 
+                                          ? (theme === 'dark' ? 'bg-blue-950/10 hover:bg-blue-950/20' : 'bg-blue-50/25 hover:bg-blue-50/45')
+                                          : (theme === 'dark' ? 'hover:bg-gray-800/40' : 'hover:bg-gray-50')
+                                      }`}
+                                    >
+                                      {/* Left Avatar Badge */}
+                                      <div className="relative shrink-0 select-none">
+                                        {msg.senderAvatar ? (
+                                          <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-850 shrink-0">
+                                            <img src={getAvatarUrl(msg.senderAvatar) || ''} alt={msg.senderName} className="w-full h-full object-cover" />
+                                          </div>
+                                        ) : (
+                                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-gradient-to-tr ${msg.senderColor}`}>
+                                            {msg.senderInitials}
+                                          </div>
+                                        )}
+                                        {msg.online && (
+                                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full animate-pulse" />
+                                        )}
+                                      </div>
+
+                                      {/* Message Body */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-1.5">
+                                          <p className={`text-xs truncate ${!msg.read ? 'text-slate-900 dark:text-white font-black' : 'text-gray-700 dark:text-gray-300 font-semibold'}`}>{msg.senderName}</p>
+                                          <p className="text-[9px] text-gray-400 dark:text-gray-550 shrink-0 font-medium">{msg.time}</p>
+                                        </div>
+                                        <p className={`text-[11px] mt-1 leading-normal truncate ${msg.read ? 'text-gray-400 dark:text-gray-500 font-medium' : 'text-slate-850 dark:text-gray-200 font-bold'}`}>{lastMessage?.text || (lastMessage?.attachmentName ? `Attachment: ${lastMessage.attachmentName}` : 'No messages')}</p>
+                                      </div>
+
+                                      {/* Unread dot */}
+                                      {!msg.read && (
+                                        <div className="flex items-center shrink-0 pl-1.5">
+                                          <span className="w-2.5 h-2.5 bg-blue-600 rounded-full" />
+                                        </div>
+                                      )}
+
+                                      {/* Delete Hover Action */}
+                                      <div className="flex items-center shrink-0 pl-1.5 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                                        <button
+                                          onClick={(e) => handleDeleteConversation(msg, e)}
+                                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors cursor-pointer"
+                                          title="Delete conversation"
+                                        >
+                                          <LuTrash2 className="w-4 h-4" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+
+                            {/* Directory / Colleagues Section */}
+                            {filteredDirectory.length > 0 && (
+                              <div className="flex flex-col">
+                                <div className="text-[9px] font-black tracking-widest text-blue-600 dark:text-blue-400 uppercase px-4 pt-4 pb-1 select-none border-t border-gray-100 dark:border-gray-800/80 bg-gray-50/10 dark:bg-gray-950/5">
+                                  Start New Conversation
+                                </div>
+                                {filteredDirectory.map(msg => {
+                                  return (
+                                    <div
+                                      key={msg.id}
+                                      onClick={() => handleMessageClick(msg)}
+                                      className={`p-4 flex gap-3.5 relative group cursor-pointer transition ${
+                                        theme === 'dark' ? 'hover:bg-gray-800/40' : 'hover:bg-gray-50'
+                                      }`}
+                                    >
+                                      {/* Left Avatar Badge */}
+                                      <div className="relative shrink-0 select-none">
+                                        {msg.senderAvatar ? (
+                                          <div className="w-10 h-10 rounded-full overflow-hidden border border-gray-200 dark:border-gray-850 shrink-0">
+                                            <img src={getAvatarUrl(msg.senderAvatar) || ''} alt={msg.senderName} className="w-full h-full object-cover" />
+                                          </div>
+                                        ) : (
+                                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0 bg-gradient-to-tr ${msg.senderColor}`}>
+                                            {msg.senderInitials}
+                                          </div>
+                                        )}
+                                        {msg.online && (
+                                          <span className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full animate-pulse" />
+                                        )}
+                                      </div>
+
+                                      {/* Message Body */}
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center justify-between gap-1.5">
+                                          <p className="text-xs truncate text-gray-700 dark:text-gray-300 font-semibold">{msg.senderName}</p>
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-550 mt-1 font-semibold flex items-center gap-1">
+                                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0 animate-ping inline-block" />
+                                          Start conversation
+                                        </p>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Bottom Control Bar */}
+                    <div className={`p-3 border-t bg-gray-50/50 dark:bg-gray-950/30 flex items-center justify-center ${
+                      theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
+                    }`}>
+                      <button
+                        onClick={() => {
+                          setMessagesOpen(false);
+                        }}
+                        className="w-full py-2 px-3 text-center text-[10px] font-bold text-blue-600 hover:text-blue-500 uppercase tracking-widest transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        Open Messages in Chat
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             </>
           )}
@@ -762,20 +1474,19 @@ export default function Header() {
             className="flex items-center gap-2.5 pl-3 pr-2 py-1.5 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
           >
             {/* Avatar */}
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center shrink-0">
-              {user.avatar_url ? (
-                <img src={getAvatarUrl(user.avatar_url) || ''} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-xs font-bold text-white">{initials}</span>
-              )}
-            </div>
-            {/* Role Display */}
-            <div className="hidden sm:block text-right mr-1">
-              <p className="text-[10px] font-bold text-blue-600 uppercase tracking-widest leading-none">
-                {user.role.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-              </p>
-              <p className="text-[11px] text-gray-400 mt-1 font-medium">Authorized Session</p>
-            </div>
+            {user.avatar_url ? (
+              <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 dark:border-gray-850 shrink-0">
+                <img 
+                  src={getAvatarUrl(user.avatar_url ?? undefined) ?? undefined} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-gradient-to-tr from-blue-500 to-indigo-600 border border-gray-200 dark:border-gray-850">
+                {initials}
+              </div>
+            )}
             <LuChevronDown className="w-4 h-4 text-gray-400" />
           </button>
 
@@ -867,11 +1578,69 @@ export default function Header() {
             onClose={() => {
               setActiveChats(prev => prev.filter(chat => chat.id !== c.id));
             }}
-            onSendMessage={(text) => handleSendMessage(c.id, text)}
+            onSendMessage={(text, file) => handleSendMessage(c.id, text, file)}
+            onImageClick={(path, name) => setActiveImagePreview({ path, name })}
           />
         );
       })}
     </div>
+
+    {/* Image Preview Modal */}
+    {activeImagePreview && (
+      <div 
+        className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 select-none animate-fade-in pointer-events-auto"
+        onClick={() => setActiveImagePreview(null)}
+      >
+        <button
+          onClick={() => setActiveImagePreview(null)}
+          className="absolute top-4 right-4 p-2.5 rounded-full bg-white/5 hover:bg-white/10 text-white/70 hover:text-white transition duration-200 border border-white/5 cursor-pointer hover:scale-105 active:scale-[0.95] flex items-center justify-center"
+          title="Close preview"
+        >
+          <LuX className="w-5 h-5" />
+        </button>
+
+        {/* Modal Content */}
+        <div 
+          className="relative max-w-5xl w-full flex flex-col items-center justify-center gap-4 animate-scale-up"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-white/10 bg-gray-950/40">
+            <img
+              src={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+              alt={activeImagePreview.name}
+              className="max-w-full max-h-[80vh] object-contain select-text cursor-default"
+            />
+          </div>
+
+          {/* Bottom Bar: Title, Open original in new tab, and Download */}
+          <div className="flex items-center justify-between gap-4 px-4 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md max-w-md w-full text-white text-xs">
+            <div className="flex flex-col min-w-0">
+              <span className="font-bold truncate text-[11px]">{activeImagePreview.name}</span>
+              <span className="text-[9px] text-gray-400 font-medium">Image Attachment</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer flex items-center justify-center"
+                title="Open original"
+              >
+                <LuExternalLink className="w-3.5 h-3.5" />
+              </a>
+              <a
+                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+                download={activeImagePreview.name}
+                className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition cursor-pointer flex items-center justify-center font-bold"
+                title="Download"
+              >
+                <LuDownload className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 }
@@ -982,7 +1751,8 @@ interface FloatingChatWindowProps {
   minimized: boolean;
   onMinimize: () => void;
   onClose: () => void;
-  onSendMessage: (text: string) => void;
+  onSendMessage: (text: string, file?: File) => void;
+  onImageClick?: (path: string, name: string) => void;
 }
 
 function FloatingChatWindow({
@@ -991,10 +1761,13 @@ function FloatingChatWindow({
   minimized,
   onMinimize,
   onClose,
-  onSendMessage
+  onSendMessage,
+  onImageClick
 }: FloatingChatWindowProps) {
   const [inputText, setInputText] = useState('');
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!minimized) {
@@ -1004,9 +1777,10 @@ function FloatingChatWindow({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inputText.trim()) return;
-    onSendMessage(inputText);
+    if (!inputText.trim() && !selectedFile) return;
+    onSendMessage(inputText, selectedFile || undefined);
     setInputText('');
+    setSelectedFile(null);
   };
 
   return (
@@ -1022,11 +1796,17 @@ function FloatingChatWindow({
           theme === 'dark' ? 'bg-gray-950/70 border-b border-gray-800' : 'bg-slate-100/90 border-b border-gray-200'
         }`}
       >
-        <div className="flex items-center gap-2 max-w-[70%]">
+        <div className="flex items-center gap-2 max-w-[70%] select-none">
           <div className="relative shrink-0">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-gradient-to-tr ${thread.senderColor}`}>
-              {thread.senderInitials}
-            </div>
+            {thread.senderAvatar ? (
+              <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 dark:border-gray-850 shrink-0">
+                <img src={getAvatarUrl(thread.senderAvatar) || ''} alt={thread.senderName} className="w-full h-full object-cover" />
+              </div>
+            ) : (
+              <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white shrink-0 bg-gradient-to-tr ${thread.senderColor}`}>
+                {thread.senderInitials}
+              </div>
+            )}
             {thread.online && (
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-gray-950 rounded-full" />
             )}
@@ -1040,7 +1820,7 @@ function FloatingChatWindow({
             className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-slate-200/50 dark:hover:bg-gray-800/60 transition cursor-pointer"
             title={minimized ? "Restore Chat" : "Minimize Chat"}
           >
-            <LuMinus className="w-3.5 h-3.5" />
+            {minimized ? <LuMaximize2 className="w-3.5 h-3.5" /> : <LuMinus className="w-3.5 h-3.5" />}
           </button>
           <button
             onClick={onClose}
@@ -1055,53 +1835,142 @@ function FloatingChatWindow({
       {!minimized && (
         <>
           <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-2.5 bg-gray-50/50 dark:bg-gray-950/20 max-h-[285px]">
-            {thread.messages.map((item, idx) => {
+            {thread.messages.map((item: MessageDetail, idx: number) => {
               const isUser = item.sender === 'user';
               const showStatus = isUser && idx === thread.messages.length - 1;
+              
+              const displayAvatar = item.senderAvatar || (item.sender === 'peer' ? thread.senderAvatar : undefined);
+              const displayInitials = item.senderName ? item.senderName.split(' ').map((w: string) => w.charAt(0)).join('').toUpperCase().substring(0, 2) : thread.senderInitials;
+              const displayColor = thread.senderColor;
+              const displayName = item.senderName || thread.senderName;
+              
+              // Calculate if we should show timestamp above this message (gap of 5 minutes or more)
+              let showTimestamp = false;
+              if (idx === 0) {
+                showTimestamp = true;
+              } else {
+                const prev = thread.messages[idx - 1];
+                if (item.timestamp && prev.timestamp) {
+                  showTimestamp = (item.timestamp - prev.timestamp) >= 300000; // 5 mins in ms
+                } else {
+                  showTimestamp = true;
+                }
+              }
+              
               return (
-                <div key={item.id || idx} className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full`}>
-                  <div className={`flex items-start gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : ''}`}>
-                    {!isUser && (
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 bg-gradient-to-tr ${thread.senderColor}`}>
-                        {thread.senderInitials}
-                      </div>
-                    )}
-                    
-                    <div className={`px-3 py-2 rounded-2xl text-xs leading-relaxed ${
-                      isUser
-                        ? 'bg-blue-600 text-white rounded-tr-none'
-                        : theme === 'dark' ? 'bg-gray-800 text-gray-200 rounded-tl-none' : 'bg-gray-100 text-gray-700 rounded-tl-none'
-                    }`}>
-                      <p className="break-words">{item.text}</p>
-                      <span className={`block text-[7px] mt-0.5 font-medium text-right leading-none ${isUser ? 'text-blue-200' : 'text-gray-400'}`}>
-                        {item.time}
+                <div key={item.id || idx} className="flex flex-col w-full">
+                  {showTimestamp && (
+                    <div className="w-full flex justify-center my-2.5 select-none">
+                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-550 uppercase tracking-wider bg-gray-150/40 dark:bg-gray-800/30 px-2.5 py-0.5 rounded-full">
+                        {formatConvoTimestamp(item.timestamp)}
                       </span>
                     </div>
-                  </div>
-
-                  {showStatus && (
-                    <span className="text-[8px] text-gray-400 font-bold mt-1 pr-1 flex items-center gap-1 select-none">
-                      {item.status === 'sent' && 'Sent'}
-                      {item.status === 'delivered' && 'Delivered'}
-                      {item.status === 'seen' && (
-                        <div className="flex items-center gap-1">
-                          <span>Seen</span>
-                          <div className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[6px] font-black text-white shrink-0 bg-gradient-to-tr ${thread.senderColor}`}>
-                            {thread.senderInitials}
-                          </div>
-                        </div>
-                      )}
-                    </span>
                   )}
+                  <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} w-full`}>
+                    <div className={`flex items-start gap-2 max-w-[85%] ${isUser ? 'flex-row-reverse' : ''}`}>
+                      {!isUser && (
+                        displayAvatar ? (
+                          <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-200 dark:border-gray-800 shrink-0 mt-0.5">
+                            <img src={getAvatarUrl(displayAvatar) || ''} alt={displayName} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0 bg-gradient-to-tr ${displayColor} mt-0.5`}>
+                            {displayInitials}
+                          </div>
+                        )
+                      )}
+                      
+                      <div className="flex flex-col">
+                        {thread.id.startsWith('group-') && !isUser && item.senderName && (
+                          <span className="text-[8px] text-gray-400 dark:text-gray-550 font-bold ml-1 mb-0.5">{item.senderName}</span>
+                        )}
+                        <div className={`px-3 py-2 rounded-2xl text-xs leading-relaxed flex flex-col gap-1.5 ${
+                          isUser
+                            ? 'bg-blue-600 text-white rounded-tr-none'
+                            : theme === 'dark' ? 'bg-gray-800 text-gray-200 rounded-tl-none' : 'bg-gray-100 text-gray-700 rounded-tl-none'
+                        }`}>
+                          {item.text && <p className="break-words font-medium">{item.text}</p>}
+                          {item.attachmentPath && (
+                            <div className={`mt-0.5 rounded-lg overflow-hidden ${item.text ? 'border-t pt-1.5 border-white/20' : ''}`}>
+                              {item.attachmentType?.startsWith('image/') || item.attachmentPath.match(/\.(jpeg|jpg|gif|png|webp)/i) ? (
+                                <div
+                                  onClick={() => onImageClick?.(item.attachmentPath!, item.attachmentName || 'attachment')}
+                                  className="block cursor-pointer active:scale-[0.98] transition-all duration-150 hover:opacity-95"
+                                  title="Click to preview image"
+                                >
+                                  <img
+                                    src={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace('/api', '')}${item.attachmentPath}`}
+                                    alt={item.attachmentName || 'attachment'}
+                                    className="max-w-full rounded-lg max-h-40 object-cover"
+                                  />
+                                </div>
+                              ) : (
+                                <a
+                                  href={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace('/api', '')}${item.attachmentPath}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  download={item.attachmentName}
+                                  className={`flex items-center gap-2 p-2 rounded-xl text-inherit transition font-semibold ${
+                                    isUser ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-black/5 hover:bg-black/10'
+                                  }`}
+                                >
+                                  <LuFileText className="w-5 h-5 shrink-0" />
+                                  <div className="flex flex-col flex-1 min-w-0 text-left">
+                                    <span className="text-[11px] truncate font-bold block">Sent an attachment</span>
+                                    <span className="text-[9px] opacity-75 uppercase truncate block">
+                                      {item.attachmentName ? item.attachmentName.split('.').pop()?.toUpperCase() : 'FILE'}
+                                    </span>
+                                  </div>
+                                  <LuDownload className="w-4 h-4 shrink-0 ml-1" />
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {showStatus && (
+                      <span className="text-[8px] text-gray-400 font-bold mt-1 pr-1 flex items-center gap-1 select-none">
+                        {item.status === 'sending' && <span className="animate-pulse">Sending...</span>}
+                        {item.status === 'sent' && 'Sent'}
+                        {item.status === 'delivered' && 'Delivered'}
+                        {item.status === 'seen' && (
+                          <div className="flex items-center gap-1">
+                            <span>Seen</span>
+                            {thread.senderAvatar ? (
+                              <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-gray-200 dark:border-gray-800 shrink-0">
+                                <img src={getAvatarUrl(thread.senderAvatar) || ''} alt="seen" className="w-full h-full object-cover" />
+                              </div>
+                            ) : (
+                              <div className="w-3.5 h-3.5 rounded-full overflow-hidden border border-gray-200 dark:border-gray-800 shrink-0">
+                                <img 
+                                  src={`https://ui-avatars.com/api/?name=${encodeURIComponent(thread.senderName.replace(/\s*\(.*?\)\s*/g, ''))}&background=random&color=fff&size=64`} 
+                                  alt="seen" 
+                                  className="w-full h-full object-cover" 
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
 
             {thread.typing && (
               <div className="flex items-start gap-2 max-w-[85%] self-start">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[8px] font-bold text-white shrink-0 bg-gradient-to-tr ${thread.senderColor}`}>
-                  {thread.senderInitials}
-                </div>
+                {thread.senderAvatar ? (
+                  <div className="w-6 h-6 rounded-full overflow-hidden border border-gray-200 dark:border-gray-800 shrink-0">
+                    <img src={getAvatarUrl(thread.senderAvatar) || ''} alt="typing" className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[7px] font-bold text-white shrink-0 bg-gradient-to-tr ${thread.senderColor}`}>
+                    {thread.senderInitials}
+                  </div>
+                )}
                 <div className={`px-4 py-3 rounded-2xl rounded-tl-none flex items-center gap-1 ${
                   theme === 'dark' ? 'bg-gray-800' : 'bg-gray-100'
                 }`}>
@@ -1115,12 +1984,51 @@ function FloatingChatWindow({
             <div ref={chatEndRef} />
           </div>
 
+          {selectedFile && (
+            <div className={`px-3.5 py-1.5 flex items-center justify-between border-t text-[10px] select-none font-bold shrink-0 ${
+              theme === 'dark' ? 'bg-gray-950/80 border-gray-800 text-gray-400' : 'bg-gray-100/80 border-gray-200 text-slate-500'
+            }`}>
+              <div className="flex items-center gap-1.5 min-w-0">
+                <LuFileText className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+                <span className="truncate max-w-[150px]">{selectedFile.name}</span>
+                <span className="opacity-60 shrink-0">({(selectedFile.size / 1024).toFixed(0)} KB)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedFile(null)}
+                className="p-0.5 rounded hover:bg-slate-200 dark:hover:bg-gray-800 text-red-500 transition active:scale-95 cursor-pointer"
+              >
+                <LuX className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           <form
             onSubmit={handleSubmit}
-            className={`h-[52px] border-t px-3 flex items-center gap-2 ${
+            className={`h-[52px] border-t px-3 flex items-center gap-2 shrink-0 ${
               theme === 'dark' ? 'border-gray-800 bg-gray-900/50' : 'border-gray-200 bg-slate-50/50'
             }`}
           >
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={e => {
+                if (e.target.files && e.target.files[0]) {
+                  setSelectedFile(e.target.files[0]);
+                }
+              }}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`p-2 rounded-full transition active:scale-95 shrink-0 cursor-pointer ${
+                theme === 'dark' ? 'hover:bg-gray-800 text-gray-400 hover:text-white' : 'hover:bg-slate-100 text-slate-500 hover:text-slate-700'
+              }`}
+              title="Attach a file"
+            >
+              <LuPaperclip className="w-3.5 h-3.5" />
+            </button>
             <input
               type="text"
               value={inputText}
@@ -1134,8 +2042,8 @@ function FloatingChatWindow({
             />
             <button
               type="submit"
-              disabled={!inputText.trim()}
-              className="p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-full transition active:scale-95 flex items-center justify-center shrink-0"
+              disabled={!inputText.trim() && !selectedFile}
+              className="p-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-full transition active:scale-95 flex items-center justify-center shrink-0 cursor-pointer"
             >
               <LuSend className="w-3.5 h-3.5" />
             </button>

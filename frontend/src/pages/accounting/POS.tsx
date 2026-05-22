@@ -334,7 +334,7 @@ export default function POS() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '' });
+                  setNewService({ name: '', category: 'Travel', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}

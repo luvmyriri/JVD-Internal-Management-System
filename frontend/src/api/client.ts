@@ -13,12 +13,16 @@ const client = axios.create({
   withXSRFToken: true,
 });
 
-// Request interceptor — attach auth token
+// Request interceptor — attach auth token & fix FormData uploads
 client.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // When sending FormData, let the browser/axios auto-set multipart boundary
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
     }
     return config;
   },
