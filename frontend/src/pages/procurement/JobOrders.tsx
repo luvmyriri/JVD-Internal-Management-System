@@ -192,7 +192,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Optional notes..." />
             </div>
 
-            {mutation.isError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">Failed to create job order.</p>}
+            {mutation.isError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">{(mutation.error as any)?.response?.data?.message || 'Failed to create job order.'}</p>}
           </form>
         </div>
 
@@ -400,6 +400,9 @@ export default function JobOrders() {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
       alert('Job order confirmed successfully!');
     },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to confirm job order.');
+    }
   });
 
   const completeMutation = useMutation({
@@ -408,6 +411,9 @@ export default function JobOrders() {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
       alert('Job order marked as completed!');
     },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to mark job order as completed.');
+    }
   });
 
   const jos = data?.data?.data ?? [];

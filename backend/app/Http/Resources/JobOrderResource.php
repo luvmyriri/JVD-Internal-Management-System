@@ -39,6 +39,15 @@ class JobOrderResource extends JsonResource
                     'passport_number' => $p->passport_number,
                 ])
             ),
+            'legal_documents' => $this->whenLoaded('legalDocuments', fn() =>
+                $this->legalDocuments->map(fn($doc) => [
+                    'id'            => $doc->id,
+                    'document_type' => $doc->document_type,
+                    'file_path'     => $doc->file_path,
+                    'status'        => $doc->status,
+                    'uploaded_at'   => $doc->created_at->toISOString(),
+                ])
+            ),
             'created_by'   => $this->created_by,
             'created_at'   => $this->created_at->toISOString(),
             'updated_at'   => $this->updated_at->toISOString(),

@@ -22,10 +22,11 @@ interface Customer {
 
 // ── Add/Edit Modal ─────────────────────────────────────────────────────────────
 interface CustomerModalProps {
+  mode: 'create' | 'edit' | 'view';
   customer?: Customer;
   onClose: () => void;
 }
-function CustomerModal({ customer, onClose }: CustomerModalProps) {
+function CustomerModal({ mode, customer, onClose }: CustomerModalProps) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     first_name: customer?.first_name ?? '',
@@ -107,13 +108,14 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
         {key === 'notes' ? (
           <textarea
             rows={3}
+            disabled={mode === 'view'}
             value={form[key]}
             onChange={e => {
               setForm(p => ({ ...p, [key]: e.target.value }));
               if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
             }}
             placeholder={placeholder}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow resize-none bg-white dark:bg-gray-900 ${
+            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow resize-none disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 bg-white dark:bg-gray-900 ${
               hasError
                 ? 'border-red-500 focus:ring-red-500 dark:border-red-500'
                 : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500'
@@ -122,13 +124,14 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
         ) : (
           <input
             type={type}
+            disabled={mode === 'view'}
             value={form[key]}
             onChange={e => {
               setForm(p => ({ ...p, [key]: e.target.value }));
               if (errors[key]) setErrors(p => ({ ...p, [key]: '' }));
             }}
             placeholder={placeholder}
-            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow bg-white dark:bg-gray-900 ${
+            className={`w-full px-4 py-3 rounded-xl border text-sm text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 transition-shadow disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 bg-white dark:bg-gray-900 ${
               hasError
                 ? 'border-red-500 focus:ring-red-500 dark:border-red-500'
                 : 'border-gray-200 dark:border-gray-700 focus:ring-blue-500'
@@ -141,7 +144,7 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} title={customer ? 'Edit Customer' : 'Register New Customer'} size="lg">
+    <Modal isOpen onClose={onClose} title={mode === 'create' ? 'Register New Customer' : mode === 'edit' ? 'Edit Customer' : 'Customer Details'} size="lg">
       <div className="p-6">
         <form id="customer-form" onSubmit={e => {
           e.preventDefault();
@@ -161,11 +164,17 @@ function CustomerModal({ customer, onClose }: CustomerModalProps) {
           {field('Notes', 'notes', 'text', 'Additional remarks...')}
         </form>
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button form="customer-form" type="submit" isLoading={mutation.isPending}
-            disabled={!form.first_name || !form.last_name || !form.email || !form.phone}>
-            {customer ? 'Save Changes' : 'Register Customer'}
-          </Button>
+          {mode === 'view' ? (
+            <Button onClick={onClose}>Close</Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={onClose}>Cancel</Button>
+              <Button form="customer-form" type="submit" isLoading={mutation.isPending}
+                disabled={!form.first_name || !form.last_name || !form.email || !form.phone}>
+                {mode === 'create' ? 'Register Customer' : 'Save Changes'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Modal>
@@ -214,8 +223,7 @@ export default function Customers() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editTarget, setEditTarget] = useState<Customer | null>(null);
+  const [modalConfig, setModalConfig] = useState<{ mode: 'create' | 'edit' | 'view'; data?: Customer } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
   const { data: response, isLoading } = useQuery({
@@ -236,7 +244,7 @@ export default function Customers() {
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">Travel Client Registry</p>
         </div>
-        <Button onClick={() => setShowAdd(true)} className="flex items-center gap-2">
+        <Button onClick={() => setModalConfig({ mode: 'create' })} className="flex items-center gap-2">
           <LuPlus size={16} /> New Customer
         </Button>
       </div>
@@ -332,7 +340,14 @@ export default function Customers() {
                         <LuUser size={14} />
                       </button>
                       <button
-                        onClick={() => setEditTarget(c)}
+                        onClick={() => setModalConfig({ mode: 'view', data: c })}
+                        className="p-2 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 transition"
+                        title="Quick View"
+                      >
+                        <LuSearch size={14} />
+                      </button>
+                      <button
+                        onClick={() => setModalConfig({ mode: 'edit', data: c })}
                         className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"
                         title="Edit"
                       >
@@ -358,8 +373,7 @@ export default function Customers() {
         <Pagination currentPage={page} lastPage={meta.last_page} total={meta.total} perPage={meta.per_page} onPageChange={setPage} />
       )}
 
-      {showAdd && <CustomerModal onClose={() => setShowAdd(false)} />}
-      {editTarget && <CustomerModal customer={editTarget} onClose={() => setEditTarget(null)} />}
+      {modalConfig && <CustomerModal mode={modalConfig.mode} customer={modalConfig.data} onClose={() => setModalConfig(null)} />}
       {deleteTarget && <DeleteModal customer={deleteTarget} onClose={() => setDeleteTarget(null)} />}
     </div>
   );

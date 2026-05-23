@@ -74,6 +74,8 @@ class PassportCaseController extends Controller
             'handled_by' => $request->user()->id,
             'status'     => 'requirements_gathering',
         ]));
+        
+        \App\Http\Services\AuditLogService::log('create', 'Travel', 'PassportCase', $case->id, null, $case->toArray());
 
         return response()->json([
             'success' => true,
@@ -124,7 +126,10 @@ class PassportCaseController extends Controller
             'handled_by'       => ['sometimes', 'integer', 'exists:users,id'],
         ]);
 
+        $old = $passportCase->toArray();
         $passportCase->update($validated);
+        
+        \App\Http\Services\AuditLogService::log('update', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
 
         return response()->json([
             'success' => true,
@@ -153,7 +158,37 @@ class PassportCaseController extends Controller
             ], 422);
         }
 
+        $old = $passportCase->toArray();
         $passportCase->update(['status' => $newStatus]);
+        
+        \App\Http\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+
+        // Create an Invoice if the case is released
+        if ($newStatus === 'released' && $current !== 'released') {
+            $customer = $passportCase->customer;
+            $invoiceNumber = 'INV-' . date('Ymd') . '-P' . str_pad($passportCase->id, 4, '0', STR_PAD_LEFT);
+            
+            // Avoid duplicate invoices
+            $existingInvoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
+            
+            if (!$existingInvoice) {
+                \App\Models\Invoice::create([
+                    'invoice_number'   => $invoiceNumber,
+                    'customer_id'      => $customer->id,
+                    'customer_name'    => $customer->first_name . ' ' . $customer->last_name,
+                    'customer_email'   => $customer->email,
+                    'customer_contact' => $customer->phone,
+                    'customer_address' => $customer->address ?? '',
+                    'subtotal'         => 0,
+                    'tax_amount'       => 0,
+                    'total_amount'     => 0,
+                    'balance'          => 0,
+                    'status'           => 'pending',
+                    'created_by'       => $request->user()->id,
+                    'notes'            => 'Auto-generated invoice for Released Passport/Visa Case: ' . ($passportCase->reference_number ?? 'N/A'),
+                ]);
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -169,12 +204,32 @@ class PassportCaseController extends Controller
     {
         $request->validate(['checklist' => ['required', 'array']]);
 
+        $old = $passportCase->toArray();
         $passportCase->update(['checklist' => $request->checklist]);
+        
+        \App\Http\Services\AuditLogService::log('update_checklist', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
 
         return response()->json([
             'success' => true,
             'data'    => new PassportCaseResource($passportCase->fresh(['customer', 'passenger', 'handler'])),
             'message' => 'Checklist updated.',
+        ]);
+    }
+    
+    /**
+     * Retrieve audit logs for a specific passport case.
+     */
+    public function auditLogs(PassportCase $passportCase): JsonResponse
+    {
+        $logs = \App\Models\AuditLog::with('user')
+            ->where('target_model', 'PassportCase')
+            ->where('target_id', $passportCase->id)
+            ->orderByDesc('created_at')
+            ->get();
+            
+        return response()->json([
+            'success' => true,
+            'data'    => \App\Http\Resources\AuditLogResource::collection($logs)->resolve(),
         ]);
     }
 }

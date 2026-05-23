@@ -15,7 +15,7 @@ export const workOrderApi = {
     client.put<{ success: boolean; data: WorkOrder }>(`/work-orders/${id}`, data),
 
   complete: (id: number, data: { parts_used?: string; cost?: number }) =>
-    client.post(`/work-orders/${id}/complete`, data),
+    client.put(`/work-orders/${id}`, { ...data, status: 'completed' }),
 
   /** Designated employee approves an auto-generated PMS Work Order */
   approve: (id: number, data?: { notes?: string; assigned_to?: number; priority?: string }) =>

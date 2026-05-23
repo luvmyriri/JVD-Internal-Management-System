@@ -62,6 +62,7 @@ export const billingApi = {
     customer_email?: string;
     customer_contact?: string;
     payment_method: string;
+    payment_type?: string;
     amount_received?: number;
     change?: number;
     items: { service_id: number; quantity: number }[];

@@ -277,6 +277,11 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
                 placeholder="Describe the issue, symptoms, or maintenance required..."
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
             </div>
+            {mutation.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+                {(mutation.error as any)?.response?.data?.message || 'Failed to submit work order request.'}
+              </p>
+            )}
           </form>
         </div>
 
@@ -392,6 +397,9 @@ export default function WorkOrders() {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       alert('Work order marked as completed!');
     },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to mark work order as completed.');
+    }
   });
 
   const wos = data?.data?.data ?? [];

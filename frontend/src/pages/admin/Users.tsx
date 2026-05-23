@@ -629,7 +629,7 @@ export default function Users() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] overflow-hidden shadow-sm relative min-h-[400px]">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm relative min-h-[400px]">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -667,7 +667,6 @@ export default function Users() {
                       transition={{ delay: idx * 0.03 }}
                       key={user.id} 
                       className="group relative hover:bg-blue-50/30 dark:hover:bg-gray-800/50 transition-all border-b border-gray-50 dark:border-gray-800/50 last:border-0"
-                      style={{ zIndex: 50 - idx }}
                     >
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">

@@ -11,140 +11,7 @@ import ExcelJS from 'exceljs';
 import { LoadingScreen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 
-// Standardized list of agents and base performance levels matching the seeded DB users
-const seedAgents = [
-  { name: 'Lara Croft', email: 'lara.croft@jvd.com', baseSales: 1250000, baseCount: 145 },
-  { name: 'Maria Santos', email: 'maria.santos@jvd.com', baseSales: 980000, baseCount: 120 },
-  { name: 'Rosa Garcia', email: 'rosa.garcia@jvd.com', baseSales: 850000, baseCount: 112 },
-  { name: 'Juan dela Cruz', email: 'juan.delacruz@jvd.com', baseSales: 620000, baseCount: 84 },
-  { name: 'Emmanuel Nalang', email: 'johnemmanuelnalang@gmail.com', baseSales: 450000, baseCount: 65 },
-  { name: 'Ana Lim', email: 'ana.lim@jvd.com', baseSales: 310000, baseCount: 42 },
-  { name: 'Minda Lamsen', email: 'minda.lamsen@jvd.com', baseSales: 220000, baseCount: 30 }
-];
-
-// Predefined set of realistic transactions representing travel bookings and accounting services
-const seedTransactions = [
-  {
-    id: 'TXN-2605-9001',
-    agentName: 'Lara Croft',
-    agentEmail: 'lara.croft@jvd.com',
-    clientName: 'Arthur Pendragon',
-    serviceType: 'Travel Package',
-    destination: 'Boracay',
-    amount: 32000,
-    status: 'Paid',
-    date: '2026-05-20T10:30:00Z',
-    notes: 'Premium luxury resort package for 4 days / 3 nights. Includes flight, transfer, and Henann Prime Beach Resort accommodation.'
-  },
-  {
-    id: 'TXN-2605-9002',
-    agentName: 'Maria Santos',
-    agentEmail: 'maria.santos@jvd.com',
-    clientName: 'Diana Prince',
-    serviceType: 'Travel Package',
-    destination: 'Palawan',
-    amount: 45000,
-    status: 'Paid',
-    date: '2026-05-19T14:45:00Z',
-    notes: 'El Nido Island Hopping premium booking for a group of 3. Includes private boat, tour guides, and eco-luxury villa stay.'
-  },
-  {
-    id: 'TXN-2605-9003',
-    agentName: 'Rosa Garcia',
-    agentEmail: 'rosa.garcia@jvd.com',
-    clientName: 'Bruce Wayne',
-    serviceType: 'Corporate Booking',
-    destination: 'Cebu',
-    amount: 125000,
-    status: 'Paid',
-    date: '2026-05-19T09:15:00Z',
-    notes: 'Executive retreat transport and luxury villa accommodation for VIP stakeholders at Shangri-La Mactan.'
-  },
-  {
-    id: 'TXN-2605-9004',
-    agentName: 'Juan dela Cruz',
-    agentEmail: 'juan.delacruz@jvd.com',
-    clientName: 'Clark Kent',
-    serviceType: 'Travel Package',
-    destination: 'Siargao',
-    amount: 28000,
-    status: 'Pending',
-    date: '2026-05-18T16:20:00Z',
-    notes: 'Surfing adventure package for 5 days. Budget accommodation and domestic airfare booked via Sunlight Air.'
-  },
-  {
-    id: 'TXN-2605-9005',
-    agentName: 'Lara Croft',
-    agentEmail: 'lara.croft@jvd.com',
-    clientName: 'Barry Allen',
-    serviceType: 'Passport Service',
-    destination: 'N/A',
-    amount: 4500,
-    status: 'Paid',
-    date: '2026-05-18T11:10:00Z',
-    notes: 'Expedited DFA passport renewal assistance. Fully verified documents and fast-track processing support.'
-  },
-  {
-    id: 'TXN-2605-9006',
-    agentName: 'Emmanuel Nalang',
-    agentEmail: 'johnemmanuelnalang@gmail.com',
-    clientName: 'Hal Jordan',
-    serviceType: 'Travel Package',
-    destination: 'Bohol',
-    amount: 35000,
-    status: 'Paid',
-    date: '2026-05-17T15:30:00Z',
-    notes: 'Countryside private tour + Chocolate Hills and Loboc River cruise buffet. Accommodated at Bellevue Bohol.'
-  },
-  {
-    id: 'TXN-2605-9007',
-    agentName: 'Ana Lim',
-    agentEmail: 'ana.lim@jvd.com',
-    clientName: 'Selina Kyle',
-    serviceType: 'Accounting Consultant',
-    destination: 'N/A',
-    amount: 15000,
-    status: 'Cancelled',
-    date: '2026-05-16T13:00:00Z',
-    notes: 'Custom business taxation filing and optimization consult. Request cancelled due to scheduling conflicts.'
-  },
-  {
-    id: 'TXN-2605-9008',
-    agentName: 'Maria Santos',
-    agentEmail: 'maria.santos@jvd.com',
-    clientName: 'Oliver Queen',
-    serviceType: 'Travel Package',
-    destination: 'Palawan',
-    amount: 52000,
-    status: 'Paid',
-    date: '2026-05-15T10:00:00Z',
-    notes: 'Underground River Private VIP tour and Sheraton Palawan Beach Resort booking. Fully catered breakfast/dinner.'
-  },
-  {
-    id: 'TXN-2605-9009',
-    agentName: 'Rosa Garcia',
-    agentEmail: 'rosa.garcia@jvd.com',
-    clientName: 'Lois Lane',
-    serviceType: 'Travel Package',
-    destination: 'Boracay',
-    amount: 24000,
-    status: 'Pending',
-    date: '2026-05-15T08:30:00Z',
-    notes: 'White beach station 2 booking at Discovery Shores Boracay. Awaiting payment authorization clearance.'
-  },
-  {
-    id: 'TXN-2605-9010',
-    agentName: 'Minda Lamsen',
-    agentEmail: 'minda.lamsen@jvd.com',
-    clientName: 'Harvey Dent',
-    serviceType: 'Travel Package',
-    destination: 'Cebu',
-    amount: 19500,
-    status: 'Paid',
-    date: '2026-05-14T17:00:00Z',
-    notes: 'City historical tour and luxury vehicle service. Overnight stay at Radisson Blu Cebu.'
-  }
-];
+// Replaced seed data with real backend data mapping
 
 export default function Reports() {
   const [data, setData] = useState<any>(null);
@@ -181,9 +48,6 @@ export default function Reports() {
       let mappedInvoices: any[] = [];
       if (invoices.length > 0) {
         mappedInvoices = invoices.map((inv: any) => {
-          const agentIndex = inv.id % seedAgents.length;
-          const fallbackAgent = seedAgents[agentIndex];
-          
           let dest = 'N/A';
           if (inv.items && inv.items.length > 0) {
             const sName = inv.items[0].service?.name || '';
@@ -197,32 +61,29 @@ export default function Reports() {
               dest = dests[inv.id % dests.length];
             }
           }
-          
+
           return {
             id: inv.invoice_number || `TXN-2605-${1000 + inv.id}`,
-            agentName: inv.creator ? `${inv.creator.first_name} ${inv.creator.last_name}` : fallbackAgent.name,
-            agentEmail: inv.creator ? inv.creator.email : fallbackAgent.email,
+            agentName: inv.creator ? `${inv.creator.first_name} ${inv.creator.last_name}` : 'Unknown Agent',
+            agentEmail: inv.creator ? inv.creator.email : 'unknown@jvd.com',
             clientName: inv.customer_name || 'Walk-in Client',
             serviceType: inv.items?.[0]?.service?.category || 'Standard Service',
             destination: dest,
             amount: parseFloat(inv.total_amount) || 0,
-            status: inv.status === 'paid' ? 'Paid' : inv.status === 'pending' ? 'Pending' : 'Cancelled',
+            status: inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partial' : inv.status === 'pending' ? 'Pending' : 'Cancelled',
             date: inv.created_at || new Date().toISOString(),
             notes: inv.notes || `Invoice processed dynamically on ${new Date(inv.created_at).toLocaleDateString()}. Payment method: ${inv.payment_method || 'Cash'}.`
           };
         });
       }
       
-      // Combine API records with seed data for high-fidelity completeness
-      const allTxns = [...mappedInvoices, ...seedTransactions];
-      
-      // Deduplicate by ID
-      const uniqueTxns = Array.from(new Map(allTxns.map(item => [item.id, item])).values());
+      // Deduplicate by ID just in case
+      const uniqueTxns = Array.from(new Map(mappedInvoices.map(item => [item.id, item])).values());
       
       setData(uniqueTxns);
     } catch (err) {
-      console.warn('Failed to fetch detailed invoices, using high-fidelity mock records');
-      setData(seedTransactions);
+      console.warn('Failed to fetch detailed invoices', err);
+      setData([]);
     } finally {
       setIsLoading(false);
     }
@@ -284,15 +145,10 @@ export default function Reports() {
   // Dynamic Leaderboard & Agent Performance Data
   const agentLeaderboard = useMemo(() => {
     const stats: Record<string, { name: string; email: string; sales: number; count: number }> = {};
-    
-    // Initialize leaderboard structure using seed values
-    seedAgents.forEach(a => {
-      stats[a.name] = { name: a.name, email: a.email, sales: a.baseSales * (range === 'all' ? 1.5 : range === 'year' ? 1.0 : range === 'month' ? 0.3 : 0.08), count: Math.round(a.baseCount * (range === 'all' ? 1.5 : range === 'year' ? 1.0 : range === 'month' ? 0.3 : 0.08)) };
-    });
 
     // Add current transaction records
     filteredTransactions.forEach((t: any) => {
-      if (t.status === 'Paid') {
+      if (t.status === 'Paid' || t.status === 'Partial') {
         if (!stats[t.agentName]) {
           stats[t.agentName] = { name: t.agentName, email: t.agentEmail, sales: 0, count: 0 };
         }
@@ -653,7 +509,7 @@ export default function Reports() {
 
               {/* Status pills */}
               <div className="flex bg-gray-100/80 dark:bg-gray-800/60 p-0.5 rounded-lg border border-gray-200/20 dark:border-gray-700/20">
-                {['All', 'Paid', 'Pending', 'Cancelled'].map((status) => (
+                {['All', 'Paid', 'Partial', 'Pending', 'Cancelled'].map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
@@ -749,12 +605,14 @@ export default function Reports() {
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold border transition-colors ${
                           txn.status === 'Paid'
                             ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.05)]'
+                            : txn.status === 'Partial'
+                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.05)]'
                             : txn.status === 'Pending'
                             ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.05)]'
                             : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.05)]'
                         }`}>
                           <span className={`w-1 h-1 rounded-full ${
-                            txn.status === 'Paid' ? 'bg-emerald-500' : txn.status === 'Pending' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
+                            txn.status === 'Paid' ? 'bg-emerald-500' : txn.status === 'Partial' ? 'bg-blue-500' : txn.status === 'Pending' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
                           }`} />
                           {txn.status}
                         </span>

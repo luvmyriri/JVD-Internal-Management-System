@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuMapPin, LuUsers, LuSearch,
@@ -8,6 +8,7 @@ import {
 } from 'react-icons/lu';
 import { jobOrderApi } from '../../api/jobOrders';
 import { cn } from '../../utils';
+import toast from 'react-hot-toast';
 
 const SERVICE_LABELS: Record<string, string> = {
   bus_rental: 'Bus Rental', field_trip: 'Field Trip',
@@ -36,12 +37,34 @@ export default function DriverTrips() {
   const params: Record<string, any> = { per_page: 15, page };
   if (statusFilter !== 'all') params.status = statusFilter;
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['driver-trips', statusFilter, page],
     queryFn: async () => {
       const res = await jobOrderApi.list(params);
       return res.data;
     },
+  });
+
+  const startMutation = useMutation({
+    mutationFn: (id: number) => jobOrderApi.start(id),
+    onSuccess: () => {
+      toast.success('Trip started!');
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to start trip.');
+    }
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: (id: number) => jobOrderApi.complete(id),
+    onSuccess: () => {
+      toast.success('Trip completed!');
+      refetch();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to complete trip.');
+    }
   });
 
   const trips: any[] = data?.data ?? [];
@@ -182,6 +205,24 @@ export default function DriverTrips() {
                       <span className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black tracking-widest">
                         {trip.bus.plate_number}
                       </span>
+                    )}
+                    {trip.status === 'confirmed' && (
+                      <button
+                        onClick={() => startMutation.mutate(trip.id)}
+                        disabled={startMutation.isPending}
+                        className="mt-2 px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50"
+                      >
+                        Start Trip
+                      </button>
+                    )}
+                    {trip.status === 'in_progress' && (
+                      <button
+                        onClick={() => completeMutation.mutate(trip.id)}
+                        disabled={completeMutation.isPending}
+                        className="mt-2 px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
+                      >
+                        Complete Trip
+                      </button>
                     )}
                   </div>
                 </div>

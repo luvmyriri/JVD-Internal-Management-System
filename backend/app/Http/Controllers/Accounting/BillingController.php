@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use App\Notifications\SystemAlert;
 
 use App\Http\Resources\InvoiceResource;
 
@@ -233,6 +234,7 @@ class BillingController extends Controller
             'customer_email' => 'nullable|string|email|max:255',
             'customer_contact' => ['nullable', 'string', 'regex:/^(09|\+639|639)\d{9}$/'],
             'payment_method' => 'required|string',
+            'payment_type' => 'nullable|string|in:full,downpayment',
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'required|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -281,6 +283,26 @@ class BillingController extends Controller
             $taxAmount = $subtotal * $taxRate;
             $totalAmount = $subtotal + $taxAmount;
 
+            $paymentType = $request->payment_type ?? 'full';
+            $amountReceived = (double) $request->amount_received;
+            
+            $balance = 0;
+            $status = 'pending_payment';
+
+            if ($request->payment_method === 'Cash') {
+                if ($paymentType === 'downpayment') {
+                    $status = 'partial';
+                    $balance = $totalAmount - $amountReceived;
+                } else {
+                    $status = 'paid';
+                    $balance = 0;
+                }
+            } else {
+                // For GCash/Card, pending until callback
+                $status = 'pending_payment';
+                $balance = $totalAmount;
+            }
+
             // Create Invoice
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
@@ -292,10 +314,12 @@ class BillingController extends Controller
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
-                'amount_received' => $request->amount_received,
-                'change' => $request->change,
+                'amount_received' => $amountReceived,
+                'change' => $request->change ?? 0,
                 'payment_method' => $request->payment_method,
-                'status' => $request->payment_method === 'Cash' ? 'paid' : 'pending_payment',
+                'payment_type' => $paymentType,
+                'balance' => max(0, $balance),
+                'status' => $status,
                 'created_by' => auth()->id() ?? 1,
                 'notes' => $request->notes,
             ]);
@@ -350,6 +374,15 @@ class BillingController extends Controller
 
             DB::commit();
 
+            if ($request->user()) {
+                $request->user()->notify(new SystemAlert(
+                    'POS Transaction Completed',
+                    "Invoice #{$invoice->invoice_number} was successfully created for {$totalAmount} PHP.",
+                    'success',
+                    '/accounting/billing'
+                ));
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
@@ -401,5 +434,96 @@ class BillingController extends Controller
             'message' => 'Invoice status updated successfully',
             'data' => $invoice
         ]);
+    }
+
+    /**
+     * Handle PayMongo Webhooks for incoming payments.
+     */
+    public function handleWebhook(Request $request)
+    {
+        $signatureHeader = $request->header('paymongo-signature');
+        $secret = env('PAYMONGO_WEBHOOK_SECRET');
+
+        if ($secret && $signatureHeader) {
+            $parsedSignature = [];
+            foreach (explode(',', $signatureHeader) as $part) {
+                $p = explode('=', $part, 2);
+                if (count($p) === 2) {
+                    $parsedSignature[$p[0]] = $p[1];
+                }
+            }
+
+            if (!isset($parsedSignature['t'])) {
+                return response()->json(['error' => 'Invalid signature format'], 401);
+            }
+
+            $timestamp = $parsedSignature['t'];
+            $signedPayload = $timestamp . '.' . $request->getContent();
+            $expectedSignature = hash_hmac('sha256', $signedPayload, $secret);
+
+            $isValid = false;
+            if (isset($parsedSignature['te']) && hash_equals($expectedSignature, $parsedSignature['te'])) {
+                $isValid = true;
+            }
+            if (isset($parsedSignature['li']) && hash_equals($expectedSignature, $parsedSignature['li'])) {
+                $isValid = true;
+            }
+
+            if (!$isValid) {
+                return response()->json(['error' => 'Invalid webhook signature'], 401);
+            }
+        }
+
+        $payload = $request->all();
+
+        if (isset($payload['data']['attributes']['type'])) {
+            $eventType = $payload['data']['attributes']['type'];
+
+            if ($eventType === 'checkout_session.payment.paid') {
+                $sessionData = $payload['data']['attributes']['data']['attributes'] ?? [];
+                
+                // Usually PayMongo sends the checkout session ID in the event
+                // E.g. $sessionData['checkout_session_id']
+                // Let's find the invoice by payment_id which we stored as the session ID
+                $sessionId = $sessionData['checkout_session_id'] ?? null;
+
+                if (!$sessionId) {
+                    // Fallback to checking the payment object id if stored differently
+                    $paymentId = $payload['data']['attributes']['data']['id'] ?? null;
+                    $invoice = Invoice::where('payment_id', $paymentId)->first();
+                } else {
+                    $invoice = Invoice::where('payment_id', $sessionId)->first();
+                }
+
+                if ($invoice) {
+                    $amountPaidCentavos = $sessionData['amount'] ?? 0;
+                    $amountPaidPHP = $amountPaidCentavos / 100;
+
+                    // Decrement balance
+                    $newBalance = max(0, $invoice->balance - $amountPaidPHP);
+                    
+                    // Update status: If new balance is 0, status is paid. If > 0, partial.
+                    $newStatus = $newBalance <= 0 ? 'paid' : 'partial';
+
+                    $invoice->update([
+                        'balance' => $newBalance,
+                        'status' => $newStatus,
+                        'amount_received' => $invoice->amount_received + $amountPaidPHP,
+                    ]);
+
+                    // Send SystemAlert to admins/creator
+                    if ($invoice->creator) {
+                        $invoice->creator->notify(new SystemAlert(
+                            'Payment Received',
+                            "Invoice #{$invoice->invoice_number} received a payment of {$amountPaidPHP} PHP. New balance: {$newBalance} PHP.",
+                            'success',
+                            '/accounting/billing'
+                        ));
+                    }
+                }
+            }
+        }
+
+        return response()->json(['status' => 'received']);
     }
 }

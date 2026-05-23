@@ -37,18 +37,18 @@ function AccreditationBadge({ status }: { status: string }) {
 
 // ── Add Supplier Modal ───────────────────────────────────────────────────────
 
-interface AddSupplierModalProps { onClose: () => void; }
-function AddSupplierModal({ onClose }: AddSupplierModalProps) {
+interface SupplierModalProps { mode: 'create' | 'edit' | 'view'; initialData?: Supplier; onClose: () => void; }
+function SupplierModal({ mode, initialData, onClose }: SupplierModalProps) {
   const qc = useQueryClient();
   const [form, setForm] = useState<SupplierFormData>({
-    company_name: '', contact_person: '', phone: '', email: '',
-    address: '', payment_terms: '', is_consignment: false,
-    bank_name: '', bank_account_number: '', tin_number: '',
+    company_name: initialData?.company_name ?? '', contact_person: initialData?.contact_person ?? '', phone: initialData?.phone ?? '', email: initialData?.email ?? '',
+    address: initialData?.address ?? '', payment_terms: initialData?.payment_terms ?? '', is_consignment: initialData?.is_consignment ?? false,
+    bank_name: initialData?.bank_name ?? '', bank_account_number: initialData?.bank_account_number ?? '', tin_number: initialData?.tin_number ?? '',
   });
   const [addressVal, setAddressVal] = useState<AddressValue>(EMPTY_ADDRESS);
 
   const mutation = useMutation({
-    mutationFn: () => supplierApi.create(form),
+    mutationFn: () => mode === 'create' ? supplierApi.create(form) : supplierApi.update(initialData!.id, form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['suppliers'] }); onClose(); },
   });
 
@@ -91,7 +91,8 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+        disabled={mode === 'view'}
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
       />
     </div>
   );
@@ -101,8 +102,12 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
       <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">New Supplier</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">All suppliers undergo cross-verification before PO issuance.</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+              {mode === 'create' ? 'New Supplier' : mode === 'edit' ? 'Edit Supplier' : 'Supplier Details'}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {mode === 'create' ? 'All suppliers undergo cross-verification before PO issuance.' : 'View or update supplier information.'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
@@ -118,15 +123,26 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
             {/* Address — PSGC cascading */}
             <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-800">
               <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Address</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <AddressSelector
-                  value={addressVal}
-                  onChange={(val, full) => {
-                    setAddressVal(val);
-                    setForm(p => ({ ...p, address: full }));
-                  }}
-                />
-              </div>
+              {mode === 'view' ? (
+                 <div className="text-sm text-gray-800 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                    {form.address || 'No address provided'}
+                 </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <AddressSelector
+                    value={addressVal}
+                    onChange={(val, full) => {
+                      setAddressVal(val);
+                      setForm(p => ({ ...p, address: full }));
+                    }}
+                  />
+                  {form.address && (
+                     <div className="col-span-1 sm:col-span-2 text-xs text-gray-500 mt-2">
+                       Selected: {form.address}
+                     </div>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-800">
@@ -140,8 +156,9 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
                   <div className="relative">
                     <select
                       value={form.payment_terms}
+                      disabled={mode === 'view'}
                       onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white dark:bg-gray-900"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white dark:bg-gray-900"
                     >
                       <option value="">Select Terms...</option>
                       <option value="COD">COD (Cash on Delivery)</option>
@@ -157,29 +174,38 @@ function AddSupplierModal({ onClose }: AddSupplierModalProps) {
               </div>
               <div className="mt-6 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
                 <input type="checkbox" id="is_consignment" checked={form.is_consignment}
+                  disabled={mode === 'view'}
                   onChange={e => setForm(p => ({ ...p, is_consignment: e.target.checked }))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer" />
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-50" />
                 <label htmlFor="is_consignment" className="text-sm font-medium text-blue-900 cursor-pointer select-none">Consignment arrangement</label>
               </div>
             </div>
 
             {mutation.isError && (
               <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">
-                Failed to create supplier. Please check required fields.
+                {(mutation.error as any)?.response?.data?.message || `Failed to ${mode} supplier. Please check required fields.`}
               </p>
             )}
           </form>
         </div>
         
         <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
-          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
-            Cancel
-          </button>
-          <button form="supplier-form" type="submit" disabled={!form.company_name || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
-            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
-            Create Supplier
-          </button>
+          {mode === 'view' ? (
+            <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 transition shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
+              Close
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
+                Cancel
+              </button>
+              <button form="supplier-form" type="submit" disabled={!form.company_name || mutation.isPending}
+                className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
+                {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
+                {mode === 'create' ? 'Create Supplier' : 'Save Changes'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -250,7 +276,7 @@ function DeleteModal({ supplier, onClose, deleteMutation }: DeleteModalProps) {
 
 // ── Supplier Card ────────────────────────────────────────────────────────────
 
-function SupplierCard({ supplier }: { supplier: Supplier }) {
+function SupplierCard({ supplier, onEdit, onView }: { supplier: Supplier, onEdit: (s: Supplier) => void, onView: (s: Supplier) => void }) {
   const qc = useQueryClient();
   const [showBlacklist, setShowBlacklist] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -313,35 +339,46 @@ function SupplierCard({ supplier }: { supplier: Supplier }) {
           )}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           {!supplier.is_verified && supplier.accreditation_status !== 'blacklisted' && (
             <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}
-              className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
+              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
               {verifyMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin" /> : <LuShieldCheck size={12} />}
-              Verify & Accredit
+              Verify
             </button>
           )}
           {supplier.accreditation_status === 'accredited' && (
-            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
+            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold border border-emerald-200 dark:border-emerald-800">
               <LuShieldCheck size={12} /> Verified
             </div>
           )}
-          {supplier.accreditation_status !== 'blacklisted' && (
-            <button onClick={() => setShowBlacklist(true)}
-              className="p-2 rounded-xl border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition" title="Blacklist supplier">
-              <LuBan size={14} />
-            </button>
-          )}
           {supplier.accreditation_status === 'blacklisted' && (
-            <div className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold border border-red-200 dark:border-red-800">
+            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-xs font-bold border border-red-200 dark:border-red-800">
               <LuShieldX size={12} /> Blacklisted
             </div>
           )}
-          <button onClick={() => setShowDelete(true)}
-            disabled={deleteMutation.isPending}
-            className="p-2 rounded-xl border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60" title="Delete supplier">
-            {deleteMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuTrash size={14} />}
-          </button>
+          
+          <div className="flex gap-1.5 ml-auto">
+            <button onClick={() => onView(supplier)}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 transition text-xs font-semibold">
+              View
+            </button>
+            <button onClick={() => onEdit(supplier)}
+              className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/30 transition text-xs font-semibold">
+              Edit
+            </button>
+            {supplier.accreditation_status !== 'blacklisted' && (
+              <button onClick={() => setShowBlacklist(true)}
+                className="p-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition" title="Blacklist supplier">
+                <LuBan size={14} />
+              </button>
+            )}
+            <button onClick={() => setShowDelete(true)}
+              disabled={deleteMutation.isPending}
+              className="p-1.5 rounded-lg border border-red-100 text-red-400 hover:bg-red-50 hover:text-red-600 transition disabled:opacity-60" title="Delete supplier">
+              {deleteMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuTrash size={14} />}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -357,7 +394,7 @@ export default function Suppliers() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'accredited' | 'pending' | 'blacklisted'>('all');
-  const [showAdd, setShowAdd] = useState(false);
+  const [modalConfig, setModalConfig] = useState<{ mode: 'create' | 'edit' | 'view'; data?: Supplier } | null>(null);
   const [page, setPage] = useState(1);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
@@ -614,7 +651,7 @@ export default function Suppliers() {
                </button>
             </div>
             
-            <button onClick={() => setShowAdd(true)}
+            <button onClick={() => setModalConfig({ mode: 'create' })}
               className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
               <LuPlus size={16} /> Add Supplier
             </button>
@@ -670,11 +707,22 @@ export default function Suppliers() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {suppliers.map(s => <SupplierCard key={s.id} supplier={s} />)}
+          {suppliers.map(s => <SupplierCard 
+             key={s.id} 
+             supplier={s} 
+             onEdit={(sup) => setModalConfig({ mode: 'edit', data: sup })}
+             onView={(sup) => setModalConfig({ mode: 'view', data: sup })}
+          />)}
         </div>
       )}
 
-      {showAdd && <AddSupplierModal onClose={() => setShowAdd(false)} />}
+      {modalConfig && (
+        <SupplierModal 
+          mode={modalConfig.mode} 
+          initialData={modalConfig.data} 
+          onClose={() => setModalConfig(null)} 
+        />
+      )}
 
       {/* Bulk Upload Preview Modal */}
       <Modal 

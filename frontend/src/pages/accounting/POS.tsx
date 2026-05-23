@@ -58,6 +58,7 @@ export default function POS() {
   const [amountReceived, setAmountReceived] = useState<number | string>('');
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
+  const [paymentType, setPaymentType] = useState<'full' | 'downpayment'>('full');
 
   // Service Management State
   const [showAddService, setShowAddService] = useState(false);
@@ -180,7 +181,12 @@ export default function POS() {
       ? Number(selectedServiceForDetail.child_price)
       : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100)))
     : 0;
-  const change = amountReceived !== '' && !isNaN(Number(amountReceived)) ? Math.max(0, Number(amountReceived) - total) : 0;
+  const change = amountReceived !== '' && !isNaN(Number(amountReceived)) 
+    ? (paymentType === 'full' ? Math.max(0, Number(amountReceived) - total) : 0) 
+    : 0;
+  const balance = paymentType === 'downpayment' && amountReceived !== '' && !isNaN(Number(amountReceived))
+    ? Math.max(0, total - Number(amountReceived))
+    : 0;
 
   const isContactValid = useMemo(() => {
     if (!customerContact) return true;
@@ -220,6 +226,7 @@ export default function POS() {
         customer_email: customerEmail || undefined,
         customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
         payment_method: paymentMethod,
+        payment_type: paymentType,
         amount_received: paymentMethod === 'Cash' ? Number(amountReceived || 0) : undefined,
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
         items: cart.map(item => ({
@@ -247,6 +254,7 @@ export default function POS() {
       setCustomerContact('');
       setAmountReceived('');
       setPaymentMethod('Cash');
+      setPaymentType('full');
     } catch (err) {
       alert('Checkout failed. Please try again.');
       console.error(err);
@@ -635,26 +643,62 @@ export default function POS() {
                 <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
               </button>
             </div>
+            {paymentMethod === 'Cash' && (
+              <>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mt-4">Payment Type</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPaymentType('full')}
+                    className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest ${paymentType === 'full'
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                      }`}
+                  >
+                    Full Payment
+                  </button>
+                  <button
+                    onClick={() => setPaymentType('downpayment')}
+                    className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest ${paymentType === 'downpayment'
+                        ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20'
+                        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                      }`}
+                  >
+                    Downpayment
+                  </button>
+                </div>
+              </>
+            )}
           </div>
 
           {paymentMethod === 'Cash' && cart.length > 0 && (
             <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-2 duration-300">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Amount Received</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{paymentType === 'full' ? 'Amount Received' : 'Downpayment Amount'}</p>
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-black text-sm">₱</span>
                 <input
                   type="number"
                   placeholder="0.00"
-                  className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700 dark:text-gray-200"
+                  className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700"
                   value={amountReceived}
                   onChange={(e) => setAmountReceived(e.target.value)}
                 />
               </div>
               <div className="flex justify-between items-center px-1">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</span>
-                <div className={`text-lg font-black tracking-tighter ${Number(amountReceived) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
-                  ₱{change.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                </div>
+                {paymentType === 'full' ? (
+                  <>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</span>
+                    <div className={`text-lg font-black tracking-tighter ${Number(amountReceived) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
+                      ₱{change.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Remaining Balance</span>
+                    <div className={`text-lg font-black tracking-tighter ${balance > 0 ? 'text-amber-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      ₱{balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -677,7 +721,7 @@ export default function POS() {
           </div>
 
           <button
-            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && (Number(amountReceived) < total)) || !isContactValid || !isEmailValid}
+            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(amountReceived) < total)) || (paymentMethod === 'Cash' && paymentType === 'downpayment' && (Number(amountReceived) <= 0 || Number(amountReceived) >= total)) || !isContactValid || !isEmailValid}
             onClick={handleCheckout}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
           >
@@ -794,7 +838,7 @@ export default function POS() {
                   <div className="text-right">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>
                     <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{lastInvoice?.payment_method}</p>
-                    <p className="text-xs text-emerald-600 mt-1 font-bold uppercase">Status: {lastInvoice?.status}</p>
+                    <p className={`text-xs mt-1 font-bold uppercase ${lastInvoice?.status === 'partial' ? 'text-amber-500' : 'text-emerald-600'}`}>Status: {lastInvoice?.status}</p>
                   </div>
                 </div>
 
@@ -844,13 +888,20 @@ export default function POS() {
                     {lastInvoice?.payment_method === 'Cash' && (
                       <>
                         <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                          <span>Amount Received</span>
+                          <span>{lastInvoice?.payment_type === 'downpayment' ? 'Downpayment Paid' : 'Amount Received'}</span>
                           <span className="text-gray-900">₱{Number(receiptAmountReceived || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
-                        <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
-                          <span>Change</span>
-                          <span className="text-emerald-600 font-black">₱{receiptChange.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                        </div>
+                        {lastInvoice?.payment_type === 'downpayment' ? (
+                          <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            <span>Remaining Balance</span>
+                            <span className="text-amber-500 font-black">₱{Number(lastInvoice?.balance || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        ) : (
+                          <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">
+                            <span>Change</span>
+                            <span className="text-emerald-600 font-black">₱{receiptChange.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

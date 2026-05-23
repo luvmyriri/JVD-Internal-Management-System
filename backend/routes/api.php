@@ -177,6 +177,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::apiResource('passport-cases', PassportCaseController::class)->except(['destroy']);
         Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');
         Route::patch('/passport-cases/{passportCase}/checklist', [PassportCaseController::class, 'updateChecklist'])->name('passport-cases.checklist');
+        Route::get('/passport-cases/{passportCase}/audit-logs',  [PassportCaseController::class, 'auditLogs'])->name('passport-cases.audit-logs');
         // Legal Documents
         Route::get('/legal-documents',            [LegalDocumentController::class, 'index']);
         Route::post('/legal-documents',           [LegalDocumentController::class, 'store']);
@@ -218,6 +219,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // ACCOUNTING (dynamic permissions)
     // ──────────────────────────────────────
+    
+    // Webhook for PayMongo (no auth required)
+    Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum');
+
     Route::middleware('role:super_admin,accounting,agent,accounting:view')->group(function () {
         // POS / Billing / Reports
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
@@ -239,6 +244,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
         Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        
+        // HR Entities
+        Route::apiResource('job-applications', \App\Http\Controllers\JobApplicationController::class);
+        Route::apiResource('internships', \App\Http\Controllers\InternshipController::class);
     });
 
     // ──────────────────────────────────────

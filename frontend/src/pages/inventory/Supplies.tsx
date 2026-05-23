@@ -10,10 +10,11 @@ import type { InventoryItem, InventoryItemFormData } from '../../types/inventory
 // ── Add/Edit Item Modal ──────────────────────────────────────────────────────
 interface ItemModalProps {
   item?: InventoryItem;
+  mode?: 'create' | 'edit' | 'view';
   onClose: () => void;
 }
 
-function ItemModal({ item, onClose }: ItemModalProps) {
+function ItemModal({ item, mode = 'create', onClose }: ItemModalProps) {
   const qc = useQueryClient();
   const [form, setForm] = useState<Partial<InventoryItemFormData>>(
     item ? {
@@ -47,7 +48,8 @@ function ItemModal({ item, onClose }: ItemModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
+        className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow ${mode === 'view' ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : 'bg-white dark:bg-gray-900'}`}
+        disabled={mode === 'view'}
       />
     </div>
   );
@@ -57,8 +59,12 @@ function ItemModal({ item, onClose }: ItemModalProps) {
       <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{item ? 'Edit Supply Item' : 'Add Supply Item'}</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{item ? 'Update stock quantity and details.' : 'Register a new consumable or spare part.'}</p>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">
+              {mode === 'create' ? 'Add Supply Item' : mode === 'edit' ? 'Edit Supply Item' : 'View Supply Item'}
+            </h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              {mode === 'create' ? 'Register a new consumable or spare part.' : mode === 'edit' ? 'Update stock quantity and details.' : 'Review supply item details.'}
+            </p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
@@ -71,7 +77,8 @@ function ItemModal({ item, onClose }: ItemModalProps) {
               <div>
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category *</label>
                 <input type="text" list="categories" value={form.category ?? ''} onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900" placeholder="e.g. Fluids, Tyres, Filters" />
+                  disabled={mode === 'view'}
+                  className={`w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow ${mode === 'view' ? 'bg-gray-50 dark:bg-gray-800 cursor-not-allowed' : 'bg-white dark:bg-gray-900'}`} placeholder="e.g. Fluids, Tyres, Filters" />
                 <datalist id="categories">
                   <option value="Fluids & Lubricants" />
                   <option value="Spare Parts" />
@@ -90,22 +97,25 @@ function ItemModal({ item, onClose }: ItemModalProps) {
             </div>
 
             {mutation.isError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">
-                Failed to save item. Please check all required fields.
-              </p>
+              <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm border border-red-100 dark:border-red-900/30 flex items-start gap-3 mt-4">
+                <LuTriangleAlert size={18} className="shrink-0 mt-0.5" />
+                <p>{(mutation.error as any)?.response?.data?.message || 'Failed to save item. Please check all required fields.'}</p>
+              </div>
             )}
           </form>
         </div>
 
         <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
           <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
-            Cancel
+            {mode === 'view' ? 'Close' : 'Cancel'}
           </button>
-          <button form="item-form" type="submit" disabled={!form.item_name || !form.category || !form.unit || mutation.isPending}
-            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
-            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
-            {item ? 'Save Changes' : 'Add Item'}
-          </button>
+          {mode !== 'view' && (
+            <button form="item-form" type="submit" disabled={!form.item_name || !form.category || !form.unit || mutation.isPending}
+              className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition flex items-center gap-2 shadow-lg shadow-blue-200/50">
+              {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />}
+              {mode === 'edit' ? 'Save Changes' : 'Add Item'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -118,6 +128,7 @@ export default function Supplies() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [lowStockOnly, setLowStockOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
 
   const [page, setPage] = useState(1);
@@ -150,7 +161,7 @@ export default function Supplies() {
             Parts, Fluids & Consumables
           </p>
         </div>
-        <button onClick={() => { setEditingItem(undefined); setShowModal(true); }}
+        <button onClick={() => { setEditingItem(undefined); setModalMode('create'); setShowModal(true); }}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-600/20 dark:shadow-blue-900/30">
           <LuPlus size={16} /> Add Item
         </button>
@@ -238,10 +249,18 @@ export default function Supplies() {
                       <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Per {item.unit}</div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <button onClick={() => { setEditingItem(item); setShowModal(true); }}
-                        className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white dark:bg-gray-900 hover:shadow-lg hover:shadow-blue-200 rounded-2xl transition-all border border-transparent hover:border-blue-100">
-                        <LuSettings size={20} />
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <button onClick={() => { setEditingItem(item); setModalMode('view'); setShowModal(true); }}
+                          title="View Details"
+                          className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-blue-100 dark:hover:border-gray-700">
+                          <LuSearch size={18} />
+                        </button>
+                        <button onClick={() => { setEditingItem(item); setModalMode('edit'); setShowModal(true); }}
+                          title="Edit Item"
+                          className="p-3 text-gray-400 hover:text-amber-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-amber-100 dark:hover:border-gray-700">
+                          <LuSettings size={18} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -251,7 +270,7 @@ export default function Supplies() {
         </div>
       </div>
 
-      {showModal && <ItemModal item={editingItem} onClose={() => setShowModal(false)} />}
+      {showModal && <ItemModal item={editingItem} mode={modalMode} onClose={() => setShowModal(false)} />}
 
       {meta && meta.last_page > 1 && (
         <Pagination

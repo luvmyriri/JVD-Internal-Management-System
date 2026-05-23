@@ -5,6 +5,7 @@ import {
   LuTrendingDown,
   LuDollarSign,
   LuArrowUpRight,
+  LuActivity,
 } from 'react-icons/lu';
 import {
   AreaChart,
@@ -18,30 +19,68 @@ import {
   Bar,
   Cell,
 } from 'recharts';
-
-const stats = [
-  { label: 'Total Revenue', value: '₱4.2M', change: '+12.5%', positive: true, icon: <LuDollarSign />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-  { label: 'Outstanding', value: '₱850K', change: '+2.4%', positive: false, icon: <LuFileText />, color: 'text-amber-600', bg: 'bg-amber-50' },
-  { label: 'Net Profit', value: '₱1.8M', change: '+18.2%', positive: true, icon: <LuTrendingUp />, color: 'text-blue-600', bg: 'bg-blue-50' },
-  { label: 'Expenses', value: '₱2.4M', change: '-4.1%', positive: true, icon: <LuTrendingDown />, color: 'text-rose-600', bg: 'bg-rose-50' },
-];
-
-const revenueData = [
-  { name: 'Mon', revenue: 120000, expenses: 80000 },
-  { name: 'Tue', revenue: 150000, expenses: 95000 },
-  { name: 'Wed', revenue: 110000, expenses: 75000 },
-  { name: 'Thu', revenue: 190000, expenses: 110000 },
-  { name: 'Fri', revenue: 240000, expenses: 130000 },
-  { name: 'Sat', revenue: 180000, expenses: 90000 },
-  { name: 'Sun', revenue: 140000, expenses: 85000 },
-];
+import { billingApi } from '../../api/billing';
 
 export default function AccountingOverview() {
   const [isMounted, setIsMounted] = useState(false);
+  const [kpis, setKpis] = useState({
+    revenue: 0,
+    transactions: 0,
+    avg_ticket: 0,
+    profit_margin: 0
+  });
+  const [trendData, setTrendData] = useState<any[]>([]);
+  const [categoryData, setCategoryData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
+    fetchData();
   }, []);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const res = await billingApi.getReportsSummary('month');
+      const data = res.data.data;
+      
+      setKpis(data.kpis);
+      
+      const mappedTrend = data.trend.map((t: any) => ({
+        name: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        revenue: parseFloat(t.total),
+      }));
+      setTrendData(mappedTrend);
+
+      const mappedCategories = data.categories.map((c: any) => ({
+        name: c.category || 'Uncategorized',
+        value: parseFloat(c.total),
+      }));
+      setCategoryData(mappedCategories);
+      
+    } catch (error) {
+      console.error("Failed to fetch overview data", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatCurrency = (val: number) => {
+    if (val >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
+    if (val >= 1000) return `₱${(val / 1000).toFixed(1)}K`;
+    return `₱${val.toLocaleString()}`;
+  };
+
+  const stats = [
+    { label: 'Total Revenue', value: formatCurrency(kpis.revenue), change: '+12.5%', positive: true, icon: <LuDollarSign />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    { label: 'Transactions', value: kpis.transactions.toString(), change: '+8.4%', positive: true, icon: <LuActivity />, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Avg Ticket Size', value: formatCurrency(kpis.avg_ticket), change: '+2.4%', positive: true, icon: <LuTrendingUp />, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'Net Profit (Est)', value: formatCurrency(kpis.revenue * kpis.profit_margin), change: '+18.2%', positive: true, icon: <LuFileText />, color: 'text-purple-600', bg: 'bg-purple-50' },
+  ];
+
+  if (isLoading) {
+    return <div className="p-8 text-center text-gray-500">Loading overview data...</div>;
+  }
 
   return (
     <div className="space-y-10 pb-12">
@@ -67,26 +106,22 @@ export default function AccountingOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Revenue vs Expenses Chart */}
+        {/* Revenue Trend Chart */}
         <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-10">
             <div>
               <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Financial Pulse</h2>
-              <p className="text-[11px] text-gray-400 font-medium">Daily revenue vs operational expenses</p>
+              <p className="text-[11px] text-gray-400 font-medium">Daily revenue trend for the month</p>
             </div>
           </div>
           <div className="h-[300px] w-full">
             {isMounted && (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <AreaChart data={revenueData}>
+                <AreaChart data={trendData}>
                   <defs>
                     <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
                       <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1}/>
-                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -97,7 +132,6 @@ export default function AccountingOverview() {
                     labelStyle={{ fontWeight: 800, color: '#111827' }}
                   />
                   <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
-                  <Area type="monotone" dataKey="expenses" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -108,25 +142,20 @@ export default function AccountingOverview() {
         <div className="bg-white p-10 rounded-[2.5rem] border border-gray-100 shadow-sm">
           <div className="flex items-center justify-between mb-10">
             <div>
-              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Invoice Status</h2>
-              <p className="text-[11px] text-gray-400 font-medium">Distribution of billing by department</p>
+              <h2 className="text-lg font-black text-gray-900 uppercase tracking-tight">Revenue by Category</h2>
+              <p className="text-[11px] text-gray-400 font-medium">Distribution of billing by service category</p>
             </div>
           </div>
           <div className="h-[300px] w-full">
             {isMounted && (
               <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-                <BarChart data={[
-                  { name: 'Travel', value: 400 },
-                  { name: 'Procure', value: 300 },
-                  { name: 'Inventory', value: 200 },
-                  { name: 'HR', value: 100 },
-                ]}>
+                <BarChart data={categoryData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={(val) => `₱${val/1000}k`} />
                   <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }} />
                   <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                    {[0, 1, 2, 3].map((_, index) => (
+                    {categoryData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][index % 4]} />
                     ))}
                   </Bar>

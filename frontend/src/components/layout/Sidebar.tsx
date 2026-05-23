@@ -87,6 +87,8 @@ const navigation: NavSection[] = [
     title: 'HR',
     items: [
       { label: 'Employees', path: '/hr/employees', icon: <LuCircleUser />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
+      { label: 'Applications', path: '/hr/applications', icon: <LuFileCheck />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
+      { label: 'Internships', path: '/hr/internships', icon: <LuGlobe />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
     ],
   },
   {

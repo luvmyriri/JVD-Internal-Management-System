@@ -31,6 +31,8 @@ import Customers from './pages/travel/Customers';
 import CustomerProfile from './pages/travel/CustomerProfile';
 import Documents from './pages/travel/Documents';
 import Employees from './pages/hr/Employees';
+import Applications from './pages/hr/Applications';
+import Internships from './pages/hr/Internships';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
@@ -116,6 +118,8 @@ export default function App() {
 
                 {/* HR */}
                 <Route path="/hr/employees" element={<Employees />} />
+                <Route path="/hr/applications" element={<Applications />} />
+                <Route path="/hr/internships" element={<Internships />} />
 
                 {/* Admin */}
                 <Route path="/admin/users" element={<Users />} />

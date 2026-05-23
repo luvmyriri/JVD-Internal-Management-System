@@ -24,14 +24,7 @@ export default function FloatingCrossChecker() {
         return;
       }
 
-      // Boss-mandated cross-check limit: Only allow inside tables or data displays to keep it focused
-      const anchorParent = selection.anchorNode?.parentElement;
-      const isInsideTable = anchorParent?.closest('table') || anchorParent?.closest('.table-row') || anchorParent?.closest('.data-grid');
-
-      if (!isInsideTable) {
-        setIsVisible(false);
-        return;
-      }
+      // Removed table-only restriction to allow it to work across the entire system
 
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();

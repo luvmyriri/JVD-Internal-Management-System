@@ -15,8 +15,11 @@ export const jobOrderApi = {
     client.put<{ success: boolean; data: JobOrder }>(`/job-orders/${id}`, data),
 
   confirm: (id: number) =>
-    client.post(`/job-orders/${id}/confirm`),
+    client.put(`/job-orders/${id}`, { status: 'confirmed' }),
+
+  start: (id: number) =>
+    client.put(`/job-orders/${id}`, { status: 'in_progress' }),
 
   complete: (id: number) =>
-    client.post(`/job-orders/${id}/complete`),
+    client.put(`/job-orders/${id}`, { status: 'completed' }),
 };

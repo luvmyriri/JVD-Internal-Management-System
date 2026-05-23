@@ -49,6 +49,8 @@ class CustomerController extends Controller
     public function store(StoreCustomerRequest $request): JsonResponse
     {
         $customer = Customer::create($request->validated());
+        
+        \App\Http\Services\AuditLogService::log('create', 'Travel', 'Customer', $customer->id, null, $customer->toArray());
 
         return response()->json([
             'success' => true,
@@ -84,7 +86,10 @@ class CustomerController extends Controller
             'phone.regex' => 'The phone number must be a valid Philippine mobile number (e.g. 09171234567 or +639171234567).',
         ]);
 
+        $old = $customer->toArray();
         $customer->update($validated);
+        
+        \App\Http\Services\AuditLogService::log('update', 'Travel', 'Customer', $customer->id, $old, $customer->fresh()->toArray());
 
         return response()->json([
             'success' => true,

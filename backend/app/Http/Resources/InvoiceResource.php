@@ -28,6 +28,8 @@ class InvoiceResource extends JsonResource
             'payment_method' => $this->payment_method,
             'payment_id' => $this->payment_id,
             'payment_url' => $this->payment_url,
+            'payment_type' => $this->payment_type,
+            'balance' => $this->balance !== null ? (float) $this->balance : null,
             'status' => $this->status,
             'notes' => $this->notes,
             'customer' => new CustomerResource($this->whenLoaded('customer')),

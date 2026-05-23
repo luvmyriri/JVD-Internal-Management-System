@@ -26,6 +26,8 @@ class Invoice extends Model
         'payment_method',
         'payment_url',
         'payment_id',
+        'payment_type',
+        'balance',
         'status',
         'created_by',
         'notes',

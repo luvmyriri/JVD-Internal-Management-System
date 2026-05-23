@@ -8,6 +8,7 @@ use App\Http\Requests\ReviewPurchaseOrderRequest;
 use App\Http\Resources\PurchaseOrderResource;
 use App\Http\Services\PurchaseOrderService;
 use App\Models\PurchaseOrder;
+use App\Models\InventoryItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use App\Http\Services\AuditLogService;
@@ -136,6 +137,26 @@ class PurchaseOrderController extends Controller
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
 
+
+        if ($request->approved) {
+            foreach ($purchaseOrder->lineItems as $item) {
+                $inventory = InventoryItem::firstOrCreate(
+                    ['item_name' => $item->item_name],
+                    [
+                        'category' => 'General',
+                        'quantity' => 0,
+                        'reorder_level' => 10,
+                        'unit' => $item->unit_of_measure ?? 'pcs',
+                        'unit_cost' => $item->unit_price,
+                    ]
+                );
+                
+                $inventory->quantity += $item->quantity;
+                $inventory->unit_cost = $item->unit_price;
+                $inventory->save();
+            }
+        }
+
         \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(
@@ -181,6 +202,26 @@ class PurchaseOrderController extends Controller
             'approved_at'     => $request->approved ? now() : null,
             'rejection_notes' => $request->approved ? null : $request->notes,
         ]);
+
+
+        if ($request->approved) {
+            foreach ($purchaseOrder->lineItems as $item) {
+                $inventory = InventoryItem::firstOrCreate(
+                    ['item_name' => $item->item_name],
+                    [
+                        'category' => 'General',
+                        'quantity' => 0,
+                        'reorder_level' => 10,
+                        'unit' => $item->unit_of_measure ?? 'pcs',
+                        'unit_cost' => $item->unit_price,
+                    ]
+                );
+                
+                $inventory->quantity += $item->quantity;
+                $inventory->unit_cost = $item->unit_price;
+                $inventory->save();
+            }
+        }
 
         \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 

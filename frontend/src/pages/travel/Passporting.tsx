@@ -8,6 +8,7 @@ import {
 import { passportingApi } from '../../api/passporting';
 import { customerApi } from '../../api/customers';
 import { Pagination, Modal, Button } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PassportCase {
@@ -132,6 +133,14 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
 // ── Case Detail Modal ──────────────────────────────────────────────────────────
 function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClose: () => void }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  
+  const isHandler = user?.id === caseData.handler?.id;
+  const isAdmin = user?.role ? ['admin', 'super_admin'].includes(user.role) : false;
+  const readOnly = !isHandler && !isAdmin;
+
+  const [activeTab, setActiveTab] = useState<'details'|'history'>('details');
+
   const [localChecklist, setLocalChecklist] = useState<Record<string, boolean>>(
     caseData.checklist ?? {}
   );
@@ -157,6 +166,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   });
 
   const toggleItem = (item: string) => {
+    if (readOnly) return;
     const updated = { ...localChecklist, [item]: !localChecklist[item] };
     setLocalChecklist(updated);
     checklistMutation.mutate(updated);
@@ -164,104 +174,163 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
 
   const completedCount = checklistItems.filter(i => localChecklist[i]).length;
 
+  const { data: auditLogsRes, isLoading: logsLoading } = useQuery({
+    queryKey: ['passport_case_audit', caseData.id],
+    queryFn: () => passportingApi.getAuditLogs(caseData.id),
+    enabled: activeTab === 'history'
+  });
+  const logs = auditLogsRes?.data?.data ?? [];
+
   return (
     <Modal isOpen onClose={onClose} title={`Case #${caseData.id} — ${caseData.case_type === 'passport' ? 'Passport' : 'Visa'}`} size="lg">
-      <div className="p-6 space-y-6">
-        {/* Info row */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {caseData.customer?.full_name || (caseData.customer?.first_name ? `${caseData.customer.first_name} ${caseData.customer.last_name}` : '—')}
-            </p>
-          </div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[caseData.status]}`}>
-              {STATUS_LABELS[caseData.status] ?? caseData.status}
-            </span>
-          </div>
-          {caseData.reference_number && (
+      <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+        >
+          Details
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+        >
+          History
+        </button>
+      </div>
+
+      {activeTab === 'details' ? (
+        <div className="p-6 space-y-6">
+          {/* Info row */}
+          <div className="grid grid-cols-2 gap-4">
             <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
-              <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{caseData.reference_number}</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                {caseData.customer?.full_name || (caseData.customer?.first_name ? `${caseData.customer.first_name} ${caseData.customer.last_name}` : '—')}
+              </p>
             </div>
-          )}
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
-            </p>
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[caseData.status]}`}>
+                {STATUS_LABELS[caseData.status] ?? caseData.status}
+              </span>
+            </div>
+            {caseData.reference_number && (
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
+                <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{caseData.reference_number}</p>
+              </div>
+            )}
+            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">
+                {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
+              </p>
+            </div>
           </div>
-        </div>
 
-        {/* Progress */}
-        <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
-          <div className="flex items-center gap-1">
-            {STATUS_FLOW.map((s, i) => {
-              const idx = STATUS_FLOW.indexOf(caseData.status);
-              const done = i < idx;
-              const active = i === idx;
-              return (
-                <div key={s} className="flex items-center flex-1 gap-1">
-                  <div className={`h-2 flex-1 rounded-full transition-all ${done || active ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
-                  {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
-                </div>
-              );
-            })}
+          {/* Progress */}
+          <div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
+            <div className="flex items-center gap-1">
+              {STATUS_FLOW.map((s, i) => {
+                const idx = STATUS_FLOW.indexOf(caseData.status);
+                const done = i < idx;
+                const active = i === idx;
+                return (
+                  <div key={s} className="flex items-center flex-1 gap-1">
+                    <div className={`h-2 flex-1 rounded-full transition-all ${done || active ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
+                    {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
+                  </div>
+                );
+              })}
+            </div>
+            <div className="flex justify-between mt-1">
+              <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[0]]}</span>
+              <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[STATUS_FLOW.length - 1]]}</span>
+            </div>
           </div>
-          <div className="flex justify-between mt-1">
-            <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[0]]}</span>
-            <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[STATUS_FLOW.length - 1]]}</span>
-          </div>
-        </div>
 
-        {/* Checklist */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
-            <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
-          </div>
-          <div className="space-y-2">
-            {checklistItems.map(item => (
-              <button
-                key={item}
-                onClick={() => toggleItem(item)}
-                className="w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition text-left"
-              >
-                {localChecklist[item]
-                  ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
-                  : <LuCircle size={18} className="text-gray-300 shrink-0" />
-                }
-                <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                  {item}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Status transitions */}
-        {allowedNext.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Advance Status</p>
-            <div className="flex flex-wrap gap-2">
-              {allowedNext.map(next => (
-                <Button
-                  key={next}
-                  onClick={() => statusMutation.mutate(next)}
-                  isLoading={statusMutation.isPending}
-                  size="sm"
-                  className="capitalize"
+          {/* Checklist */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
+              <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
+            </div>
+            <div className="space-y-2">
+              {checklistItems.map(item => (
+                <button
+                  key={item}
+                  onClick={() => toggleItem(item)}
+                  disabled={readOnly}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
-                  → {STATUS_LABELS[next] ?? next}
-                </Button>
+                  {localChecklist[item]
+                    ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
+                    : <LuCircle size={18} className="text-gray-300 shrink-0" />
+                  }
+                  <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                    {item}
+                  </span>
+                </button>
               ))}
             </div>
           </div>
-        )}
-      </div>
+
+          {/* Status transitions */}
+          {!readOnly && allowedNext.length > 0 && (
+            <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Advance Status</p>
+              <div className="flex flex-wrap gap-2">
+                {allowedNext.map(next => (
+                  <Button
+                    key={next}
+                    onClick={() => statusMutation.mutate(next)}
+                    isLoading={statusMutation.isPending}
+                    size="sm"
+                    className="capitalize"
+                  >
+                    → {STATUS_LABELS[next] ?? next}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="p-6">
+          {logsLoading ? (
+            <div className="text-sm text-gray-500 py-4 text-center">Loading history...</div>
+          ) : logs.length === 0 ? (
+            <div className="text-sm text-gray-500 py-4 text-center">No history available.</div>
+          ) : (
+            <div className="space-y-4">
+              {logs.map((log: any) => (
+                <div key={log.id} className="border-l-2 border-gray-200 dark:border-gray-700 pl-4 py-1">
+                  <div className="flex justify-between items-start mb-1">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">
+                      {log.action.replace('_', ' ')}
+                    </p>
+                    <span className="text-xs text-gray-500">
+                      {new Date(log.created_at).toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    By: {log.user?.first_name} {log.user?.last_name}
+                  </p>
+                  {log.old_values && log.new_values && log.action === 'update_status' && (
+                    <div className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                      <span className="text-gray-500">Status changed from </span>
+                      <span className="font-bold">{log.old_values.status}</span>
+                      <span className="text-gray-500"> to </span>
+                      <span className="font-bold">{log.new_values.status}</span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </Modal>
   );
 }
@@ -332,48 +401,48 @@ export default function Passporting() {
           <p className="text-sm text-gray-500 max-w-sm">Open a new passport or visa case to get started.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 overflow-hidden shadow-sm">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-800/50 text-[10px] uppercase font-black text-gray-400 tracking-wider">
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-tl-3xl">Case ID</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Customer</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Type</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Status</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Checklist</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800">Submitted Date</th>
-                  <th className="px-6 py-4 border-b border-gray-100 dark:border-gray-800 rounded-tr-3xl text-right">Actions</th>
+                <tr className="bg-gray-50/50 dark:bg-gray-800/60 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
+                  <th className="px-8 py-5">Case ID</th>
+                  <th className="px-8 py-5">Customer</th>
+                  <th className="px-8 py-5">Type</th>
+                  <th className="px-8 py-5">Status</th>
+                  <th className="px-8 py-5">Checklist</th>
+                  <th className="px-8 py-5">Submitted Date</th>
+                  <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
                 {cases.map((c) => {
                   const checklistItems = c.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
                   const done = checklistItems.filter(i => c.checklist?.[i]).length;
                   const pct = Math.round((done / checklistItems.length) * 100);
 
                   return (
-                    <tr key={c.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50 transition cursor-pointer group" onClick={() => setSelected(c)}>
-                      <td className="px-6 py-4">
+                    <tr key={c.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-900/10 transition-all group cursor-pointer" onClick={() => setSelected(c)}>
+                      <td className="px-8 py-5">
                         <span className="text-sm font-mono font-bold text-gray-900 dark:text-white">#{c.id}</span>
                         {c.reference_number && <div className="text-[10px] text-gray-400 uppercase mt-0.5">{c.reference_number}</div>}
                       </td>
-                      <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">
+                      <td className="px-8 py-5 text-sm font-bold text-gray-900 dark:text-white">
                         {c.customer?.full_name || (c.customer?.first_name ? `${c.customer.first_name} ${c.customer.last_name}` : '—')}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-5">
                         <span className={`inline-flex px-2 py-0.5 rounded-lg text-[9px] font-black uppercase border ${
                           c.case_type === 'passport' ? 'bg-blue-50 text-blue-600 border-blue-200' : 'bg-violet-50 text-violet-600 border-violet-200'
                         }`}>
                           {c.case_type}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-5">
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[c.status] ?? STATUS_COLORS['released']}`}>
                           {STATUS_LABELS[c.status] ?? c.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-8 py-5">
                         <div className="flex items-center gap-3">
                           <span className="text-xs font-bold text-gray-500 w-8">{done}/{checklistItems.length}</span>
                           <div className="w-24 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden flex">
@@ -381,10 +450,10 @@ export default function Passporting() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-xs font-medium text-gray-500">
+                      <td className="px-8 py-5 text-xs font-medium text-gray-500">
                         {c.submitted_date ? new Date(c.submitted_date).toLocaleDateString() : '—'}
                       </td>
-                      <td className="px-6 py-4 text-right">
+                      <td className="px-8 py-5 text-right">
                         <button
                           onClick={(e) => { e.stopPropagation(); setSelected(c); }}
                           className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"

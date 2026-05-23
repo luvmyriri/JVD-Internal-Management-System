@@ -171,7 +171,9 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
             </div>
 
             {mutation.isError && (
-              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">Failed to create PO. Please check all required fields.</p>
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+                {(mutation.error as any)?.response?.data?.message || 'Failed to create PO. Please check all required fields.'}
+              </p>
             )}
           </form>
         </div>
@@ -372,9 +374,9 @@ export default function PurchaseOrders() {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
       alert('Purchase order submitted for review successfully!');
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error(err);
-      alert('Failed to submit purchase order.');
+      alert(err?.response?.data?.message || 'Failed to submit purchase order.');
     }
   });
 
@@ -384,9 +386,9 @@ export default function PurchaseOrders() {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
       alert('Purchase order approved successfully!');
     },
-    onError: (err) => {
+    onError: (err: any) => {
       console.error(err);
-      alert('Failed to approve purchase order.');
+      alert(err?.response?.data?.message || 'Failed to approve purchase order.');
     }
   });
 

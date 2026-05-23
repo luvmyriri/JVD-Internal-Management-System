@@ -18,4 +18,7 @@ export const passportingApi = {
 
   updateChecklist: (id: number, checklist: Record<string, boolean>) =>
     client.patch(`/passport-cases/${id}/checklist`, { checklist }),
+    
+  getAuditLogs: (id: number) =>
+    client.get(`/passport-cases/${id}/audit-logs`),
 };

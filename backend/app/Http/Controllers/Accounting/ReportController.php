@@ -35,7 +35,7 @@ class ReportController extends Controller
         }
 
         // KPIs (Independent query builder instance to avoid query reuse pollution)
-        $kpiQuery = Invoice::where('status', 'paid');
+        $kpiQuery = Invoice::whereIn('status', ['paid', 'partial']);
         if ($startDate) {
             $kpiQuery->where('created_at', '>=', $startDate);
         }
@@ -48,7 +48,7 @@ class ReportController extends Controller
                 DB::raw("{$trendFormat} as date"),
                 DB::raw('SUM(total_amount) as total')
             )
-            ->where('status', 'paid');
+            ->whereIn('status', ['paid', 'partial']);
 
         if ($startDate) {
             $trendQuery->where('created_at', '>=', $startDate);
@@ -58,7 +58,7 @@ class ReportController extends Controller
             $trendQuery = Invoice::select(
                 DB::raw("{$trendFormat} as date"),
                 DB::raw('SUM(total_amount) as total')
-            )->where('status', 'paid');
+            )->whereIn('status', ['paid', 'partial']);
         }
 
         $trend = $trendQuery->groupBy('date')
@@ -69,7 +69,7 @@ class ReportController extends Controller
         $categoryQuery = DB::table('invoice_items')
             ->join('services', 'invoice_items.service_id', '=', 'services.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-            ->where('invoices.status', 'paid');
+            ->whereIn('invoices.status', ['paid', 'partial']);
 
         if ($startDate) {
             $categoryQuery->where('invoices.created_at', '>=', $startDate);
@@ -113,7 +113,7 @@ class ReportController extends Controller
             $startDate = $now->copy()->startOfYear();
         }
 
-        $query = Invoice::with(['customer', 'items.service'])->where('status', 'paid');
+        $query = Invoice::with(['customer', 'items.service', 'creator'])->whereIn('status', ['paid', 'partial']);
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
         }

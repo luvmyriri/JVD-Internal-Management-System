@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuLoaderCircle, LuUser,
-  LuFileDown, LuFileUp
+  LuFileDown, LuFileUp, LuEye
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -26,9 +26,10 @@ interface BusModalProps {
   bus?: Bus;
   isOpen: boolean;
   onClose: () => void;
+  mode: 'create' | 'edit' | 'view';
 }
 
-function BusModal({ bus, isOpen, onClose }: BusModalProps) {
+function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
   const qc = useQueryClient();
   const [form, setForm] = useState<Partial<BusFormData>>(
     bus ? {
@@ -67,7 +68,12 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
           else setForm(p => ({ ...p, [key]: e.target.value }));
         }}
         placeholder={placeholder}
-        className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white dark:bg-gray-800"
+        disabled={mode === 'view'}
+        className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
+          mode === 'view' 
+            ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+            : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-800'
+        }`}
       />
     </div>
   );
@@ -88,13 +94,23 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
               <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all bg-white dark:bg-gray-800" />
+                disabled={mode === 'view'}
+                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
+                  mode === 'view' 
+                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-800'
+                }`} />
             </div>
             
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Status</label>
               <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white dark:bg-gray-900">
+                disabled={mode === 'view'}
+                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
+                  mode === 'view' 
+                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
+                }`}>
                 <option value="available">Available</option>
                 <option value="in_service">In Service</option>
                 <option value="under_maintenance">Under Maintenance</option>
@@ -107,7 +123,12 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
             <div className="space-y-2">
               <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>
               <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all appearance-none bg-white dark:bg-gray-900">
+                disabled={mode === 'view'}
+                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
+                  mode === 'view' 
+                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
+                }`}>
                 <option value="">-- No Driver Assigned --</option>
                 {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
               </select>
@@ -128,18 +149,26 @@ function BusModal({ bus, isOpen, onClose }: BusModalProps) {
         </form>
 
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose} className="px-8">
-            Cancel
-          </Button>
-          <Button 
-            form="bus-form" 
-            type="submit" 
-            isLoading={mutation.isPending}
-            disabled={!form.plate_number || !form.model}
-            className="px-8"
-          >
-            {bus ? 'Commit Updates' : 'Register Vehicle'}
-          </Button>
+          {mode === 'view' ? (
+            <Button onClick={onClose} className="px-8">
+              Close
+            </Button>
+          ) : (
+            <>
+              <Button variant="secondary" onClick={onClose} className="px-8">
+                Cancel
+              </Button>
+              <Button 
+                form="bus-form" 
+                type="submit" 
+                isLoading={mutation.isPending}
+                disabled={!form.plate_number || !form.model}
+                className="px-8"
+              >
+                {mode === 'edit' ? 'Commit Updates' : 'Register Vehicle'}
+              </Button>
+            </>
+          )}
         </div>
       </div>
     </Modal>
@@ -151,6 +180,7 @@ export default function Fleet() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [modalMode, setModalMode] = useState<'create'|'edit'|'view'>('create');
   const [editingBus, setEditingBus] = useState<Bus | undefined>();
   const [page, setPage] = useState(1);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
@@ -346,11 +376,19 @@ export default function Fleet() {
 
   const handleEdit = (bus: Bus) => {
     setEditingBus(bus);
+    setModalMode('edit');
+    setShowModal(true);
+  };
+
+  const handleView = (bus: Bus) => {
+    setEditingBus(bus);
+    setModalMode('view');
     setShowModal(true);
   };
 
   const handleAdd = () => {
     setEditingBus(undefined);
+    setModalMode('create');
     setShowModal(true);
   };
 
@@ -478,14 +516,26 @@ export default function Fleet() {
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
                     </td>
                     <td className="px-8 py-6 text-center">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleEdit(bus)}
-                        className="p-3"
-                      >
-                        <LuSettings size={20} />
-                      </Button>
+                      <div className="flex items-center justify-center gap-2">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleView(bus)}
+                          className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                          title="View Details"
+                        >
+                          <LuEye size={18} />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleEdit(bus)}
+                          className="p-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                          title="Edit Fleet"
+                        >
+                          <LuSettings size={18} />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -497,6 +547,7 @@ export default function Fleet() {
 
       <BusModal 
         bus={editingBus} 
+        mode={modalMode}
         isOpen={showModal} 
         onClose={() => setShowModal(false)} 
       />

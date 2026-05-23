@@ -46,6 +46,14 @@ class AuditLogController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
+        
+        if ($request->filled('target_model')) {
+            $query->where('target_model', $request->target_model);
+        }
+        
+        if ($request->filled('target_id')) {
+            $query->where('target_id', $request->target_id);
+        }
 
         $logs = $query->orderByDesc('created_at')
                       ->paginate($request->per_page ?? 50);
