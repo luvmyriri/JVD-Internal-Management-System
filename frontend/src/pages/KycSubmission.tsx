@@ -16,6 +16,14 @@ import {
   LuEye
 } from 'react-icons/lu';
 
+const getApiUrl = (): string => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.startsWith('http')) {
+    return envUrl;
+  }
+  return window.location.origin;
+};
+
 const formatDocUrl = (url: string | undefined | null): string => {
   if (!url) return '';
   let normalizedUrl = url;
@@ -25,7 +33,7 @@ const formatDocUrl = (url: string | undefined | null): string => {
   if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
     return normalizedUrl;
   }
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const baseUrl = getApiUrl();
   const slash = normalizedUrl.startsWith('/') ? '' : '/';
   return `${baseUrl}${slash}${normalizedUrl}`;
 };
@@ -86,7 +94,7 @@ export default function KycSubmission() {
       }
 
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+        const apiUrl = getApiUrl();
         const response = await axios.get(`${apiUrl}/api/accreditations/${ref}/verify-token`, {
           params: { token }
         });
@@ -137,7 +145,7 @@ export default function KycSubmission() {
     formData.append('token', token);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = getApiUrl();
       const response = await axios.post(
         `${apiUrl}/api/accreditations/${ref}/submit-kyc/upload/${type}?token=${token}`, 
         formData,
@@ -220,7 +228,7 @@ export default function KycSubmission() {
     setErrorMsg('');
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+      const apiUrl = getApiUrl();
       await axios.post(`${apiUrl}/api/accreditations/${ref}/submit-kyc`, {
         token: token,
         nda_document_url: ndaUrl,

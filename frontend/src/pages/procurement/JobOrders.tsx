@@ -101,7 +101,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
         <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">New Job Order</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Issued by Ma'am Minda · No PO needed unless parts are required.</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1"> No PO needed unless parts are required.</p>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
@@ -427,9 +427,7 @@ export default function JobOrders() {
           <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
             {meta?.total ?? '0'} Orders
           </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
-            Issued by Ma'am Minda
-          </p>
+          
         </div>
         <button onClick={() => setShowCreate(true)}
           className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 dark:shadow-blue-900/20">
@@ -471,7 +469,7 @@ export default function JobOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden ${jos.length > 0 ? 'min-h-[350px]' : ''}`}>
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : jos.length === 0 ? (

@@ -33,7 +33,10 @@ const formatDocUrl = (url: string | undefined | null): string => {
   if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
     return normalizedUrl;
   }
-  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+  const apiBase = import.meta.env.VITE_API_URL;
+  const baseUrl = apiBase && apiBase.startsWith('http')
+    ? apiBase
+    : window.location.origin;
   const slash = normalizedUrl.startsWith('/') ? '' : '/';
   return `${baseUrl}${slash}${normalizedUrl}`;
 };

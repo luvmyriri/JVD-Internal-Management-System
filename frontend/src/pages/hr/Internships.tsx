@@ -74,7 +74,9 @@ export default function Internships() {
     currentPage * itemsPerPage
   );
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<Internship>>();
+  const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<Internship>>({
+    mode: 'onChange'
+  });
 
   const openModal = (internship?: Internship) => {
     if (internship) {
@@ -231,7 +233,16 @@ export default function Internships() {
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">First Name</label>
               <input
-                {...register('first_name', { required: 'First name is required' })}
+                {...register('first_name', { 
+                  required: 'First name is required',
+                  pattern: {
+                    value: /^[A-Za-z\s'-]+$/,
+                    message: 'First name cannot contain numbers'
+                  }
+                })}
+                onInput={(e) => {
+                  e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
+                }}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
               {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
@@ -239,9 +250,19 @@ export default function Internships() {
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
               <input
-                {...register('last_name', { required: 'Last name is required' })}
+                {...register('last_name', { 
+                  required: 'Last name is required',
+                  pattern: {
+                    value: /^[A-Za-z\s'-]+$/,
+                    message: 'Last name cannot contain numbers'
+                  }
+                })}
+                onInput={(e) => {
+                  e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
+                }}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
             </div>
           </div>
           
@@ -250,16 +271,34 @@ export default function Internships() {
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
               <input
                 type="email"
-                {...register('email', { required: 'Email is required' })}
+                {...register('email', { 
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address'
+                  }
+                })}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Phone</label>
               <input
-                {...register('phone')}
+                type="text"
+                maxLength={11}
+                {...register('phone', {
+                  pattern: {
+                    value: /^09\d{9}$/,
+                    message: 'Must be a valid 11-digit PH number starting with 09 (e.g. 09123456789)'
+                  }
+                })}
+                onInput={(e) => {
+                  e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                }}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
             </div>
           </div>
 
@@ -270,6 +309,7 @@ export default function Internships() {
                 {...register('school', { required: 'School is required' })}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.school && <p className="text-red-500 text-xs mt-1">{errors.school.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Course/Program</label>
@@ -277,6 +317,7 @@ export default function Internships() {
                 {...register('course', { required: 'Course is required' })}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course.message}</p>}
             </div>
           </div>
 
@@ -288,6 +329,7 @@ export default function Internships() {
                 {...register('hours_required', { required: 'Hours required is required', valueAsNumber: true })}
                 className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
               />
+              {errors.hours_required && <p className="text-red-500 text-xs mt-1">{errors.hours_required.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Status</label>

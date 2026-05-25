@@ -69,6 +69,9 @@ export function getAvatarUrl(path: string | null | undefined): string | null {
   // Storage paths — return relative so Vite proxy forwards to backend
   if (path.startsWith('/storage')) return path;
   // Other relative paths — prepend backend base URL
-  const baseUrl = import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+  const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+  const baseUrl = apiBase.startsWith('/')
+    ? `${window.location.origin}${apiBase.replace(/\/api$/, '')}`
+    : apiBase.replace(/\/api$/, '') || 'http://localhost:8000';
   return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }

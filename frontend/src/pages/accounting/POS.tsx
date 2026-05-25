@@ -427,35 +427,36 @@ export default function POS() {
                     </div>
                   )}
 
-                  <div className="absolute top-4 right-4 flex gap-2 z-20">
-                    <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
-                      <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
-                    </div>
-                    {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-                      <Dropdown
-                        items={[
-                          {
-                            label: 'Edit Service',
-                            icon: <Pencil size={14} />,
-                            onClick: () => handleOpenEditModal(service)
-                          },
-                          {
-                            label: 'Delete',
-                            icon: <Trash2 size={14} />,
-                            onClick: () => handleDeleteService(service.id),
-                            variant: 'danger'
-                          },
-                        ]}
-                      />
-                    )}
-                  </div>
-
                   {/* View Overlay */}
                   <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
                     <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
                       <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
                     </div>
                   </div>
+                </div>
+
+                {/* Price & Action Dropdown (outside overflow-hidden image container to prevent clipping) */}
+                <div className="absolute top-4 right-4 flex gap-2 z-20" onClick={(e) => e.stopPropagation()}>
+                  <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
+                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                  </div>
+                  {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
+                    <Dropdown
+                      items={[
+                        {
+                          label: 'Edit Service',
+                          icon: <Pencil size={14} />,
+                          onClick: () => handleOpenEditModal(service)
+                        },
+                        {
+                          label: 'Delete',
+                          icon: <Trash2 size={14} />,
+                          onClick: () => handleDeleteService(service.id),
+                          variant: 'danger'
+                        },
+                      ]}
+                    />
+                  )}
                 </div>
 
                 <div className="p-6 flex-1 flex flex-col">

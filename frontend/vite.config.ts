@@ -12,6 +12,13 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: false, // Allow falling back to another port if 3000 is busy
+    allowedHosts: [
+      'cathedrallike-eleanore-dialytic.ngrok-free.dev',
+      '.ngrok-free.dev',
+      '.ngrok.io',
+      'localhost',
+      '.localhost'
+    ],
     proxy: {
       '/api': {
         target: 'http://localhost:8000',

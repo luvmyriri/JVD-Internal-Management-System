@@ -40,8 +40,28 @@ export default function Dropdown({
     };
   }, [isOpen]);
 
+  useEffect(() => {
+    if (isOpen && dropdownRef.current) {
+      const parentRow = dropdownRef.current.closest('tr');
+      let originalZIndex = '';
+      let originalPosition = '';
+      if (parentRow) {
+        originalZIndex = parentRow.style.zIndex;
+        originalPosition = parentRow.style.position;
+        parentRow.style.zIndex = '50';
+        parentRow.style.position = 'relative';
+      }
+      return () => {
+        if (parentRow) {
+          parentRow.style.zIndex = originalZIndex;
+          parentRow.style.position = originalPosition;
+        }
+      };
+    }
+  }, [isOpen]);
+
   return (
-    <div className={cn("relative inline-block text-left", className)} ref={dropdownRef}>
+    <div className={cn("relative inline-block text-left", isOpen ? "z-[60]" : "z-0", className)} ref={dropdownRef}>
       <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>
         {trigger || (
           <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all active:scale-95 shadow-sm bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">

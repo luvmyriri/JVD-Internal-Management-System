@@ -479,7 +479,7 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden">
+      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden ${pos.length > 0 ? 'min-h-[350px]' : ''}`}>
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : pos.length === 0 ? (

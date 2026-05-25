@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { LuSignature, LuSearch, LuPlus, LuX } from 'react-icons/lu';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LuSignature, LuSearch, LuPlus, LuX, LuNavigation, LuTrash2 } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { commissionApi } from '../../api/operations';
 import type { Commission } from '../../types';
+import { Modal, Button } from '../../components/ui';
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
@@ -94,9 +96,254 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
   );
 }
 
+interface NewCommissionItem {
+  travel_date: string;
+  destination: string;
+  quantity: number;
+  amount: number;
+}
+
+function CreateCommissionModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    commissioner_name: '',
+    serial_no: '',
+    date: new Date().toISOString().split('T')[0],
+  });
+
+  const [items, setItems] = useState<NewCommissionItem[]>([]);
+  const [newItem, setNewItem] = useState<NewCommissionItem>({
+    travel_date: new Date().toISOString().split('T')[0],
+    destination: '',
+    quantity: 1,
+    amount: 0,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: any) => commissionApi.create(data),
+    onSuccess: () => {
+      toast.success('Commission created successfully');
+      qc.invalidateQueries({ queryKey: ['commissions'] });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create commission');
+    },
+  });
+
+  const handleAddItem = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!newItem.destination) {
+      toast.error('Please enter a destination for the item');
+      return;
+    }
+    if (newItem.quantity < 1) {
+      toast.error('Quantity must be at least 1');
+      return;
+    }
+    if (newItem.amount < 0) {
+      toast.error('Amount cannot be negative');
+      return;
+    }
+
+    setItems(prev => [...prev, {
+      ...newItem,
+      quantity: Number(newItem.quantity),
+      amount: Number(newItem.amount)
+    }]);
+
+    // Reset mini form
+    setNewItem({
+      travel_date: new Date().toISOString().split('T')[0],
+      destination: '',
+      quantity: 1,
+      amount: 0,
+    });
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (items.length === 0) {
+      toast.error('Please add at least one travel item');
+      return;
+    }
+
+    const payload = {
+      ...form,
+      items
+    };
+
+    mutation.mutate(payload);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="New Commission" size="xl">
+      <form onSubmit={handleSubmit} className="space-y-8 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {/* Section 1: Commissioner Details */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuSignature size={14} /> Commissioner Information
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
+              <input
+                type="text"
+                required
+                value={form.commissioner_name}
+                onChange={e => setForm(p => ({ ...p, commissioner_name: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. Jane Smith"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
+              <input
+                type="text"
+                required
+                value={form.serial_no}
+                onChange={e => setForm(p => ({ ...p, serial_no: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="e.g. CMS-00125"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commission Date</label>
+              <input
+                type="date"
+                required
+                value={form.date}
+                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Items Dynamic Form */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuNavigation size={14} /> Add Travel Items
+          </div>
+          
+          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+              <input
+                type="date"
+                value={newItem.travel_date}
+                onChange={e => setNewItem(p => ({ ...p, travel_date: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+              <input
+                type="text"
+                value={newItem.destination}
+                onChange={e => setNewItem(p => ({ ...p, destination: e.target.value }))}
+                placeholder="e.g. San Fernando, Pampanga"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
+              <input
+                type="number"
+                min="1"
+                value={newItem.quantity}
+                onChange={e => setNewItem(p => ({ ...p, quantity: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2 flex gap-2 items-center">
+              <div className="flex-1 space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={newItem.amount}
+                  onChange={e => setNewItem(p => ({ ...p, amount: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="p-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer mt-7"
+              >
+                <LuPlus size={20} />
+              </button>
+            </div>
+          </div>
+
+          {/* Current Items List Table */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
+                  <tr>
+                    <th className="px-6 py-4">Travel Date</th>
+                    <th className="px-6 py-4">Destination</th>
+                    <th className="px-6 py-4 text-right">Quantity</th>
+                    <th className="px-6 py-4 text-right">Amount</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                  {items.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
+                      <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
+                      <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
+                        >
+                          <LuTrash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                        No travel items added yet. Enter item details above and click the (+) button.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending} disabled={items.length === 0}>
+            Create Commission
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function Commissions() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['commissions'],
@@ -131,7 +378,7 @@ export default function Commissions() {
               className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
             />
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20">
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Commission
           </button>
         </div>
@@ -176,6 +423,10 @@ export default function Commissions() {
 
       {selectedCommission && (
         <CommissionDetailModal commission={selectedCommission} onClose={() => setSelectedCommission(null)} />
+      )}
+
+      {showCreate && (
+        <CreateCommissionModal onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

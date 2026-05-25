@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { LuBanknote, LuSearch, LuPlus, LuX } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
 import type { Collection } from '../../types';
+import { Modal, Button } from '../../components/ui';
 
 const statusStyles: Record<string, string> = {
   open: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
@@ -15,6 +17,134 @@ function StatusBadge({ status }: { status: string }) {
     <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
       {status}
     </span>
+  );
+}
+
+function CreateCollectionModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState({
+    client_name: '',
+    date: new Date().toISOString().split('T')[0],
+    travel_date: new Date().toISOString().split('T')[0],
+    pick_up: '',
+    drop_off: '',
+    rate: 0,
+    status: 'open' as const,
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: any) => collectionApi.create(data),
+    onSuccess: () => {
+      toast.success('Collection created successfully');
+      qc.invalidateQueries({ queryKey: ['collections'] });
+      onClose();
+    },
+    onError: () => {
+      toast.error('Failed to create collection');
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    mutation.mutate(form);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="New Collection" size="md">
+      <form onSubmit={handleSubmit} className="space-y-6 p-2">
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Client Name</label>
+          <input
+            type="text"
+            required
+            value={form.client_name}
+            onChange={e => setForm(p => ({ ...p, client_name: e.target.value }))}
+            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            placeholder="e.g. John Doe"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date</label>
+            <input
+              type="date"
+              required
+              value={form.date}
+              onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+            <input
+              type="date"
+              required
+              value={form.travel_date}
+              onChange={e => setForm(p => ({ ...p, travel_date: e.target.value }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pick Up</label>
+            <input
+              type="text"
+              value={form.pick_up}
+              onChange={e => setForm(p => ({ ...p, pick_up: e.target.value }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              placeholder="e.g. Manila"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Drop Off</label>
+            <input
+              type="text"
+              value={form.drop_off}
+              onChange={e => setForm(p => ({ ...p, drop_off: e.target.value }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              placeholder="e.g. Baguio"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Rate (₱)</label>
+            <input
+              type="number"
+              required
+              min="0"
+              value={form.rate}
+              onChange={e => setForm(p => ({ ...p, rate: Number(e.target.value) }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
+            <select
+              value={form.status}
+              onChange={e => setForm(p => ({ ...p, status: e.target.value as 'open' | 'completed' }))}
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none bg-transparent"
+            >
+              <option value="open">Open</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending}>
+            Create Collection
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
@@ -118,6 +248,7 @@ function CollectionDetailModal({ collection, onClose }: { collection: Collection
 export default function Collections() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['collections'],
@@ -152,7 +283,7 @@ export default function Collections() {
               className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
             />
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-teal-600/20">
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-teal-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Collection
           </button>
         </div>
@@ -161,7 +292,7 @@ export default function Collections() {
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
+            <thead className="bg-gray-55 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
               <tr>
                 <th className="px-8 py-6 rounded-tl-[2rem]">Client</th>
                 <th className="px-8 py-6">Travel Date</th>
@@ -189,7 +320,7 @@ export default function Collections() {
                     <td className="px-8 py-5 text-right font-bold text-gray-900 dark:text-white">₱ {collection.rate?.toLocaleString() || 0}</td>
                     <td className="px-8 py-5"><StatusBadge status={collection.status} /></td>
                     <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedCollection(collection)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all">
+                      <button onClick={() => setSelectedCollection(collection)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all cursor-pointer">
                         <Eye size={18} />
                       </button>
                     </td>
@@ -203,6 +334,10 @@ export default function Collections() {
 
       {selectedCollection && (
         <CollectionDetailModal collection={selectedCollection} onClose={() => setSelectedCollection(null)} />
+      )}
+
+      {showCreate && (
+        <CreateCollectionModal onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

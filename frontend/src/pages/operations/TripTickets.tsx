@@ -1,9 +1,13 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { LuMap, LuSearch, LuPlus, LuX } from 'react-icons/lu';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LuMap, LuSearch, LuPlus, LuX, LuNavigation, LuUser, LuCoins } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { tripTicketApi } from '../../api/operations';
 import type { TripTicket } from '../../types';
+import { Modal, Button } from '../../components/ui';
+import { useBuses } from '../../hooks/useFleet';
+import { useUsers } from '../../hooks/useUsers';
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
@@ -121,9 +125,305 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
   );
 }
 
+function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data: busesData } = useBuses({ per_page: 999 });
+  const { data: driversData } = useUsers({ role: 'driver', per_page: 999 });
+
+  const buses = busesData?.data || [];
+  const drivers = driversData?.data || [];
+
+  const [form, setForm] = useState({
+    control_no: '',
+    issue_date: new Date().toISOString().split('T')[0],
+    date_of_travel: new Date().toISOString().split('T')[0],
+    duration: '',
+    pick_up: '',
+    drop_off: '',
+    bus_id: '' as string | number,
+    plate_no: '',
+    no_of_passengers: 1,
+    driver_id: '' as string | number,
+    meal_allowance: 0,
+    diesel: 0,
+    sop: 0,
+    easy_trip: 0,
+    autosweep: 0,
+    passenger_name: '',
+  });
+
+  const mutation = useMutation({
+    mutationFn: (data: any) => tripTicketApi.create(data),
+    onSuccess: () => {
+      toast.success('Trip Ticket created successfully');
+      qc.invalidateQueries({ queryKey: ['trip-tickets'] });
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create trip ticket');
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Prepare payload, casting optional and required numeric values
+    const payload = {
+      ...form,
+      bus_id: form.bus_id ? Number(form.bus_id) : null,
+      driver_id: form.driver_id ? Number(form.driver_id) : null,
+      no_of_passengers: Number(form.no_of_passengers),
+      meal_allowance: Number(form.meal_allowance),
+      diesel: Number(form.diesel),
+      sop: Number(form.sop),
+      easy_trip: Number(form.easy_trip),
+      autosweep: Number(form.autosweep),
+    };
+
+    // If bus is selected, sync plate_no with that bus's plate_number for safety
+    if (payload.bus_id) {
+      const selectedBus = buses.find(b => b.id === payload.bus_id);
+      if (selectedBus) {
+        payload.plate_no = selectedBus.plate_number;
+      }
+    }
+
+    mutation.mutate(payload);
+  };
+
+  return (
+    <Modal isOpen={true} onClose={onClose} title="New Trip Ticket" size="xl">
+      <form onSubmit={handleSubmit} className="space-y-8 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {/* Section 1: Trip Identification */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuMap size={14} /> Trip Identification
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Control No.</label>
+              <input
+                type="text"
+                required
+                value={form.control_no}
+                onChange={e => setForm(p => ({ ...p, control_no: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. TT-2026-0001"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Issue Date</label>
+              <input
+                type="date"
+                required
+                value={form.issue_date}
+                onChange={e => setForm(p => ({ ...p, issue_date: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Date of Travel</label>
+              <input
+                type="date"
+                required
+                value={form.date_of_travel}
+                onChange={e => setForm(p => ({ ...p, date_of_travel: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 2: Route & Passenger Details */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuNavigation size={14} /> Route & Passenger Details
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pick Up Location</label>
+              <input
+                type="text"
+                required
+                value={form.pick_up}
+                onChange={e => setForm(p => ({ ...p, pick_up: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. JVD Terminal, Cubao"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Drop Off Location</label>
+              <input
+                type="text"
+                required
+                value={form.drop_off}
+                onChange={e => setForm(p => ({ ...p, drop_off: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. Baguio City Terminal"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">No. of Passengers</label>
+              <input
+                type="number"
+                required
+                min="1"
+                value={form.no_of_passengers}
+                onChange={e => setForm(p => ({ ...p, no_of_passengers: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Passenger / Group Name</label>
+              <input
+                type="text"
+                value={form.passenger_name}
+                onChange={e => setForm(p => ({ ...p, passenger_name: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. Lakbay Aral Tour Group"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Duration / Notes</label>
+              <input
+                type="text"
+                value={form.duration}
+                onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                placeholder="e.g. 3 Days Roundtrip"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 3: Bus & Crew Assignment */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuUser size={14} /> Bus & Crew Assignment
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Driver</label>
+              <select
+                value={form.driver_id}
+                onChange={e => setForm(p => ({ ...p, driver_id: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none bg-transparent"
+              >
+                <option value="">Select a Driver (TBA)</option>
+                {drivers.map((driver: any) => (
+                  <option key={driver.id} value={driver.id}>
+                    {driver.first_name} {driver.last_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Vehicle (Fleet)</label>
+              <select
+                value={form.bus_id}
+                onChange={e => setForm(p => ({ ...p, bus_id: e.target.value, plate_no: '' }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none bg-transparent"
+              >
+                <option value="">Select a Fleet Bus (or type manual)</option>
+                {buses.map((bus: any) => (
+                  <option key={bus.id} value={bus.id}>
+                    {bus.plate_number} ({bus.model || 'Bus'})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plate Number (Manual Override)</label>
+              <input
+                type="text"
+                disabled={!!form.bus_id}
+                value={form.bus_id ? buses.find((b: any) => b.id === Number(form.bus_id))?.plate_number || '' : form.plate_no}
+                onChange={e => setForm(p => ({ ...p, plate_no: e.target.value }))}
+                placeholder={form.bus_id ? "Auto-synced with fleet" : "e.g. NDG-5818"}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-800"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Section 4: Operational Allowances */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 text-xs font-black text-orange-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
+            <LuCoins size={14} /> Operational Allowances (₱)
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Meal</label>
+              <input
+                type="number"
+                min="0"
+                value={form.meal_allowance}
+                onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel</label>
+              <input
+                type="number"
+                min="0"
+                value={form.diesel}
+                onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">SOP</label>
+              <input
+                type="number"
+                min="0"
+                value={form.sop}
+                onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">EasyTrip</label>
+              <input
+                type="number"
+                min="0"
+                value={form.easy_trip}
+                onChange={e => setForm(p => ({ ...p, easy_trip: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+            <div className="space-y-2 col-span-2 md:col-span-1">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">AutoSweep</label>
+              <input
+                type="number"
+                min="0"
+                value={form.autosweep}
+                onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose} type="button">
+            Cancel
+          </Button>
+          <Button type="submit" isLoading={mutation.isPending}>
+            Create Ticket
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 export default function TripTickets() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['trip-tickets'],
@@ -158,7 +458,7 @@ export default function TripTickets() {
               className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-sm"
             />
           </div>
-          <button className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-600/20">
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Trip Ticket
           </button>
         </div>
@@ -211,6 +511,10 @@ export default function TripTickets() {
 
       {selectedTicket && (
         <TripTicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+      )}
+
+      {showCreate && (
+        <CreateTripTicketModal onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

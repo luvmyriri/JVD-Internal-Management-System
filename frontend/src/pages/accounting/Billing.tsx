@@ -188,7 +188,7 @@ export default function Billing() {
         </div>
       </div>
     {/* Data Table */}
-    <div className="overflow-x-auto custom-scrollbar">
+    <div className={`overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
       <table className="w-full text-left border-collapse">
         <thead>
           <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">

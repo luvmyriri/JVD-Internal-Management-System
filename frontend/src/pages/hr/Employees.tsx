@@ -581,7 +581,7 @@ export default function Employees() {
           </select>
         </div>
 
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm">
+        <div className={`bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm ${usersData?.data?.length > 0 ? 'min-h-[350px]' : ''}`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
