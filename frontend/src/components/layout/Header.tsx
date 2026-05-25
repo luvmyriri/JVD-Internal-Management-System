@@ -1292,8 +1292,8 @@ export default function Header() {
                                           <p className="text-xs truncate text-gray-700 dark:text-gray-300 font-semibold">{msg.senderName}</p>
                                         </div>
                                         <p className="text-[10px] text-gray-400 dark:text-gray-550 mt-1 font-semibold flex items-center gap-1">
-                                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full shrink-0 animate-ping inline-block" />
-                                          Start conversation
+                                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 inline-block ${msg.online ? 'bg-emerald-500 animate-ping' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                          {msg.online ? 'Online' : 'Offline'} • Start conversation
                                         </p>
                                       </div>
                                     </div>
