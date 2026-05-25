@@ -512,7 +512,7 @@ export default function Header() {
             senderColor,
             time: lastMessageTime,
             read: isRead,
-            online: u.is_active ? true : false,
+            online: u.is_online ? true : false,
             typing: existingThread?.typing || false,
             messages: mappedMessages,
             lastMessageTimestamp,
