@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuShieldCheck, LuPlus, LuSearch, LuLoaderCircle, LuUserCheck,
   LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock,
-  LuCloudUpload, LuFileDown, LuFileUp
+  LuCloudUpload, LuFileDown, LuFileUp, LuChevronRight
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
 import { Pagination, Modal, Button } from '../../components/ui';
@@ -121,29 +121,43 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
-        <div className="p-8 overflow-y-auto">
+        <div className="p-8 overflow-y-auto custom-scrollbar">
           <form id="accreditation-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Entity Type</label>
-                <select
-                  value={form.entity_type}
-                  onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
-                >
-                  <option value="supplier">Supplier</option>
-                  <option value="partner">Partner</option>
-                  <option value="client">Client</option>
-                  <option value="driver">Driver</option>
-                  <option value="bus">Bus</option>
-                </select>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Entity Information</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Entity Type</label>
+                    <select
+                      value={form.entity_type}
+                      onChange={e => setForm(p => ({ ...p, entity_type: e.target.value }))}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-900"
+                    >
+                      <option value="supplier">Supplier</option>
+                      <option value="partner">Partner</option>
+                      <option value="client">Client</option>
+                      <option value="driver">Driver</option>
+                      <option value="bus">Bus</option>
+                    </select>
+                  </div>
+                  {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name', val => setForm(p => ({ ...p, entity_name: formatName(val) })))}
+                  {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
+                  {field('Contact Person', 'contact_person', 'text', 'Primary Contact', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
+                  {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
+                </div>
               </div>
-              {field('Entity Name', 'entity_name', 'text', 'Company or Individual Name', val => setForm(p => ({ ...p, entity_name: formatName(val) })))}
-              {field('Accreditation Type', 'accreditation_type', 'text', 'e.g. Supplier Verification')}
-              {field('Contact Person', 'contact_person', 'text', 'Primary Contact', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
-              {field('Contact Email', 'contact_email', 'email', 'contact@domain.com')}
-              <div className="sm:col-span-2 mt-2">
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Supporting Documents</label>
+            </details>
+
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span>Supporting Documents</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1">
                 <div className="grid grid-cols-3 gap-4">
                   {['kyc', 'nda', 'terms'].map(doc => (
                     <label key={doc} className="relative flex flex-col items-center justify-center w-full h-[60px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors px-2">
@@ -170,7 +184,7 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
                   ))}
                 </div>
               </div>
-            </div>
+            </details>
 
             {mutation.isError && (
               <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">

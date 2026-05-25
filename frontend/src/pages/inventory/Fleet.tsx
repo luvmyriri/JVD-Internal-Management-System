@@ -4,7 +4,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuLoaderCircle, LuUser,
-  LuFileDown, LuFileUp, LuEye
+  LuFileDown, LuFileUp, LuEye, LuChevronRight
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -85,58 +85,76 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
       title={bus ? 'Refine Vehicle Specs' : 'Fleet Registration'}
       size="lg"
     >
-      <div className="space-y-8 p-2">
+      <div className="space-y-8 p-2 overflow-y-auto custom-scrollbar max-h-[75vh]">
         <form id="bus-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
-            {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
-            
-            <div className="space-y-2">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
-              <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
-                disabled={mode === 'view'}
-                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
-                  mode === 'view' 
-                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
-                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-800'
-                }`} />
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Vehicle Specifications</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
+                {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
+                
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
+                  <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
+                    disabled={mode === 'view'}
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
+                      mode === 'view' 
+                        ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-800'
+                    }`} />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Status</label>
+                  <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
+                    disabled={mode === 'view'}
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
+                      mode === 'view' 
+                        ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
+                    }`}>
+                    <option value="available">Available</option>
+                    <option value="in_service">In Service</option>
+                    <option value="under_maintenance">Under Maintenance</option>
+                    <option value="decommissioned">Decommissioned</option>
+                  </select>
+                </div>
+              </div>
             </div>
-            
-            <div className="space-y-2">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Status</label>
-              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value as any }))}
-                disabled={mode === 'view'}
-                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
-                  mode === 'view' 
-                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
-                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
-                }`}>
-                <option value="available">Available</option>
-                <option value="in_service">In Service</option>
-                <option value="under_maintenance">Under Maintenance</option>
-                <option value="decommissioned">Decommissioned</option>
-              </select>
-            </div>
+          </details>
 
-            {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: parseInt(formatMileage(val)) || 0 })))}
-            
-            <div className="space-y-2">
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>
-              <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
-                disabled={mode === 'view'}
-                className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
-                  mode === 'view' 
-                    ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
-                    : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
-                }`}>
-                <option value="">-- No Driver Assigned --</option>
-                {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
-              </select>
-            </div>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+              <span>Operations & Maintenance</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: parseInt(formatMileage(val)) || 0 })))}
+                
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>
+                  <select value={form.assigned_driver || ''} onChange={e => setForm(p => ({ ...p, assigned_driver: e.target.value ? parseInt(e.target.value) : null }))}
+                    disabled={mode === 'view'}
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
+                      mode === 'view' 
+                        ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
+                    }`}>
+                    <option value="">-- No Driver Assigned --</option>
+                    {drivers.map((d: any) => <option key={d.id} value={d.id}>{d.first_name} {d.last_name}</option>)}
+                  </select>
+                </div>
 
-            {field('Last Service Date', 'last_service_date', 'date')}
-            {field('Next Service Due', 'next_service_due', 'date')}
-          </div>
+                {field('Last Service Date', 'last_service_date', 'date')}
+                {field('Next Service Due', 'next_service_due', 'date')}
+              </div>
+            </div>
+          </details>
 
           {mutation.isError && (
             <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-100 rounded-2xl">

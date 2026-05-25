@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LuSignature, LuSearch, LuPlus, LuX, LuNavigation, LuTrash2 } from 'react-icons/lu';
+import { LuSignature, LuSearch, LuPlus, LuX, LuNavigation, LuTrash2, LuChevronRight } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { commissionApi } from '../../api/operations';
@@ -107,7 +107,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     commissioner_name: '',
-    serial_no: '',
+    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100000)).toString().padStart(5, '0')}`,
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -185,147 +185,152 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
     <Modal isOpen={true} onClose={onClose} title="New Commission" size="xl">
       <form onSubmit={handleSubmit} className="space-y-8 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {/* Section 1: Commissioner Details */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
-            <LuSignature size={14} /> Commissioner Information
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
-              <input
-                type="text"
-                required
-                value={form.commissioner_name}
-                onChange={e => setForm(p => ({ ...p, commissioner_name: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. Jane Smith"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
-              <input
-                type="text"
-                required
-                value={form.serial_no}
-                onChange={e => setForm(p => ({ ...p, serial_no: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="e.g. CMS-00125"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commission Date</label>
-              <input
-                type="date"
-                required
-                value={form.date}
-                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Section 2: Items Dynamic Form */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-black text-blue-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
-            <LuNavigation size={14} /> Add Travel Items
-          </div>
-          
-          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
-              <input
-                type="date"
-                value={newItem.travel_date}
-                onChange={e => setNewItem(p => ({ ...p, travel_date: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
-              <input
-                type="text"
-                value={newItem.destination}
-                onChange={e => setNewItem(p => ({ ...p, destination: e.target.value }))}
-                placeholder="e.g. San Fernando, Pampanga"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                value={newItem.quantity}
-                onChange={e => setNewItem(p => ({ ...p, quantity: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div className="space-y-2 flex gap-2 items-center">
-              <div className="flex-1 space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
+        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span className="flex items-center gap-2"><LuSignature size={14} /> Commissioner Information</span>
+            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          </summary>
+          <div className="p-4 pt-0 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
                 <input
-                  type="number"
-                  min="0"
-                  value={newItem.amount}
-                  onChange={e => setNewItem(p => ({ ...p, amount: Number(e.target.value) }))}
+                  type="text"
+                  required
+                  value={form.commissioner_name}
+                  onChange={e => setForm(p => ({ ...p, commissioner_name: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Jane Smith"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
+                <input
+                  type="text"
+                  readOnly
+                  value={form.serial_no}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 cursor-not-allowed focus:outline-none"
+                  placeholder="Auto-generated"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commission Date</label>
+                <input
+                  type="date"
+                  required
+                  value={form.date}
+                  onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <button
-                type="button"
-                onClick={handleAddItem}
-                className="p-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer mt-7"
-              >
-                <LuPlus size={20} />
-              </button>
             </div>
           </div>
+        </details>
 
-          {/* Current Items List Table */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
-                  <tr>
-                    <th className="px-6 py-4">Travel Date</th>
-                    <th className="px-6 py-4">Destination</th>
-                    <th className="px-6 py-4 text-right">Quantity</th>
-                    <th className="px-6 py-4 text-right">Amount</th>
-                    <th className="px-6 py-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
-                  {items.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
-                      <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
-                      <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
-                        >
-                          <LuTrash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && (
+        {/* Section 2: Items Dynamic Form */}
+        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span className="flex items-center gap-2"><LuNavigation size={14} /> Add Travel Items</span>
+            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          </summary>
+          
+          <div className="p-4 pt-0 space-y-4">
+            <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+                <input
+                  type="date"
+                  value={newItem.travel_date}
+                  onChange={e => setNewItem(p => ({ ...p, travel_date: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+                <input
+                  type="text"
+                  value={newItem.destination}
+                  onChange={e => setNewItem(p => ({ ...p, destination: e.target.value }))}
+                  placeholder="e.g. San Fernando, Pampanga"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newItem.quantity}
+                  onChange={e => setNewItem(p => ({ ...p, quantity: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="space-y-2 flex gap-2 items-center">
+                <div className="flex-1 space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={newItem.amount}
+                    onChange={e => setNewItem(p => ({ ...p, amount: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddItem}
+                  className="p-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer mt-7"
+                >
+                  <LuPlus size={20} />
+                </button>
+              </div>
+            </div>
+
+            {/* Current Items List Table */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
+              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+                <table className="w-full text-sm text-left">
+                  <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
                     <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                        No travel items added yet. Enter item details above and click the (+) button.
-                      </td>
+                      <th className="px-6 py-4">Travel Date</th>
+                      <th className="px-6 py-4">Destination</th>
+                      <th className="px-6 py-4 text-right">Quantity</th>
+                      <th className="px-6 py-4 text-right">Amount</th>
+                      <th className="px-6 py-4 text-right">Action</th>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                    {items.map((item, index) => (
+                      <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
+                        <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
+                        <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
+                        <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
+                        <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
+                        <td className="px-6 py-4.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(index)}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
+                          >
+                            <LuTrash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {items.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                          No travel items added yet. Enter item details above and click the (+) button.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        </details>
 
         <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
           <Button variant="secondary" onClick={onClose} type="button">
@@ -354,31 +359,31 @@ export default function Commissions() {
   const commissions: Commission[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
   const filtered = commissions.filter((c) =>
-    c.commissioner_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.serial_no.toLowerCase().includes(searchTerm.toLowerCase())
+    c.commissioner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.serial_no?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
         <div>
           <div className="flex items-center gap-3 text-sm font-bold text-blue-600 dark:text-blue-500 mb-2 uppercase tracking-widest">
             <LuSignature size={18} /> Operations Module
           </div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Commissions</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Commissions</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <div className="relative group w-full sm:w-auto">
             <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
             <input
               type="text"
               placeholder="Search serial no or name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
+              className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
             />
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
+          <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Commission
           </button>
         </div>

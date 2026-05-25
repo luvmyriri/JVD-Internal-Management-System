@@ -498,16 +498,16 @@ export default function DriverDashboard() {
   };
 
   return (
-    <div className="h-[calc(100vh-9.5rem)] flex flex-col gap-2 overflow-hidden pb-1">
+    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
 
       {/* â”€â”€ Top KPI Row â”€â”€ */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-2 relative z-20 shrink-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
 
         {/* KPI 1: Total Users */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
           <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuUsers className="w-3 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuUsers className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-1">
               <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5">
@@ -517,35 +517,35 @@ export default function DriverDashboard() {
               <DownloadActions variant="light" title="Global Personnel" data={detailedEmployeeData} />
             </div>
           </div>
-          <div className="flex items-end justify-between mt-1">
+          <div className="flex items-end justify-between mt-3">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Upcoming Trips</p>
-              <p className="text-2xl font-black leading-none">4</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Upcoming Trips</p>
+              <p className="text-3xl font-black leading-none">4</p>
             </div>
           </div>
         </div>
 
         {/* KPI 2: User Distribution */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
           <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuUsers className="w-3 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuUsers className="w-5 h-5 text-white" />
             </div>
             <DownloadActions variant="light" title="User Roles" data={userDistributionData} />
           </div>
-          <div className="flex items-end justify-between mt-1">
+          <div className="flex items-end justify-between mt-3">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Total Hours Driven</p>
-              <p className="text-2xl font-black leading-none">120h</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Hours Driven</p>
+              <p className="text-3xl font-black leading-none">120h</p>
             </div>
           </div>
         </div>
 
         {/* KPI 3: Total Customers */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
           <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuGlobe className="w-3 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuGlobe className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-1">
               <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5">
@@ -555,19 +555,19 @@ export default function DriverDashboard() {
               <DownloadActions variant="light" title="Customer Base" data={detailedCustomerData} />
             </div>
           </div>
-          <div className="flex items-end justify-between mt-1">
+          <div className="flex items-end justify-between mt-3">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Driver Rating</p>
-              <p className="text-2xl font-black leading-none">4.9 ★</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Driver Rating</p>
+              <p className="text-3xl font-black leading-none">4.9 ★</p>
             </div>
           </div>
         </div>
 
         {/* KPI 4: Monthly Revenue */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
           <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuBanknote className="w-3 text-white" />
+            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuBanknote className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-2">
               <select className="bg-white/20 text-white text-[8px] font-black border-none rounded-lg px-1.5 py-0.5 outline-none cursor-pointer hover:bg-white/30 transition-colors uppercase tracking-wider">
@@ -578,10 +578,10 @@ export default function DriverDashboard() {
               <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
             </div>
           </div>
-          <div className="flex items-end justify-between mt-1">
+          <div className="flex items-end justify-between mt-3">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70">Assigned Vehicle</p>
-              <p className="text-2xl font-black leading-none">BUS-001</p>
+              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Assigned Vehicle</p>
+              <p className="text-3xl font-black leading-none">BUS-001</p>
             </div>
           </div>
         </div>
@@ -591,7 +591,7 @@ export default function DriverDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
 
         {/* Column 1: Fleet Calendar */}
-        <div className="h-full min-h-0">
+        <div className="h-full min-h-[400px] xl:min-h-0">
           <CalendarFleetAvailability />
         </div>
 
@@ -599,7 +599,7 @@ export default function DriverDashboard() {
         <div className="flex flex-col gap-2 h-full min-h-0">
 
           {/* Peak Client Activity Heatmap */}
-          <div className="flex-[4] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -610,7 +610,7 @@ export default function DriverDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center min-h-0 mt-1">
+            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3">
               <div className="grid gap-y-1 w-full select-none" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
                 <div className="col-start-1" />
                 <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12AM</div>
@@ -634,7 +634,7 @@ export default function DriverDashboard() {
                 ])}
               </div>
 
-              <div className="flex items-center justify-end gap-1 mt-1 text-[7.5px] font-bold text-gray-400 dark:text-gray-500 shrink-0">
+              <div className="flex items-center justify-end gap-1 mt-3 text-[7.5px] font-bold text-gray-400 dark:text-gray-500 shrink-0">
                 <span>Low</span>
                 <div className="flex gap-0.5">
                   <div className="w-2 h-2 rounded bg-purple-50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/10" />
@@ -649,7 +649,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Travel Bookings List */}
-          <div className="flex-[6] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[6] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTicket className="w-3 h-3 text-violet-500" />
@@ -658,7 +658,7 @@ export default function DriverDashboard() {
               <DownloadActions variant="dark" title="Travel Bookings Weekly" data={detailedBranchData.travel} />
             </div>
 
-            <div className="space-y-1 overflow-y-auto flex-1 mt-1.5 pr-0.5">
+            <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5">
               {detailedBranchData.travel.slice(0, 6).map((item, idx) => (
                 <div key={item['Booking ID']} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                   <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-[9px] font-black shrink-0">
@@ -695,7 +695,7 @@ export default function DriverDashboard() {
         <div className="flex flex-col gap-2 h-full min-h-0">
 
           {/* Top Performers */}
-          <div className="flex-[4.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4.5] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTrophy className="w-3 h-3 text-amber-500" />
@@ -703,7 +703,7 @@ export default function DriverDashboard() {
               </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1.5 mt-1.5 pr-0.5">
+            <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5">
               {/* Agents */}
               <div>
                 <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">Top Agents</h4>
@@ -755,7 +755,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Operations & Revenue Trends â€” Recharts AreaChart */}
-          <div className="flex-[3] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[3] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -770,7 +770,7 @@ export default function DriverDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 mt-1">
+            <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
                   <defs>
@@ -805,7 +805,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Fleet Utilization Bar Chart */}
-          <div className="flex-[2.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[2.5] min-h-[200px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -829,7 +829,7 @@ export default function DriverDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 mt-1">
+            <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
                   <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
@@ -918,7 +918,7 @@ function CalendarFleetAvailability() {
       </div>
 
       {/* Calendar Area */}
-      <div className="flex flex-col gap-1.5 mt-1.5 shrink-0">
+      <div className="flex flex-col gap-1.5 mt-3.5 shrink-0">
         {/* Navigation */}
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-black text-gray-850 dark:text-white uppercase tracking-wider">
@@ -977,7 +977,7 @@ function CalendarFleetAvailability() {
       </div>
 
       {/* Dynamic Available / Occupied Row split */}
-      <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-50 dark:border-gray-800/80 min-h-0 flex-1">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2 pt-2 border-t border-gray-50 dark:border-gray-800/80 min-h-0 flex-1">
         {/* Left: Available */}
         <div className="flex flex-col min-h-0">
           <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-500/10 px-2 py-1 rounded-xl mb-1.5 shrink-0">

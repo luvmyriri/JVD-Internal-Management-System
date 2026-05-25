@@ -55,6 +55,34 @@
   }
 }
 
+/* Mobile optimizations */
+@media (max-width: 768px) {
+  /* Enforce min 44x44px touch targets */
+  button, 
+  a.touch-target, 
+  input[type="text"], 
+  input[type="number"], 
+  input[type="date"], 
+  select {
+    min-height: 44px;
+  }
+  
+  /* Helper for full-width horizontal carousels with edge padding */
+  .mobile-carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  .mobile-carousel > * {
+    scroll-snap-align: center;
+    flex-shrink: 0;
+  }
+}
+
 /* Ensure receipt maintains physical white receipt aesthetics on screen even in dark mode */
 .dark #printable-invoice,
 .dark [id="printable-invoice"] {

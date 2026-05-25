@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText } from 'react-icons/lu';
+import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight } from 'react-icons/lu';
 import { procurementDocumentApi, type ProcurementDocumentFormData } from '../../api/procurementDocuments';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
@@ -72,93 +72,111 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title="Upload Document" size="lg">
-      <div className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
-            <input type="text" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
-            <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" value={form.document_type} onChange={e => setForm({ ...form, document_type: e.target.value })}>
-              <option value="receipt">Receipt</option>
-              <option value="invoice">Invoice</option>
-              <option value="delivery_note">Delivery Note</option>
-              <option value="agreement">Agreement</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File Upload *</label>
-          <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-            <div className="space-y-1 text-center">
-              <LuFileUp className="mx-auto h-12 w-12 text-gray-400" />
-              <div className="flex text-sm text-gray-600 dark:text-gray-400">
-                <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
-                  <span>Upload a file</span>
-                  <input type="file" className="sr-only" onChange={e => setFile(e.target.files?.[0] || null)} />
-                </label>
-                <p className="pl-1">or drag and drop</p>
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-6">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Basic Information</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title *</label>
+                  <input type="text" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-blue-500 focus:border-blue-500" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
+                  <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" value={form.document_type} onChange={e => setForm({ ...form, document_type: e.target.value })}>
+                    <option value="receipt">Receipt</option>
+                    <option value="invoice">Invoice</option>
+                    <option value="delivery_note">Delivery Note</option>
+                    <option value="agreement">Agreement</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
               </div>
-              <p className="text-xs text-gray-500">PDF, PNG, JPG, DOC up to 10MB</p>
-              {file && <p className="text-sm font-semibold text-blue-600 mt-2">{file.name}</p>}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">File Upload *</label>
+                <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-700 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                  <div className="space-y-1 text-center">
+                    <LuFileUp className="mx-auto h-12 w-12 text-gray-400" />
+                    <div className="flex flex-col sm:flex-row justify-center items-center text-sm text-gray-600 dark:text-gray-400">
+                      <label className="relative cursor-pointer rounded-md font-medium text-blue-600 hover:text-blue-500">
+                        <span>Upload a file</span>
+                        <input type="file" className="sr-only" onChange={e => setFile(e.target.files?.[0] || null)} />
+                      </label>
+                      <p className="pl-1 hidden sm:block">or drag and drop</p>
+                    </div>
+                    <p className="text-xs text-gray-500">PDF, PNG, JPG, DOC up to 10MB</p>
+                    {file && <p className="text-sm font-semibold text-blue-600 mt-2 truncate w-full max-w-[200px] mx-auto">{file.name}</p>}
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </details>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Supplier</label>
-            <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.supplier_id || ''} onChange={e => setForm({ ...form, supplier_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">-- None --</option>
-              {suppliersRes?.data.data.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Item</label>
-            <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.inventory_item_id || ''} onChange={e => setForm({ ...form, inventory_item_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">-- None --</option>
-              {inventoryRes?.data.data.map(i => <option key={i.id} value={i.id}>{i.item_name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Driver</label>
-            <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.driver_id || ''} onChange={e => setForm({ ...form, driver_id: e.target.value ? Number(e.target.value) : null })}>
-              <option value="">-- None --</option>
-              {usersRes?.data.data.filter((u: any) => u.role === 'driver').map((u: any) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (Optional)</label>
-          <input type="number" step="0.01" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value ? Number(e.target.value) : null })} />
-        </div>
-
-        <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Metadata</label>
-          <div className="flex gap-2 mb-3">
-            <input type="text" placeholder="Key (e.g. Odometer)" className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={metaKey} onChange={e => setMetaKey(e.target.value)} />
-            <input type="text" placeholder="Value (e.g. 15000 km)" className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={metaValue} onChange={e => setMetaValue(e.target.value)} />
-            <Button onClick={handleAddMeta} type="button" variant="secondary">Add</Button>
-          </div>
-          <div className="space-y-2">
-            {Object.entries(form.custom_metadata || {}).map(([key, val]) => (
-              <div key={key} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-2 rounded-lg text-sm">
-                <span className="font-medium text-gray-700 dark:text-gray-300">{key}: <span className="font-normal text-gray-500">{String(val)}</span></span>
-                <button type="button" onClick={() => handleRemoveMeta(key)} className="text-red-500 hover:text-red-700"><LuX size={16} /></button>
+          <details className="group">
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Links & Metadata</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Supplier</label>
+                  <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.supplier_id || ''} onChange={e => setForm({ ...form, supplier_id: e.target.value ? Number(e.target.value) : null })}>
+                    <option value="">-- None --</option>
+                    {suppliersRes?.data.data.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Item</label>
+                  <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.inventory_item_id || ''} onChange={e => setForm({ ...form, inventory_item_id: e.target.value ? Number(e.target.value) : null })}>
+                    <option value="">-- None --</option>
+                    {inventoryRes?.data.data.map(i => <option key={i.id} value={i.id}>{i.item_name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Driver</label>
+                  <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.driver_id || ''} onChange={e => setForm({ ...form, driver_id: e.target.value ? Number(e.target.value) : null })}>
+                    <option value="">-- None --</option>
+                    {usersRes?.data.data.filter((u: any) => u.role === 'driver').map((u: any) => <option key={u.id} value={u.id}>{u.first_name} {u.last_name}</option>)}
+                  </select>
+                </div>
               </div>
-            ))}
-          </div>
-        </div>
 
-        <div className="flex justify-end gap-3 pt-4">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.title || !file}>
-            {mutation.isPending ? 'Uploading...' : 'Upload Document'}
-          </Button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (Optional)</label>
+                <input type="number" step="0.01" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value ? Number(e.target.value) : null })} />
+              </div>
+
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Custom Metadata</label>
+                <div className="flex flex-col sm:flex-row gap-2 mb-3">
+                  <input type="text" placeholder="Key (e.g. Odometer)" className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={metaKey} onChange={e => setMetaKey(e.target.value)} />
+                  <input type="text" placeholder="Value (e.g. 15000 km)" className="flex-1 rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={metaValue} onChange={e => setMetaValue(e.target.value)} />
+                  <Button onClick={handleAddMeta} type="button" variant="secondary" className="w-full sm:w-auto">Add</Button>
+                </div>
+                <div className="space-y-2">
+                  {Object.entries(form.custom_metadata || {}).map(([key, val]) => (
+                    <div key={key} className="flex justify-between items-center bg-gray-50 dark:bg-gray-800 p-2 rounded-lg text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300 truncate mr-2">{key}: <span className="font-normal text-gray-500">{String(val)}</span></span>
+                      <button type="button" onClick={() => handleRemoveMeta(key)} className="text-red-500 hover:text-red-700 shrink-0"><LuX size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </details>
+
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} disabled={mutation.isPending || !form.title || !file}>
+              {mutation.isPending ? 'Uploading...' : 'Upload Document'}
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
@@ -216,8 +234,8 @@ export default function ProcurementDocuments() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium">
+          <table className="w-full text-left text-sm whitespace-nowrap md:table block">
+            <thead className="hidden md:table-header-group bg-gray-50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-medium">
               <tr>
                 <th className="px-6 py-4">Title</th>
                 <th className="px-6 py-4">Type</th>
@@ -227,48 +245,53 @@ export default function ProcurementDocuments() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 block md:table-row-group">
               {isLoading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">Loading...</td></tr>
+                <tr className="block md:table-row"><td colSpan={6} className="px-6 py-8 text-center text-gray-500 block md:table-cell">Loading...</td></tr>
               ) : data?.data.data.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-500">No documents found</td></tr>
+                <tr className="block md:table-row"><td colSpan={6} className="px-6 py-8 text-center text-gray-500 block md:table-cell">No documents found</td></tr>
               ) : (
                 data?.data.data.map(doc => (
-                  <tr key={doc.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors">
-                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
-                      <div className="flex items-center gap-2">
-                        <LuFile className="text-gray-400" />
-                        {doc.title}
+                  <tr key={doc.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/30 transition-colors block md:table-row border-b border-gray-100 dark:border-gray-800 last:border-0 md:border-0 p-4 md:p-0">
+                    <td className="px-4 md:px-6 py-2 md:py-4 font-medium text-gray-900 dark:text-white block md:table-cell">
+                      <div className="flex items-center justify-between md:justify-start gap-2">
+                        <div className="flex items-center gap-2 truncate">
+                          <LuFile className="text-gray-400 shrink-0" />
+                          <span className="truncate">{doc.title}</span>
+                        </div>
+                        <span className="md:hidden px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full text-[10px] font-medium uppercase tracking-wider shrink-0">
+                          {doc.document_type.replace('_', ' ')}
+                        </span>
                       </div>
-                      <div className="text-xs text-gray-500 font-normal mt-1">By: {doc.uploader?.first_name} {doc.uploader?.last_name}</div>
+                      <div className="text-xs text-gray-500 font-normal mt-1 truncate">By: {doc.uploader?.first_name} {doc.uploader?.last_name}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="hidden md:table-cell px-6 py-4">
                       <span className="px-2.5 py-1 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 rounded-full text-xs font-medium uppercase tracking-wider">
                         {doc.document_type.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1 text-xs">
+                    <td className="px-4 md:px-6 py-2 md:py-4 block md:table-cell">
+                      <div className="flex flex-row md:flex-col flex-wrap gap-2 md:gap-1 text-xs">
                         {doc.supplier && (
                           <button onClick={() => showPreview('supplier', doc.supplier!.id)} className="text-left text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded w-fit hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors">
-                            Supplier: {doc.supplier.company_name}
+                            <span className="hidden md:inline">Supplier: </span>{doc.supplier.company_name}
                           </button>
                         )}
                         {doc.inventory_item && (
                           <button onClick={() => showPreview('inventory', doc.inventory_item!.id)} className="text-left text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded w-fit hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors">
-                            Item: {doc.inventory_item.item_name}
+                            <span className="hidden md:inline">Item: </span>{doc.inventory_item.item_name}
                           </button>
                         )}
                         {doc.driver && (
                           <button onClick={() => showPreview('driver', doc.driver!.id)} className="text-left text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded w-fit hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors">
-                            Driver: {doc.driver.first_name} {doc.driver.last_name}
+                            <span className="hidden md:inline">Driver: </span>{doc.driver.first_name} {doc.driver.last_name}
                           </button>
                         )}
                         {!doc.supplier && !doc.inventory_item && !doc.driver && <span className="text-gray-400">Unlinked</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1 max-w-xs">
+                    <td className="px-4 md:px-6 py-2 md:py-4 block md:table-cell">
+                      <div className="flex flex-wrap gap-1">
                         {Object.entries(doc.custom_metadata || {}).map(([k, v]) => (
                           <span key={k} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 rounded text-[10px] truncate max-w-[150px]">
                             {k}: {String(v)}
@@ -276,16 +299,17 @@ export default function ProcurementDocuments() {
                         ))}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right font-medium">
+                    <td className="px-4 md:px-6 py-2 md:py-4 md:text-right font-medium block md:table-cell text-sm">
+                      <span className="md:hidden text-gray-400 mr-2 text-xs">Amount:</span>
                       {doc.amount ? `₱${Number(doc.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '-'}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex justify-end gap-2">
-                        <a href={`${getApiUrl()}/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors" title="View/Download">
-                          <LuFileDown size={18} />
+                    <td className="px-4 md:px-6 py-3 md:py-4 block md:table-cell">
+                      <div className="flex md:justify-end gap-2 border-t border-gray-100 dark:border-gray-800 md:border-0 pt-3 md:pt-0 mt-2 md:mt-0">
+                        <a href={`${getApiUrl()}/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex justify-center items-center gap-2 p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors text-xs font-medium" title="View/Download">
+                          <LuFileDown size={16} /> <span className="md:hidden">View</span>
                         </a>
-                        <button onClick={() => { if (confirm('Delete this document?')) deleteMutation.mutate(doc.id); }} className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors" title="Delete">
-                          <LuTrash size={18} />
+                        <button onClick={() => { if (confirm('Delete this document?')) deleteMutation.mutate(doc.id); }} className="flex-1 md:flex-none flex justify-center items-center gap-2 p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors text-xs font-medium" title="Delete">
+                          <LuTrash size={16} /> <span className="md:hidden">Delete</span>
                         </button>
                       </div>
                     </td>

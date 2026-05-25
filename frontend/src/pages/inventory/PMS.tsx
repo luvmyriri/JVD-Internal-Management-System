@@ -6,7 +6,7 @@ import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
   LuUser, LuShieldAlert, LuFileText, LuSend, LuExternalLink,
-  LuDownload, LuCloudUpload, LuFileDown,
+  LuDownload, LuCloudUpload, LuFileDown, LuChevronRight
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -57,91 +57,117 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title="Log Maintenance" size="xl">
-      <div className="space-y-5 p-2">
-        {/* Bus + PMS type summary */}
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
-            <LuBus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
-          </div>
-          <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
-            {pmsInfo.level.type}
-          </span>
-          {bus.is_service_overdue && (
-            <span className="text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-3 py-1 rounded-full uppercase tracking-wider">
-              Overdue
-            </span>
-          )}
-        </div>
-
-        {/* Scope of Works checklist */}
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-            <LuClipboardList className="w-4 h-4 text-gray-400" />
-            <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-              Scope of Works — {pmsInfo.level.type} ({pmsInfo.level.interval})
-            </p>
-            <span className="ml-auto text-[10px] text-gray-400 font-bold">
-              {checked.filter(Boolean).length}/{pmsInfo.level.checklist.length} done
-            </span>
-          </div>
-          <div className="max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
-            {pmsInfo.level.checklist.map((item, i) => (
-              <label key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer transition-colors">
-                <input type="checkbox" checked={checked[i]}
-                  onChange={() => setChecked(prev => prev.map((v, idx) => idx === i ? !v : v))}
-                  className="mt-0.5 rounded accent-blue-600 shrink-0" />
-                <span className={`text-xs font-medium leading-relaxed transition-all ${checked[i] ? 'line-through text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}>
-                  {item}
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-5">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Vehicle Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              {/* Bus + PMS type summary */}
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center shrink-0">
+                  <LuBus className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
+                </div>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
+                  {pmsInfo.level.type}
                 </span>
-              </label>
-            ))}
-          </div>
-          {pmsInfo.level.note && (
-            <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 border-t border-emerald-100 dark:border-emerald-500/20">
-              <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">★ {pmsInfo.level.note}</p>
+                {bus.is_service_overdue && (
+                  <span className="text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-3 py-1 rounded-full uppercase tracking-wider">
+                    Overdue
+                  </span>
+                )}
+              </div>
+            </div>
+          </details>
+
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Scope of Works</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              {/* Scope of Works checklist */}
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                  <LuClipboardList className="w-4 h-4 text-gray-400" />
+                  <p className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest">
+                    Scope of Works — {pmsInfo.level.type} ({pmsInfo.level.interval})
+                  </p>
+                  <span className="ml-auto text-[10px] text-gray-400 font-bold">
+                    {checked.filter(Boolean).length}/{pmsInfo.level.checklist.length} done
+                  </span>
+                </div>
+                <div className="max-h-48 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+                  {pmsInfo.level.checklist.map((item, i) => (
+                    <label key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 cursor-pointer transition-colors">
+                      <input type="checkbox" checked={checked[i]}
+                        onChange={() => setChecked(prev => prev.map((v, idx) => idx === i ? !v : v))}
+                        className="mt-0.5 rounded accent-blue-600 shrink-0" />
+                      <span className={`text-xs font-medium leading-relaxed transition-all ${checked[i] ? 'line-through text-gray-300 dark:text-gray-600' : 'text-gray-700 dark:text-gray-300'}`}>
+                        {item}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {pmsInfo.level.note && (
+                  <div className="px-4 py-2 bg-emerald-50 dark:bg-emerald-500/10 border-t border-emerald-100 dark:border-emerald-500/20">
+                    <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">★ {pmsInfo.level.note}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </details>
+
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Maintenance Log</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              <form id="log-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>Service Date *</label>
+                  <input type="date" className={inp} value={form.last_service_date}
+                    onChange={e => setForm(p => ({ ...p, last_service_date: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className={lbl}>Next Service Due *</label>
+                  <input type="date" className={inp} value={form.next_service_due}
+                    onChange={e => setForm(p => ({ ...p, next_service_due: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className={lbl}>Current Mileage (km) *</label>
+                  <input type="number" className={inp} value={form.total_mileage} min={bus.total_mileage}
+                    onChange={e => setForm(p => ({ ...p, total_mileage: parseInt(e.target.value) || 0 }))} required />
+                </div>
+                <div>
+                  <label className={lbl}>Service Notes</label>
+                  <input type="text" className={inp} placeholder="e.g. Parts replaced..." value={form.notes}
+                    onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+                </div>
+              </form>
+            </div>
+          </details>
+
+          {mutation.isError && (
+            <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-2xl">
+              <LuTriangleAlert className="w-4 h-4 text-red-500 shrink-0" />
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">Failed to log maintenance. Please try again.</p>
             </div>
           )}
-        </div>
 
-        <form id="log-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className={lbl}>Service Date *</label>
-            <input type="date" className={inp} value={form.last_service_date}
-              onChange={e => setForm(p => ({ ...p, last_service_date: e.target.value }))} required />
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button form="log-form" type="submit" isLoading={mutation.isPending}>
+              <LuCheckCheck className="w-4 h-4 mr-1.5" /> Confirm Service
+            </Button>
           </div>
-          <div>
-            <label className={lbl}>Next Service Due *</label>
-            <input type="date" className={inp} value={form.next_service_due}
-              onChange={e => setForm(p => ({ ...p, next_service_due: e.target.value }))} required />
-          </div>
-          <div>
-            <label className={lbl}>Current Mileage (km) *</label>
-            <input type="number" className={inp} value={form.total_mileage} min={bus.total_mileage}
-              onChange={e => setForm(p => ({ ...p, total_mileage: parseInt(e.target.value) || 0 }))} required />
-          </div>
-          <div>
-            <label className={lbl}>Service Notes</label>
-            <input type="text" className={inp} placeholder="e.g. Parts replaced..." value={form.notes}
-              onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
-          </div>
-        </form>
-
-        {mutation.isError && (
-          <div className="flex items-center gap-3 p-3 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 rounded-2xl">
-            <LuTriangleAlert className="w-4 h-4 text-red-500 shrink-0" />
-            <p className="text-xs text-red-600 dark:text-red-400 font-medium">Failed to log maintenance. Please try again.</p>
-          </div>
-        )}
-
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button form="log-form" type="submit" isLoading={mutation.isPending}>
-            <LuCheckCheck className="w-4 h-4 mr-1.5" /> Confirm Service
-          </Button>
         </div>
       </div>
     </Modal>
@@ -228,67 +254,93 @@ function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title="Request Work Order" size="lg">
-      <div className="space-y-5 p-2">
-        {/* Bus info */}
-        <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
-            <LuBus className="w-5 h-5 text-blue-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
-          </div>
-          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
-            {pmsInfo.level.type}
-          </span>
-        </div>
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-5">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Vehicle & Request Info</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              {/* Bus info */}
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center shrink-0">
+                  <LuBus className="w-5 h-5 text-blue-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-black text-gray-900 dark:text-white">{bus.plate_number}</p>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
+                </div>
+                <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>
+                  {pmsInfo.level.type}
+                </span>
+              </div>
 
-        {/* Approval notice */}
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
-          <LuShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
-            <span className="font-black">Approval Required.</span> This WO will be queued for review. No maintenance work may begin until a designated employee approves it.
-          </p>
-        </div>
+              {/* Approval notice */}
+              <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+                <LuShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300 font-medium leading-relaxed">
+                  <span className="font-black">Approval Required.</span> This WO will be queued for review. No maintenance work may begin until a designated employee approves it.
+                </p>
+              </div>
+            </div>
+          </details>
 
-        {/* PMS scope preview */}
-        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
-          <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-            <LuClipboardList className="w-3.5 h-3.5 text-gray-400" />
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scope — {pmsInfo.level.type} ({pmsInfo.level.interval})</p>
-          </div>
-          <ul className="max-h-36 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
-            {pmsInfo.level.checklist.map((item, i) => (
-              <li key={i} className="flex items-start gap-2 px-4 py-2">
-                <span className="text-gray-300 dark:text-gray-600 text-xs mt-0.5 shrink-0">{i + 1}.</span>
-                <span className="text-xs text-gray-600 dark:text-gray-300">{item}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Scope Preview</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              {/* PMS scope preview */}
+              <div className="rounded-2xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                <div className="flex items-center gap-2 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
+                  <LuClipboardList className="w-3.5 h-3.5 text-gray-400" />
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Scope — {pmsInfo.level.type} ({pmsInfo.level.interval})</p>
+                </div>
+                <ul className="max-h-36 overflow-y-auto divide-y divide-gray-50 dark:divide-gray-800">
+                  {pmsInfo.level.checklist.map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 px-4 py-2">
+                      <span className="text-gray-300 dark:text-gray-600 text-xs mt-0.5 shrink-0">{i + 1}.</span>
+                      <span className="text-xs text-gray-600 dark:text-gray-300">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </details>
 
-        <div className="space-y-4">
-          <div>
-            <label className={lbl}>Priority Level</label>
-            <select value={priority} onChange={e => setPriority(e.target.value as any)}
-              className={inp.replace('bg-white dark:bg-gray-800', 'bg-white dark:bg-gray-900')}>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High — Urgent</option>
-            </select>
-          </div>
-          <div>
-            <label className={lbl}>WO Description / Notes</label>
-            <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
-              className={inp + ' resize-none'} />
-          </div>
-        </div>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Work Order Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              <div className="space-y-4">
+                <div>
+                  <label className={lbl}>Priority Level</label>
+                  <select value={priority} onChange={e => setPriority(e.target.value as any)}
+                    className={inp.replace('bg-white dark:bg-gray-800', 'bg-white dark:bg-gray-900')}>
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High — Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={lbl}>WO Description / Notes</label>
+                  <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)}
+                    className={inp + ' resize-none'} />
+                </div>
+              </div>
+            </div>
+          </details>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => setSubmitted(true)}>
-            <LuSend className="w-4 h-4 mr-1.5" /> Submit WO Request
-          </Button>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => setSubmitted(true)}>
+              <LuSend className="w-4 h-4 mr-1.5" /> Submit WO Request
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>

@@ -88,6 +88,11 @@ class BillingController extends Controller
             'has_booking_fields' => 'nullable|boolean',
             'adult_price' => 'nullable|numeric|min:0',
             'child_price' => 'nullable|numeric|min:0',
+            'is_tour' => 'nullable|boolean',
+            'bus_price' => 'nullable|numeric|min:0',
+            'coaster_price' => 'nullable|numeric|min:0',
+            'tour_kms' => 'nullable|integer|min:0',
+            'tour_hours' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -125,6 +130,11 @@ class BillingController extends Controller
             'has_booking_fields' => $request->has_booking_fields ?? false,
             'adult_price' => $request->adult_price,
             'child_price' => $request->child_price,
+            'is_tour' => $request->is_tour ?? false,
+            'bus_price' => $request->bus_price,
+            'coaster_price' => $request->coaster_price,
+            'tour_kms' => $request->tour_kms,
+            'tour_hours' => $request->tour_hours,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -153,6 +163,11 @@ class BillingController extends Controller
             'has_booking_fields' => 'nullable|boolean',
             'adult_price' => 'nullable|numeric|min:0',
             'child_price' => 'nullable|numeric|min:0',
+            'is_tour' => 'nullable|boolean',
+            'bus_price' => 'nullable|numeric|min:0',
+            'coaster_price' => 'nullable|numeric|min:0',
+            'tour_kms' => 'nullable|integer|min:0',
+            'tour_hours' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
@@ -191,6 +206,11 @@ class BillingController extends Controller
             'has_booking_fields' => $request->has_booking_fields ?? $service->has_booking_fields,
             'adult_price' => $request->adult_price ?? $service->adult_price,
             'child_price' => $request->child_price ?? $service->child_price,
+            'is_tour' => $request->is_tour ?? $service->is_tour,
+            'bus_price' => $request->bus_price ?? $service->bus_price,
+            'coaster_price' => $request->coaster_price ?? $service->coaster_price,
+            'tour_kms' => $request->tour_kms ?? $service->tour_kms,
+            'tour_hours' => $request->tour_hours ?? $service->tour_hours,
         ]);
 
         return response()->json([

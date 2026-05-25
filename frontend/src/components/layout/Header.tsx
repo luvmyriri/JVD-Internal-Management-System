@@ -26,7 +26,8 @@ import {
   LuTrash2,
   LuPaperclip,
   LuFileText,
-  LuDownload
+  LuDownload,
+  LuMenu
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 
@@ -122,7 +123,11 @@ const formatConvoTimestamp = (timestamp?: number) => {
   return `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })}, ${timeStr}`;
 };
 
-export default function Header() {
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export default function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
   const navigate = useNavigate();
@@ -939,25 +944,38 @@ export default function Header() {
 
   return (
     <>
-    <header className={`h-16 border-b flex items-center justify-between px-8 ml-64 fixed top-0 right-0 left-0 z-40 transition-colors ${
+    <header className={`h-16 border-b flex items-center justify-between px-4 md:px-8 md:ml-64 fixed top-0 right-0 left-0 z-40 transition-colors ${
       theme === 'dark' 
         ? 'bg-gray-900 border-gray-800' 
         : 'bg-white border-gray-200'
     }`}>
       {/* Left: page context */}
-      <div className="flex flex-col">
-        <h1 className={`text-lg font-bold leading-none tracking-tight ${
-          theme === 'dark' ? 'text-white' : 'text-gray-900'
-        }`}>
-          {title}
-        </h1>
-        {subtitle && (
-          <p className={`text-[11px] mt-1 font-medium truncate max-w-[400px] ${
-            theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+      <div className="flex items-center gap-3">
+        {/* Mobile menu toggle */}
+        <button
+          onClick={onMenuClick}
+          className={`md:hidden p-2 rounded-lg transition ${
+            theme === 'dark' ? 'hover:bg-gray-800 text-gray-300' : 'hover:bg-gray-100 text-gray-600'
+          }`}
+          aria-label="Toggle menu"
+        >
+          <LuMenu className="w-5 h-5" />
+        </button>
+
+        <div className="flex flex-col">
+          <h1 className={`text-lg font-bold leading-none tracking-tight ${
+            theme === 'dark' ? 'text-white' : 'text-gray-900'
           }`}>
-            {subtitle}
-          </p>
-        )}
+            {title}
+          </h1>
+          {subtitle && (
+            <p className={`text-[11px] mt-1 font-medium truncate max-w-[200px] md:max-w-[400px] ${
+              theme === 'dark' ? 'text-gray-400' : 'text-gray-500'
+            }`}>
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Right: Notifications + User */}
@@ -991,7 +1009,7 @@ export default function Header() {
               />
               
               {/* Dropdown Card */}
-              <div className={`absolute right-0 mt-3 w-96 rounded-2xl border shadow-xl z-20 overflow-hidden ${
+              <div className={`fixed left-4 right-4 top-[72px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-96 rounded-2xl border shadow-xl z-20 overflow-hidden ${
                 theme === 'dark' 
                   ? 'bg-gray-900 border-gray-800 text-white' 
                   : 'bg-white border-gray-100 text-slate-800'
@@ -1355,7 +1373,7 @@ export default function Header() {
               />
               
               {/* Dropdown Card */}
-              <div className={`absolute right-0 mt-3 w-96 rounded-2xl border shadow-xl z-20 overflow-hidden ${
+              <div className={`fixed left-4 right-4 top-[72px] sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-3 sm:w-96 rounded-2xl border shadow-xl z-20 overflow-hidden ${
                 theme === 'dark' 
                   ? 'bg-gray-900 border-gray-800 text-white' 
                   : 'bg-white border-gray-100 text-slate-800'

@@ -22,6 +22,7 @@ import {
   LuCopy,
   LuKeyRound,
   LuCheckCheck,
+  LuChevronRight,
 } from 'react-icons/lu';
 import { motion } from 'framer-motion';
 import { 
@@ -826,141 +827,174 @@ export default function Employees() {
         title={selectedUser ? 'Modify Personnel' : 'Personnel Registration'}
         size="md"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
-              <input
-                {...register('first_name', { 
-                  required: 'First name is required',
-                  onChange: (e) => {
-                    e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
-                  },
-                  pattern: {
-                    value: /^[A-Za-z\s-']+$/i,
-                    message: 'Numbers are not allowed'
-                  }
-                })}
-                className={cn(
-                  "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                  errors.first_name && "border-red-300 bg-red-50/30"
-                )}
-                placeholder="e.g. Michael"
-              />
-              {errors.first_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.first_name.message as string}</p>}
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
-              <input
-                {...register('last_name', { 
-                  required: 'Last name is required',
-                  onChange: (e) => {
-                    e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
-                  },
-                  pattern: {
-                    value: /^[A-Za-z\s-']+$/i,
-                    message: 'Numbers are not allowed'
-                  }
-                })}
-                className={cn(
-                  "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                  errors.last_name && "border-red-300 bg-red-50/30"
-                )}
-                placeholder="e.g. Scofield"
-              />
-              {errors.last_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.last_name.message as string}</p>}
-            </div>
-          </div>
+        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            {/* Personal Information */}
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuUsers className="text-blue-500" /> Personal Information
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                    <input
+                      {...register('first_name', { 
+                        required: 'First name is required',
+                        onChange: (e) => {
+                          e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
+                        },
+                        pattern: {
+                          value: /^[A-Za-z\s-']+$/i,
+                          message: 'Numbers are not allowed'
+                        }
+                      })}
+                      className={cn(
+                        "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        errors.first_name && "border-red-300 bg-red-50/30"
+                      )}
+                      placeholder="e.g. Michael"
+                    />
+                    {errors.first_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.first_name.message as string}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                    <input
+                      {...register('last_name', { 
+                        required: 'Last name is required',
+                        onChange: (e) => {
+                          e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
+                        },
+                        pattern: {
+                          value: /^[A-Za-z\s-']+$/i,
+                          message: 'Numbers are not allowed'
+                        }
+                      })}
+                      className={cn(
+                        "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        errors.last_name && "border-red-300 bg-red-50/30"
+                      )}
+                      placeholder="e.g. Scofield"
+                    />
+                    {errors.last_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.last_name.message as string}</p>}
+                  </div>
+                </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Corporate Email</label>
-            <input
-              {...register('email', { 
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address'
-                }
-              })}
-              type="email"
-              className={cn(
-                "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                errors.email && "border-red-300 bg-red-50/30"
-              )}
-              placeholder="name@jvd-logistics.com"
-            />
-            {errors.email && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.email.message as string}</p>}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
-              <select
-                {...register('role', { required: true })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
-              >
-                {ROLES.map(role => (
-                  <option key={role.value} value={role.value}>{role.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-              <select
-                {...register('department', { required: true })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
-              >
-                {DEPARTMENTS.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee Reference ID</label>
-            <input
-              {...register('employee_id', { required: 'Employee ID is required' })}
-              readOnly
-              className={cn(
-                "w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-2xl text-sm font-black text-gray-400 focus:outline-none cursor-not-allowed font-mono",
-                errors.employee_id && "border-red-300 bg-red-50/30"
-              )}
-              placeholder="JVD-EMP-000"
-            />
-            {errors.employee_id && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.employee_id.message as string}</p>}
-          </div>
-
-          {!selectedUser && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
-                <div className="relative flex items-center">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Corporate Email</label>
                   <input
-                    type="checkbox"
-                    {...register('send_invitation')}
-                    id="send_invitation"
-                    className="w-5 h-5 rounded-lg border-gray-200 dark:border-gray-700 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
-                    defaultChecked={true}
+                    {...register('email', { 
+                      required: 'Email is required',
+                      pattern: {
+                        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                        message: 'Invalid email address'
+                      }
+                    })}
+                    type="email"
+                    className={cn(
+                      "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                      errors.email && "border-red-300 bg-red-50/30"
+                    )}
+                    placeholder="name@jvd-logistics.com"
                   />
-                </div>
-                <div className="flex-1">
-                  <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest cursor-pointer">
-                    Send Account Invitation
-                  </label>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
-                    Invite employee via email to set their own password
-                  </p>
+                  {errors.email && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.email.message as string}</p>}
                 </div>
               </div>
+            </details>
 
-              <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
-                <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                  <span className="font-black">Unchecked = Temp Password.</span> If invitation is disabled, a temporary password will be generated and shown to you immediately after registration.
-                </p>
+            {/* Employment Details */}
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuBriefcase className="text-emerald-500" /> Employment Details
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
+                    <select
+                      {...register('role', { required: true })}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                    >
+                      {ROLES.map(role => (
+                        <option key={role.value} value={role.value}>{role.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
+                    <select
+                      {...register('department', { required: true })}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                    >
+                      {DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee Reference ID</label>
+                  <input
+                    {...register('employee_id', { required: 'Employee ID is required' })}
+                    readOnly
+                    className={cn(
+                      "w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-2xl text-sm font-black text-gray-400 focus:outline-none cursor-not-allowed font-mono",
+                      errors.employee_id && "border-red-300 bg-red-50/30"
+                    )}
+                    placeholder="JVD-EMP-000"
+                  />
+                  {errors.employee_id && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.employee_id.message as string}</p>}
+                </div>
               </div>
-            </div>
-          )}
+            </details>
+
+            {/* Security & Access */}
+            {!selectedUser && (
+              <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+                <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                    <LuShield className="text-purple-500" /> Security & Access
+                  </h3>
+                  <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+                </summary>
+                <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        {...register('send_invitation')}
+                        id="send_invitation"
+                        className="w-5 h-5 rounded-lg border-gray-200 dark:border-gray-700 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                        defaultChecked={true}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="send_invitation" className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest cursor-pointer">
+                        Send Account Invitation
+                      </label>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                        Invite employee via email to set their own password
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
+                    <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                      <span className="font-black">Unchecked = Temp Password.</span> If invitation is disabled, a temporary password will be generated and shown to you immediately after registration.
+                    </p>
+                  </div>
+                </div>
+              </details>
+            )}
 
           <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
             <Button 
@@ -977,7 +1011,8 @@ export default function Employees() {
             </Button>
           </div>
         </form>
-      </Modal>
+      </div>
+    </Modal>
 
       {/* Bulk Upload Preview Modal */}
       <Modal 

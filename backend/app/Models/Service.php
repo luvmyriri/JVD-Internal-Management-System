@@ -21,6 +21,11 @@ class Service extends Model
         'has_booking_fields',
         'adult_price',
         'child_price',
+        'is_tour',
+        'bus_price',
+        'coaster_price',
+        'tour_kms',
+        'tour_hours',
     ];
 
     protected $casts = [
@@ -31,6 +36,11 @@ class Service extends Model
         'has_booking_fields' => 'boolean',
         'adult_price' => 'decimal:2',
         'child_price' => 'decimal:2',
+        'is_tour' => 'boolean',
+        'bus_price' => 'decimal:2',
+        'coaster_price' => 'decimal:2',
+        'tour_kms' => 'integer',
+        'tour_hours' => 'integer',
     ];
 
     public function creator()

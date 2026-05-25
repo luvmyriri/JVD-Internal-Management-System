@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
-  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers
+  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuChevronRight
 } from 'react-icons/lu';
 import {
   Eye,
@@ -106,91 +106,99 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
 
-        <div className="p-8 overflow-y-auto">
+        <div className="p-8 overflow-y-auto custom-scrollbar">
           <form id="jo-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Type *</label>
-              <div className="relative">
-                <select value={form.service_type} onChange={e => set('service_type', e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-                  {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                  <option value="maintenance">Maintenance (PMS)</option>
-                </select>
-                <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-              </div>
-            </div>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Service Information</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Type *</label>
+                  <div className="relative">
+                    <select value={form.service_type} onChange={e => set('service_type', e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                      {Object.entries(SERVICE_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      <option value="maintenance">Maintenance (PMS)</option>
+                    </select>
+                    <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                  </div>
+                </div>
 
-            {isMaintenanceType && (
-              <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/50 rounded-2xl px-5 py-4 text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
-                <strong className="block mb-1 text-orange-800 dark:text-orange-300">PMS Maintenance JO</strong>
-                This will be linked to a Work Order. A PO will only be issued if external parts are required.
-              </div>
-            )}
+                {isMaintenanceType && (
+                  <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-900/50 rounded-2xl px-5 py-4 text-xs text-orange-700 dark:text-orange-400 leading-relaxed">
+                    <strong className="block mb-1 text-orange-800 dark:text-orange-300">PMS Maintenance JO</strong>
+                    This will be linked to a Work Order. A PO will only be issued if external parts are required.
+                  </div>
+                )}
 
-            {!isMaintenanceType && (
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
-                <div className="relative">
-                  <select
-                    value={form.customer_id || ''}
-                    onChange={e => set('customer_id', Number(e.target.value))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                  >
-                    <option value="">{customersLoading ? 'Loading customers...' : 'Select a customer...'}</option>
-                    {customers.map((c: any) => (
-                      <option key={c.id} value={c.id}>
-                        {c.first_name} {c.last_name} (ID: {c.id})
-                      </option>
-                    ))}
-                  </select>
-                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                {!isMaintenanceType && (
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
+                    <div className="relative">
+                      <select
+                        value={form.customer_id || ''}
+                        onChange={e => set('customer_id', Number(e.target.value))}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                      >
+                        <option value="">{customersLoading ? 'Loading customers...' : 'Select a customer...'}</option>
+                        {customers.map((c: any) => (
+                          <option key={c.id} value={c.id}>
+                            {c.first_name} {c.last_name} (ID: {c.id})
+                          </option>
+                        ))}
+                      </select>
+                      <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Date *</label>
+                    <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)}
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus Selection</label>
+                    <div className="relative">
+                      <select
+                        value={form.bus_id || ''}
+                        onChange={e => set('bus_id', e.target.value ? Number(e.target.value) : undefined)}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                      >
+                        <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus (Optional)...'}</option>
+                        {buses.map((bus: any) => (
+                          <option key={bus.id} value={bus.id}>
+                            {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Destination / Description *</label>
+                  <input value={form.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. Baguio City or 'Engine overhaul'"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Estimated Cost (₱)</label>
+                  <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
+                  <textarea rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Optional notes..." />
                 </div>
               </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Service Date *</label>
-                <input type="date" value={form.service_date} onChange={e => set('service_date', e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-              </div>
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus Selection</label>
-                <div className="relative">
-                  <select
-                    value={form.bus_id || ''}
-                    onChange={e => set('bus_id', e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                  >
-                    <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus (Optional)...'}</option>
-                    {buses.map((bus: any) => (
-                      <option key={bus.id} value={bus.id}>
-                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Destination / Description *</label>
-              <input value={form.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. Baguio City or 'Engine overhaul'"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Estimated Cost (₱)</label>
-              <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', Number(e.target.value))}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
-            </div>
-
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
-              <textarea rows={3} value={form.notes ?? ''} onChange={e => set('notes', e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="Optional notes..." />
-            </div>
+            </details>
 
             {mutation.isError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">{(mutation.error as any)?.response?.data?.message || 'Failed to create job order.'}</p>}
           </form>

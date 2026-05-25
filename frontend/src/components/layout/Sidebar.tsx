@@ -123,7 +123,12 @@ const navigation: NavSection[] = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const { user, hasPermission } = useAuth();
   const location = useLocation();
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
@@ -177,7 +182,18 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50">
+    <>
+      {/* Mobile backdrop overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={onClose}
+        />
+      )}
+
+      <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50 transition-transform duration-300 ease-in-out ${
+        isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      }`}>
       {/* Logo glow keyframe animation */}
       <style>{`
         @keyframes jvd-logo-glow {
@@ -272,5 +288,6 @@ export default function Sidebar() {
         <p className="text-[10px] text-gray-700 text-center">Management Co.</p>
       </div>
     </aside>
+    </>
   );
 }

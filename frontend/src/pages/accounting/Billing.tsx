@@ -172,12 +172,12 @@ export default function Billing() {
         </div>
 
         {/* Segmented active capsules */}
-        <div className="flex bg-gray-50 dark:bg-gray-800/70 p-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/30">
+        <div className="flex overflow-x-auto hide-scrollbar flex-nowrap w-full sm:w-auto bg-gray-50 dark:bg-gray-800/70 p-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/30">
           {['all', 'paid', 'pending_payment'].map((status) => (
             <button
               key={status}
               onClick={() => setStatusFilter(status)}
-              className={`px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${statusFilter === status
+              className={`shrink-0 whitespace-nowrap px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${statusFilter === status
                   ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
                   : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                 }`}
@@ -188,8 +188,8 @@ export default function Billing() {
         </div>
       </div>
     {/* Data Table */}
-    <div className={`overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
-      <table className="w-full text-left border-collapse">
+    <div className={`hidden md:block overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
+      <table className="w-full min-w-[700px] text-left border-collapse">
         <thead>
           <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
             <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Invoice Details</th>
@@ -214,7 +214,6 @@ export default function Billing() {
           ) : (
             invoices.map((invoice) => (
               <tr key={invoice.id} className="group hover:bg-blue-50/20 dark:hover:bg-blue-900/5 transition-colors">
-                {/* Invoice ID/Number & Payment Method */}
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
@@ -226,14 +225,10 @@ export default function Billing() {
                     </div>
                   </div>
                 </td>
-
-                {/* Customer Name & Verified Info */}
                 <td className="px-6 py-5">
                   <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">{invoice.customer_name || 'Walk-in Customer'}</p>
                   <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Verified Account</p>
                 </td>
-
-                {/* Formatted Date & Time */}
                 <td className="px-6 py-5">
                   <p className="text-xs font-bold text-gray-950 dark:text-gray-200 leading-tight">
                     {new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -242,33 +237,19 @@ export default function Billing() {
                     {new Date(invoice.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
                 </td>
-
-                {/* Price and Base amount */}
                 <td className="px-6 py-5">
                   <p className="text-base font-black text-gray-950 dark:text-white leading-tight">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">PHP Current</p>
                 </td>
-
-                {/* StatusBadge */}
                 <td className="px-6 py-5">
                   <StatusBadge status={invoice.status} />
                 </td>
-
-                {/* Dropdown Utilities */}
                 <td className="px-6 py-5 text-right">
                   <div className="flex items-center justify-end">
                     <Dropdown
                       items={[
-                        {
-                          label: 'View Invoice',
-                          icon: <LuEye className="w-4 h-4" />,
-                          onClick: () => { setSelectedInvoice(invoice); setShowModal(true); }
-                        },
-                        ...(invoice.status === 'pending_payment' ? [{
-                          label: 'Mark as Paid',
-                          icon: <LuFileCheck className="w-4 h-4" />,
-                          onClick: () => handleMarkAsPaid(invoice.id)
-                        }] : [])
+                        { label: 'View Invoice', icon: <LuEye className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } },
+                        ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : [])
                       ]}
                     />
                   </div>
@@ -278,6 +259,61 @@ export default function Billing() {
           )}
         </tbody>
       </table>
+    </div>
+
+    {/* Mobile Card Layout */}
+    <div className="md:hidden flex flex-col gap-4">
+      {isLoading ? (
+        [...Array(5)].map((_, i) => (
+          <div key={i} className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-[2rem] h-32 w-full"></div>
+        ))
+      ) : invoices.length === 0 ? (
+        <div className="py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No transactions found</div>
+      ) : (
+        invoices.map((invoice) => (
+          <div 
+            key={invoice.id} 
+            onClick={() => { setSelectedInvoice(invoice); setShowModal(true); }}
+            className="bg-gray-50/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-4 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+          >
+            <div className="flex justify-between items-start gap-3">
+              <div className="flex items-center gap-3 flex-1 overflow-hidden">
+                <div className="w-10 h-10 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center text-blue-600 shadow-sm shrink-0">
+                  <LuPrinter className="w-5 h-5" />
+                </div>
+                <div className="overflow-hidden flex-1">
+                  <p className="font-bold text-gray-950 dark:text-white leading-tight truncate">{invoice.invoice_number}</p>
+                  <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5 truncate">{invoice.payment_method}</p>
+                </div>
+              </div>
+              <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400">
+                <LuChevronRight className="w-4 h-4" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div className="overflow-hidden">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Customer</p>
+                <p className="text-sm font-bold text-gray-950 dark:text-gray-200 truncate">{invoice.customer_name || 'Walk-in'}</p>
+              </div>
+              <div className="overflow-hidden">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Date</p>
+                <p className="text-sm font-bold text-gray-950 dark:text-gray-200 truncate">
+                  {new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-end mt-2 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+              <StatusBadge status={invoice.status} />
+              <div className="text-right">
+                <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total</p>
+                <p className="text-lg font-black text-blue-600 dark:text-blue-400">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              </div>
+            </div>
+          </div>
+        ))
+      )}
     </div>
 
     {/* Pagination Controls */}

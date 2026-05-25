@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LuWallet, LuSearch, LuPlus, LuX, LuNavigation, LuCoins } from 'react-icons/lu';
+import { LuWallet, LuSearch, LuPlus, LuX, LuNavigation, LuCoins, LuChevronRight } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cashBudgetApi } from '../../api/operations';
@@ -159,135 +159,141 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
     <Modal isOpen={true} onClose={onClose} title="New Cash Budget Request" size="lg">
       <form onSubmit={handleSubmit} className="space-y-6 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {/* Section 1: Travel Details */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
-            <LuNavigation size={14} /> Travel Details
+        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-indigo-600 uppercase tracking-widest outline-none">
+            <span className="flex items-center gap-2"><LuNavigation size={14} /> Travel Details</span>
+            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          </summary>
+          <div className="p-4 pt-0 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Prepared Date</label>
+                <input
+                  type="date"
+                  required
+                  value={form.date}
+                  onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+                <input
+                  type="date"
+                  required
+                  value={form.travel_date}
+                  onChange={e => setForm(p => ({ ...p, travel_date: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+                <input
+                  type="text"
+                  required
+                  value={form.destination}
+                  onChange={e => setForm(p => ({ ...p, destination: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. Vigan, Ilocos Sur"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plate Number</label>
+                <input
+                  type="text"
+                  value={form.plate_number}
+                  onChange={e => setForm(p => ({ ...p, plate_number: e.target.value }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  placeholder="e.g. NDG-5818"
+                />
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Prepared Date</label>
-              <input
-                type="date"
-                required
-                value={form.date}
-                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
-              <input
-                type="date"
-                required
-                value={form.travel_date}
-                onChange={e => setForm(p => ({ ...p, travel_date: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
-              <input
-                type="text"
-                required
-                value={form.destination}
-                onChange={e => setForm(p => ({ ...p, destination: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. Vigan, Ilocos Sur"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plate Number</label>
-              <input
-                type="text"
-                value={form.plate_number}
-                onChange={e => setForm(p => ({ ...p, plate_number: e.target.value }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                placeholder="e.g. NDG-5818"
-              />
-            </div>
-          </div>
-        </div>
+        </details>
 
         {/* Section 2: Budget Details */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-2 text-xs font-black text-indigo-600 uppercase tracking-widest border-b border-gray-100 dark:border-gray-800 pb-2">
-            <LuCoins size={14} /> Budget Breakdown (₱)
+        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-indigo-600 uppercase tracking-widest outline-none">
+            <span className="flex items-center gap-2"><LuCoins size={14} /> Budget Breakdown (₱)</span>
+            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          </summary>
+          <div className="p-4 pt-0 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel Allocation</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.diesel}
+                  onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Meal Allowance</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.meal_allowance}
+                  onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">SOP</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.sop}
+                  onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Easytrip Toll</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.easytrip}
+                  onChange={e => setForm(p => ({ ...p, easytrip: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Autosweep Toll</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.autosweep}
+                  onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Coach Captain Salary</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.coach_captain_salary}
+                  onChange={e => setForm(p => ({ ...p, coach_captain_salary: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Spare Driver Salary</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.spare_driver_salary}
+                  onChange={e => setForm(p => ({ ...p, spare_driver_salary: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+            </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel Allocation</label>
-              <input
-                type="number"
-                min="0"
-                value={form.diesel}
-                onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Meal Allowance</label>
-              <input
-                type="number"
-                min="0"
-                value={form.meal_allowance}
-                onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">SOP</label>
-              <input
-                type="number"
-                min="0"
-                value={form.sop}
-                onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Easytrip Toll</label>
-              <input
-                type="number"
-                min="0"
-                value={form.easytrip}
-                onChange={e => setForm(p => ({ ...p, easytrip: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Autosweep Toll</label>
-              <input
-                type="number"
-                min="0"
-                value={form.autosweep}
-                onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Coach Captain Salary</label>
-              <input
-                type="number"
-                min="0"
-                value={form.coach_captain_salary}
-                onChange={e => setForm(p => ({ ...p, coach_captain_salary: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-            <div className="space-y-2 col-span-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Spare Driver Salary</label>
-              <input
-                type="number"
-                min="0"
-                value={form.spare_driver_salary}
-                onChange={e => setForm(p => ({ ...p, spare_driver_salary: Number(e.target.value) }))}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-        </div>
+        </details>
 
         {/* Live Total Display */}
         <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/50 rounded-[1.5rem] p-5 flex items-center justify-between">
@@ -324,31 +330,31 @@ export default function CashBudgets() {
   const budgets: CashBudgetRequest[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
   const filtered = budgets.filter((b) =>
-    b.destination.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.destination?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     b.plate_number?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
         <div>
           <div className="flex items-center gap-3 text-sm font-bold text-indigo-600 dark:text-indigo-500 mb-2 uppercase tracking-widest">
             <LuWallet size={18} /> Operations Module
           </div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Cash Budgets</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Cash Budgets</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <div className="relative group w-full sm:w-auto">
             <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors" size={18} />
             <input
               type="text"
               placeholder="Search destination or plate..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
+              className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all text-sm"
             />
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer">
+          <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-indigo-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Request
           </button>
         </div>

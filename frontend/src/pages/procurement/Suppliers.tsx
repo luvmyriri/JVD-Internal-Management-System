@@ -5,7 +5,7 @@ import {
   LuTruck, LuPlus, LuSearch, LuShieldCheck, LuShieldX,
   LuBan, LuPhone, LuMail, LuMapPin, LuX, LuLoaderCircle,
   LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash, LuChevronDown, LuTrash,
-  LuFileDown, LuFileUp
+  LuFileDown, LuFileUp, LuChevronRight
 } from 'react-icons/lu';
 import ExcelJS from 'exceljs';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
@@ -111,75 +111,93 @@ function SupplierModal({ mode, initialData, onClose }: SupplierModalProps) {
           </div>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
-        <div className="p-8 overflow-y-auto">
+        <div className="p-8 overflow-y-auto custom-scrollbar">
           <form id="supplier-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.', val => setForm(p => ({ ...p, company_name: formatName(val) })))}
-              {field('Contact Person', 'contact_person', 'text', 'Juan Dela Cruz', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
-              {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX', val => setForm(p => ({ ...p, phone: formatPhone(val) })))}
-              {field('Email', 'email', 'email', 'supplier@example.com', val => setForm(p => ({ ...p, email: formatEmail(val) })))}
-            </div>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Basic Information</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {field('Company Name *', 'company_name', 'text', 'ABC Parts Supply Co.', val => setForm(p => ({ ...p, company_name: formatName(val) })))}
+                  {field('Contact Person', 'contact_person', 'text', 'Juan Dela Cruz', val => setForm(p => ({ ...p, contact_person: formatName(val) })))}
+                  {field('Phone', 'phone', 'text', '+63 9XX XXX XXXX', val => setForm(p => ({ ...p, phone: formatPhone(val) })))}
+                  {field('Email', 'email', 'email', 'supplier@example.com', val => setForm(p => ({ ...p, email: formatEmail(val) })))}
+                </div>
+              </div>
+            </details>
 
             {/* Address — PSGC cascading */}
-            <div className="pt-4 mt-2 border-t border-gray-100 dark:border-gray-800">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Address</p>
-              {mode === 'view' ? (
-                 <div className="text-sm text-gray-800 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
-                    {form.address || 'No address provided'}
-                 </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <AddressSelector
-                    value={addressVal}
-                    onChange={(val, full) => {
-                      setAddressVal(val);
-                      setForm(p => ({ ...p, address: full }));
-                    }}
-                  />
-                  {form.address && (
-                     <div className="col-span-1 sm:col-span-2 text-xs text-gray-500 mt-2">
-                       Selected: {form.address}
-                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span>Address</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1">
+                {mode === 'view' ? (
+                   <div className="text-sm text-gray-800 dark:text-gray-300 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-xl border border-gray-100 dark:border-gray-800">
+                      {form.address || 'No address provided'}
+                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <AddressSelector
+                      value={addressVal}
+                      onChange={(val, full) => {
+                        setAddressVal(val);
+                        setForm(p => ({ ...p, address: full }));
+                      }}
+                    />
+                    {form.address && (
+                       <div className="col-span-1 sm:col-span-2 text-xs text-gray-500 mt-2">
+                         Selected: {form.address}
+                       </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </details>
 
-            <div className="pt-6 mt-4 border-t border-gray-100 dark:border-gray-800">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-4">Financial / Compliance</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                {field('TIN Number', 'tin_number', 'text', '000-000-000-000', val => setForm(p => ({ ...p, tin_number: formatTIN(val) })))}
-                {field('Bank Name', 'bank_name', 'text', 'BDO, BPI, Metrobank...', val => setForm(p => ({ ...p, bank_name: formatName(val) })))}
-                {field('Bank Account Number', 'bank_account_number', 'text', '0000-0000-0000', val => setForm(p => ({ ...p, bank_account_number: formatBankAcc(val) })))}
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Terms</label>
-                  <div className="relative">
-                    <select
-                      value={form.payment_terms}
-                      disabled={mode === 'view'}
-                      onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white dark:bg-gray-900"
-                    >
-                      <option value="">Select Terms...</option>
-                      <option value="COD">COD (Cash on Delivery)</option>
-                      <option value="Net 15">Net 15</option>
-                      <option value="Net 30">Net 30</option>
-                      <option value="Net 60">Net 60</option>
-                      <option value="Monthly">Monthly</option>
-                      <option value="Upon Order">Upon Order</option>
-                    </select>
-                    <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span>Financial / Compliance</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  {field('TIN Number', 'tin_number', 'text', '000-000-000-000', val => setForm(p => ({ ...p, tin_number: formatTIN(val) })))}
+                  {field('Bank Name', 'bank_name', 'text', 'BDO, BPI, Metrobank...', val => setForm(p => ({ ...p, bank_name: formatName(val) })))}
+                  {field('Bank Account Number', 'bank_account_number', 'text', '0000-0000-0000', val => setForm(p => ({ ...p, bank_account_number: formatBankAcc(val) })))}
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Payment Terms</label>
+                    <div className="relative">
+                      <select
+                        value={form.payment_terms}
+                        disabled={mode === 'view'}
+                        onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))}
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 disabled:bg-gray-50 disabled:text-gray-500 dark:disabled:bg-gray-800/50 dark:disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow appearance-none bg-white dark:bg-gray-900"
+                      >
+                        <option value="">Select Terms...</option>
+                        <option value="COD">COD (Cash on Delivery)</option>
+                        <option value="Net 15">Net 15</option>
+                        <option value="Net 30">Net 30</option>
+                        <option value="Net 60">Net 60</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Upon Order">Upon Order</option>
+                      </select>
+                      <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
+                <div className="mt-6 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
+                  <input type="checkbox" id="is_consignment" checked={form.is_consignment}
+                    disabled={mode === 'view'}
+                    onChange={e => setForm(p => ({ ...p, is_consignment: e.target.checked }))}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-50" />
+                  <label htmlFor="is_consignment" className="text-sm font-medium text-blue-900 cursor-pointer select-none">Consignment arrangement</label>
+                </div>
               </div>
-              <div className="mt-6 flex items-center gap-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100/50">
-                <input type="checkbox" id="is_consignment" checked={form.is_consignment}
-                  disabled={mode === 'view'}
-                  onChange={e => setForm(p => ({ ...p, is_consignment: e.target.checked }))}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer disabled:opacity-50" />
-                <label htmlFor="is_consignment" className="text-sm font-medium text-blue-900 cursor-pointer select-none">Consignment arrangement</label>
-              </div>
-            </div>
+            </details>
 
             {mutation.isError && (
               <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100 mt-4">

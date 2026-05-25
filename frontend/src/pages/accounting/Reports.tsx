@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   LuFileSpreadsheet, LuFileText, LuCalendar,
   LuTrendingUp, LuDollarSign, LuActivity, LuSearch, 
-  LuUser, LuMapPin, LuEye, LuX, LuTrophy, LuDownload, LuArrowUpRight, LuTriangleAlert
+  LuUser, LuMapPin, LuEye, LuX, LuTrophy, LuDownload, LuArrowUpRight, LuTriangleAlert, LuChevronRight
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import jsPDF from 'jspdf';
@@ -56,7 +56,7 @@ export default function Reports() {
             else if (sName.toLowerCase().includes('cebu')) dest = 'Cebu';
             else if (sName.toLowerCase().includes('siargao')) dest = 'Siargao';
             else if (sName.toLowerCase().includes('bohol')) dest = 'Bohol';
-            else if (inv.notes && inv.notes.toLowerCase().includes('travel')) {
+            else if (inv.notes && inv.notes?.toLowerCase().includes('travel')) {
               const dests = ['Boracay', 'Palawan', 'Cebu', 'Siargao', 'Bohol'];
               dest = dests[inv.id % dests.length];
             }
@@ -113,11 +113,11 @@ export default function Reports() {
     if (!data) return [];
     return data.filter((txn: any) => {
       const matchesSearch = 
-        txn.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.agentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.destination.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        txn.serviceType.toLowerCase().includes(searchQuery.toLowerCase());
+        txn.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txn.agentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txn.clientName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txn.destination?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        txn.serviceType?.toLowerCase().includes(searchQuery.toLowerCase());
       
       const matchesStatus = 
         statusFilter === 'All' || 
@@ -359,7 +359,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="h-[calc(100vh-9.5rem)] flex flex-col gap-2 overflow-hidden pb-1">
+    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
       
       {/* ── Top Header and Actions Bar ── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0 relative z-30">
@@ -374,12 +374,12 @@ export default function Reports() {
 
         <div className="flex items-center gap-3">
           {/* Calendar Range Picker */}
-          <div className="flex bg-gray-100/80 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700/50 shadow-inner backdrop-blur-md">
+          <div className="flex overflow-x-auto hide-scrollbar flex-nowrap w-full md:w-auto bg-gray-100/80 dark:bg-gray-800/80 p-1 rounded-xl border border-gray-200/50 dark:border-gray-700/50 shadow-inner backdrop-blur-md">
             {['day', 'week', 'month', 'year', 'all'].map((r) => (
               <button
                 key={r}
                 onClick={() => setRange(r)}
-                className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
+                className={`shrink-0 whitespace-nowrap px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all duration-300 ${
                   range === r 
                   ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-md scale-[1.03]' 
                   : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:scale-[1.01]'
@@ -483,7 +483,7 @@ export default function Reports() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
         
         {/* Column 1: Agent Sales History & Records Table (Colspan 2) */}
-        <div className="xl:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3.5 flex flex-col min-h-0 h-full">
+        <div className="xl:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3.5 flex flex-col min-h-[400px] lg:min-h-0 lg:h-full">
           
           {/* Table Toolbar controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-50 dark:border-gray-800 shrink-0">
@@ -508,12 +508,12 @@ export default function Reports() {
               </div>
 
               {/* Status pills */}
-              <div className="flex bg-gray-100/80 dark:bg-gray-800/60 p-0.5 rounded-lg border border-gray-200/20 dark:border-gray-700/20">
+              <div className="flex overflow-x-auto hide-scrollbar flex-nowrap w-full sm:w-auto bg-gray-100/80 dark:bg-gray-800/60 p-0.5 rounded-lg border border-gray-200/20 dark:border-gray-700/20">
                 {['All', 'Paid', 'Partial', 'Pending', 'Cancelled'].map((status) => (
                   <button
                     key={status}
                     onClick={() => setStatusFilter(status)}
-                    className={`px-2.5 py-1 rounded text-[8px] font-bold transition-all cursor-pointer ${
+                    className={`shrink-0 whitespace-nowrap px-2.5 py-1 rounded text-[8px] font-bold transition-all cursor-pointer ${
                       statusFilter === status
                         ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
                         : 'text-gray-500 dark:text-gray-400 hover:text-gray-950 dark:hover:text-gray-200'
@@ -535,107 +535,133 @@ export default function Reports() {
                 <p className="text-[9px] text-gray-400 mt-1">Try resetting your search query or status filter.</p>
               </div>
             ) : (
-              <table className="w-full text-left border-collapse select-none">
-                <thead>
-                  <tr className="border-b border-gray-50 dark:border-gray-800">
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%]">ID</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[20%]">Agent</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[20%]">Client</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[15%]">Service</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%]">Dest</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%] text-right">Amount</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[10%] text-center">Status</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[15%] text-center">Date</th>
-                    <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[8%] text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50/50 dark:divide-gray-800/40">
+              <>
+                <div className="hidden md:block">
+                  <table className="w-full min-w-[800px] text-left border-collapse select-none">
+                    <thead>
+                      <tr className="border-b border-gray-50 dark:border-gray-800">
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%]">ID</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[20%]">Agent</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[20%]">Client</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[15%]">Service</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%]">Dest</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[12%] text-right">Amount</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[10%] text-center">Status</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[15%] text-center">Date</th>
+                        <th className="py-2.5 text-[8px] font-black uppercase tracking-wider text-gray-400 dark:text-gray-500 w-[8%] text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50/50 dark:divide-gray-800/40">
+                      {filteredTransactions.map((txn: any) => (
+                        <tr 
+                          key={txn.id}
+                          className="group border-b border-gray-50/50 dark:border-gray-800/30 hover:bg-gray-50/30 dark:hover:bg-gray-800/20 transition-all duration-200"
+                        >
+                          <td className="py-3 text-[10px] font-bold text-blue-600 dark:text-blue-400 tracking-wider">
+                            {txn.id}
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <img src={getAvatarUrl(txn.agentName, txn.agentEmail)} alt={txn.agentName} className="w-5.5 h-5.5 rounded-full border border-gray-100 dark:border-gray-700/50 object-cover shadow-sm group-hover:scale-105 transition-transform" />
+                              <div className="leading-tight">
+                                <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.agentName}</p>
+                                <p className="text-[7.5px] text-gray-400 tracking-wider">{txn.agentEmail}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.clientName}</p>
+                          </td>
+                          <td className="py-3">
+                            <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-750 px-1.5 py-0.5 rounded-md">
+                              {txn.serviceType}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-1 text-[9px] font-bold text-gray-600 dark:text-gray-400">
+                              {txn.destination !== 'N/A' && <LuMapPin className="w-2.5 h-2.5 text-rose-500" />}
+                              {txn.destination}
+                            </div>
+                          </td>
+                          <td className="py-3 text-right text-[10px] font-black text-gray-900 dark:text-white">
+                            ₱{txn.amount.toLocaleString()}
+                          </td>
+                          <td className="py-3 text-center">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold border transition-colors ${
+                              txn.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.05)]' : txn.status === 'Partial' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.05)]' : txn.status === 'Pending' ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.05)]' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.05)]'
+                            }`}>
+                              <span className={`w-1 h-1 rounded-full ${txn.status === 'Paid' ? 'bg-emerald-500' : txn.status === 'Partial' ? 'bg-blue-500' : txn.status === 'Pending' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'}`} />
+                              {txn.status}
+                            </span>
+                          </td>
+                          <td className="py-3 text-center text-[9px] font-bold text-gray-400 dark:text-gray-500">
+                            {new Date(txn.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </td>
+                          <td className="py-3 text-center">
+                            <button onClick={() => setSelectedTxn(txn)} className="p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all opacity-50 group-hover:opacity-100 cursor-pointer touch-target">
+                              <LuEye className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile Card Layout */}
+                <div className="md:hidden flex flex-col gap-3 mt-2">
                   {filteredTransactions.map((txn: any) => (
-                    <tr 
-                      key={txn.id}
-                      className="group border-b border-gray-50/50 dark:border-gray-800/30 hover:bg-gray-50/30 dark:hover:bg-gray-800/20 transition-all duration-200"
+                    <div 
+                      key={txn.id} 
+                      onClick={() => setSelectedTxn(txn)}
+                      className="bg-gray-50/50 dark:bg-gray-800/30 p-5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800 shadow-sm flex flex-col gap-4 relative cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
                     >
-                      {/* ID */}
-                      <td className="py-3 text-[10px] font-bold text-blue-600 dark:text-blue-400 tracking-wider">
-                        {txn.id}
-                      </td>
-                      
-                      {/* Agent */}
-                      <td className="py-3">
-                        <div className="flex items-center gap-2">
-                          <img
-                            src={getAvatarUrl(txn.agentName, txn.agentEmail)}
-                            alt={txn.agentName}
-                            className="w-5.5 h-5.5 rounded-full border border-gray-100 dark:border-gray-700/50 object-cover shadow-sm group-hover:scale-105 transition-transform"
-                          />
-                          <div className="leading-tight">
-                            <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.agentName}</p>
-                            <p className="text-[7.5px] text-gray-400 tracking-wider">{txn.agentEmail}</p>
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="overflow-hidden flex-1">
+                          <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{txn.id}</p>
+                          <div className="flex items-center gap-2 mt-1 overflow-hidden">
+                            <img src={getAvatarUrl(txn.agentName, txn.agentEmail)} alt={txn.agentName} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 object-cover shrink-0" />
+                            <div className="overflow-hidden">
+                              <p className="text-[11px] font-bold text-gray-900 dark:text-white leading-tight truncate">{txn.agentName}</p>
+                              <p className="text-[9px] text-gray-500 truncate">{txn.serviceType}</p>
+                            </div>
                           </div>
                         </div>
-                      </td>
-                      
-                      {/* Client */}
-                      <td className="py-3">
-                        <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.clientName}</p>
-                      </td>
-                      
-                      {/* Service Type */}
-                      <td className="py-3">
-                        <span className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-750 px-1.5 py-0.5 rounded-md">
-                          {txn.serviceType}
-                        </span>
-                      </td>
-                      
-                      {/* Destination */}
-                      <td className="py-3">
-                        <div className="flex items-center gap-1 text-[9px] font-bold text-gray-600 dark:text-gray-400">
-                          {txn.destination !== 'N/A' && <LuMapPin className="w-2.5 h-2.5 text-rose-500" />}
-                          {txn.destination}
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${
+                                txn.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : txn.status === 'Partial' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : txn.status === 'Pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                          }`}>
+                            {txn.status}
+                          </span>
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400">
+                            <LuChevronRight className="w-4 h-4" />
+                          </div>
                         </div>
-                      </td>
+                      </div>
                       
-                      {/* Amount */}
-                      <td className="py-3 text-right text-[10px] font-black text-gray-900 dark:text-white">
-                        ₱{txn.amount.toLocaleString()}
-                      </td>
-                      
-                      {/* Payment Status */}
-                      <td className="py-3 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold border transition-colors ${
-                          txn.status === 'Paid'
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-[0_0_8px_rgba(16,185,129,0.05)]'
-                            : txn.status === 'Partial'
-                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-[0_0_8px_rgba(59,130,246,0.05)]'
-                            : txn.status === 'Pending'
-                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-[0_0_8px_rgba(245,158,11,0.05)]'
-                            : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-[0_0_8px_rgba(244,63,94,0.05)]'
-                        }`}>
-                          <span className={`w-1 h-1 rounded-full ${
-                            txn.status === 'Paid' ? 'bg-emerald-500' : txn.status === 'Partial' ? 'bg-blue-500' : txn.status === 'Pending' ? 'bg-amber-500 animate-pulse' : 'bg-rose-500'
-                          }`} />
-                          {txn.status}
-                        </span>
-                      </td>
-                      
-                      {/* Date */}
-                      <td className="py-3 text-center text-[9px] font-bold text-gray-400 dark:text-gray-500">
-                        {new Date(txn.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      
-                      {/* Action Button */}
-                      <td className="py-3 text-center">
-                        <button
-                          onClick={() => setSelectedTxn(txn)}
-                          className="p-1 rounded-lg text-gray-400 dark:text-gray-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:text-blue-600 dark:hover:text-blue-400 transition-all opacity-50 group-hover:opacity-100 cursor-pointer"
-                        >
-                          <LuEye className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="overflow-hidden">
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Client</p>
+                          <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">{txn.clientName}</p>
+                        </div>
+                        <div className="overflow-hidden">
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Dest/Date</p>
+                          <p className="text-xs font-bold text-gray-800 dark:text-gray-200 truncate">
+                            {txn.destination !== 'N/A' ? txn.destination : new Date(txn.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end items-end border-t border-gray-100 dark:border-gray-700/50 mt-2 pt-4">
+                        <div className="text-right">
+                          <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Amount</p>
+                          <p className="text-lg font-black text-gray-900 dark:text-white">₱{txn.amount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </>
             )}
           </div>
           
@@ -646,7 +672,7 @@ export default function Reports() {
         </div>
         
         {/* Column 2: Individual Agent Performance Leaderboard */}
-        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3.5 flex flex-col min-h-0 h-full">
+        <div className="bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3.5 flex flex-col min-h-[300px] lg:min-h-0 lg:h-full">
           <div className="pb-3 border-b border-gray-50 dark:border-gray-800 shrink-0">
             <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
               <LuTrophy className="w-3.5 h-3.5 text-amber-500" />

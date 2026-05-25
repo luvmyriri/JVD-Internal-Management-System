@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPlus, LuSearch, LuLoaderCircle, LuX,
   LuTrash2, LuChevronDown, LuSendHorizontal, LuCheck, LuTriangleAlert,
-  LuFileText, LuHash, LuPackage, LuArrowRight,
+  LuFileText, LuHash, LuPackage, LuArrowRight, LuChevronRight,
 } from 'react-icons/lu';
 import { Eye, CheckCircle, Send } from 'lucide-react';
 import { purchaseOrderApi } from '../../api/purchaseOrders';
@@ -128,41 +128,64 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
         </div>
 
-        <div className="p-8 overflow-y-auto">
+        <div className="p-8 overflow-y-auto custom-scrollbar">
           <form id="po-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-8">
             {/* Supplier */}
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Supplier *</label>
-              <div className="relative">
-                <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
-                  <option value="">Select accredited supplier...</option>
-                  {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
-                </select>
-                <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuPackage className="text-blue-500" /> Supplier
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Supplier *</label>
+                <div className="relative">
+                  <select value={supplierId} onChange={e => setSupplierId(Number(e.target.value))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                    <option value="">Select accredited supplier...</option>
+                    {suppliers.map(s => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                {suppliers.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100"><LuTriangleAlert size={14} /> No accredited suppliers yet. Verify a supplier first.</p>
+                )}
               </div>
-              {suppliers.length === 0 && (
-                <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100"><LuTriangleAlert size={14} /> No accredited suppliers yet. Verify a supplier first.</p>
-              )}
-            </div>
+            </details>
 
             {/* Line Items */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Line Items *</label>
-                <button type="button" onClick={addItem} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"><LuPlus size={14} /> Add Item</button>
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuFileText className="text-emerald-500" /> Line Items
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <div className="flex items-center justify-between mb-4">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Items *</label>
+                  <button type="button" onClick={addItem} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 px-3 py-1.5 rounded-lg hover:bg-blue-50 transition"><LuPlus size={14} /> Add Item</button>
+                </div>
+                <div className="space-y-4">
+                  {items.map((item, i) => <LineItemRow key={i} item={item} index={i} onChange={updateItem} onRemove={removeItem} />)}
+                </div>
               </div>
-              <div className="space-y-4">
-                {items.map((item, i) => <LineItemRow key={i} item={item} index={i} onChange={updateItem} onRemove={removeItem} />)}
-              </div>
-            </div>
+            </details>
 
             {/* Notes */}
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
-              <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional instructions or notes..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
-            </div>
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuFileText className="text-gray-500" /> Additional Notes
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Additional instructions or notes..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+              </div>
+            </details>
 
             {/* Total */}
             <div className="flex items-center justify-between bg-blue-50/50 rounded-2xl px-6 py-5 border border-blue-100">

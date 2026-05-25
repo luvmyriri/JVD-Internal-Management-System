@@ -7,7 +7,9 @@ import {
   LuPhone,
   LuBook,
   LuPencil,
-  LuTrash2
+  LuTrash2,
+  LuChevronRight,
+  LuUser
 } from 'react-icons/lu';
 import { Modal, StatusBadge, Button, Pagination } from '../../components/ui';
 import { useForm } from 'react-hook-form';
@@ -62,10 +64,10 @@ export default function Internships() {
   const filteredInternships = internships.filter(intern => {
     const search = searchTerm.toLowerCase();
     return (
-      intern.first_name.toLowerCase().includes(search) ||
-      intern.last_name.toLowerCase().includes(search) ||
-      intern.email.toLowerCase().includes(search) ||
-      intern.school.toLowerCase().includes(search)
+      intern.first_name?.toLowerCase().includes(search) ||
+      intern.last_name?.toLowerCase().includes(search) ||
+      intern.email?.toLowerCase().includes(search) ||
+      intern.school?.toLowerCase().includes(search)
     );
   });
 
@@ -226,141 +228,164 @@ export default function Internships() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title={selectedInternship ? 'Edit Intern Record' : 'Add Intern Record'}
-        size="lg"
+        size="md"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">First Name</label>
-              <input
-                {...register('first_name', { 
-                  required: 'First name is required',
-                  pattern: {
-                    value: /^[A-Za-z\s'-]+$/,
-                    message: 'First name cannot contain numbers'
-                  }
-                })}
-                onInput={(e) => {
-                  e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
-                }}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.first_name && <p className="text-red-500 text-xs mt-1">{errors.first_name.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
-              <input
-                {...register('last_name', { 
-                  required: 'Last name is required',
-                  pattern: {
-                    value: /^[A-Za-z\s'-]+$/,
-                    message: 'Last name cannot contain numbers'
-                  }
-                })}
-                onInput={(e) => {
-                  e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
-                }}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.last_name && <p className="text-red-500 text-xs mt-1">{errors.last_name.message}</p>}
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Email</label>
-              <input
-                type="email"
-                {...register('email', { 
-                  required: 'Email is required',
-                  pattern: {
-                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                    message: 'Invalid email address'
-                  }
-                })}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Phone</label>
-              <input
-                type="text"
-                maxLength={11}
-                {...register('phone', {
-                  pattern: {
-                    value: /^09\d{9}$/,
-                    message: 'Must be a valid 11-digit PH number starting with 09 (e.g. 09123456789)'
-                  }
-                })}
-                onInput={(e) => {
-                  e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
-                }}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone.message}</p>}
-            </div>
-          </div>
+        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuUser className="text-blue-500" /> Personal Info
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">First Name</label>
+                    <input
+                      {...register('first_name', { 
+                        required: 'First name is required',
+                        pattern: {
+                          value: /^[A-Za-z\s'-]+$/,
+                          message: 'First name cannot contain numbers'
+                        }
+                      })}
+                      onInput={(e) => {
+                        e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
+                      }}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.first_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.first_name.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Last Name</label>
+                    <input
+                      {...register('last_name', { 
+                        required: 'Last name is required',
+                        pattern: {
+                          value: /^[A-Za-z\s'-]+$/,
+                          message: 'Last name cannot contain numbers'
+                        }
+                      })}
+                      onInput={(e) => {
+                        e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
+                      }}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.last_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.last_name.message}</p>}
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Email</label>
+                    <input
+                      type="email"
+                      {...register('email', { 
+                        required: 'Email is required',
+                        pattern: {
+                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                          message: 'Invalid email address'
+                        }
+                      })}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.email && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.email.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Phone</label>
+                    <input
+                      type="text"
+                      maxLength={11}
+                      {...register('phone', {
+                        pattern: {
+                          value: /^09\d{9}$/,
+                          message: 'Valid 11-digit PH number (09...)'
+                        }
+                      })}
+                      onInput={(e) => {
+                        e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
+                      }}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.phone && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.phone.message}</p>}
+                  </div>
+                </div>
+              </div>
+            </details>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">School/University</label>
-              <input
-                {...register('school', { required: 'School is required' })}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.school && <p className="text-red-500 text-xs mt-1">{errors.school.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Course/Program</label>
-              <input
-                {...register('course', { required: 'Course is required' })}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course.message}</p>}
-            </div>
-          </div>
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+              <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <LuBook className="text-emerald-500" /> Education & Program
+                </h3>
+                <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
+              </summary>
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">School/University</label>
+                    <input
+                      {...register('school', { required: 'School is required' })}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.school && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.school.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Course/Program</label>
+                    <input
+                      {...register('course', { required: 'Course is required' })}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.course && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.course.message}</p>}
+                  </div>
+                </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Hours Required</label>
-              <input
-                type="number"
-                {...register('hours_required', { required: 'Hours required is required', valueAsNumber: true })}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              />
-              {errors.hours_required && <p className="text-red-500 text-xs mt-1">{errors.hours_required.message}</p>}
-            </div>
-            <div>
-              <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Status</label>
-              <select
-                {...register('status')}
-                className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="pending">Pending</option>
-                <option value="active">Active</option>
-                <option value="completed">Completed</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Hours Required</label>
+                    <input
+                      type="number"
+                      {...register('hours_required', { required: 'Hours required is required', valueAsNumber: true })}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    />
+                    {errors.hours_required && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.hours_required.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Status</label>
+                    <select
+                      {...register('status')}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
+                    >
+                      <option value="pending">Pending</option>
+                      <option value="active">Active</option>
+                      <option value="completed">Completed</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </div>
+                </div>
 
-          <div>
-            <label className="block text-sm font-bold text-gray-700 dark:text-gray-300 mb-1">Notes</label>
-            <textarea
-              {...register('notes')}
-              rows={3}
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+                <div>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Notes</label>
+                  <textarea
+                    {...register('notes')}
+                    rows={3}
+                    className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                  />
+                </div>
+              </div>
+            </details>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
-              {selectedInternship ? 'Update Record' : 'Create Record'}
-            </Button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+              <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
+                {selectedInternship ? 'Update Record' : 'Create Record'}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Modal>
     </div>
   );

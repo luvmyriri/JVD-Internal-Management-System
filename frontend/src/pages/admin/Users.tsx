@@ -27,6 +27,7 @@ import {
   LuEyeOff,
   LuEye as LuEyeOn,
   LuBus,
+  LuChevronRight,
 } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -775,52 +776,59 @@ export default function Users() {
         title={selectedUser ? 'Modify User' : 'Add User'}
         size="lg"
       >
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 p-2">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
-              <input
-                {...register('first_name', { 
-                  required: 'First name is required',
-                  onChange: (e) => {
-                    e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
-                  },
-                  pattern: {
-                    value: /^[A-Za-z\s-']+$/i,
-                    message: 'Numbers are not allowed'
-                  }
-                })}
-                className={cn(
-                  "w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                  errors.first_name && "border-red-300 bg-red-50/30"
-                )}
-                placeholder="e.g. John"
-              />
-              {errors.first_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.first_name.message as string}</p>}
-            </div>
+        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Basic Information</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
+                    <input
+                      {...register('first_name', { 
+                        required: 'First name is required',
+                        onChange: (e) => {
+                          e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
+                        },
+                        pattern: {
+                          value: /^[A-Za-z\s-']+$/i,
+                          message: 'Numbers are not allowed'
+                        }
+                      })}
+                      className={cn(
+                        "w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        errors.first_name && "border-red-300 bg-red-50/30"
+                      )}
+                      placeholder="e.g. John"
+                    />
+                    {errors.first_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.first_name.message as string}</p>}
+                  </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
-              <input
-                {...register('last_name', { 
-                  required: 'Last name is required',
-                  onChange: (e) => {
-                    e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
-                  },
-                  pattern: {
-                    value: /^[A-Za-z\s-']+$/i,
-                    message: 'Numbers are not allowed'
-                  }
-                })}
-                className={cn(
-                  "w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                  errors.last_name && "border-red-300 bg-red-50/30"
-                )}
-                placeholder="e.g. Doe"
-              />
-              {errors.last_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.last_name.message as string}</p>}
-            </div>
-          </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Last Name</label>
+                    <input
+                      {...register('last_name', { 
+                        required: 'Last name is required',
+                        onChange: (e) => {
+                          e.target.value = e.target.value.replace(/[^A-Za-z\s-']/g, '');
+                        },
+                        pattern: {
+                          value: /^[A-Za-z\s-']+$/i,
+                          message: 'Numbers are not allowed'
+                        }
+                      })}
+                      className={cn(
+                        "w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        errors.last_name && "border-red-300 bg-red-50/30"
+                      )}
+                      placeholder="e.g. Doe"
+                    />
+                    {errors.last_name && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.last_name.message as string}</p>}
+                  </div>
+                </div>
 
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Corporate Email</label>
@@ -841,44 +849,42 @@ export default function Users() {
             {errors.email && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.email.message as string}</p>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
-              <select
-                {...register('role', { required: 'Role is required' })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {ROLES.map(role => (
-                  <option key={role.value} value={role.value}>{role.label}</option>
-                ))}
-              </select>
-            </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
+                    <select
+                      {...register('role', { required: 'Role is required' })}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {ROLES.map(role => (
+                        <option key={role.value} value={role.value}>{role.label}</option>
+                      ))}
+                    </select>
+                  </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
-              <select
-                {...register('department', { required: 'Department is required' })}
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-              >
-                {DEPARTMENTS.map(dept => (
-                  <option key={dept} value={dept}>{dept}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
+                    <select
+                      {...register('department', { required: 'Department is required' })}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {DEPARTMENTS.map(dept => (
+                        <option key={dept} value={dept}>{dept}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </details>
 
           {/* ── Assigned Bus (driver role only) ── */}
           {(watchedRole === 'driver' || selectedUser?.role === 'driver') && watchedRole === 'driver' && (
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-                <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest flex items-center gap-1.5">
-                  <LuBus size={12} /> Driver Assignment
-                </span>
-                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-              </div>
-
-              <div className="space-y-2">
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span className="flex items-center gap-1.5"><LuBus className="text-indigo-500" /> Driver Assignment</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Assigned Bus</label>
                 <select
                   value={assignedBusId}
@@ -904,67 +910,65 @@ export default function Users() {
                   </p>
                 )}
               </div>
-            </div>
+            </details>
           )}
 
           {/* ── Super Admin: Set Password (edit mode only) ── */}
           {selectedUser && isSuperAdmin && (
-            <div className="space-y-3 pt-2">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-                <span className="text-[10px] font-black text-rose-400 uppercase tracking-widest flex items-center gap-1.5">
-                  <LuKeyRound size={12} /> Super Admin — Set Password
-                </span>
-                <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-              </div>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span className="flex items-center gap-1.5 text-rose-500"><LuKeyRound className="text-rose-500" /> Super Admin — Set Password</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-3">
+                <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-2xl">
+                  <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
+                    Leave blank to keep the existing password unchanged.
+                  </p>
 
-              <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-2xl">
-                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
-                  Leave blank to keep the existing password unchanged.
-                </p>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        className="w-full px-4 py-3 pr-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                        placeholder="Min. 8 characters"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPw(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPw ? <LuEyeOff size={16} /> : <LuEyeOn size={16} />}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
-                  <div className="relative">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
                     <input
                       type={showNewPw ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      className="w-full px-4 py-3 pr-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
-                      placeholder="Min. 8 characters"
+                      value={newPasswordConfirm}
+                      onChange={e => setNewPasswordConfirm(e.target.value)}
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
+                      placeholder="Re-enter new password"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showNewPw ? <LuEyeOff size={16} /> : <LuEyeOn size={16} />}
-                    </button>
                   </div>
-                </div>
 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
-                  <input
-                    type={showNewPw ? 'text' : 'password'}
-                    value={newPasswordConfirm}
-                    onChange={e => setNewPasswordConfirm(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
-                    placeholder="Re-enter new password"
-                  />
+                  {newPassword && newPasswordConfirm && newPassword !== newPasswordConfirm && (
+                    <p className="text-[10px] font-bold text-rose-500 ml-1">⚠ Passwords do not match.</p>
+                  )}
+                  {newPassword && newPassword.length < 8 && (
+                    <p className="text-[10px] font-bold text-amber-500 ml-1">⚠ Must be at least 8 characters.</p>
+                  )}
+                  {newPassword && newPassword.length >= 8 && newPassword === newPasswordConfirm && (
+                    <p className="text-[10px] font-bold text-emerald-500 ml-1">✓ Passwords match.</p>
+                  )}
                 </div>
-
-                {newPassword && newPasswordConfirm && newPassword !== newPasswordConfirm && (
-                  <p className="text-[10px] font-bold text-rose-500 ml-1">⚠ Passwords do not match.</p>
-                )}
-                {newPassword && newPassword.length < 8 && (
-                  <p className="text-[10px] font-bold text-amber-500 ml-1">⚠ Must be at least 8 characters.</p>
-                )}
-                {newPassword && newPassword.length >= 8 && newPassword === newPasswordConfirm && (
-                  <p className="text-[10px] font-bold text-emerald-500 ml-1">✓ Passwords match.</p>
-                )}
               </div>
-            </div>
+            </details>
           )}
 
           {/* ── Super Admin: Custom Permissions ── */}
@@ -1101,6 +1105,7 @@ export default function Users() {
             </Button>
           </div>
         </form>
+        </div>
       </Modal>
 
       {/* View User Modal */}
@@ -1192,29 +1197,106 @@ export default function Users() {
                   </div>
 
                   {selectedUser.effective_permissions && Object.keys(selectedUser.effective_permissions).length > 0 && (
-                    <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl space-y-2">
-                      <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest block">Effective Permissions</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        {Object.entries(selectedUser.effective_permissions).map(([mod, perms]: [string, any]) => {
-                           if (!perms.can_view) return null;
-                           let level = "View";
-                           if (perms.can_create && perms.can_edit && perms.can_delete) level = "Full";
-                           else if (perms.can_create || perms.can_edit) level = "Limited";
-                           
-                           return (
-                             <div key={mod} className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-[10px] font-bold text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
-                               {mod.replace('_', ' ')} 
-                               <span className={cn(
-                                 "text-[9px] px-1 rounded-sm",
-                                 level === 'Full' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400" :
-                                 level === 'View' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400" :
-                                 "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
-                               )}>{level}</span>
-                             </div>
-                           );
-                        })}
+                    <details className="group" open>
+                      <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                        <span className="flex items-center gap-1.5 text-emerald-500"><LuShieldCheck className="text-emerald-500" /> Custom Permissions (Overrides Role)</span>
+                        <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+                      </summary>
+                      <div className="pt-4 px-1">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                           {modules.map((module: string) => {
+                               const perms = customPermissions[module];
+                               
+                               // Determine current access level
+                               let accessLevel = 'default';
+                               if (perms) {
+                                   if (!perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
+                                       accessLevel = 'none';
+                                   } else if (perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
+                                       accessLevel = 'view';
+                                   } else {
+                                       accessLevel = 'full';
+                                   }
+                               }
+        
+                               const basePerms = configData?.data?.[selectedUser?.role || watchedRole]?.[module];
+                               let baseAccessLevel = 'none';
+                               if (basePerms) {
+                                   if (basePerms.can_view && !basePerms.can_create && !basePerms.can_edit && !basePerms.can_delete) {
+                                       baseAccessLevel = 'view';
+                                   } else if (basePerms.can_view) {
+                                       baseAccessLevel = 'full';
+                                   }
+                               }
+        
+                               return (
+                                 <div key={module} className="p-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col gap-2">
+                                     <div className="flex items-center gap-2">
+                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-300 capitalize">{module.replace('_', ' ')}</span>
+                                         <span className="ml-auto text-[9px] font-black text-gray-400 uppercase tracking-widest">Base: {baseAccessLevel}</span>
+                                     </div>
+                                     <select
+                                         value={accessLevel}
+                                         onChange={(e) => {
+                                             const val = e.target.value;
+                                             if (val === 'default') {
+                                                 const newPerms = { ...customPermissions };
+                                                 delete newPerms[module];
+                                                 setCustomPermissions(newPerms);
+                                             } else {
+                                                 const newModulePerms = {
+                                                     can_view: val !== 'none',
+                                                     can_create: val === 'full',
+                                                     can_edit: val === 'full',
+                                                     can_delete: val === 'full',
+                                                 };
+                                                 setCustomPermissions({ ...customPermissions, [module]: newModulePerms });
+                                             }
+                                         }}
+                                         className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 uppercase tracking-wider"
+                                     >
+                                         <option value="default">Use Role Default</option>
+                                         <option value="none">No Access</option>
+                                         <option value="view">View Only</option>
+                                         <option value="full">Full Access</option>
+                                     </select>
+                                 </div>
+                               );
+                           })}
+                        </div>
+                        
+                        <div className="mt-4 p-3 bg-amber-50/50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-xl">
+                          <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                            * Modifying these permissions will override the user's role-based access for the specific module.
+                          </p>
+                          
+                          {Object.keys(customPermissions).length > 0 && (
+                            <div className="mt-3 space-y-1">
+                              <p className="text-[10px] font-black text-amber-700 dark:text-amber-500 uppercase tracking-widest">Active Overrides:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {Object.entries(customPermissions).map(([mod, perms]) => {
+                                   let level = "View";
+                                   if (perms.can_create && perms.can_edit && perms.can_delete) level = "Full";
+                                   else if (perms.can_create || perms.can_edit) level = "Limited";
+                                   
+                                   return (
+                                     <div key={mod} className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-[10px] font-bold text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
+                                       {mod.replace('_', ' ')} 
+                                       <span className={cn(
+                                         "text-[9px] px-1 rounded-sm",
+                                         level === 'Full' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400" :
+                                         level === 'View' ? "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400" :
+                                         "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400"
+                                       )}>{level}</span>
+                                     </div>
+                                   );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    </details>
                   )}
                 </div>
               </div>

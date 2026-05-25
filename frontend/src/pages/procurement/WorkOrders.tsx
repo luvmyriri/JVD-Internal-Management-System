@@ -468,26 +468,28 @@ export default function WorkOrders() {
             <p className="text-sm font-medium">No work orders found</p>
           </div>
         ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
-              <tr>
-                {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
-                  <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[800px]">
+              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
+                <tr>
+                  {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
+                    <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="">
+                {wos.map(wo => (
+                  <WORow 
+                    key={wo.id} 
+                    wo={wo} 
+                    onReview={setReviewWO} 
+                    onDetail={setDetailWO}
+                    onComplete={(id) => completeMutation.mutate(id)}
+                  />
                 ))}
-              </tr>
-            </thead>
-            <tbody className="">
-              {wos.map(wo => (
-                <WORow 
-                  key={wo.id} 
-                  wo={wo} 
-                  onReview={setReviewWO} 
-                  onDetail={setDetailWO}
-                  onComplete={(id) => completeMutation.mutate(id)}
-                />
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 

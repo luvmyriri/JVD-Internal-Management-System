@@ -105,25 +105,35 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal isOpen onClose={onClose} title="Open New Passport Case" size="sm">
-      <div className="p-6 space-y-5">
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
-          <select
-            value={form.customer_id}
-            onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Customer...</option>
-            {customers.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!form.customer_id}>
-            Open Passport Case
-          </Button>
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-5">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Customer Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
+                <select
+                  value={form.customer_id}
+                  onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Customer...</option>
+                  {customers.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!form.customer_id}>
+              Open Passport Case
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
@@ -183,120 +193,142 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
 
   return (
     <Modal isOpen onClose={onClose} title={`Case #${caseData.id} — ${caseData.case_type === 'passport' ? 'Passport' : 'Visa'}`} size="lg">
-      <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2">
-        <button
-          onClick={() => setActiveTab('details')}
-          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-        >
-          Details
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-        >
-          History
-        </button>
-      </div>
-
-      {activeTab === 'details' ? (
-        <div className="p-6 space-y-6">
-          {/* Info row */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-white">
-                {caseData.customer?.full_name || (caseData.customer?.first_name ? `${caseData.customer.first_name} ${caseData.customer.last_name}` : '—')}
-              </p>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[caseData.status]}`}>
-                {STATUS_LABELS[caseData.status] ?? caseData.status}
-              </span>
-            </div>
-            {caseData.reference_number && (
-              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
-                <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{caseData.reference_number}</p>
-              </div>
-            )}
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-white">
-                {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
-              </p>
-            </div>
-          </div>
-
-          {/* Progress */}
-          <div>
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
-            <div className="flex items-center gap-1">
-              {STATUS_FLOW.map((s, i) => {
-                const idx = STATUS_FLOW.indexOf(caseData.status);
-                const done = i < idx;
-                const active = i === idx;
-                return (
-                  <div key={s} className="flex items-center flex-1 gap-1">
-                    <div className={`h-2 flex-1 rounded-full transition-all ${done || active ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
-                    {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between mt-1">
-              <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[0]]}</span>
-              <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[STATUS_FLOW.length - 1]]}</span>
-            </div>
-          </div>
-
-          {/* Checklist */}
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
-              <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
-            </div>
-            <div className="space-y-2">
-              {checklistItems.map(item => (
-                <button
-                  key={item}
-                  onClick={() => toggleItem(item)}
-                  disabled={readOnly}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                >
-                  {localChecklist[item]
-                    ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
-                    : <LuCircle size={18} className="text-gray-300 shrink-0" />
-                  }
-                  <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                    {item}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Status transitions */}
-          {!readOnly && allowedNext.length > 0 && (
-            <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Advance Status</p>
-              <div className="flex flex-wrap gap-2">
-                {allowedNext.map(next => (
-                  <Button
-                    key={next}
-                    onClick={() => statusMutation.mutate(next)}
-                    isLoading={statusMutation.isPending}
-                    size="sm"
-                    className="capitalize"
-                  >
-                    → {STATUS_LABELS[next] ?? next}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh]">
+        <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+          >
+            History
+          </button>
         </div>
-      ) : (
+
+        {activeTab === 'details' ? (
+          <div className="p-2 space-y-5 mt-4">
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Case Overview</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1">
+                {/* Info row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">
+                      {caseData.customer?.full_name || (caseData.customer?.first_name ? `${caseData.customer.first_name} ${caseData.customer.last_name}` : '—')}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[caseData.status]}`}>
+                      {STATUS_LABELS[caseData.status] ?? caseData.status}
+                    </span>
+                  </div>
+                  {caseData.reference_number && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
+                      <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{caseData.reference_number}</p>
+                    </div>
+                  )}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">
+                      {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Progress & Requirements</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                {/* Progress */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
+                  <div className="flex items-center gap-1">
+                    {STATUS_FLOW.map((s, i) => {
+                      const idx = STATUS_FLOW.indexOf(caseData.status);
+                      const done = i < idx;
+                      const active = i === idx;
+                      return (
+                        <div key={s} className="flex items-center flex-1 gap-1">
+                          <div className={`h-2 flex-1 rounded-full transition-all ${done || active ? 'bg-blue-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
+                          {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between mt-1">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[0]]}</span>
+                    <span className="text-[9px] text-gray-400 font-bold uppercase">{STATUS_LABELS[STATUS_FLOW[STATUS_FLOW.length - 1]]}</span>
+                  </div>
+                </div>
+
+                {/* Checklist */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
+                    <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
+                  </div>
+                  <div className="space-y-2">
+                    {checklistItems.map(item => (
+                      <button
+                        key={item}
+                        onClick={() => toggleItem(item)}
+                        disabled={readOnly}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                      >
+                        {localChecklist[item]
+                          ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
+                          : <LuCircle size={18} className="text-gray-300 shrink-0" />
+                        }
+                        <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                          {item}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            {/* Status transitions */}
+            {!readOnly && allowedNext.length > 0 && (
+              <details className="group" open>
+                <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <span>Actions</span>
+                  <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+                </summary>
+                <div className="pt-4 px-1">
+                  <div className="flex flex-wrap gap-2">
+                    {allowedNext.map(next => (
+                      <Button
+                        key={next}
+                        onClick={() => statusMutation.mutate(next)}
+                        isLoading={statusMutation.isPending}
+                        size="sm"
+                        className="capitalize"
+                      >
+                        → {STATUS_LABELS[next] ?? next}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            )}
+          </div>
+        ) : (
         <div className="p-6">
           {logsLoading ? (
             <div className="text-sm text-gray-500 py-4 text-center">Loading history...</div>
@@ -330,7 +362,8 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
             </div>
           )}
         </div>
-      )}
+        )}
+      </div>
     </Modal>
   );
 }

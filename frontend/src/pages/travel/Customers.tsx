@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuUsers, LuPlus, LuSearch, LuLoaderCircle, LuX, LuPencil,
-  LuTrash2, LuMail, LuPhone, LuMapPin, LuUser,
+  LuTrash2, LuMail, LuPhone, LuMapPin, LuUser, LuChevronRight
 } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 import { customerApi } from '../../api/customers';
@@ -145,7 +145,7 @@ function CustomerModal({ mode, customer, onClose }: CustomerModalProps) {
 
   return (
     <Modal isOpen onClose={onClose} title={mode === 'create' ? 'Register New Customer' : mode === 'edit' ? 'Edit Customer' : 'Customer Details'} size="lg">
-      <div className="p-6">
+      <div className="p-6 overflow-y-auto custom-scrollbar max-h-[75vh]">
         <form id="customer-form" onSubmit={e => {
           e.preventDefault();
           if (validateForm()) {
@@ -154,14 +154,22 @@ function CustomerModal({ mode, customer, onClose }: CustomerModalProps) {
             toast.error('Please fix the validation errors.');
           }
         }} className="space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-            {field('First Name *', 'first_name', 'text', 'Juan')}
-            {field('Last Name *', 'last_name', 'text', 'dela Cruz')}
-            {field('Email *', 'email', 'email', 'juan@example.com')}
-            {field('Phone *', 'phone', 'text', '+63 9XX XXX XXXX')}
-          </div>
-          {field('Address', 'address', 'text', 'City, Province')}
-          {field('Notes', 'notes', 'text', 'Additional remarks...')}
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Customer Information</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                {field('First Name *', 'first_name', 'text', 'Juan')}
+                {field('Last Name *', 'last_name', 'text', 'dela Cruz')}
+                {field('Email *', 'email', 'email', 'juan@example.com')}
+                {field('Phone *', 'phone', 'text', '+63 9XX XXX XXXX')}
+              </div>
+              {field('Address', 'address', 'text', 'City, Province')}
+              {field('Notes', 'notes', 'text', 'Additional remarks...')}
+            </div>
+          </details>
         </form>
         <div className="flex justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800 mt-6">
           {mode === 'view' ? (

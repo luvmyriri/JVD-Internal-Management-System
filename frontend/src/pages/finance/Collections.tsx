@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { LuBanknote, LuSearch, LuPlus, LuX } from 'react-icons/lu';
+import { LuBanknote, LuSearch, LuPlus, LuX, LuChevronRight } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
@@ -29,7 +29,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     pick_up: '',
     drop_off: '',
     rate: 0,
-    status: 'open' as const,
+    status: 'open' as 'open' | 'completed',
   });
 
   const mutation = useMutation({
@@ -258,40 +258,40 @@ export default function Collections() {
   const collections: Collection[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
   const filtered = collections.filter((c) =>
-    c.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    c.client_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     c.drop_off?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
         <div>
           <div className="flex items-center gap-3 text-sm font-bold text-teal-600 dark:text-teal-500 mb-2 uppercase tracking-widest">
             <LuBanknote size={18} /> Accounting Module
           </div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight">Collections</h1>
+          <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Collections</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="relative group">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+          <div className="relative group w-full sm:w-auto">
             <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-teal-500 transition-colors" size={18} />
             <input
               type="text"
               placeholder="Search client or route..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 pr-4 py-3 w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
+              className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-teal-500 transition-all text-sm"
             />
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-2 px-6 py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-teal-600/20 active:scale-95 cursor-pointer">
+          <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-teal-600 hover:bg-teal-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-teal-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Collection
           </button>
         </div>
       </div>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+        <div className="hidden md:block overflow-x-auto custom-scrollbar">
+          <table className="w-full min-w-[700px] text-sm text-left">
             <thead className="bg-gray-55 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
               <tr>
                 <th className="px-8 py-6 rounded-tl-[2rem]">Client</th>
@@ -320,7 +320,7 @@ export default function Collections() {
                     <td className="px-8 py-5 text-right font-bold text-gray-900 dark:text-white">₱ {collection.rate?.toLocaleString() || 0}</td>
                     <td className="px-8 py-5"><StatusBadge status={collection.status} /></td>
                     <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedCollection(collection)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all cursor-pointer">
+                      <button onClick={() => setSelectedCollection(collection)} className="p-2 text-gray-400 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-all cursor-pointer touch-target">
                         <Eye size={18} />
                       </button>
                     </td>
@@ -329,6 +329,56 @@ export default function Collections() {
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Card Layout */}
+        <div className="md:hidden flex flex-col p-4 gap-4">
+          {isLoading ? (
+            <div className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-[2rem] h-32 w-full"></div>
+          ) : filtered.length === 0 ? (
+            <div className="py-12 text-center text-gray-500">No collections found.</div>
+          ) : (
+            filtered.map((collection) => (
+              <div 
+                key={collection.id} 
+                onClick={() => setSelectedCollection(collection)}
+                className="bg-gray-50/50 dark:bg-gray-800/30 border border-gray-100 dark:border-gray-800 p-5 rounded-[1.5rem] shadow-sm flex flex-col gap-4 cursor-pointer hover:bg-gray-100/50 dark:hover:bg-gray-800/50 transition-colors"
+              >
+                <div className="flex justify-between items-start gap-3">
+                  <div className="overflow-hidden flex-1">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Client</p>
+                    <p className="font-bold text-gray-900 dark:text-white truncate">{collection.client_name}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusBadge status={collection.status} />
+                    <div className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-gray-800 text-gray-400">
+                      <LuChevronRight className="w-4 h-4" />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="overflow-hidden">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Route</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">
+                      {collection.pick_up && collection.drop_off ? `${collection.pick_up} → ${collection.drop_off}` : 'TBA'}
+                    </p>
+                  </div>
+                  <div className="overflow-hidden">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Travel Date</p>
+                    <p className="text-sm font-medium text-gray-600 dark:text-gray-300 truncate">{collection.travel_date}</p>
+                  </div>
+                </div>
+
+                <div className="flex justify-end items-end mt-2 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                  <div className="text-right">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Rate</p>
+                    <p className="text-lg font-black text-gray-900 dark:text-white">₱ {collection.rate?.toLocaleString() || 0}</p>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 

@@ -35,6 +35,9 @@ interface CartItem {
   adults?: number;
   childrenCount?: number;
   customPrice?: number;
+  vehicleType?: 'Bus' | 'Coaster';
+  extraDays?: number;
+  extraHours?: number;
 }
 
 export default function POS() {
@@ -76,7 +79,12 @@ export default function POS() {
     child_discount: 30,
     has_booking_fields: false,
     adult_price: 0,
-    child_price: 0
+    child_price: 0,
+    is_tour: false,
+    bus_price: 0,
+    coaster_price: 0,
+    tour_kms: 0,
+    tour_hours: 0,
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
@@ -84,6 +92,11 @@ export default function POS() {
   // Booking passenger states
   const [bookingAdults, setBookingAdults] = useState<number>(1);
   const [bookingChildren, setBookingChildren] = useState<number>(0);
+
+  // Tour booking states
+  const [bookingTourVehicle, setBookingTourVehicle] = useState<'Bus' | 'Coaster'>('Bus');
+  const [bookingTourExtraDays, setBookingTourExtraDays] = useState<number>(0);
+  const [bookingTourExtraHours, setBookingTourExtraHours] = useState<number>(0);
 
   // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
@@ -132,34 +145,38 @@ export default function POS() {
   };
 
   // Cart operations
-  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number) => {
+  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number, vehicleType?: 'Bus' | 'Coaster', extraDays?: number, extraHours?: number) => {
     setCart(prev => {
       const existing = prev.find(item =>
         item.service.id === service.id &&
         item.adults === adults &&
-        item.childrenCount === childrenCount
+        item.childrenCount === childrenCount &&
+        item.vehicleType === vehicleType
       );
       if (existing) {
         return prev.map(item =>
-          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount)
-            ? { ...item, quantity: item.quantity + 1 }
+          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType)
+            ? { ...item, quantity: item.quantity + 1, extraDays, extraHours, customPrice }
             : item
         );
       }
-      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice }];
+      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours }];
     });
   };
 
-  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number) => {
+  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => {
     setCart(prev => prev.filter(item =>
-      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount)
+      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType)
     ));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number) => {
-    if (newQty < 1) return;
+  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => {
+    if (newQty < 1) {
+      removeFromCart(serviceId, adults, childrenCount, vehicleType);
+      return;
+    }
     setCart(prev => prev.map(item => {
-      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount) {
+      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType) {
         return { ...item, quantity: newQty };
       }
       return item;
@@ -290,7 +307,12 @@ export default function POS() {
       child_discount: service.child_discount !== undefined ? Number(service.child_discount) : 30,
       has_booking_fields: !!service.has_booking_fields,
       adult_price: service.adult_price !== undefined && service.adult_price !== null ? Number(service.adult_price) : Number(service.price),
-      child_price: service.child_price !== undefined && service.child_price !== null ? Number(service.child_price) : Number(service.price) * 0.7
+      child_price: service.child_price !== undefined && service.child_price !== null ? Number(service.child_price) : Number(service.price) * 0.7,
+      is_tour: !!service.is_tour,
+      bus_price: service.bus_price !== undefined && service.bus_price !== null ? Number(service.bus_price) : 0,
+      coaster_price: service.coaster_price !== undefined && service.coaster_price !== null ? Number(service.coaster_price) : 0,
+      tour_kms: service.tour_kms !== undefined && service.tour_kms !== null ? Number(service.tour_kms) : 0,
+      tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? Number(service.tour_hours) : 0
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
@@ -308,7 +330,7 @@ export default function POS() {
   }
 
   return (
-    <div className={`h-[calc(100vh-100px)] gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
+    <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col gap-6">
         <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8">
@@ -323,12 +345,12 @@ export default function POS() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
-              {['All', 'Documentation', 'Package', 'Transport'].map((cat) => (
+            <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
+              {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat
+                  className={`shrink-0 whitespace-nowrap px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat
                       ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
                       : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
@@ -342,7 +364,7 @@ export default function POS() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
+                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
@@ -368,7 +390,7 @@ export default function POS() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
+                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
@@ -379,21 +401,26 @@ export default function POS() {
             )}
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pr-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6 auto-rows-max">
+          <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:flex-none md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
             {filteredServices.map((service) => (
               <div
                 key={service.id}
                 onClick={() => {
-                  setSelectedServiceForDetail(service);
                   setDetailImageIndex(0);
+                  setSelectedServiceForDetail(service);
                   setBookingAdults(1);
                   setBookingChildren(0);
+                  if (service.is_tour) {
+                    setBookingTourVehicle('Bus');
+                    setBookingTourExtraDays(0);
+                    setBookingTourExtraHours(0);
+                  }
                   setShowDetailModal(true);
                 }}
-                className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col"
+                className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col shrink-0 w-[85vw] md:w-auto snap-center relative"
               >
                 {/* Card Image Header */}
-                <div className="h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+                <div className="h-40 md:h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
                   {service.images && service.images.length > 0 ? (
                     <>
                       <img
@@ -481,11 +508,16 @@ export default function POS() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (service.has_booking_fields) {
+                      if (service.has_booking_fields || service.is_tour) {
                         setSelectedServiceForDetail(service);
                         setDetailImageIndex(0);
                         setBookingAdults(1);
                         setBookingChildren(0);
+                        if (service.is_tour) {
+                          setBookingTourVehicle('Bus');
+                          setBookingTourExtraDays(0);
+                          setBookingTourExtraHours(0);
+                        }
                         setShowDetailModal(true);
                       } else {
                         addToCart(service);
@@ -503,7 +535,7 @@ export default function POS() {
       </div>
 
       {/* Right Side: Sidebar */}
-      <div className="w-[450px] bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl flex flex-col overflow-hidden">
+      <div className="w-full lg:w-[450px] bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-xl flex flex-col overflow-hidden">
         <div className="p-8 border-b border-gray-50 dark:border-gray-800 shrink-0">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">Current Order</h2>
@@ -524,26 +556,31 @@ export default function POS() {
             ) : (
               <div className="space-y-3">
                 {cart.map((item) => (
-                  <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                  <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}-${item.vehicleType ?? ''}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
                     <div className="flex justify-between items-start mb-3">
                       <div className="flex-1 pr-4">
                         <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>
-                        {item.adults !== undefined && (
+                        {item.adults !== undefined && !item.service.is_tour && (
                           <p className="text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-1 uppercase tracking-tight">
                             Guests: {item.adults} Adults {item.childrenCount ? `, ${item.childrenCount} Children` : ''}
                           </p>
                         )}
+                        {item.service.is_tour && (
+                          <p className="text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-1 uppercase tracking-tight">
+                            Vehicle: {item.vehicleType} {item.extraDays ? `| +${item.extraDays} Days` : ''} {item.extraHours ? `| +${item.extraHours} Hrs` : ''}
+                          </p>
+                        )}
                         <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                       </div>
-                      <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                      <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType)} className="text-gray-300 hover:text-rose-500 transition-colors">
                         <LuTrash2 className="w-4 h-4" />
                       </button>
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
                         <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                       </div>
                       <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                     </div>
@@ -1010,14 +1047,57 @@ export default function POS() {
                     onChange={e => setNewService({ ...newService, category: e.target.value })}
                   >
                     <option value="Package">Travel Package</option>
+                    <option value="Tours & Travels">Tours & Travels</option>
                     <option value="Documentation">Documentation</option>
                     <option value="Transport">Transportation</option>
+                    <option value="Printing Services">Printing Services</option>
                     <option value="Other">Other Services</option>
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {newService.category === 'Tours & Travels' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Price (₱)</label>
+                    <input
+                      type="number"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.bus_price}
+                      onChange={e => setNewService({ ...newService, bus_price: Number(e.target.value), is_tour: true, price: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Coaster Price (₱)</label>
+                    <input
+                      type="number"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.coaster_price}
+                      onChange={e => setNewService({ ...newService, coaster_price: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Distance (KMS)</label>
+                    <input
+                      type="number"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.tour_kms}
+                      onChange={e => setNewService({ ...newService, tour_kms: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Time (Hours)</label>
+                    <input
+                      type="number"
+                      className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                      value={newService.tour_hours}
+                      onChange={e => setNewService({ ...newService, tour_hours: Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>
                   <div className="relative">
@@ -1189,7 +1269,7 @@ export default function POS() {
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button
-                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 }); }}
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
@@ -1211,7 +1291,7 @@ export default function POS() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0 });
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -1387,10 +1467,78 @@ export default function POS() {
                   </div>
                 )}
 
+                {selectedServiceForDetail.is_tour && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Configuration</p>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Vehicle Type</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setBookingTourVehicle('Bus')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Bus' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
+                        >
+                          Bus (₱{(selectedServiceForDetail.bus_price || 0).toLocaleString()})
+                        </button>
+                        <button
+                          onClick={() => setBookingTourVehicle('Coaster')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Coaster' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
+                        >
+                          Coaster (₱{(selectedServiceForDetail.coaster_price || 0).toLocaleString()})
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Days</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">
+                          ₱{(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()} / Day
+                        </p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => setBookingTourExtraDays(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400">
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraDays}</span>
+                        <button onClick={() => setBookingTourExtraDays(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400">
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Hours</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">
+                          ₱{(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()} / Hour
+                        </p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => setBookingTourExtraHours(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400">
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraHours}</span>
+                        <button onClick={() => setBookingTourExtraHours(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400">
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
                   <p className="text-[10px] font-black text-gray-450 dark:text-gray-400 uppercase tracking-widest mb-2">Package Investment</p>
                   <h4 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
-                    ₱{((bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice)).toLocaleString()}
+                    {selectedServiceForDetail.is_tour ? (
+                      <>₱{((bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0)) +
+                          (bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780)) +
+                          (bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680))).toLocaleString()}</>
+                    ) : (
+                      <>₱{((bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice)).toLocaleString()}</>
+                    )}
                   </h4>
                   {selectedServiceForDetail.has_booking_fields && (
                     <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 text-[10px] text-gray-400 font-medium space-y-1">
@@ -1406,6 +1554,26 @@ export default function POS() {
                       )}
                     </div>
                   )}
+                  {selectedServiceForDetail.is_tour && (
+                    <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700/80 text-[10px] text-gray-400 font-medium space-y-1">
+                      <div className="flex justify-between">
+                        <span>Vehicle: {bookingTourVehicle}</span>
+                        <span>₱{(bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0)).toLocaleString()}</span>
+                      </div>
+                      {bookingTourExtraDays > 0 && (
+                        <div className="flex justify-between">
+                          <span>Extra Days: {bookingTourExtraDays} x ₱{(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()}</span>
+                          <span>₱{(bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780)).toLocaleString()}</span>
+                        </div>
+                      )}
+                      {bookingTourExtraHours > 0 && (
+                        <div className="flex justify-between">
+                          <span>Extra Hours: {bookingTourExtraHours} x ₱{(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()}</span>
+                          <span>₱{(bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680)).toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <p className="text-[10px] text-gray-400 font-medium mt-2">* VAT Inclusive Price</p>
                 </div>
               </div>
@@ -1413,7 +1581,13 @@ export default function POS() {
               <div className="space-y-3">
                 <button
                   onClick={() => {
-                    if (selectedServiceForDetail.has_booking_fields) {
+                    if (selectedServiceForDetail.is_tour) {
+                      const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
+                      const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
+                      const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
+                      const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
+                      addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours);
+                    } else if (selectedServiceForDetail.has_booking_fields) {
                       const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
                       addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice);
                     } else {

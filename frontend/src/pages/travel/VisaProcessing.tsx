@@ -93,25 +93,35 @@ function NewVisaCaseModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal isOpen onClose={onClose} title="Open Visa Case" size="sm">
-      <div className="p-6 space-y-5">
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
-          <select
-            value={customerId}
-            onChange={e => setCustomerId(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">Select Customer...</option>
-            {customers.map((c: any) => (
-              <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
-            ))}
-          </select>
-        </div>
-        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!customerId}>
-            Open Visa Case
-          </Button>
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-5">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Customer Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
+                <select
+                  value={customerId}
+                  onChange={e => setCustomerId(e.target.value)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Customer...</option>
+                  {customers.map((c: any) => (
+                    <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+          <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!customerId}>
+              Open Visa Case
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
@@ -163,116 +173,138 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
 
   return (
     <Modal isOpen onClose={onClose} title={`Visa Case #${vc.id}`} size="lg">
-      <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2">
-        <button
-          onClick={() => setActiveTab('details')}
-          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-        >
-          Details
-        </button>
-        <button
-          onClick={() => setActiveTab('history')}
-          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-        >
-          History
-        </button>
-      </div>
-
-      {activeTab === 'details' ? (
-        <div className="p-6 space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
-            <p className="text-sm font-bold text-gray-900 dark:text-white">
-              {vc.customer?.full_name || (vc.customer?.first_name ? `${vc.customer.first_name} ${vc.customer.last_name}` : '—')}
-            </p>
-          </div>
-          <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
-            <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[vc.status]}`}>
-              {STATUS_LABELS[vc.status]}
-            </span>
-          </div>
-          {vc.handler && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
-              <p className="text-sm font-bold text-gray-900 dark:text-white">{vc.handler.full_name || `${vc.handler.first_name} ${vc.handler.last_name}`}</p>
-            </div>
-          )}
-          {vc.reference_number && (
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
-              <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{vc.reference_number}</p>
-            </div>
-          )}
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh]">
+        <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
+          <button
+            onClick={() => setActiveTab('details')}
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+          >
+            Details
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+          >
+            History
+          </button>
         </div>
 
-        {/* Progress bar */}
-        <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
-          <div className="flex items-center gap-1">
-            {STATUS_FLOW.map((s, i) => {
-              const idx = STATUS_FLOW.indexOf(vc.status);
-              const done2 = i < idx;
-              return (
-                <div key={s} className="flex items-center flex-1 gap-1">
-                  <div className={`h-2 flex-1 rounded-full transition-all ${done2 || i === idx ? 'bg-violet-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
-                  {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
+        {activeTab === 'details' ? (
+          <div className="p-2 space-y-5 mt-4">
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Case Overview</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Customer</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">
+                      {vc.customer?.full_name || (vc.customer?.first_name ? `${vc.customer.first_name} ${vc.customer.last_name}` : '—')}
+                    </p>
+                  </div>
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${STATUS_COLORS[vc.status]}`}>
+                      {STATUS_LABELS[vc.status]}
+                    </span>
+                  </div>
+                  {vc.handler && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Handler</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{vc.handler.full_name || `${vc.handler.first_name} ${vc.handler.last_name}`}</p>
+                    </div>
+                  )}
+                  {vc.reference_number && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
+                      <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{vc.reference_number}</p>
+                    </div>
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </div>
+              </div>
+            </details>
 
-        {/* Checklist */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
-            <span className="text-[10px] font-bold text-violet-600">{done}/{VISA_CHECKLIST.length} Complete</span>
-          </div>
-          <div className="space-y-2">
-            {VISA_CHECKLIST.map(item => (
-              <button
-                key={item}
-                onClick={() => toggleItem(item)}
-                disabled={readOnly}
-                className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-              >
-                {localChecklist[item]
-                  ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
-                  : <LuCircle size={18} className="text-gray-300 shrink-0" />
-                }
-                <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                  {item}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                <span>Progress & Requirements</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-6">
+                {/* Progress bar */}
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Processing Progress</p>
+                  <div className="flex items-center gap-1">
+                    {STATUS_FLOW.map((s, i) => {
+                      const idx = STATUS_FLOW.indexOf(vc.status);
+                      const done2 = i < idx;
+                      return (
+                        <div key={s} className="flex items-center flex-1 gap-1">
+                          <div className={`h-2 flex-1 rounded-full transition-all ${done2 || i === idx ? 'bg-violet-500' : 'bg-gray-100 dark:bg-gray-700'}`} />
+                          {i < STATUS_FLOW.length - 1 && <LuChevronRight size={10} className="text-gray-300 shrink-0" />}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
 
-        {/* Advance status */}
-        {!readOnly && allowedNext.length > 0 && (
-          <div className="border-t border-gray-100 dark:border-gray-800 pt-4">
-            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Advance Status</p>
-            <div className="flex flex-wrap gap-2">
-              {allowedNext.map(next => (
-                <Button
-                  key={next}
-                  onClick={() => statusMutation.mutate(next)}
-                  isLoading={statusMutation.isPending}
-                  size="sm"
-                  className="bg-violet-600 hover:bg-violet-700 capitalize"
-                >
-                  → {STATUS_LABELS[next] ?? next}
-                </Button>
-              ))}
-            </div>
+                {/* Checklist */}
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
+                    <span className="text-[10px] font-bold text-violet-600">{done}/{VISA_CHECKLIST.length} Complete</span>
+                  </div>
+                  <div className="space-y-2">
+                    {VISA_CHECKLIST.map(item => (
+                      <button
+                        key={item}
+                        onClick={() => toggleItem(item)}
+                        disabled={readOnly}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                      >
+                        {localChecklist[item]
+                          ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
+                          : <LuCircle size={18} className="text-gray-300 shrink-0" />
+                        }
+                        <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                          {item}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </details>
+
+            {/* Advance status */}
+            {!readOnly && allowedNext.length > 0 && (
+              <details className="group" open>
+                <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+                  <span>Actions</span>
+                  <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+                </summary>
+                <div className="pt-4 px-1">
+                  <div className="flex flex-wrap gap-2">
+                    {allowedNext.map(next => (
+                      <Button
+                        key={next}
+                        onClick={() => statusMutation.mutate(next)}
+                        isLoading={statusMutation.isPending}
+                        size="sm"
+                        className="bg-violet-600 hover:bg-violet-700 capitalize"
+                      >
+                        → {STATUS_LABELS[next] ?? next}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            )}
           </div>
-        )}
-      </div>
-      ) : (
-        <div className="p-6 h-[400px] overflow-y-auto">
-          {logsLoading ? (
+        ) : (
+          <div className="p-2 h-[400px]">
+            {logsLoading ? (
             <div className="flex justify-center py-12"><LuLoaderCircle className="animate-spin text-gray-400" size={24} /></div>
           ) : logs.length === 0 ? (
             <div className="text-center py-12 text-gray-400 text-sm">No history found for this case.</div>
@@ -307,7 +339,8 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
             </div>
           )}
         </div>
-      )}
+        )}
+      </div>
     </Modal>
   );
 }

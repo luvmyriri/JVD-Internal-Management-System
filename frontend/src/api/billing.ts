@@ -13,6 +13,11 @@ export interface Service {
   has_booking_fields?: boolean;
   adult_price?: number;
   child_price?: number;
+  is_tour?: boolean;
+  bus_price?: number;
+  coaster_price?: number;
+  tour_kms?: number;
+  tour_hours?: number;
   creator?: {
     id: number;
     first_name: string;
@@ -78,6 +83,11 @@ export const billingApi = {
     has_booking_fields?: boolean;
     adult_price?: number;
     child_price?: number;
+    is_tour?: boolean;
+    bus_price?: number;
+    coaster_price?: number;
+    tour_kms?: number;
+    tour_hours?: number;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -90,6 +100,11 @@ export const billingApi = {
     has_booking_fields?: boolean;
     adult_price?: number;
     child_price?: number;
+    is_tour?: boolean;
+    bus_price?: number;
+    coaster_price?: number;
+    tour_kms?: number;
+    tour_hours?: number;
   }) => client.put(`/billing/services/${id}`, data),
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 

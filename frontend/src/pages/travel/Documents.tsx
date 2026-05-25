@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuFileCheck, LuPlus, LuSearch, LuLoaderCircle, LuX, LuTrash2,
-  LuDownload, LuFile, LuFileText, LuImage, LuUpload,
+  LuDownload, LuFile, LuFileText, LuImage, LuUpload, LuChevronRight
 } from 'react-icons/lu';
 import { legalDocumentApi } from '../../api/legalDocuments';
 import { Pagination, Modal, Button } from '../../components/ui';
@@ -90,92 +90,110 @@ function UploadModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal isOpen onClose={onClose} title="Upload Document" size="lg">
-      <div className="p-6 space-y-5">
-        {/* Drop zone */}
-        <div
-          onClick={() => fileRef.current?.click()}
-          className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
-            file ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
-          }`}
-        >
-          <input
-            ref={fileRef}
-            type="file"
-            className="hidden"
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-            onChange={e => setFile(e.target.files?.[0] ?? null)}
-          />
-          {file ? (
-            <div className="flex items-center justify-center gap-3">
-              {fileIcon(file.name)}
-              <div className="text-left">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">{file.name}</p>
-                <p className="text-[10px] text-gray-400 mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
-              </div>
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); setFile(null); }}
-                className="ml-2 text-gray-400 hover:text-red-500"
+      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="space-y-5">
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>File Selection</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              {/* Drop zone */}
+              <div
+                onClick={() => fileRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-8 text-center cursor-pointer transition-all ${
+                  file ? 'border-blue-300 bg-blue-50/50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
+                }`}
               >
-                <LuX size={16} />
-              </button>
-            </div>
-          ) : (
-            <div>
-              <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                <LuUpload size={22} className="text-gray-400" />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  className="hidden"
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={e => setFile(e.target.files?.[0] ?? null)}
+                />
+                {file ? (
+                  <div className="flex items-center justify-center gap-3">
+                    {fileIcon(file.name)}
+                    <div className="text-left">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{file.name}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{(file.size / 1024).toFixed(1)} KB</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={e => { e.stopPropagation(); setFile(null); }}
+                      className="ml-2 text-gray-400 hover:text-red-500"
+                    >
+                      <LuX size={16} />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="w-12 h-12 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                      <LuUpload size={22} className="text-gray-400" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Click to upload a file</p>
+                    <p className="text-[10px] text-gray-400 mt-1">PDF, JPG, PNG, DOC — max 20 MB</p>
+                  </div>
+                )}
               </div>
-              <p className="text-sm font-bold text-gray-700 dark:text-gray-200">Click to upload a file</p>
-              <p className="text-[10px] text-gray-400 mt-1">PDF, JPG, PNG, DOC — max 20 MB</p>
             </div>
-          )}
-        </div>
+          </details>
 
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Document Title *</label>
-          <input
-            type="text"
-            value={form.title}
-            onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-            placeholder="e.g. Juan dela Cruz — Passport Copy"
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Document Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Document Title *</label>
+                <input
+                  type="text"
+                  value={form.title}
+                  onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+                  placeholder="e.g. Juan dela Cruz — Passport Copy"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Document Type *</label>
-          <select
-            value={form.document_type}
-            onChange={e => setForm(p => ({ ...p, document_type: e.target.value }))}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {DOC_TYPES.map(t => (
-              <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>
-            ))}
-          </select>
-        </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Document Type *</label>
+                <select
+                  value={form.document_type}
+                  onChange={e => setForm(p => ({ ...p, document_type: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {DOC_TYPES.map(t => (
+                    <option key={t} value={t}>{DOC_TYPE_LABELS[t]}</option>
+                  ))}
+                </select>
+              </div>
 
-        <div>
-          <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
-          <textarea
-            rows={2}
-            value={form.notes}
-            onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-            placeholder="Optional remarks..."
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-          />
-        </div>
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Notes</label>
+                <textarea
+                  rows={2}
+                  value={form.notes}
+                  onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Optional remarks..."
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+            </div>
+          </details>
 
-        <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
-          <Button variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button
-            onClick={() => mutation.mutate()}
-            isLoading={mutation.isPending}
-            disabled={!file || !form.title}
-            className="flex items-center gap-2"
-          >
-            <LuUpload size={14} /> Upload Document
-          </Button>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button
+              onClick={() => mutation.mutate()}
+              isLoading={mutation.isPending}
+              disabled={!file || !form.title}
+              className="flex items-center gap-2"
+            >
+              <LuUpload size={14} /> Upload Document
+            </Button>
+          </div>
         </div>
       </div>
     </Modal>
