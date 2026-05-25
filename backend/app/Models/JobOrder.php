@@ -10,13 +10,7 @@ class JobOrder extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = [
-        'jo_number', 'customer_id', 'bus_id',
-        'work_order_id', 'purchase_order_id',
-        'created_by', 'requested_by',
-        'service_type', 'status', 'service_date', 'destination',
-        'total_cost', 'notes', 'requires_po',
-    ];
+    protected $guarded = [];
 
     protected function casts(): array
     {
@@ -28,6 +22,11 @@ class JobOrder extends Model
     }
 
     // ── Relationships ───────────────────────────────────────────────
+
+    public function items()
+    {
+        return $this->hasMany(JobOrderItem::class);
+    }
 
     /** Customer linked to this JO (nullable for maintenance JOs). */
     public function customer()

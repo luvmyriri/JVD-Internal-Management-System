@@ -200,6 +200,10 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
     mutationFn: () => purchaseOrderApi.submit(po.id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['purchase-orders'] }); onClose(); },
   });
+  const verifyMutation = useMutation({
+    mutationFn: () => purchaseOrderApi.verify(po.id, { approved: true }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['purchase-orders'] }); onClose(); },
+  });
   const approveMutation = useMutation({
     mutationFn: () => purchaseOrderApi.approve(po.id, { approved: true }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['purchase-orders'] }); onClose(); },
@@ -277,11 +281,18 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
                 Submit for Review
               </button>
             )}
-            {(po.status === 'pending_accounting_review' || po.status === 'verified') && (
+            {po.status === 'pending_accounting_review' && (
+              <button onClick={() => verifyMutation.mutate()} disabled={verifyMutation.isPending}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 transition">
+                {verifyMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuCheck size={14} />}
+                Verify PO
+              </button>
+            )}
+            {po.status === 'verified' && (
               <button onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
                 {approveMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuCheck size={14} />}
-                Approve
+                Approve PO
               </button>
             )}
           </div>
@@ -297,11 +308,13 @@ function PORow({
   po,
   onDetail,
   onSubmitReview,
+  onVerify,
   onApprove
 }: {
   po: PurchaseOrder;
   onDetail: (po: PurchaseOrder) => void;
   onSubmitReview: (id: number) => void;
+  onVerify: (id: number) => void;
   onApprove: (id: number) => void;
 }) {
   return (
@@ -335,7 +348,12 @@ function PORow({
               icon: <Send size={14} />,
               onClick: () => onSubmitReview(po.id)
             }] : []),
-            ...(po.status === 'pending_accounting_review' || po.status === 'verified' ? [{
+            ...(po.status === 'pending_accounting_review' ? [{
+              label: 'Verify PO',
+              icon: <CheckCircle size={14} />,
+              onClick: () => onVerify(po.id)
+            }] : []),
+            ...(po.status === 'verified' ? [{
               label: 'Approve PO',
               icon: <CheckCircle size={14} />,
               onClick: () => onApprove(po.id)
@@ -377,6 +395,18 @@ export default function PurchaseOrders() {
     onError: (err: any) => {
       console.error(err);
       alert(err?.response?.data?.message || 'Failed to submit purchase order.');
+    }
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: (id: number) => purchaseOrderApi.verify(id, { approved: true }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+      alert('Purchase order verified successfully!');
+    },
+    onError: (err: any) => {
+      console.error(err);
+      alert(err?.response?.data?.message || 'Failed to verify purchase order.');
     }
   });
 
@@ -473,6 +503,7 @@ export default function PurchaseOrders() {
                   po={po}
                   onDetail={setSelectedPO}
                   onSubmitReview={(id) => submitMutation.mutate(id)}
+                  onVerify={(id) => verifyMutation.mutate(id)}
                   onApprove={(id) => approveMutation.mutate(id)}
                 />
               ))}

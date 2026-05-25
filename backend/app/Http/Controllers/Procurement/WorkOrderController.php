@@ -209,5 +209,55 @@ class WorkOrderController extends Controller
             'message' => 'Work Order rejected and cancelled.',
         ]);
     }
+    /**
+     * Generate a Job Order from an approved Work Order.
+     * Transitions: WorkOrder status doesn't change here, but creates a JobOrder.
+     */
+    public function generateJobOrder(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        if ($workOrder->status !== 'open') {
+            return response()->json([
+                'success' => false,
+                'message' => "Only approved (open) Work Orders can generate a Job Order.",
+            ], 422);
+        }
+
+        if (\App\Models\JobOrder::where('work_order_id', $workOrder->id)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => "A Job Order has already been generated for this Work Order.",
+            ], 422);
+        }
+
+        $year = now()->year;
+        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
+        $sequence = 1;
+        if ($latest) {
+            $parts = explode('-', $latest->jo_number);
+            $sequence = (int) end($parts) + 1;
+        }
+        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
+
+        $jobOrder = \App\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'bus_id' => $workOrder->bus_id,
+            'work_order_id' => $workOrder->id,
+            'created_by' => $request->user()->id,
+            'requested_by' => $workOrder->assigned_to ?? $workOrder->created_by ?? $request->user()->id,
+            'service_type' => 'maintenance',
+            'status' => 'created',
+            'service_date' => now()->toDateString(),
+            'destination' => 'Internal Maintenance',
+            'total_cost' => $workOrder->cost ?? 0,
+            'notes' => 'Generated from Work Order ' . $workOrder->wo_number,
+            'requires_po' => $request->boolean('requires_po', false),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $jobOrder,
+            'message' => 'Job Order generated successfully.',
+        ], 201);
+    }
 }
 

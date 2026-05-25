@@ -53,7 +53,7 @@ class MaintenanceService
     {
         // Avoid duplicate open WOs for the same bus
         $existingOpen = WorkOrder::where('bus_id', $bus->id)
-            ->whereIn('status', ['open', 'in_progress'])
+            ->whereIn('status', ['pending_approval', 'open', 'in_progress'])
             ->where('auto_generated', true)
             ->exists();
 
@@ -64,10 +64,10 @@ class MaintenanceService
         $wo = WorkOrder::create([
             'wo_number'      => $this->generateWONumber(),
             'bus_id'         => $bus->id,
-            'created_by'     => null, // System-generated
+            'created_by'     => 1, // System-generated fallback to admin
             'assigned_to'    => null,
-            'status'         => 'open',
-            'priority'       => 'medium',
+            'status'         => 'pending_approval',
+            'priority'       => 'routine',
             'description'    => "Preventive maintenance due for bus {$bus->plate_number}. "
                               . "Total mileage: {$bus->total_mileage} km.",
             'parts_used'     => null,

@@ -132,7 +132,7 @@ class JobOrderController extends Controller
         }
 
         // Allow field updates for drafts only
-        if ($jobOrder->status === 'draft') {
+        if ($jobOrder->status === 'created') {
             $validated = $request->validate([
                 'destination' => ['sometimes', 'string', 'max:255'],
                 'service_date'=> ['sometimes', 'date'],
@@ -147,5 +147,64 @@ class JobOrderController extends Controller
             'data'    => new JobOrderResource($jobOrder->fresh(['customer', 'bus'])),
             'message' => 'Job Order updated.',
         ]);
+    }
+    /**
+     * Generate a Purchase Order from a Job Order.
+     */
+    public function generatePurchaseOrder(Request $request, JobOrder $jobOrder): JsonResponse
+    {
+        if ($jobOrder->purchase_order_id) {
+            return response()->json([
+                'success' => false,
+                'message' => "A Purchase Order has already been generated for this Job Order.",
+            ], 422);
+        }
+
+        $validated = $request->validate([
+            'supplier_id' => ['required', 'integer', 'exists:suppliers,id'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.item_name' => ['required', 'string', 'max:255'],
+            'items.*.quantity' => ['required', 'integer', 'min:1'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $year = now()->year;
+        $latest = \App\Models\PurchaseOrder::where('po_number', 'like', "PO-{$year}-%")->orderByDesc('id')->first();
+        $sequence = 1;
+        if ($latest) {
+            $parts = explode('-', $latest->po_number);
+            $sequence = (int) end($parts) + 1;
+        }
+        $poNumber = sprintf('PO-%d-%04d', $year, $sequence);
+
+        $total = 0;
+        foreach ($validated['items'] as $item) {
+            $total += $item['quantity'] * $item['unit_price'];
+        }
+
+        $po = \App\Models\PurchaseOrder::create([
+            'po_number' => $poNumber,
+            'supplier_id' => $validated['supplier_id'],
+            'created_by' => $request->user()->id,
+            'status' => 'draft',
+            'total_amount' => $total,
+        ]);
+
+        foreach ($validated['items'] as $item) {
+            $po->lineItems()->create([
+                'item_name' => $item['item_name'],
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'total_price' => $item['quantity'] * $item['unit_price'],
+            ]);
+        }
+
+        $jobOrder->update(['purchase_order_id' => $po->id]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $po->load('lineItems'),
+            'message' => 'Purchase Order generated successfully.',
+        ], 201);
     }
 }

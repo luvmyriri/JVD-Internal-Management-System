@@ -1,0 +1,96 @@
+export interface CommissionItem {
+  id: number;
+  commission_id: number;
+  travel_date: string;
+  destination: string;
+  quantity: number;
+  amount: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Commission {
+  id: number;
+  commissioner_name: string;
+  serial_no: string;
+  date: string;
+  status: 'draft' | 'approved' | 'released';
+  received_by?: number;
+  released_by?: number;
+  approved_by?: number;
+  items?: CommissionItem[];
+  created_at?: string;
+  updated_at?: string;
+  
+  receivedBy?: { id: number; name: string };
+  releasedBy?: { id: number; name: string };
+  approvedBy?: { id: number; name: string };
+}
+
+export interface TripTicket {
+  id: number;
+  control_no: string;
+  issue_date: string;
+  date_of_travel: string;
+  duration?: string;
+  pick_up: string;
+  drop_off: string;
+  bus_id?: number;
+  plate_no?: string;
+  no_of_passengers: number;
+  driver_id?: number;
+  
+  meal_allowance?: number;
+  diesel?: number;
+  sop?: number;
+  easy_trip?: number;
+  autosweep?: number;
+  
+  fuel_consumed?: number;
+  fuel_gauge_before?: string;
+  fuel_gauge_after?: string;
+  odometer_reading?: number;
+  
+  passenger_rating?: 'outstanding' | 'satisfactory' | 'needs_improvement' | 'poor';
+  passenger_name?: string;
+  
+  status: 'draft' | 'approved' | 'completed';
+  requested_by?: number;
+  approved_by?: number;
+  
+  created_at?: string;
+  updated_at?: string;
+  
+  bus?: { id: number; plate_number: string };
+  driver?: { id: number; name: string };
+  requestedBy?: { id: number; name: string };
+  approvedBy?: { id: number; name: string };
+}
+
+export interface CashBudgetRequest {
+  id: number;
+  date: string;
+  travel_date: string;
+  plate_number?: string;
+  destination: string;
+  
+  diesel?: number;
+  meal_allowance?: number;
+  sop?: number;
+  autosweep?: number;
+  easytrip?: number;
+  coach_captain_salary?: number;
+  spare_driver_salary?: number;
+  
+  total_amount?: number;
+  status: 'draft' | 'approved' | 'disbursed';
+  
+  prepared_by: number;
+  approved_by?: number;
+  
+  created_at?: string;
+  updated_at?: string;
+  
+  preparedBy?: { id: number; name: string };
+  approvedBy?: { id: number; name: string };
+}

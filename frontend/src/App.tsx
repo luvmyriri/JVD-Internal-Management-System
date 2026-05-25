@@ -19,6 +19,10 @@ import ProcurementOverview from './pages/procurement/Overview';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
+import Commissions from './pages/operations/Commissions';
+import TripTickets from './pages/operations/TripTickets';
+import CashBudgets from './pages/operations/CashBudgets';
+import Collections from './pages/finance/Collections';
 import Accreditations from './pages/procurement/Accreditations';
 import Suppliers from './pages/procurement/Suppliers';
 import ProcurementDocuments from './pages/procurement/ProcurementDocuments';
@@ -93,6 +97,12 @@ export default function App() {
                 <Route path="/accounting/pos" element={<POS />} />
                 <Route path="/accounting/billing" element={<Billing />} />
                 <Route path="/accounting/reports" element={<Reports />} />
+                <Route path="/accounting/collections" element={<Collections />} />
+
+                {/* Operations */}
+                <Route path="/operations/commissions" element={<Commissions />} />
+                <Route path="/operations/trip-tickets" element={<TripTickets />} />
+                <Route path="/operations/cash-budgets" element={<CashBudgets />} />
 
                 {/* Procurement */}
                 <Route path="/procurement" element={<Navigate to="/procurement/overview" replace />} />

@@ -20,7 +20,7 @@ class JobOrderService
                 'bus_id'       => $data['bus_id'],
                 'created_by'   => $userId,
                 'service_type' => $data['service_type'],
-                'status'       => 'draft',
+                'status'       => 'created',
                 'service_date' => $data['service_date'],
                 'destination'  => $data['destination'],
                 'total_cost'   => $data['total_cost'],
@@ -43,7 +43,7 @@ class JobOrderService
     public function updateStatus(JobOrder $jo, string $newStatus): JobOrder
     {
         $validTransitions = [
-            'draft'       => ['confirmed', 'cancelled'],
+            'created'       => ['confirmed', 'cancelled'],
             'confirmed'   => ['in_progress', 'cancelled'],
             'in_progress' => ['completed', 'cancelled'],
         ];

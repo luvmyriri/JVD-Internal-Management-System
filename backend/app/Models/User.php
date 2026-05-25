@@ -96,12 +96,30 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return in_array($this->role, ['super_admin', 'admin']);
+        return $this->hasRole('admin');
     }
 
     public function hasRole(string ...$roles): bool
     {
-        return in_array($this->role, $roles);
+        $groups = [
+            'super_admin'          => ['super_admin'],
+            'admin'                => ['super_admin', 'admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'],
+            'human_resource'       => ['human_resource', 'corporate_secretary'],
+            'accounting'           => ['accounting', 'accounting_executive'],
+            'agent'                => ['agent', 'reservation_officer', 'office_staff'],
+            'driver'               => ['driver'],
+        ];
+
+        foreach ($roles as $role) {
+            if ($this->role === $role) {
+                return true;
+            }
+            if (isset($groups[$role]) && in_array($this->role, $groups[$role])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public function getAllPermissions(): array

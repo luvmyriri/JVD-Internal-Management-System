@@ -30,6 +30,6 @@ class JobOrderPolicy
         if ($user->hasRole('super_admin', 'admin')) {
             return true;
         }
-        return $jo->created_by === $user->id && $jo->status === 'draft';
+        return $jo->created_by === $user->id && $jo->status === 'created';
     }
 }

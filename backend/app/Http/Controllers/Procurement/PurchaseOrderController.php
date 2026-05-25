@@ -138,25 +138,7 @@ class PurchaseOrderController extends Controller
         ]);
 
 
-        if ($request->approved) {
-            foreach ($purchaseOrder->lineItems as $item) {
-                $inventory = InventoryItem::firstOrCreate(
-                    ['item_name' => $item->item_name],
-                    [
-                        'category' => 'General',
-                        'quantity' => 0,
-                        'reorder_level' => 10,
-                        'unit' => $item->unit_of_measure ?? 'pcs',
-                        'unit_cost' => $item->unit_price,
-                    ]
-                );
-                
-                $inventory->quantity += $item->quantity;
-                $inventory->unit_cost = $item->unit_price;
-                $inventory->save();
-            }
-        }
-
+        // Inventory update moved to approve method only
         \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(

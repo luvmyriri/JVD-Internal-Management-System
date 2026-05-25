@@ -51,7 +51,17 @@ export type UserRole =
   | 'human_resource'
   | 'accounting'
   | 'agent'
-  | 'driver';
+  | 'driver'
+  | 'operations_manager'
+  | 'reservation_officer'
+  | 'office_staff'
+  | 'accounting_executive'
+  | 'corporate_secretary'
+  | 'logistics_in_charge'
+  | 'dispatcher'
+  | 'purchasing_manager'
+  | 'service_adviser'
+  | 'head_mechanic';
 
 
 export interface User {

@@ -16,7 +16,7 @@ class StoreJobOrderRequest extends FormRequest
         return [
             'customer_id'   => ['required', 'integer', 'exists:customers,id'],
             'bus_id'        => ['required', 'integer', 'exists:buses,id'],
-            'service_type'  => ['required', 'in:charter,package,provincial,airport_transfer,other'],
+            'service_type'  => ['required', 'in:bus_rental,field_trip,corporate_transport,travel_package,event,maintenance'],
             'service_date'  => ['required', 'date', 'after_or_equal:today'],
             'destination'   => ['required', 'string', 'max:255'],
             'total_cost'    => ['required', 'numeric', 'min:0'],

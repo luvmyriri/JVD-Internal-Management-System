@@ -24,6 +24,10 @@ import {
   LuChevronDown,
   LuCalendarClock,
   LuMapPin,
+  LuBanknote,
+  LuMap,
+  LuWallet,
+  LuSignature,
 } from 'react-icons/lu';
 import type { UserRole } from '../../types/auth';
 
@@ -52,7 +56,16 @@ const navigation: NavSection[] = [
     items: [
       { label: 'POS', path: '/accounting/pos', icon: <LuReceipt />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
       { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
+      { label: 'Collections', path: '/accounting/collections', icon: <LuBanknote />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
       { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
+    ],
+  },
+  {
+    title: 'Operations',
+    items: [
+      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
+      { label: 'Commissions', path: '/operations/commissions', icon: <LuSignature />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
+      { label: 'Cash Budgets', path: '/operations/cash-budgets', icon: <LuWallet />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
     ],
   },
   {

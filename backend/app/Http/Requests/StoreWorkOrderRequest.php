@@ -16,7 +16,7 @@ class StoreWorkOrderRequest extends FormRequest
         return [
             'bus_id'      => ['required', 'integer', 'exists:buses,id'],
             'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority'    => ['required', 'in:low,medium,high,critical'],
+            'priority'    => ['required', 'in:routine,urgent,critical'],
             'description' => ['required', 'string', 'max:2000'],
             'parts_used'  => ['nullable', 'string', 'max:1000'],
             'cost'        => ['nullable', 'numeric', 'min:0'],

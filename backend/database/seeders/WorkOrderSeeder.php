@@ -11,48 +11,45 @@ class WorkOrderSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('role', 'super_admin')->first() ?? User::first();
-        $bus = \App\Models\Bus::first();
-        if (!$admin || !$bus) return;
+        $minda = User::where('email', 'minda@jvd.com')->first();
+        $arnold = User::where('email', 'arnold@jvd.com')->first();
+        $jhune = User::where('email', 'jhune@jvd.com')->first();
+        
+        $bus1 = \App\Models\Bus::where('plate_number', 'ABC-1234')->first();
+        $bus2 = \App\Models\Bus::where('plate_number', 'XYZ-5678')->first();
+        
+        if (!$minda || !$arnold || !$jhune || !$bus1 || !$bus2) return;
 
         $orders = [
             [
-                'wo_number' => 'WO-2024-001',
-                'bus_id' => $bus->id,
-                'created_by' => $admin->id,
-                'description' => 'Engine Overhaul and Preventive Maintenance',
-                'priority' => 'critical',
-                'status' => 'in_progress',
-            ],
-            [
-                'wo_number' => 'WO-2024-002',
-                'bus_id' => \App\Models\Bus::skip(1)->first()?->id ?? $bus->id,
-                'created_by' => $admin->id,
-                'description' => 'Brake pad replacement and tire rotation',
+                'wo_number' => 'WO-2026-001',
+                'bus_id' => $bus1->id,
+                'created_by' => $minda->id,
+                'assigned_to' => $arnold->id,
+                'approved_by' => $jhune->id,
+                'approved_at' => now()->subDays(5),
+                'approval_notes' => 'Approved for immediate execution.',
+                'description' => 'Brake pads wearing thin, replace front and rear pads and rotate tires.',
                 'priority' => 'urgent',
                 'status' => 'open',
-            ],
-            [
-                'wo_number' => 'WO-2026-001',
-                'bus_id' => $bus->id,
-                'description' => 'Annual safety inspection and fleet-wide checkup.',
-                'status' => 'open',
-                'priority' => 'routine',
-                'created_by' => $admin->id,
+                'cost' => 4500.00,
+                'auto_generated' => false,
             ],
             [
                 'wo_number' => 'WO-2026-002',
-                'bus_id' => $bus->id,
-                'description' => 'Urgent engine overheating issue.',
-                'status' => 'in_progress',
+                'bus_id' => $bus2->id,
+                'created_by' => $minda->id,
+                'assigned_to' => $arnold->id,
+                'description' => 'Check check-engine light and diagnose overheating issue.',
                 'priority' => 'critical',
-                'created_by' => $admin->id,
+                'status' => 'pending_approval',
+                'cost' => 0.00,
+                'auto_generated' => false,
             ],
         ];
 
         foreach ($orders as $order) {
             WorkOrder::create($order);
         }
-
     }
 }

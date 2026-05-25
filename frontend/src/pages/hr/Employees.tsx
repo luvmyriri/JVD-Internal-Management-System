@@ -103,6 +103,7 @@ interface User {
   role: 'super_admin' | 'admin' | 'human_resource' | 'accounting' | 'agent' | 'driver';
   department: string;
   is_active: boolean;
+  is_online?: boolean;
   avatar_url: string | null;
   last_login: string | null;
   created_at: string;
@@ -114,6 +115,16 @@ const ROLES = [
   { value: 'accounting', label: 'Accounting', icon: LuBadgeCheck, color: 'text-emerald-500' },
   { value: 'agent', label: 'Agent', icon: LuBriefcase, color: 'text-amber-500' },
   { value: 'driver', label: 'Driver', icon: LuTruck, color: 'text-indigo-500' },
+  { value: 'operations_manager', label: 'Operations Manager', icon: LuShield, color: 'text-cyan-500' },
+  { value: 'reservation_officer', label: 'Reservation Officer', icon: LuBriefcase, color: 'text-orange-500' },
+  { value: 'office_staff', label: 'Office Staff', icon: LuBriefcase, color: 'text-yellow-500' },
+  { value: 'accounting_executive', label: 'Accounting Executive', icon: LuBadgeCheck, color: 'text-teal-500' },
+  { value: 'corporate_secretary', label: 'Corporate Secretary', icon: LuUsers, color: 'text-pink-500' },
+  { value: 'logistics_in_charge', label: 'Logistics In Charge', icon: LuShield, color: 'text-lime-500' },
+  { value: 'dispatcher', label: 'Dispatcher', icon: LuShield, color: 'text-fuchsia-500' },
+  { value: 'purchasing_manager', label: 'Purchasing Manager', icon: LuShield, color: 'text-sky-500' },
+  { value: 'service_adviser', label: 'Service Adviser', icon: LuShield, color: 'text-stone-500' },
+  { value: 'head_mechanic', label: 'Head Mechanic', icon: LuShield, color: 'text-neutral-500' },
 ];
 
 const DEPARTMENTS = [
@@ -608,7 +619,7 @@ export default function Employees() {
                               className="w-11 h-11 rounded-2xl border-2 border-white shadow-sm object-cover" 
                               alt="" 
                             />
-                            {user.is_active && (
+                            {user.is_online && (
                               <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
                             )}
                           </div>
@@ -631,10 +642,10 @@ export default function Employees() {
                             return (
                               <>
                                 <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shadow-sm", {
-                                  'bg-blue-50 border-blue-100 text-blue-500': user.role === 'admin' || user.role === 'super_admin',
-                                  'bg-purple-50 border-purple-100 text-purple-500': user.role === 'human_resource',
-                                  'bg-emerald-50 border-emerald-100 text-emerald-500': user.role === 'accounting',
-                                  'bg-amber-50 border-amber-100 text-amber-500': user.role === 'agent',
+                                  'bg-blue-50 border-blue-100 text-blue-500': ['admin', 'super_admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
+                                  'bg-purple-50 border-purple-100 text-purple-500': ['human_resource', 'corporate_secretary'].includes(user.role),
+                                  'bg-emerald-50 border-emerald-100 text-emerald-500': ['accounting', 'accounting_executive'].includes(user.role),
+                                  'bg-amber-50 border-amber-100 text-amber-500': ['agent', 'reservation_officer', 'office_staff'].includes(user.role),
                                   'bg-indigo-50 border-indigo-100 text-indigo-500': user.role === 'driver',
                                 })}>
                                   <Icon size={14} />
@@ -647,8 +658,8 @@ export default function Employees() {
                       </td>
                       <td className="px-8 py-6">
                         <StatusBadge 
-                          status={user.is_active ? 'Active' : 'Deactivated'}
-                          variant={user.is_active ? 'success' : 'danger'}
+                          status={!user.is_active ? 'Deactivated' : (user.is_online ? 'Active' : 'Offline')}
+                          variant={!user.is_active ? 'danger' : (user.is_online ? 'success' : 'neutral')}
                         />
                       </td>
                       <td className="px-8 py-6">

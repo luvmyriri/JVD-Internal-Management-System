@@ -23,6 +23,10 @@ use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Inventory\InventoryController;
 use App\Http\Controllers\Auth\ProfileController;
 use App\Http\Controllers\Procurement\ProcurementDocumentController;
+use App\Http\Controllers\CommissionController;
+use App\Http\Controllers\TripTicketController;
+use App\Http\Controllers\CashBudgetRequestController;
+use App\Http\Controllers\CollectionController;
 
 /*
 |--------------------------------------------------------------------------
@@ -132,7 +136,18 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,agent,driver,operations:view')->group(function () {
         Route::apiResource('job-orders',  JobOrderController::class)->except(['destroy']);
+        Route::post('/job-orders/{jobOrder}/generate-purchase-order', [JobOrderController::class, 'generatePurchaseOrder'])->name('job-orders.generate-po');
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
+        Route::apiResource('commissions', CommissionController::class);
+        Route::apiResource('trip-tickets', TripTicketController::class);
+        Route::apiResource('cash-budgets', CashBudgetRequestController::class);
+    });
+
+    // ──────────────────────────────────────
+    // COLLECTIONS / FINANCE
+    // ──────────────────────────────────────
+    Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+        Route::apiResource('collections', CollectionController::class);
     });
 
     // ──────────────────────────────────────
@@ -141,6 +156,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     Route::middleware('role:super_admin,admin')->group(function () {
         Route::post('/work-orders/{workOrder}/approve', [WorkOrderController::class, 'approve'])->name('work-orders.approve');
         Route::post('/work-orders/{workOrder}/reject',  [WorkOrderController::class, 'reject'])->name('work-orders.reject');
+        Route::post('/work-orders/{workOrder}/generate-job-order', [WorkOrderController::class, 'generateJobOrder'])->name('work-orders.generate-jo');
     });
 
     // Mechanics can REQUEST a Work Order (but not approve)
