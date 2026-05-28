@@ -145,6 +145,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [activeImagePreview, setActiveImagePreview] = useState<{ path: string; name: string } | null>(null);
+  const [showExtraMenu, setShowExtraMenu] = useState(false);
 
   const unreadMessagesCount = messages.filter(m => !m.read).length;
 
@@ -1579,9 +1580,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
       />
     )}
 
-    {/* Floating Facebook PC-style Chat Windows */}
-    <div className="fixed bottom-0 right-4 z-50 flex items-end gap-3 pointer-events-none">
-      {activeChats.map(c => {
+    {/* Floating Restored Chat Windows (PC-style bottom tabs, shifted left to avoid chatheads) */}
+    <div className="fixed bottom-0 right-[85px] z-50 flex items-end gap-3 pointer-events-none select-none">
+      {activeChats.filter(c => !c.minimized).map(c => {
         const msgThread = messages.find(m => m.id === c.id);
         if (!msgThread) return null;
         return (
@@ -1589,9 +1590,9 @@ export default function Header({ onMenuClick }: HeaderProps) {
             key={c.id}
             thread={msgThread}
             theme={theme}
-            minimized={c.minimized}
+            minimized={false}
             onMinimize={() => {
-              setActiveChats(prev => prev.map(chat => chat.id === c.id ? { ...chat, minimized: !chat.minimized } : chat));
+              setActiveChats(prev => prev.map(chat => chat.id === c.id ? { ...chat, minimized: true } : chat));
             }}
             onClose={() => {
               setActiveChats(prev => prev.filter(chat => chat.id !== c.id));
@@ -1601,6 +1602,143 @@ export default function Header({ onMenuClick }: HeaderProps) {
           />
         );
       })}
+    </div>
+
+    {/* Minimized Circle Chatheads (Facebook-style vertical stack on bottom right, raised on mobile to clear bottom nav) */}
+    <div className="fixed bottom-20 md:bottom-6 right-4 z-50 flex flex-col items-center gap-2.5 select-none pointer-events-auto">
+      {(() => {
+        const minimizedChats = activeChats.filter(c => c.minimized);
+        const maxDisplayed = 5;
+        const displayedChats = minimizedChats.slice(0, maxDisplayed);
+        const hiddenChats = minimizedChats.slice(maxDisplayed);
+
+        return (
+          <>
+            {/* Render up to 5 displayed minimized chatheads */}
+            {displayedChats.map(c => {
+              const msgThread = messages.find(m => m.id === c.id);
+              if (!msgThread) return null;
+
+              return (
+                <div key={c.id} className="relative group w-10 h-10 md:w-12 md:h-12 transition-all duration-200 hover:scale-105 active:scale-[0.95] shadow-lg rounded-full">
+                  {/* Circle Chathead Body */}
+                  <div
+                    onClick={() => {
+                      setActiveChats(prev => prev.map(chat => chat.id === c.id ? { ...chat, minimized: false } : chat));
+                    }}
+                    className="w-full h-full rounded-full cursor-pointer relative overflow-visible border-2 border-white dark:border-gray-800 bg-slate-200 dark:bg-gray-700 shadow-sm"
+                  >
+                    {msgThread.senderAvatar ? (
+                      <img
+                        src={getAvatarUrl(msgThread.senderAvatar) || ''}
+                        alt={msgThread.senderName}
+                        className="w-full h-full object-cover rounded-full"
+                      />
+                    ) : (
+                      <div className={`w-full h-full rounded-full flex items-center justify-center text-[10px] md:text-xs font-black text-white bg-gradient-to-tr ${msgThread.senderColor || 'from-blue-500 to-indigo-600'}`}>
+                        {msgThread.senderInitials || msgThread.senderName.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+
+                    {/* Online status badge */}
+                    {msgThread.online && (
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 md:w-3 md:h-3 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full animate-pulse" />
+                    )}
+                  </div>
+
+                  {/* Hover Close Button (x) */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveChats(prev => prev.filter(chat => chat.id !== c.id));
+                    }}
+                    className="absolute -top-1 -left-1 w-5 h-5 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center text-[10px] font-black opacity-0 group-hover:opacity-100 transition-opacity duration-200 border border-white dark:border-gray-950 shadow-md cursor-pointer"
+                    title="Close Chat"
+                  >
+                    ✕
+                  </button>
+
+                  {/* Hover Tooltip (Conversation Name) */}
+                  <div className="absolute right-12 md:right-14 top-1/2 -translate-y-1/2 bg-gray-950/95 dark:bg-black/95 backdrop-blur-sm text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-md border border-white/5 pointer-events-none">
+                    {msgThread.senderName}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Extra Plus Chathead if there are more than 5 minimized chats */}
+            {hiddenChats.length > 0 && (
+              <div className="relative w-10 h-10 md:w-12 md:h-12 shadow-lg rounded-full">
+                <button
+                  onClick={() => setShowExtraMenu(prev => !prev)}
+                  className="w-full h-full rounded-full bg-blue-600 hover:bg-blue-700 text-white font-black text-xs md:text-sm flex items-center justify-center border-2 border-white dark:border-gray-800 transition-all duration-200 hover:scale-105 active:scale-[0.95] cursor-pointer shadow-md"
+                  title={`${hiddenChats.length} more chats open`}
+                >
+                  +{hiddenChats.length}
+                </button>
+
+                {/* Extra Minimized Chats Popover List */}
+                {showExtraMenu && (
+                  <div className="absolute right-12 md:right-14 bottom-0 bg-white dark:bg-gray-950 border border-gray-150 dark:border-gray-800 rounded-2xl p-3 shadow-2xl w-56 flex flex-col gap-1.5 z-[100] max-h-60 overflow-y-auto custom-scrollbar animate-fade-in pointer-events-auto">
+                    <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider px-1 pb-1 border-b border-gray-100 dark:border-gray-855 mb-1">
+                      Open Conversations
+                    </p>
+                    {hiddenChats.map(c => {
+                      const msgThread = messages.find(m => m.id === c.id);
+                      if (!msgThread) return null;
+
+                      return (
+                        <div
+                          key={c.id}
+                          className="flex items-center justify-between gap-2 p-1.5 hover:bg-gray-50 dark:hover:bg-gray-800/40 rounded-xl transition-all cursor-pointer group/item"
+                          onClick={() => {
+                            // Restore chat
+                            setActiveChats(prev => prev.map(chat => chat.id === c.id ? { ...chat, minimized: false } : chat));
+                            setShowExtraMenu(false);
+                          }}
+                        >
+                          <div className="flex items-center gap-2 max-w-[80%]">
+                            <div className="relative shrink-0">
+                              {msgThread.senderAvatar ? (
+                                <img
+                                  src={getAvatarUrl(msgThread.senderAvatar) || ''}
+                                  alt={msgThread.senderName}
+                                  className="w-6 h-6 rounded-full object-cover"
+                                />
+                              ) : (
+                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-black text-white bg-gradient-to-tr ${msgThread.senderColor || 'from-blue-500 to-indigo-600'}`}>
+                                  {msgThread.senderInitials || msgThread.senderName.slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              {msgThread.online && (
+                                <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border border-white dark:border-gray-950 rounded-full" />
+                              )}
+                            </div>
+                            <span className="text-xs font-semibold text-gray-700 dark:text-gray-200 truncate select-none">
+                              {msgThread.senderName}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveChats(prev => prev.filter(chat => chat.id !== c.id));
+                            }}
+                            className="p-1 hover:bg-rose-50 dark:hover:bg-rose-955/20 text-gray-400 hover:text-rose-500 rounded-lg transition-colors cursor-pointer"
+                            title="Close Chat"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
 
     {/* Image Preview Modal */}

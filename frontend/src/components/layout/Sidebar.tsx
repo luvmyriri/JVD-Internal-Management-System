@@ -44,7 +44,7 @@ interface NavSection {
   items: NavItem[];
 }
 
-const navigation: NavSection[] = [
+export const navigation: NavSection[] = [
   {
     title: 'Overview',
     items: [
@@ -255,6 +255,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <li key={item.path}>
                       <NavLink
                         to={item.path}
+                        onClick={() => onClose?.()}
                         className={({ isActive }) =>
                           `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ${
                             isActive
