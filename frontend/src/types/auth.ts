@@ -48,6 +48,7 @@ export interface SetupTwoFactorResponse {
 export type UserRole =
   | 'super_admin'
   | 'admin'
+  | 'executive_vice_president'
   | 'human_resource'
   | 'accounting'
   | 'agent'

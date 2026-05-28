@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCheck, LuBan, LuTriangleAlert, LuClock,
-  LuClipboardList,
+  LuClipboardList, LuArrowRight,
 } from 'react-icons/lu';
 import { 
   Eye, 
@@ -305,12 +305,14 @@ function WORow({
   wo, 
   onReview, 
   onDetail, 
-  onComplete 
+  onComplete,
+  onGenerateJO,
 }: { 
   wo: WorkOrder; 
   onReview: (wo: WorkOrder) => void;
   onDetail: (wo: WorkOrder) => void;
   onComplete: (id: number) => void;
+  onGenerateJO: (id: number) => void;
 }) {
   return (
     <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
@@ -346,6 +348,15 @@ function WORow({
               label: 'Review Order', 
               icon: <ShieldCheck size={14} />, 
               onClick: () => onReview(wo) 
+            }] : []),
+            ...(wo.status === 'open' ? [{ 
+              label: 'Generate J.O.', 
+              icon: <LuArrowRight size={14} />, 
+              onClick: () => {
+                if (confirm(`Generate a Job Order from Work Order ${wo.wo_number}?`)) {
+                  onGenerateJO(wo.id);
+                }
+              }
             }] : []),
             ...(wo.status === 'in_progress' ? [{ 
               label: 'Mark Completed', 
@@ -399,6 +410,18 @@ export default function WorkOrders() {
     },
     onError: (err: any) => {
       alert(err?.response?.data?.message || 'Failed to mark work order as completed.');
+    }
+  });
+
+  const generateJOMutation = useMutation({
+    mutationFn: (id: number) => workOrderApi.generateJobOrder(id, { requires_po: false }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
+      alert(`Job Order generated successfully: ${res.data?.data?.jo_number ?? ''}`);
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to generate Job Order.');
     }
   });
 
@@ -485,6 +508,7 @@ export default function WorkOrders() {
                     onReview={setReviewWO} 
                     onDetail={setDetailWO}
                     onComplete={(id) => completeMutation.mutate(id)}
+                    onGenerateJO={(id) => generateJOMutation.mutate(id)}
                   />
                 ))}
               </tbody>

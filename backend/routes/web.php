@@ -21,3 +21,5 @@ Route::get('uploads/{path}', function ($path) {
     }
     return response()->file($filePath);
 })->where('path', '.*');
+
+Route::get('/public/action-request', [App\Http\Controllers\PublicRequestActionController::class, 'handle'])->name('public.action-request');

@@ -4,6 +4,7 @@ namespace App\Http\Services;
 
 use App\Models\User;
 use App\Notifications\SystemAlert;
+use App\Notifications\ActionableApprovalNotification;
 use App\Models\Accreditation;
 use App\Models\PurchaseOrder;
 use App\Models\WorkOrder;
@@ -36,14 +37,25 @@ class NotificationService
      */
     public static function notifyPoSubmission(PurchaseOrder $po)
     {
-        $admins = User::whereIn('role', ['super_admin', 'admin', 'accounting'])->get();
         $creatorName = $po->creator ? ($po->creator->first_name . ' ' . $po->creator->last_name) : 'An agent';
-        foreach ($admins as $admin) {
-            $admin->notify(new SystemAlert(
+        $recipients = User::whereIn('role', ['super_admin', 'admin', 'accounting'])->get();
+
+        $details = [
+            'P.O. Number' => $po->po_number,
+            'Supplier'    => $po->supplier->name ?? 'N/A',
+            'Grand Total' => '$' . number_format($po->grand_total, 2),
+            'Created By'  => $creatorName,
+            'Item Count'  => $po->lineItems->count() . ' items',
+            'Line Items'  => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ $' . number_format($item->unit_price, 2) . ')')->join("\n"),
+        ];
+
+        foreach ($recipients as $recipient) {
+            $recipient->notify(new ActionableApprovalNotification(
                 "PO Submitted: " . $po->po_number,
-                $creatorName . " submitted a PO of amount $" . number_format($po->grand_total, 2) . " for verification.",
-                "warning",
-                "/procurement/purchase-orders"
+                "$creatorName has submitted a new Purchase Order of amount $" . number_format($po->grand_total, 2) . " for your verification and approval.",
+                'purchase_order',
+                $po->id,
+                $details
             ));
         }
     }
@@ -53,6 +65,30 @@ class NotificationService
      */
     public static function notifyPoStatusUpdate(PurchaseOrder $po, string $status)
     {
+        // 1. Send secure actionable approval links to CEO when verified by accounting
+        if ($status === 'pending_ceo_approval') {
+            $ceos = User::whereIn('role', ['super_admin', 'admin'])->get();
+            $details = [
+                'P.O. Number'  => $po->po_number,
+                'Supplier'     => $po->supplier->name ?? 'N/A',
+                'Grand Total'  => '$' . number_format($po->grand_total, 2),
+                'Verified By'  => $po->verifier ? ($po->verifier->first_name . ' ' . $po->verifier->last_name) : 'Accounting',
+                'Item Count'   => $po->lineItems->count() . ' items',
+                'Line Items'   => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ $' . number_format($item->unit_price, 2) . ')')->join("\n"),
+            ];
+
+            foreach ($ceos as $ceo) {
+                $ceo->notify(new ActionableApprovalNotification(
+                    "PO Pending CEO Approval: " . $po->po_number,
+                    "A Purchase Order of amount $" . number_format($po->grand_total, 2) . " has been verified by Accounting and is pending your final approval.",
+                    'purchase_order',
+                    $po->id,
+                    $details
+                ));
+            }
+        }
+
+        // 2. Alert the original requesting agent of final status update
         $creator = User::find($po->created_by);
         if ($creator) {
             $type = 'info';
@@ -83,13 +119,24 @@ class NotificationService
      */
     public static function notifyWorkOrderRequest(WorkOrder $wo)
     {
-        $approvers = User::whereIn('role', ['super_admin', 'admin'])->get();
+        $approvers = User::whereIn('role', ['super_admin', 'admin', 'service_adviser'])->get();
+        
+        $details = [
+            'W.O. Number' => $wo->wo_number,
+            'Bus Fleet'   => $wo->bus->plate_number ?? 'N/A',
+            'Odometer'    => number_format($wo->odometer ?? 0) . ' km',
+            'Priority'    => strtoupper($wo->priority),
+            'Description' => $wo->description ?? 'N/A',
+            'Created By'  => $wo->creator ? ($wo->creator->first_name . ' ' . $wo->creator->last_name) : 'Fleet System',
+        ];
+
         foreach ($approvers as $approver) {
-            $approver->notify(new SystemAlert(
-                "Work Order: " . $wo->wo_number,
-                "A maintenance work order is pending approval. Bus: " . ($wo->bus->plate_number ?? 'N/A'),
-                "warning",
-                "/fleet/maintenance"
+            $approver->notify(new ActionableApprovalNotification(
+                "Work Order Pending Approval: " . $wo->wo_number,
+                "A new maintenance Work Order has been generated for Bus Plate " . ($wo->bus->plate_number ?? 'N/A') . " and is pending approval.",
+                'work_order',
+                $wo->id,
+                $details
             ));
         }
     }

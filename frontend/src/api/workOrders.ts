@@ -24,4 +24,8 @@ export const workOrderApi = {
   /** Designated employee rejects an auto-generated PMS Work Order */
   reject: (id: number, notes: string) =>
     client.post<{ success: boolean; data: WorkOrder; message: string }>(`/work-orders/${id}/reject`, { notes }),
+
+  /** Generate a Job Order from an approved (open) Work Order */
+  generateJobOrder: (id: number, data?: { requires_po?: boolean }) =>
+    client.post<{ success: boolean; data: any; message: string }>(`/work-orders/${id}/generate-job-order`, data ?? {}),
 };

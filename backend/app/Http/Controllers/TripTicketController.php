@@ -39,9 +39,11 @@ class TripTicketController extends Controller
             
             'passenger_rating' => 'nullable|in:outstanding,satisfactory,needs_improvement,poor',
             'passenger_name' => 'nullable|string',
+            'trip_type' => 'nullable|in:domestic,international',
         ]);
 
         $validated['requested_by'] = auth()->id();
+        $validated['trip_type'] = $validated['trip_type'] ?? 'domestic';
         
         $ticket = TripTicket::create($validated);
         

@@ -611,7 +611,7 @@ export default function Employees() {
                   </tr>
                 ) : (
                   usersData?.data?.map((user: User) => (
-                    <tr key={user.id} className="hover:bg-blue-50/30 transition-all group border-b border-gray-50 last:border-0">
+                    <tr key={user.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all group border-b border-gray-50 dark:border-gray-800/60 last:border-0">
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
                           <div className="relative">
@@ -643,11 +643,11 @@ export default function Employees() {
                             return (
                               <>
                                 <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shadow-sm", {
-                                  'bg-blue-50 border-blue-100 text-blue-500': ['admin', 'super_admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
-                                  'bg-purple-50 border-purple-100 text-purple-500': ['human_resource', 'corporate_secretary'].includes(user.role),
-                                  'bg-emerald-50 border-emerald-100 text-emerald-500': ['accounting', 'accounting_executive'].includes(user.role),
-                                  'bg-amber-50 border-amber-100 text-amber-500': ['agent', 'reservation_officer', 'office_staff'].includes(user.role),
-                                  'bg-indigo-50 border-indigo-100 text-indigo-500': user.role === 'driver',
+                                  'bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/30 text-blue-500 dark:text-blue-400': ['admin', 'super_admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
+                                  'bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/30 text-purple-500 dark:text-purple-400': ['human_resource', 'corporate_secretary'].includes(user.role),
+                                  'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/30 text-emerald-500 dark:text-emerald-400': ['accounting', 'accounting_executive'].includes(user.role),
+                                  'bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/30 text-amber-500 dark:text-amber-400': ['agent', 'reservation_officer', 'office_staff'].includes(user.role),
+                                  'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/30 text-indigo-500 dark:text-indigo-400': user.role === 'driver',
                                 })}>
                                   <Icon size={14} />
                                 </div>
@@ -739,7 +739,7 @@ export default function Employees() {
                   <div>
                     <h2 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">{fullName(selectedUser)}</h2>
                     <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
-                      <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100">
+                      <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100 dark:border-blue-900/30">
                         {selectedUser.department}
                       </span>
                       <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200 dark:border-gray-700">
@@ -785,9 +785,9 @@ export default function Employees() {
                   Security Profile
                 </h3>
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-emerald-50/50 rounded-2xl border border-emerald-100">
-                    <span className="text-xs font-bold text-emerald-600">Access Level</span>
-                    <span className="text-sm font-black text-emerald-700 capitalize">{selectedUser.role.replace('_', ' ')}</span>
+                  <div className="flex justify-between items-center p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">Access Level</span>
+                    <span className="text-sm font-black text-emerald-700 dark:text-emerald-300 capitalize">{selectedUser.role.replace('_', ' ')}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/60 rounded-2xl">
                     <span className="text-xs font-bold text-gray-500 dark:text-gray-400">IP Origin</span>
@@ -831,14 +831,14 @@ export default function Employees() {
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             
             {/* Personal Information */}
-            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800/80" open>
               <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <LuUsers className="text-blue-500" /> Personal Information
                 </h3>
                 <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
               </summary>
-              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-800/80 mt-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">First Name</label>
@@ -854,7 +854,7 @@ export default function Employees() {
                         }
                       })}
                       className={cn(
-                        "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                         errors.first_name && "border-red-300 bg-red-50/30"
                       )}
                       placeholder="e.g. Michael"
@@ -875,7 +875,7 @@ export default function Employees() {
                         }
                       })}
                       className={cn(
-                        "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                         errors.last_name && "border-red-300 bg-red-50/30"
                       )}
                       placeholder="e.g. Scofield"
@@ -896,7 +896,7 @@ export default function Employees() {
                     })}
                     type="email"
                     className={cn(
-                      "w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                      "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                       errors.email && "border-red-300 bg-red-50/30"
                     )}
                     placeholder="name@jvd-logistics.com"
@@ -907,20 +907,20 @@ export default function Employees() {
             </details>
 
             {/* Employment Details */}
-            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
+            <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800/80" open>
               <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                   <LuBriefcase className="text-emerald-500" /> Employment Details
                 </h3>
                 <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
               </summary>
-              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-800/80 mt-2">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
                     <select
                       {...register('role', { required: true })}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                     >
                       {ROLES.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -931,7 +931,7 @@ export default function Employees() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
                     <select
                       {...register('department', { required: true })}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                     >
                       {DEPARTMENTS.map(dept => (
                         <option key={dept} value={dept}>{dept}</option>
@@ -946,7 +946,7 @@ export default function Employees() {
                     {...register('employee_id', { required: 'Employee ID is required' })}
                     readOnly
                     className={cn(
-                      "w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-2xl text-sm font-black text-gray-400 focus:outline-none cursor-not-allowed font-mono",
+                      "w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono",
                       errors.employee_id && "border-red-300 bg-red-50/30"
                     )}
                     placeholder="JVD-EMP-000"
@@ -958,15 +958,15 @@ export default function Employees() {
 
             {/* Security & Access */}
             {!selectedUser && (
-              <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-800/80">
                 <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
                   <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
                     <LuShield className="text-purple-500" /> Security & Access
                   </h3>
                   <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
                 </summary>
-                <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-blue-50/50 transition-colors cursor-pointer group">
+                <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-800/80 mt-2">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 rounded-2xl hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-colors cursor-pointer group">
                     <div className="relative flex items-center">
                       <input
                         type="checkbox"
@@ -1022,14 +1022,14 @@ export default function Employees() {
         size="xl"
       >
         <div className="space-y-6">
-          <div className="p-4 bg-amber-50 border border-amber-100 rounded-[1.5rem] flex items-center justify-between gap-3">
+          <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <LuTriangleAlert size={20} className="text-amber-500" />
-              <p className="text-xs text-amber-700 font-bold uppercase tracking-tight">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-bold uppercase tracking-tight">
                 Review Data: {pendingUploads?.length} personnel detected.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 shadow-sm">
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-500/30 shadow-sm">
               <LuKeyRound size={14} className="text-amber-500" />
               <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Temp Passwords</span>
             </div>
@@ -1057,7 +1057,7 @@ export default function Employees() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-col gap-1">
-                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 text-[9px] font-black uppercase border border-blue-100">
+                          <span className="inline-flex w-fit items-center px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[9px] font-black uppercase border border-blue-100 dark:border-blue-900/30">
                             {emp.role}
                           </span>
                           <span className="text-[10px] font-bold text-gray-400 uppercase ml-0.5">

@@ -13,6 +13,7 @@ export default function Dashboard() {
   switch (user.role) {
     case 'super_admin':
     case 'admin':
+    case 'executive_vice_president':
     case 'operations_manager':
     case 'logistics_in_charge':
     case 'dispatcher':

@@ -32,7 +32,32 @@ class SystemAlert extends Notification
      */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail'];
+    }
+
+    /**
+     * Get the mail representation of the notification.
+     */
+    public function toMail(object $notifiable): \Illuminate\Notifications\Messages\MailMessage
+    {
+        $message = (new \Illuminate\Notifications\Messages\MailMessage)
+            ->subject($this->title)
+            ->greeting("Hello " . ($notifiable->first_name ?? 'User') . ",")
+            ->line($this->message);
+
+        if ($this->link) {
+            $frontendUrl = env('FRONTEND_URL', 'http://localhost:3000');
+            $urls = explode(',', $frontendUrl);
+            $baseUrl = $urls[0] ?? 'http://localhost:3000';
+
+            $fullUrl = str_starts_with($this->link, 'http')
+                ? $this->link
+                : rtrim($baseUrl, '/') . '/' . ltrim($this->link, '/');
+
+            $message->action('View Details', $fullUrl);
+        }
+
+        return $message;
     }
 
     /**

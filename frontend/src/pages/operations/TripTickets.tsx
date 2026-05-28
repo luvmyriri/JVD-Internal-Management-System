@@ -23,6 +23,20 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function TripTypeBadge({ type }: { type?: string }) {
+  if (!type) return null;
+  const isIntl = type === 'international';
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${
+      isIntl
+        ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-900/40'
+        : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-900/40'
+    }`}>
+      {isIntl ? '🌏' : '🏠'} {isIntl ? 'International' : 'Domestic'}
+    </span>
+  );
+}
+
 function printTripTicket(ticket: TripTicket) {
   const win = window.open('', '_blank', 'width=800,height=1100');
   if (!win) return;
@@ -528,6 +542,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
     easy_trip: 0,
     autosweep: 0,
     passenger_name: '',
+    trip_type: 'domestic' as 'domestic' | 'international',
   });
 
   const mutation = useMutation({
@@ -610,6 +625,28 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   onChange={e => setForm(p => ({ ...p, date_of_travel: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
+              </div>
+            </div>
+            {/* Trip Type */}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Trip Type</label>
+              <div className="flex gap-3">
+                {(['domestic', 'international'] as const).map(t => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setForm(p => ({ ...p, trip_type: t }))}
+                    className={`flex-1 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest border-2 transition-all ${
+                      form.trip_type === t
+                        ? t === 'international'
+                          ? 'bg-violet-600 border-violet-600 text-white'
+                          : 'bg-teal-600 border-teal-600 text-white'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-400'
+                    }`}
+                  >
+                    {t === 'international' ? '🌏 International' : '🏠 Domestic'}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -812,6 +849,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
 
 export default function TripTickets() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'domestic' | 'international'>('all');
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -822,11 +860,14 @@ export default function TripTickets() {
 
   const tickets: TripTicket[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const filtered = tickets.filter((t) =>
-    t.control_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = tickets.filter((t) => {
+    const matchSearch =
+      t.control_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchType = tripTypeFilter === 'all' || (t as any).trip_type === tripTypeFilter;
+    return matchSearch && matchType;
+  });
 
   return (
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
@@ -848,6 +889,24 @@ export default function TripTickets() {
               className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-sm"
             />
           </div>
+          {/* Trip Type Filter */}
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl">
+            {(['all', 'domestic', 'international'] as const).map(t => (
+              <button key={t} type="button"
+                onClick={() => setTripTypeFilter(t)}
+                className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  tripTypeFilter === t
+                    ? t === 'international'
+                      ? 'bg-violet-600 text-white'
+                      : t === 'domestic'
+                        ? 'bg-teal-600 text-white'
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow'
+                    : 'text-gray-500 hover:text-gray-700 dark:hover:text-white'
+                }`}>
+                {t === 'international' ? '🌏' : t === 'domestic' ? '🏠' : 'All'}
+              </button>
+            ))}
+          </div>
           <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer">
             <LuPlus size={18} /> New Trip Ticket
           </button>
@@ -863,6 +922,7 @@ export default function TripTickets() {
                 <th className="px-8 py-6">Travel Date</th>
                 <th className="px-8 py-6">Route</th>
                 <th className="px-8 py-6">Bus/Driver</th>
+                <th className="px-8 py-6">Trip Type</th>
                 <th className="px-8 py-6">Status</th>
                 <th className="px-8 py-6 text-right rounded-tr-[2rem]">Actions</th>
               </tr>
@@ -884,6 +944,9 @@ export default function TripTickets() {
                     <td className="px-8 py-5 text-gray-600 dark:text-gray-300">
                       <div>{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</div>
                       <div className="text-xs text-gray-500">{ticket.driver?.name || 'TBA'}</div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <TripTypeBadge type={(ticket as any).trip_type} />
                     </td>
                     <td className="px-8 py-5"><StatusBadge status={ticket.status} /></td>
                     <td className="px-8 py-5 text-right">

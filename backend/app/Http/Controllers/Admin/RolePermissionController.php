@@ -12,7 +12,8 @@ class RolePermissionController extends Controller
 {
     /**
      * Get all permissions for all configurable roles.
-     * Returns a structured matrix: { role: { module: { can_view, can_create, can_edit, can_delete } } }
+     * Returns a structured matrix including both module-level and page-level keys:
+     * { role: { 'module' | 'module.page': { can_view, can_create, can_edit, can_delete } } }
      */
     public function index(): JsonResponse
     {
@@ -26,14 +27,16 @@ class RolePermissionController extends Controller
             'success' => true,
             'data'    => $result,
             'meta'    => [
-                'modules' => RolePermission::MODULES,
-                'roles'   => RolePermission::CONFIGURABLE_ROLES,
+                'modules'       => RolePermission::MODULES,
+                'pages'         => RolePermission::PAGES,
+                'roles'         => RolePermission::CONFIGURABLE_ROLES,
+                'all_keys'      => RolePermission::allKeys(),
             ],
         ]);
     }
 
     /**
-     * Get permissions for a specific role.
+     * Get permissions for a specific role (both module and page keys).
      */
     public function show(string $role): JsonResponse
     {
@@ -49,6 +52,7 @@ class RolePermissionController extends Controller
             'data'    => RolePermission::getForRole($role),
             'meta'    => [
                 'modules' => RolePermission::MODULES,
+                'pages'   => RolePermission::PAGES,
                 'role'    => $role,
             ],
         ]);
@@ -56,8 +60,9 @@ class RolePermissionController extends Controller
 
     /**
      * Bulk-update permissions for a specific role.
+     * Accepts both module keys (e.g. "accounting") and page keys (e.g. "accounting.pos").
      *
-     * Body: { "permissions": { "module_key": { "can_view": true, ... }, ... } }
+     * Body: { "permissions": { "module_or_page_key": { "can_view": true, ... }, ... } }
      */
     public function update(Request $request, string $role): JsonResponse
     {
@@ -69,8 +74,8 @@ class RolePermissionController extends Controller
         }
 
         $request->validate([
-            'permissions' => ['required', 'array'],
-            'permissions.*' => ['required', 'array'],
+            'permissions'              => ['required', 'array'],
+            'permissions.*'            => ['required', 'array'],
             'permissions.*.can_view'   => ['required', 'boolean'],
             'permissions.*.can_create' => ['required', 'boolean'],
             'permissions.*.can_edit'   => ['required', 'boolean'],
@@ -78,20 +83,20 @@ class RolePermissionController extends Controller
         ]);
 
         $permissions = $request->permissions;
-        $validModules = array_keys(RolePermission::MODULES);
+        $validKeys   = RolePermission::allKeys();
         $oldPermissions = RolePermission::getForRole($role);
 
-        foreach ($permissions as $module => $actions) {
-            if (!in_array($module, $validModules)) {
-                continue; // Skip invalid module keys silently
+        foreach ($permissions as $key => $actions) {
+            if (!in_array($key, $validKeys)) {
+                continue; // Silently skip unknown keys
             }
 
             RolePermission::updateOrCreate(
-                ['role' => $role, 'module' => $module],
+                ['role' => $role, 'module' => $key],
                 [
-                    'can_view'   => $actions['can_view'] ?? false,
+                    'can_view'   => $actions['can_view']   ?? false,
                     'can_create' => $actions['can_create'] ?? false,
-                    'can_edit'   => $actions['can_edit'] ?? false,
+                    'can_edit'   => $actions['can_edit']   ?? false,
                     'can_delete' => $actions['can_delete'] ?? false,
                 ]
             );
@@ -129,13 +134,11 @@ class RolePermissionController extends Controller
             ], 422);
         }
 
-        // Delete all permission rows for this role and re-seed
         $oldPermissions = RolePermission::getForRole($role);
+
+        // Delete all permission rows for this role and re-seed
         RolePermission::where('role', $role)->delete();
 
-        // Re-run seeder for this role
-        // We can't easily call run() for one role, so just run the full seeder
-        // and it will updateOrCreate, which is idempotent
         \Artisan::call('db:seed', ['--class' => 'RolePermissionSeeder', '--force' => true]);
 
         RolePermission::flushCache($role);

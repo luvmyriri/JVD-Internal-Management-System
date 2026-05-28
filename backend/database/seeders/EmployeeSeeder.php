@@ -30,7 +30,7 @@ class EmployeeSeeder extends Seeder
                 'last_name' => 'Umali',
                 'email' => 'rhean@jvd.com',
                 'password' => \Hash::make('password123'),
-                'role' => 'super_admin',
+                'role' => 'executive_vice_president',
                 'department' => 'Administration',
                 'is_active' => true,
                 'avatar_url' => 'https://ui-avatars.com/api/?name=Rhean+Umali&background=ec4899&color=fff&size=512',

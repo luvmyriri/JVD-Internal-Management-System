@@ -36,7 +36,8 @@ interface NavItem {
   path: string;
   icon: React.ReactNode;
   roles: UserRole[];
-  module?: string;
+  module?: string;   // top-level module for permission gating
+  pageKey?: string;  // e.g. 'accounting.pos' — if set, used for page-level permission check
 }
 
 interface NavSection {
@@ -48,83 +49,83 @@ export const navigation: NavSection[] = [
   {
     title: 'Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin'], module: 'dashboard' },
+      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin'], module: 'dashboard', pageKey: 'dashboard' },
     ],
   },
   {
     title: 'Accounting',
     items: [
-      { label: 'POS', path: '/accounting/pos', icon: <LuReceipt />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
-      { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
-      { label: 'Collections', path: '/accounting/collections', icon: <LuBanknote />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
-      { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting' },
+      { label: 'POS',     path: '/accounting/pos',     icon: <LuReceipt />,       roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.pos' },
+      { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />,      roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.billing' },
+      { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.reports' },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
-      { label: 'Commissions', path: '/operations/commissions', icon: <LuSignature />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
-      { label: 'Cash Budgets', path: '/operations/cash-budgets', icon: <LuWallet />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations' },
+      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />,         roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.trip_tickets' },
+      { label: 'Commissions', path: '/operations/commissions',  icon: <LuSignature />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.commissions' },
+      { label: 'Collections', path: '/accounting/collections',  icon: <LuBanknote />,     roles: ['super_admin', 'accounting', 'agent'],           module: 'accounting', pageKey: 'operations.collections' },
+      { label: 'Cash Budgets',path: '/operations/cash-budgets', icon: <LuWallet />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.cash_budgets' },
     ],
   },
   {
     title: 'Logistics',
     items: [
-      { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'admin', 'agent'], module: 'logistics' },
+      { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'admin', 'agent'], module: 'logistics', pageKey: 'logistics.overview' },
     ],
   },
   {
     title: 'Procurement',
     items: [
-      { label: 'Work Orders', path: '/procurement/work-orders', icon: <LuWrench />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
-      { label: 'Job Orders', path: '/procurement/job-orders', icon: <LuClipboardList />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
-      { label: 'Purchase Orders', path: '/procurement/purchase-orders', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
-      { label: 'Suppliers', path: '/procurement/suppliers', icon: <LuTruck />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
-      { label: 'Accreditations', path: '/procurement/accreditations', icon: <LuShieldCheck />, roles: ['super_admin', 'admin', 'agent'], module: 'accreditations' },
-      { label: 'Documents', path: '/procurement/documents', icon: <LuFileText />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },
+      { label: 'Work Orders',     path: '/procurement/work-orders',     icon: <LuWrench />,      roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement', pageKey: 'procurement.work_orders' },
+      { label: 'Job Orders',      path: '/procurement/job-orders',      icon: <LuClipboardList />,roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement', pageKey: 'procurement.job_orders' },
+      { label: 'Purchase Orders', path: '/procurement/purchase-orders', icon: <LuFileText />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement', pageKey: 'procurement.purchase_orders' },
+      { label: 'Suppliers',       path: '/procurement/suppliers',       icon: <LuTruck />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement', pageKey: 'procurement.suppliers' },
+      { label: 'Accreditations',  path: '/procurement/accreditations',  icon: <LuShieldCheck />, roles: ['super_admin', 'admin', 'agent'],               module: 'accreditations', pageKey: 'procurement.accreditations' },
+      { label: 'Documents',       path: '/procurement/documents',       icon: <LuFileText />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement', pageKey: 'procurement.documents' },
     ],
   },
   {
     title: 'Inventory',
     items: [
-      { label: 'Supplies', path: '/inventory/supplies', icon: <LuPackage />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'inventory' },
-      { label: 'Fleet', path: '/inventory/fleet', icon: <LuBus />, roles: ['super_admin', 'admin', 'agent'], module: 'fleet' },
-      { label: 'PMS', path: '/inventory/pms', icon: <LuActivity />, roles: ['super_admin', 'admin', 'agent'], module: 'inventory' },
+      { label: 'Supplies', path: '/inventory/supplies', icon: <LuPackage />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'inventory', pageKey: 'inventory.supplies' },
+      { label: 'Fleet',    path: '/inventory/fleet',    icon: <LuBus />,     roles: ['super_admin', 'admin', 'agent'],               module: 'fleet',      pageKey: 'inventory.fleet' },
+      { label: 'PMS',      path: '/inventory/pms',      icon: <LuActivity />,roles: ['super_admin', 'admin', 'agent'],               module: 'inventory', pageKey: 'inventory.pms' },
     ],
   },
   {
     title: 'Travel',
     items: [
-      { label: 'Passporting', path: '/travel/passporting', icon: <LuStamp />, roles: ['super_admin', 'admin', 'agent'], module: 'travel' },
-      { label: 'Visa Processing', path: '/travel/visa-processing', icon: <LuGlobe />, roles: ['super_admin', 'admin', 'agent'], module: 'travel' },
-      { label: 'Customers', path: '/travel/customers', icon: <LuUsers />, roles: ['super_admin', 'admin', 'agent'], module: 'travel' },
-      { label: 'Documents', path: '/travel/documents', icon: <LuFileCheck />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'travel' },
+      { label: 'Passporting',    path: '/travel/passporting',    icon: <LuStamp />,     roles: ['super_admin', 'admin', 'agent'], module: 'travel', pageKey: 'travel.passporting' },
+      { label: 'Visa Processing',path: '/travel/visa-processing',icon: <LuGlobe />,     roles: ['super_admin', 'admin', 'agent'], module: 'travel', pageKey: 'travel.visa_processing' },
+      { label: 'Customers',      path: '/travel/customers',      icon: <LuUsers />,     roles: ['super_admin', 'admin', 'agent'], module: 'travel', pageKey: 'travel.customers' },
+      { label: 'Documents',      path: '/travel/documents',      icon: <LuFileCheck />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'travel', pageKey: 'travel.documents' },
     ],
   },
   {
     title: 'HR',
     items: [
-      { label: 'Employees', path: '/hr/employees', icon: <LuCircleUser />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
-      { label: 'Applications', path: '/hr/applications', icon: <LuFileCheck />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
-      { label: 'Internships', path: '/hr/internships', icon: <LuGlobe />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr' },
+      { label: 'Employees',    path: '/hr/employees',    icon: <LuCircleUser />, roles: ['super_admin', 'admin', 'human_resource'], module: 'hr', pageKey: 'hr.employees' },
+      { label: 'Applications', path: '/hr/applications', icon: <LuFileCheck />,  roles: ['super_admin', 'admin', 'human_resource'], module: 'hr', pageKey: 'hr.applications' },
+      { label: 'Internships',  path: '/hr/internships',  icon: <LuGlobe />,      roles: ['super_admin', 'admin', 'human_resource'], module: 'hr', pageKey: 'hr.internships' },
     ],
   },
   {
     title: 'Administration',
     items: [
-      { label: 'Users', path: '/admin/users', icon: <LuUserCog />, roles: ['super_admin', 'admin'], module: 'admin' },
-      { label: 'Role Permissions', path: '/admin/role-permissions', icon: <LuShieldCheck />, roles: ['super_admin'] },
-      { label: 'Audit Logs', path: '/admin/audit-logs', icon: <LuScrollText />, roles: ['super_admin', 'admin', 'human_resource'], module: 'admin' },
-      { label: 'Settings', path: '/admin/settings', icon: <LuSettings />, roles: ['super_admin', 'admin'], module: 'settings' },
+      { label: 'Users',            path: '/admin/users',            icon: <LuUserCog />,    roles: ['super_admin', 'admin'], module: 'admin', pageKey: 'admin.users' },
+      { label: 'Role Permissions', path: '/admin/role-permissions', icon: <LuShieldCheck />,roles: ['super_admin'] },
+      { label: 'Audit Logs',       path: '/admin/audit-logs',       icon: <LuScrollText />, roles: ['super_admin', 'admin', 'human_resource'], module: 'admin', pageKey: 'admin.audit_logs' },
+      { label: 'Settings',         path: '/admin/settings',         icon: <LuSettings />,   roles: ['super_admin', 'admin'], module: 'settings', pageKey: 'admin.settings' },
     ],
   },
   {
     title: 'Driver',
     items: [
-      { label: 'My Schedule', path: '/driver/schedule', icon: <LuCalendarClock />, roles: ['driver'], module: 'driver' },
-      { label: 'My Trips', path: '/driver/trips', icon: <LuMapPin />, roles: ['driver'], module: 'driver' },
-      { label: 'My Bus', path: '/driver/bus', icon: <LuBus />, roles: ['driver'], module: 'driver' },
+      { label: 'My Schedule', path: '/driver/schedule', icon: <LuCalendarClock />, roles: ['driver'], module: 'driver', pageKey: 'driver.schedule' },
+      { label: 'My Trips',    path: '/driver/trips',    icon: <LuMapPin />,        roles: ['driver'], module: 'driver', pageKey: 'driver.trips' },
+      { label: 'My Bus',      path: '/driver/bus',      icon: <LuBus />,           roles: ['driver'], module: 'driver', pageKey: 'driver.bus' },
     ],
   },
 ];
@@ -174,8 +175,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
-        if (item.module) return hasPermission(item.module, 'can_view');
-        return item.roles.includes(user.role);
+        // Super admin always bypasses all permission checks
+        if (user.role === 'super_admin') return true;
+        
+        // Use page-level key if available, fall back to module key
+        const permKey = item.pageKey ?? item.module;
+        if (permKey) {
+          return hasPermission(permKey, 'can_view');
+        }
+        
+        // Fallback to static role list check if no permission key is defined
+        return item.roles.includes(user.role as UserRole);
       }),
     }))
     .filter((section) => section.items.length > 0);

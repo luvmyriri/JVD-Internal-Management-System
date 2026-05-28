@@ -2,17 +2,19 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
-  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuChevronRight
+  LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuChevronRight, LuTrash2,
 } from 'react-icons/lu';
 import {
   Eye,
   CheckCircle,
   FileEdit,
-  Send
+  Send,
+  ShoppingCart,
 } from 'lucide-react';
 import { jobOrderApi } from '../../api/jobOrders';
 import { customerApi } from '../../api/customers';
 import { fleetApi } from '../../api/fleet';
+import { supplierApi } from '../../api/suppliers';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
@@ -218,6 +220,120 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Generate PO Modal ────────────────────────────────────────────────────────
+
+interface POLineItem { item_name: string; quantity: number; unit_price: number; }
+
+function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [supplierId, setSupplierId] = useState<number>(0);
+  const [items, setItems] = useState<POLineItem[]>([{ item_name: '', quantity: 1, unit_price: 0 }]);
+
+  const { data: suppliersData, isLoading: suppliersLoading } = useQuery({
+    queryKey: ['suppliers-dropdown'],
+    queryFn: () => supplierApi.list({ per_page: 100 }),
+    staleTime: 60_000,
+  });
+  const suppliers = suppliersData?.data?.data ?? [];
+
+  const mutation = useMutation({
+    mutationFn: () => jobOrderApi.generatePurchaseOrder(jo.id, {
+      supplier_id: supplierId,
+      items: items.filter(i => i.item_name.trim()),
+    }),
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
+      qc.invalidateQueries({ queryKey: ['purchase-orders'] });
+      alert(`Purchase Order ${res.data?.data?.po_number ?? ''} generated successfully!`);
+      onClose();
+    },
+    onError: (err: any) => {
+      alert(err?.response?.data?.message || 'Failed to generate Purchase Order.');
+    }
+  });
+
+  const addItem = () => setItems(p => [...p, { item_name: '', quantity: 1, unit_price: 0 }]);
+  const removeItem = (idx: number) => setItems(p => p.filter((_, i) => i !== idx));
+  const setItem = (idx: number, key: keyof POLineItem, val: string | number) =>
+    setItems(p => p.map((it, i) => i === idx ? { ...it, [key]: val } : it));
+
+  const total = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const canSubmit = supplierId > 0 && items.some(i => i.item_name.trim() && i.quantity > 0);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 shrink-0">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Generate Purchase Order</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">From J.O. <span className="font-bold text-blue-600">{jo.jo_number}</span></p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition"><LuX size={20} /></button>
+        </div>
+
+        <div className="p-8 overflow-y-auto space-y-6 custom-scrollbar">
+          {/* Supplier */}
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Supplier *</label>
+            <div className="relative">
+              <select value={supplierId || ''} onChange={e => setSupplierId(Number(e.target.value))}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select a supplier...'}</option>
+                {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.company_name}</option>)}
+              </select>
+              <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Line Items */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Line Items *</label>
+              <button type="button" onClick={addItem}
+                className="flex items-center gap-1.5 text-[10px] font-bold text-blue-600 hover:text-blue-700 uppercase tracking-wider">
+                <LuPlus size={12} /> Add Item
+              </button>
+            </div>
+            <div className="space-y-3">
+              {items.map((item, idx) => (
+                <div key={idx} className="grid grid-cols-12 gap-3 items-center">
+                  <input value={item.item_name} onChange={e => setItem(idx, 'item_name', e.target.value)}
+                    placeholder="Item / Parts name" className="col-span-5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="number" min={1} value={item.quantity} onChange={e => setItem(idx, 'quantity', Number(e.target.value))}
+                    placeholder="Qty" className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => setItem(idx, 'unit_price', Number(e.target.value))}
+                    placeholder="Unit price" className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1}
+                    className="col-span-1 flex items-center justify-center p-2 text-red-400 hover:text-red-600 disabled:opacity-30 transition">
+                    <LuTrash2 size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Total */}
+          <div className="flex items-center justify-end gap-3 bg-gray-50 dark:bg-gray-800 rounded-2xl px-6 py-4">
+            <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[10px]">Total Amount</span>
+            <span className="text-2xl font-black text-gray-900 dark:text-white">
+              {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(total)}
+            </span>
+          </div>
+        </div>
+
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 dark:text-white transition">Cancel</button>
+          <button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending}
+            className="flex items-center gap-2 px-8 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition shadow-lg shadow-emerald-200/50">
+            {mutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <ShoppingCart size={16} />}
+            Generate P.O.
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Detail Modal ─────────────────────────────────────────────────────────────
 
 function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
@@ -310,12 +426,14 @@ function JORow({
   jo,
   onDetail,
   onConfirm,
-  onComplete
+  onComplete,
+  onGeneratePO,
 }: {
   jo: JobOrder;
   onDetail: (jo: JobOrder) => void;
   onConfirm: (id: number) => void;
   onComplete: (id: number) => void;
+  onGeneratePO: (jo: JobOrder) => void;
 }) {
   return (
     <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
@@ -366,6 +484,11 @@ function JORow({
               icon: <CheckCircle size={14} />,
               onClick: () => onComplete(jo.id)
             }] : []),
+            ...(!jo.purchase_order_id && jo.status !== 'cancelled' ? [{
+              label: 'Generate P.O.',
+              icon: <ShoppingCart size={14} />,
+              onClick: () => onGeneratePO(jo)
+            }] : []),
             ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{
               label: 'Edit Order',
               icon: <FileEdit size={14} />,
@@ -387,6 +510,7 @@ export default function JobOrders() {
   const [serviceType, setServiceType] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [detailJO, setDetailJO] = useState<JobOrder | null>(null);
+  const [generatePOJO, setGeneratePOJO] = useState<JobOrder | null>(null);
 
   const [page, setPage] = useState(1);
 
@@ -503,6 +627,7 @@ export default function JobOrders() {
                     onDetail={setDetailJO}
                     onConfirm={(id) => confirmMutation.mutate(id)}
                     onComplete={(id) => completeMutation.mutate(id)}
+                    onGeneratePO={(jo) => setGeneratePOJO(jo)}
                   />
                 ))}
               </tbody>
@@ -513,6 +638,7 @@ export default function JobOrders() {
 
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}
       {detailJO && <JODetailModal jo={detailJO} onClose={() => setDetailJO(null)} />}
+      {generatePOJO && <GeneratePOModal jo={generatePOJO} onClose={() => setGeneratePOJO(null)} />}
 
       {meta && meta.last_page > 1 && (
         <Pagination
