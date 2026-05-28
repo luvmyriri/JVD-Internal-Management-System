@@ -61,7 +61,7 @@ export default function POS() {
   const [amountReceived, setAmountReceived] = useState<number | string>('');
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
-  const [paymentType, setPaymentType] = useState<'full' | 'downpayment'>('full');
+  const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
 
   // Service Management State
   const [showAddService, setShowAddService] = useState(false);
@@ -201,9 +201,16 @@ export default function POS() {
   const change = amountReceived !== '' && !isNaN(Number(amountReceived)) 
     ? (paymentType === 'full' ? Math.max(0, Number(amountReceived) - total) : 0) 
     : 0;
-  const balance = paymentType === 'downpayment' && amountReceived !== '' && !isNaN(Number(amountReceived))
+  const balance = (paymentType === 'downpayment' || paymentType === 'half') && amountReceived !== '' && !isNaN(Number(amountReceived))
     ? Math.max(0, total - Number(amountReceived))
     : 0;
+
+  // Auto-update amountReceived when total changes if paymentType is 'half'
+  useEffect(() => {
+    if (paymentType === 'half') {
+      setAmountReceived((total / 2).toFixed(2));
+    }
+  }, [total, paymentType]);
 
   const isContactValid = useMemo(() => {
     if (!customerContact) return true;
@@ -243,7 +250,7 @@ export default function POS() {
         customer_email: customerEmail || undefined,
         customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
         payment_method: paymentMethod,
-        payment_type: paymentType,
+        payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
         amount_received: paymentMethod === 'Cash' ? Number(amountReceived || 0) : undefined,
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
         items: cart.map(item => ({
@@ -465,7 +472,33 @@ export default function POS() {
                 {/* Price & Action Dropdown (outside overflow-hidden image container to prevent clipping) */}
                 <div className="absolute top-4 right-4 flex gap-2 z-20" onClick={(e) => e.stopPropagation()}>
                   <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
-                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">₱{Number(service.price).toLocaleString()}</p>
+                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">
+                      {(() => {
+                        if (service.is_tour) {
+                          const prices = [Number(service.coaster_price || 0), Number(service.bus_price || 0)].filter(p => p > 0);
+                          if (prices.length > 1) {
+                            const min = Math.min(...prices);
+                            const max = Math.max(...prices);
+                            return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                          } else if (prices.length === 1) {
+                            return `₱${prices[0].toLocaleString()}`;
+                          }
+                        }
+
+                        if (service.has_booking_fields) {
+                          const prices = [Number(service.child_price || 0), Number(service.adult_price || 0)].filter(p => p > 0);
+                          if (prices.length > 1) {
+                            const min = Math.min(...prices);
+                            const max = Math.max(...prices);
+                            return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                          } else if (prices.length === 1) {
+                            return `₱${prices[0].toLocaleString()}`;
+                          }
+                        }
+
+                        return `₱${Number(service.price || 0).toLocaleString()}`;
+                      })()}
+                    </p>
                   </div>
                   {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
                     <Dropdown
@@ -684,10 +717,14 @@ export default function POS() {
             {paymentMethod === 'Cash' && (
               <>
                 <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1 mt-4">Payment Type</p>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2">
                   <button
-                    onClick={() => setPaymentType('full')}
-                    className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest ${paymentType === 'full'
+                    type="button"
+                    onClick={() => {
+                      setPaymentType('full');
+                      setAmountReceived('');
+                    }}
+                    className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'full'
                         ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/20'
                         : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                       }`}
@@ -695,8 +732,25 @@ export default function POS() {
                     Full Payment
                   </button>
                   <button
-                    onClick={() => setPaymentType('downpayment')}
-                    className={`p-3 rounded-2xl border transition-all text-[10px] font-black uppercase tracking-widest ${paymentType === 'downpayment'
+                    type="button"
+                    onClick={() => {
+                      setPaymentType('half');
+                      setAmountReceived((total / 2).toFixed(2));
+                    }}
+                    className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'half'
+                        ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
+                        : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                      }`}
+                  >
+                    Half (50%)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentType('downpayment');
+                      setAmountReceived('');
+                    }}
+                    className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'downpayment'
                         ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20'
                         : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                       }`}
@@ -710,7 +764,9 @@ export default function POS() {
 
           {paymentMethod === 'Cash' && cart.length > 0 && (
             <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800 animate-in slide-in-from-top-2 duration-300">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">{paymentType === 'full' ? 'Amount Received' : 'Downpayment Amount'}</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                {paymentType === 'full' ? 'Amount Received' : paymentType === 'half' ? 'Half Payment Amount' : 'Downpayment Amount'}
+              </p>
               <div className="relative group">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-black text-sm">₱</span>
                 <input
@@ -759,7 +815,7 @@ export default function POS() {
           </div>
 
           <button
-            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(amountReceived) < total)) || (paymentMethod === 'Cash' && paymentType === 'downpayment' && (Number(amountReceived) <= 0 || Number(amountReceived) >= total)) || !isContactValid || !isEmailValid}
+            disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(amountReceived) < total)) || (paymentMethod === 'Cash' && (paymentType === 'downpayment' || paymentType === 'half') && (Number(amountReceived) <= 0 || Number(amountReceived) >= total)) || !isContactValid || !isEmailValid}
             onClick={handleCheckout}
             className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-800 disabled:text-gray-400 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
           >
@@ -926,7 +982,13 @@ export default function POS() {
                     {lastInvoice?.payment_method === 'Cash' && (
                       <>
                         <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
-                          <span>{lastInvoice?.payment_type === 'downpayment' ? 'Downpayment Paid' : 'Amount Received'}</span>
+                          <span>
+                            {lastInvoice?.payment_type === 'downpayment'
+                              ? (Math.abs(Number(lastInvoice?.amount_received) * 2 - Number(lastInvoice?.total_amount)) < 1
+                                ? 'Half Payment Paid'
+                                : 'Downpayment Paid')
+                              : 'Amount Received'}
+                          </span>
                           <span className="text-gray-900">₱{Number(receiptAmountReceived || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                         {lastInvoice?.payment_type === 'downpayment' ? (
@@ -1432,7 +1494,7 @@ export default function POS() {
                         >
                           <LuMinus className="w-3.5 h-3.5" />
                         </button>
-
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingAdults}</span>
                         <button
                           onClick={() => setBookingAdults(prev => prev + 1)}
                           className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"

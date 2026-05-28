@@ -195,6 +195,7 @@ const monthlyChartData = [
 export default function AdminDashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
 
 
   const exportToPDF = (title: string, data: any[]) => {
@@ -754,100 +755,107 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Operations & Revenue Trends — Recharts AreaChart */}
-          <div className="flex-[3] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          {/* Operations & Performance tabbed widget */}
+          <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setChartTab('revenue')}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
+                    chartTab === 'revenue'
+                      ? 'border-blue-500 text-blue-600 dark:text-white'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  }`}
+                >
                   <LuTrendingUp className="w-3 h-3 text-blue-500" />
                   Revenue vs Bookings
-                </h3>
-                <p className="text-[7.5px] text-gray-400 font-bold uppercase tracking-wider">6-month performance</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
-                <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0 mt-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                      border: '1px solid',
-                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                      borderRadius: 10,
-                      fontSize: 10,
-                      fontWeight: 700
-                    }}
-                    labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
-                  <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Fleet Utilization Bar Chart */}
-          <div className="flex-[2.5] min-h-[200px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                  <LuActivity className="w-3 h-3 text-violet-500" />
+                </button>
+                <button
+                  onClick={() => setChartTab('utilization')}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
+                    chartTab === 'utilization'
+                      ? 'border-purple-500 text-purple-600 dark:text-white'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <LuActivity className="w-3 h-3 text-purple-500" />
                   Fleet Utilization
-                </h3>
-                <p className="text-[7.5px] text-gray-400 font-bold uppercase tracking-wider">% fleet capacity used &middot; Jan &ndash; Dec</p>
+                </button>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-black text-violet-600 dark:text-violet-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
-                <DownloadActions
-                  variant="dark"
-                  title="Fleet Utilization 2025"
-                  data={monthlyChartData.map(d => ({
-                    Month: d.month,
-                    'Utilization (%)': d.utilization,
-                    'Bookings': d.bookings,
-                    'Revenue (PHP K)': d.revenue,
-                  }))}
-                />
+                {chartTab === 'revenue' ? (
+                  <>
+                    <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
+                    <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
+                    <DownloadActions
+                      variant="dark"
+                      title="Fleet Utilization 2025"
+                      data={monthlyChartData.map(d => ({
+                        Month: d.month,
+                        'Utilization (%)': d.utilization,
+                        'Bookings': d.bookings,
+                        'Revenue (PHP K)': d.revenue,
+                      }))}
+                    />
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(v: any) => [`${v}%`, 'Utilization']}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                      border: '1px solid',
-                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                      borderRadius: 10,
-                      fontSize: 10,
-                      fontWeight: 700
-                    }}
-                  />
-                  <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                {chartTab === 'revenue' ? (
+                  <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
+                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
+                        border: '1px solid',
+                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                        borderRadius: 10,
+                        fontSize: 10,
+                        fontWeight: 700
+                      }}
+                      labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
+                    <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v}%`, 'Utilization']}
+                      contentStyle={{
+                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
+                        border: '1px solid',
+                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                        borderRadius: 10,
+                        fontSize: 10,
+                        fontWeight: 700
+                      }}
+                    />
+                    <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
@@ -948,9 +956,9 @@ function CalendarFleetAvailability() {
         </div>
 
         {/* Days Grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5">
           {cells.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} className="h-8" />;
+            if (!date) return <div key={`empty-${i}`} className="h-6.5" />;
             const events = FLEET_SCHEDULES.filter(s => isSameDay(s.date, date));
             const isToday = isSameDay(date, today);
             const isSel = isSameDay(date, selected);
@@ -958,7 +966,7 @@ function CalendarFleetAvailability() {
               <button
                 key={date.toISOString()}
                 onClick={() => setSelected(date)}
-                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-8 text-[9px] font-black ${
+                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-6.5 text-[9px] font-black ${
                   isSel
                     ? 'bg-blue-500 text-white shadow-md shadow-blue-200/50 dark:shadow-blue-900/30'
                     : isToday
@@ -989,18 +997,13 @@ function CalendarFleetAvailability() {
               const seats = b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50;
               const plate = b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222';
               return (
-                <div key={b} className="flex flex-col gap-1 p-2 rounded-xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-gray-900 dark:text-white uppercase tracking-wider">{b}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <div key={b} className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-850 transition-all shadow-sm">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{b}</span>
+                    <span className="text-[7.5px] text-gray-400 dark:text-gray-500 font-bold truncate">({plate})</span>
                   </div>
-                  <div className="flex items-center justify-between text-[7.5px] text-gray-400 dark:text-gray-500 font-bold">
-                    <span>{plate}</span>
-                    <span>{seats} Seats</span>
-                  </div>
-                  <div className="text-[6.5px] text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest mt-0.5 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-0.5 rounded self-start">
-                    Standby / Ready
-                  </div>
+                  <span className="text-[8.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">{seats} Seats</span>
                 </div>
               );
             })}
@@ -1024,18 +1027,18 @@ function CalendarFleetAvailability() {
                 const route = dispatch?.route || 'In route';
                 const depart = dispatch?.depart || 'N/A';
                 return (
-                  <div key={`${b}-${idx}`} className="flex flex-col gap-1 p-2 rounded-xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-gray-900 dark:text-white uppercase tracking-wider">{b}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <div key={`${b}-${idx}`} className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-855 transition-all shadow-sm">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1 min-w-0 flex-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                        <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{b}</span>
+                        <span className="text-[7.5px] text-gray-400 dark:text-gray-500 font-bold truncate">({plate})</span>
+                      </div>
+                      <span className="text-[7.5px] text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider bg-amber-50 dark:bg-amber-500/10 px-1 py-0.5 rounded shrink-0">Dep {depart}</span>
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[8px] font-black text-gray-700 dark:text-gray-300 truncate">{route}</span>
-                      <span className="text-[7.5px] text-gray-400 dark:text-gray-500 truncate mt-0.5">Driver: {driver}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[7px] text-gray-400 dark:text-gray-500 font-bold mt-0.5">
-                      <span>{plate}</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">Departs {depart}</span>
+                    <div className="flex items-center justify-between text-[7.5px] font-bold text-gray-500 dark:text-gray-400 pl-2.5">
+                      <span className="truncate max-w-[65%]">{route}</span>
+                      <span className="truncate max-w-[35%] opacity-75 text-right">{driver}</span>
                     </div>
                   </div>
                 );
