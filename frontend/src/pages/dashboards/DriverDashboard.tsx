@@ -195,6 +195,7 @@ const monthlyChartData = [
 export default function DriverDashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
+  const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
 
 
   const exportToPDF = (title: string, data: any[]) => {
@@ -498,108 +499,102 @@ export default function DriverDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
+    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
 
-      {/* â”€â”€ Top KPI Row â”€â”€ */}
+      {/* ── Top KPI Row ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
 
-        {/* KPI 1: Total Users */}
-        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuUsers className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5">
-                <LuArrowUpRight className="w-2.5 h-2.5" />
+        {/* KPI 1: Upcoming Trips */}
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
+            <LuUsers className="w-4.5 h-4.5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Upcoming Trips</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-xl font-black leading-none">4</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
+                <LuArrowUpRight className="w-2 h-2" />
                 +12%
-              </div>
-              <DownloadActions variant="light" title="Global Personnel" data={detailedEmployeeData} />
+              </span>
             </div>
           </div>
-          <div className="flex items-end justify-between mt-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Upcoming Trips</p>
-              <p className="text-3xl font-black leading-none">4</p>
-            </div>
+          <div className="shrink-0 flex items-center">
+            <DownloadActions variant="light" title="Global Personnel" data={detailedEmployeeData} />
           </div>
         </div>
 
-        {/* KPI 2: User Distribution */}
-        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuUsers className="w-5 h-5 text-white" />
+        {/* KPI 2: Total Hours Driven */}
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
+            <LuUsers className="w-4.5 h-4.5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Total Hours Driven</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-xl font-black leading-none">120h</span>
             </div>
+          </div>
+          <div className="shrink-0 flex items-center">
             <DownloadActions variant="light" title="User Roles" data={userDistributionData} />
           </div>
-          <div className="flex items-end justify-between mt-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Total Hours Driven</p>
-              <p className="text-3xl font-black leading-none">120h</p>
-            </div>
-          </div>
         </div>
 
-        {/* KPI 3: Total Customers */}
-        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuGlobe className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex items-center gap-1">
-              <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5">
-                <LuArrowUpRight className="w-2.5 h-2.5" />
+        {/* KPI 3: Driver Rating */}
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
+            <LuGlobe className="w-4.5 h-4.5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Driver Rating</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-xl font-black leading-none">4.9 ★</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
+                <LuArrowUpRight className="w-2 h-2" />
                 +15%
-              </div>
-              <DownloadActions variant="light" title="Customer Base" data={detailedCustomerData} />
+              </span>
             </div>
           </div>
-          <div className="flex items-end justify-between mt-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Driver Rating</p>
-              <p className="text-3xl font-black leading-none">4.9 ★</p>
-            </div>
+          <div className="shrink-0 flex items-center">
+            <DownloadActions variant="light" title="Customer Base" data={detailedCustomerData} />
           </div>
         </div>
 
-        {/* KPI 4: Monthly Revenue */}
-        <div className="relative rounded-2xl p-5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuBanknote className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex items-center gap-2">
-              <select className="bg-white/20 text-white text-[8px] font-black border-none rounded-lg px-1.5 py-0.5 outline-none cursor-pointer hover:bg-white/30 transition-colors uppercase tracking-wider">
-                <option value="monthly" className="text-gray-800">Monthly</option>
-                <option value="weekly" className="text-gray-800">Weekly</option>
-                <option value="yearly" className="text-gray-800">Yearly</option>
-              </select>
-              <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
+        {/* KPI 4: Assigned Vehicle */}
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+          <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
+            <LuBanknote className="w-4.5 h-4.5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0 flex flex-col justify-center">
+            <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Assigned Vehicle</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <span className="text-xl font-black leading-none">BUS-001</span>
             </div>
           </div>
-          <div className="flex items-end justify-between mt-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Assigned Vehicle</p>
-              <p className="text-3xl font-black leading-none">BUS-001</p>
-            </div>
+          <div className="shrink-0 flex items-center gap-2">
+            <select className="bg-white/20 text-white text-[8px] font-black border-none rounded-lg px-1.5 py-0.5 outline-none cursor-pointer hover:bg-white/30 transition-colors uppercase tracking-wider">
+              <option value="monthly" className="text-gray-800">Monthly</option>
+              <option value="weekly" className="text-gray-800">Weekly</option>
+              <option value="yearly" className="text-gray-800">Yearly</option>
+            </select>
+            <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
           </div>
         </div>
       </div>
 
-      {/* â”€â”€ 3-Column Analytics Grid â”€â”€ */}
+      {/* ── 3-Column Analytics Grid ── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
 
         {/* Column 1: Fleet Calendar */}
-        <div className="h-full min-h-[400px] xl:min-h-0">
+        <div className="h-full min-h-[500px] min-w-0">
           <CalendarFleetAvailability />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
-        <div className="flex flex-col gap-2 h-full min-h-0">
+        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
           {/* Peak Client Activity Heatmap */}
-          <div className="flex-[4] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -610,8 +605,8 @@ export default function DriverDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3">
-              <div className="grid gap-y-1 w-full select-none" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
+            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3 overflow-x-auto custom-scrollbar select-none">
+              <div className="grid gap-y-1 w-full min-w-[290px]" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
                 <div className="col-start-1" />
                 <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12AM</div>
                 <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4AM</div>
@@ -649,7 +644,7 @@ export default function DriverDashboard() {
           </div>
 
           {/* Travel Bookings List */}
-          <div className="flex-[6] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTicket className="w-3 h-3 text-violet-500" />
@@ -692,10 +687,10 @@ export default function DriverDashboard() {
         </div>
 
         {/* Column 3: Performers + Charts */}
-        <div className="flex flex-col gap-2 h-full min-h-0">
+        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
           {/* Top Performers */}
-          <div className="flex-[4.5] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTrophy className="w-3 h-3 text-amber-500" />
@@ -754,100 +749,107 @@ export default function DriverDashboard() {
             </div>
           </div>
 
-          {/* Operations & Revenue Trends â€” Recharts AreaChart */}
-          <div className="flex-[3] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          {/* Operations & Performance tabbed widget */}
+          <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setChartTab('revenue')}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
+                    chartTab === 'revenue'
+                      ? 'border-blue-500 text-blue-600 dark:text-white'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  }`}
+                >
                   <LuTrendingUp className="w-3 h-3 text-blue-500" />
                   Revenue vs Bookings
-                </h3>
-                <p className="text-[7.5px] text-gray-400 font-bold uppercase tracking-wider">6-month performance</p>
-              </div>
-              <div className="flex items-center gap-1">
-                <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
-                <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0 mt-3">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                      border: '1px solid',
-                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                      borderRadius: 10,
-                      fontSize: 10,
-                      fontWeight: 700
-                    }}
-                    labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
-                  />
-                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
-                  <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Fleet Utilization Bar Chart */}
-          <div className="flex-[2.5] min-h-[200px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                  <LuActivity className="w-3 h-3 text-violet-500" />
+                </button>
+                <button
+                  onClick={() => setChartTab('utilization')}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
+                    chartTab === 'utilization'
+                      ? 'border-purple-500 text-purple-600 dark:text-white'
+                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <LuActivity className="w-3 h-3 text-purple-500" />
                   Fleet Utilization
-                </h3>
-                <p className="text-[7.5px] text-gray-400 font-bold uppercase tracking-wider">% fleet capacity used &middot; Jan &ndash; Dec</p>
+                </button>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] font-black text-violet-600 dark:text-violet-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
-                <DownloadActions
-                  variant="dark"
-                  title="Fleet Utilization 2025"
-                  data={monthlyChartData.map(d => ({
-                    Month: d.month,
-                    'Utilization (%)': d.utilization,
-                    'Bookings': d.bookings,
-                    'Revenue (PHP K)': d.revenue,
-                  }))}
-                />
+                {chartTab === 'revenue' ? (
+                  <>
+                    <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
+                    <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
+                    <DownloadActions
+                      variant="dark"
+                      title="Fleet Utilization 2025"
+                      data={monthlyChartData.map(d => ({
+                        Month: d.month,
+                        'Utilization (%)': d.utilization,
+                        'Bookings': d.bookings,
+                        'Revenue (PHP K)': d.revenue,
+                      }))}
+                    />
+                  </>
+                )}
               </div>
             </div>
 
             <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    formatter={(v: any) => [`${v}%`, 'Utilization']}
-                    contentStyle={{
-                      backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                      border: '1px solid',
-                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                      borderRadius: 10,
-                      fontSize: 10,
-                      fontWeight: 700
-                    }}
-                  />
-                  <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                {chartTab === 'revenue' ? (
+                  <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                      <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
+                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
+                        border: '1px solid',
+                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                        borderRadius: 10,
+                        fontSize: 10,
+                        fontWeight: 700
+                      }}
+                      labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
+                    <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
+                  </AreaChart>
+                ) : (
+                  <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      formatter={(v: any) => [`${v}%`, 'Utilization']}
+                      contentStyle={{
+                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
+                        border: '1px solid',
+                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                        borderRadius: 10,
+                        fontSize: 10,
+                        fontWeight: 700
+                      }}
+                    />
+                    <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </div>
           </div>
@@ -948,9 +950,9 @@ function CalendarFleetAvailability() {
         </div>
 
         {/* Days Grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5">
           {cells.map((date, i) => {
-            if (!date) return <div key={`empty-${i}`} className="h-8" />;
+            if (!date) return <div key={`empty-${i}`} className="h-6.5" />;
             const events = FLEET_SCHEDULES.filter(s => isSameDay(s.date, date));
             const isToday = isSameDay(date, today);
             const isSel = isSameDay(date, selected);
@@ -958,7 +960,7 @@ function CalendarFleetAvailability() {
               <button
                 key={date.toISOString()}
                 onClick={() => setSelected(date)}
-                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-8 text-[9px] font-black ${
+                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-6.5 text-[9px] font-black ${
                   isSel
                     ? 'bg-blue-500 text-white shadow-md shadow-blue-200/50 dark:shadow-blue-900/30'
                     : isToday
@@ -989,18 +991,13 @@ function CalendarFleetAvailability() {
               const seats = b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50;
               const plate = b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222';
               return (
-                <div key={b} className="flex flex-col gap-1 p-2 rounded-xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[9px] font-black text-gray-900 dark:text-white uppercase tracking-wider">{b}</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                <div key={b} className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-855 transition-all shadow-sm">
+                  <div className="flex items-center gap-1 min-w-0 flex-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{b}</span>
+                    <span className="text-[7.5px] text-gray-400 dark:text-gray-500 font-bold truncate">({plate})</span>
                   </div>
-                  <div className="flex items-center justify-between text-[7.5px] text-gray-400 dark:text-gray-500 font-bold">
-                    <span>{plate}</span>
-                    <span>{seats} Seats</span>
-                  </div>
-                  <div className="text-[6.5px] text-emerald-600 dark:text-emerald-400 font-black uppercase tracking-widest mt-0.5 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-0.5 rounded self-start">
-                    Standby / Ready
-                  </div>
+                  <span className="text-[8.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">{seats} Seats</span>
                 </div>
               );
             })}
@@ -1024,18 +1021,18 @@ function CalendarFleetAvailability() {
                 const route = dispatch?.route || 'In route';
                 const depart = dispatch?.depart || 'N/A';
                 return (
-                  <div key={`${b}-${idx}`} className="flex flex-col gap-1 p-2 rounded-xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-black text-gray-900 dark:text-white uppercase tracking-wider">{b}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                  <div key={`${b}-${idx}`} className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-855 transition-all shadow-sm">
+                    <div className="flex items-center justify-between gap-1">
+                      <div className="flex items-center gap-1 min-w-0 flex-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0 animate-pulse" />
+                        <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{b}</span>
+                        <span className="text-[7.5px] text-gray-400 dark:text-gray-500 font-bold truncate">({plate})</span>
+                      </div>
+                      <span className="text-[7.5px] text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider bg-amber-50 dark:bg-amber-500/10 px-1 py-0.5 rounded shrink-0">Dep {depart}</span>
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[8px] font-black text-gray-700 dark:text-gray-300 truncate">{route}</span>
-                      <span className="text-[7.5px] text-gray-400 dark:text-gray-500 truncate mt-0.5">Driver: {driver}</span>
-                    </div>
-                    <div className="flex items-center justify-between text-[7px] text-gray-400 dark:text-gray-500 font-bold mt-0.5">
-                      <span>{plate}</span>
-                      <span className="text-amber-600 dark:text-amber-400 font-black uppercase tracking-wider">Departs {depart}</span>
+                    <div className="flex items-center justify-between text-[7.5px] font-bold text-gray-500 dark:text-gray-400 pl-2.5">
+                      <span className="truncate max-w-[65%]">{route}</span>
+                      <span className="truncate max-w-[35%] opacity-75 text-right">{driver}</span>
                     </div>
                   </div>
                 );

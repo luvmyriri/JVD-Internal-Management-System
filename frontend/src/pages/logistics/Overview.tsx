@@ -9,9 +9,6 @@ import {
   LuLoaderCircle,
   LuEye,
   LuPrinter,
-  LuMapPin,
-  LuChevronRight,
-  LuLayoutDashboard,
   LuCompass,
   LuInfo,
 } from 'react-icons/lu';
@@ -19,7 +16,6 @@ import { useUsers } from '../../hooks/useUsers';
 import { useBuses } from '../../hooks/useFleet';
 import { tripTicketApi } from '../../api/operations';
 import type { TripTicket } from '../../types';
-import { Modal } from '../../components/ui';
 import { cn, fullName } from '../../utils';
 
 // Status badge helper compatible with global styles
@@ -553,7 +549,7 @@ export default function LogisticsOverview() {
 
   // Calculate statistics
   const totalDrivers = driversList.length;
-  const activeBuses = buses.filter(b => b.status === 'active').length;
+  const activeBuses = buses.filter(b => b.status === 'available' || b.status === 'in_service').length;
   const ongoingTrips = tripsList.filter(t => t.status === 'approved').length;
   const completedTrips = tripsList.filter(t => t.status === 'completed').length;
 

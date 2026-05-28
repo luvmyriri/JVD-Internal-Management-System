@@ -1310,9 +1310,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
                                         <div className="flex items-center justify-between gap-1.5">
                                           <p className="text-xs truncate text-gray-700 dark:text-gray-300 font-semibold">{msg.senderName}</p>
                                         </div>
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-550 mt-1 font-semibold flex items-center gap-1">
-                                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 inline-block ${msg.online ? 'bg-emerald-500 animate-ping' : 'bg-gray-300 dark:bg-gray-600'}`} />
-                                          {msg.online ? 'Online' : 'Offline'} • Start conversation
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-550 mt-1 font-semibold flex items-center gap-1.5 select-none">
+                                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 inline-block ${msg.online ? 'bg-emerald-500 animate-pulse' : 'bg-gray-300 dark:bg-gray-600'}`} />
+                                          <span className="opacity-85">{msg.online ? 'Online' : 'Offline'}</span>
+                                          <span className="text-gray-300 dark:text-gray-700">•</span>
+                                          <span>Start conversation</span>
                                         </p>
                                       </div>
                                     </div>
