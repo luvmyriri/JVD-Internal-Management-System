@@ -48,6 +48,8 @@ import KycSubmission from './pages/KycSubmission';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
+import LogisticsOverview from './pages/logistics/Overview';
+
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -103,6 +105,9 @@ export default function App() {
                 <Route path="/operations/commissions" element={<Commissions />} />
                 <Route path="/operations/trip-tickets" element={<TripTickets />} />
                 <Route path="/operations/cash-budgets" element={<CashBudgets />} />
+
+                {/* Logistics */}
+                <Route path="/logistics" element={<LogisticsOverview />} />
 
                 {/* Procurement */}
                 <Route path="/procurement" element={<Navigate to="/procurement/overview" replace />} />

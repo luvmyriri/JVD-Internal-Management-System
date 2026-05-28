@@ -69,6 +69,12 @@ export const navigation: NavSection[] = [
     ],
   },
   {
+    title: 'Logistics',
+    items: [
+      { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'admin', 'agent'], module: 'logistics' },
+    ],
+  },
+  {
     title: 'Procurement',
     items: [
       { label: 'Work Orders', path: '/procurement/work-orders', icon: <LuWrench />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'procurement' },

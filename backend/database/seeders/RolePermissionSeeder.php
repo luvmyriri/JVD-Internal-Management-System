@@ -216,6 +216,23 @@ class RolePermissionSeeder extends Seeder
             'service_adviser'      => [false, false, false, false],
             'head_mechanic'        => [false, false, false, false],
         ],
+        'logistics' => [
+            'admin'                => [true,  true,  true,  false],
+            'human_resource'       => [false, false, false, false],
+            'accounting'           => [false, false, false, false],
+            'agent'                => [true,  false, false, false],
+            'driver'               => [false, false, false, false],
+            'operations_manager'   => [true,  true,  true,  false],
+            'reservation_officer'  => [true,  false, false, false],
+            'office_staff'         => [true,  false, false, false],
+            'accounting_executive' => [false, false, false, false],
+            'corporate_secretary'  => [false, false, false, false],
+            'logistics_in_charge'  => [true,  true,  true,  true],
+            'dispatcher'           => [true,  true,  true,  false],
+            'purchasing_manager'   => [false, false, false, false],
+            'service_adviser'      => [false, false, false, false],
+            'head_mechanic'        => [false, false, false, false],
+        ],
     ];
 
     public function run(): void
