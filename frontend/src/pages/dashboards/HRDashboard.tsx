@@ -525,7 +525,7 @@ export default function HRDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
+    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
 
       {/* â”€â”€ Top KPI Row â”€â”€ */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
@@ -618,15 +618,15 @@ export default function HRDashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
 
         {/* Column 1: Fleet Calendar */}
-        <div className="h-full min-h-[400px] xl:min-h-0">
+        <div className="h-full min-h-[500px] min-w-0">
           <CalendarFleetAvailability />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
-        <div className="flex flex-col gap-2 h-full min-h-0">
+        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
           {/* Peak Client Activity Heatmap */}
-          <div className="flex-[4] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -637,8 +637,8 @@ export default function HRDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3">
-              <div className="grid gap-y-1 w-full select-none" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
+            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3 overflow-x-auto custom-scrollbar select-none">
+              <div className="grid gap-y-1 w-full min-w-[290px]" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
                 <div className="col-start-1" />
                 <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12AM</div>
                 <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4AM</div>
@@ -676,7 +676,7 @@ export default function HRDashboard() {
           </div>
 
           {/* Travel Bookings List */}
-          <div className="flex-[6] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTicket className="w-3 h-3 text-violet-500" />
@@ -719,10 +719,10 @@ export default function HRDashboard() {
         </div>
 
         {/* Column 3: Performers + Charts */}
-        <div className="flex flex-col gap-2 h-full min-h-0">
+        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
           {/* Top Performers */}
-          <div className="flex-[4.5] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
                 <LuTrophy className="w-3 h-3 text-amber-500" />
@@ -782,7 +782,7 @@ export default function HRDashboard() {
           </div>
 
           {/* Operations & Revenue Trends â€” Recharts AreaChart */}
-          <div className="flex-[3] min-h-[250px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[3] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
@@ -832,7 +832,7 @@ export default function HRDashboard() {
           </div>
 
           {/* Fleet Utilization Bar Chart */}
-          <div className="flex-[2.5] min-h-[200px] xl:min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          <div className="flex-[2.5] min-h-[200px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">

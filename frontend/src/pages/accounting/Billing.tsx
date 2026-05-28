@@ -93,67 +93,65 @@ export default function Billing() {
     <div className="space-y-8 pb-12 mt-10">
 
       {/* Top Metric Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 no-print">
-    {/* Total Revenue */}
-    <div className="relative overflow-hidden rounded-[2rem] p-8 bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 text-white shadow-xl shadow-blue-500/10 dark:shadow-indigo-900/30 flex justify-between items-center group hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 cursor-default">
-      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/5 blur-xl group-hover:scale-125 transition-transform duration-500" />
-      <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white/5 blur-lg" />
-
-      <div className="flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-          <LuDollarSign className="w-7 h-7 text-white" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 shrink-0 relative z-20 no-print">
+        
+        {/* KPI 1: Total Revenue */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuDollarSign className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm uppercase tracking-wider">
+              Revenue
+            </div>
+          </div>
+          <div className="flex items-end justify-between mt-1">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Revenue</p>
+              <p className="text-2xl font-black leading-none">₱{stats?.total_revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+            </div>
+          </div>
         </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">Total Revenue</p>
-          <p className="text-3xl font-black tracking-tight">₱{stats?.total_revenue?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+
+        {/* KPI 2: Pending Amount */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuClock className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm uppercase tracking-wider">
+              Outstanding
+            </div>
+          </div>
+          <div className="flex items-end justify-between mt-1">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Pending Amount</p>
+              <p className="text-2xl font-black leading-none">₱{stats?.pending_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI 3: Total Invoices */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuActivity className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm uppercase tracking-wider">
+              Volume
+            </div>
+          </div>
+          <div className="flex items-end justify-between mt-1">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Invoices</p>
+              <p className="text-2xl font-black leading-none">{stats?.invoice_count || '0'}</p>
+            </div>
+          </div>
         </div>
       </div>
-
-      <div className="self-start px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
-        Revenue
-      </div>
-    </div>
-
-    {/* Pending Amount */}
-    <div className="relative overflow-hidden rounded-[2rem] p-8 bg-gradient-to-br from-amber-500 via-orange-600 to-red-700 text-white shadow-xl shadow-amber-500/10 dark:shadow-orange-900/30 flex justify-between items-center group hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 cursor-default">
-      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/5 blur-xl group-hover:scale-125 transition-transform duration-500" />
-      <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white/5 blur-lg" />
-
-      <div className="flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-          <LuClock className="w-7 h-7 text-white" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">Pending Amount</p>
-          <p className="text-3xl font-black tracking-tight">₱{stats?.pending_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 }) || '0.00'}</p>
-        </div>
-      </div>
-
-      <div className="self-start px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
-        Outstanding
-      </div>
-    </div>
-
-    {/* Total Invoices */}
-    <div className="relative overflow-hidden rounded-[2rem] p-8 bg-gradient-to-br from-violet-600 via-purple-700 to-fuchsia-800 text-white shadow-xl shadow-purple-500/10 dark:shadow-purple-900/30 flex justify-between items-center group hover:scale-[1.02] hover:-translate-y-1 transition-all duration-300 cursor-default">
-      <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/5 blur-xl group-hover:scale-125 transition-transform duration-500" />
-      <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white/5 blur-lg" />
-
-      <div className="flex items-center gap-5">
-        <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-          <LuActivity className="w-7 h-7 text-white" />
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-white/70 mb-1">Total Invoices</p>
-          <p className="text-3xl font-black tracking-tight">{stats?.invoice_count || '0'}</p>
-        </div>
-      </div>
-
-      <div className="self-start px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-white/10 backdrop-blur-md border border-white/15 text-white shadow-sm">
-        Volume
-      </div>
-    </div>
-    </div>
 
       {/* Content Container (Main Panel) */}
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800/80 shadow-md p-6 sm:p-8 space-y-6">
