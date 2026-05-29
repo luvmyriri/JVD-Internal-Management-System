@@ -281,7 +281,7 @@ export default function Collections() {
 
       {/* Top Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0 relative z-20 no-print">
-        
+
         {/* KPI 1: Pending */}
         <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
@@ -299,7 +299,25 @@ export default function Collections() {
           </div>
         </div>
 
-        {/* KPI 2: Overdue */}
+        {/* KPI 2: Partial */}
+
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <LuActivity className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
+              Partial
+            </div>
+          </div>
+          <div className="mt-1">
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Partially Paid</p>
+            <p className="text-2xl font-black leading-none">{stats?.partial || 0}</p>
+          </div>
+        </div>
+
+        {/* KPI 3: Overdue */}
         <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-rose-500 to-red-700 text-white shadow-lg shadow-rose-300/30 dark:shadow-rose-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
           <div className="flex items-start justify-between">
@@ -316,22 +334,7 @@ export default function Collections() {
           </div>
         </div>
 
-        {/* KPI 3: Partial */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
-          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
-          <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <LuActivity className="w-3.5 h-3.5 text-white" />
-            </div>
-            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
-              Partial
-            </div>
-          </div>
-          <div className="mt-1">
-            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Partially Paid</p>
-            <p className="text-2xl font-black leading-none">{stats?.partial || 0}</p>
-          </div>
-        </div>
+
 
         {/* KPI 4: Completed */}
         <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
@@ -372,8 +375,8 @@ export default function Collections() {
                 key={status}
                 onClick={() => setStatusFilter(status)}
                 className={`shrink-0 whitespace-nowrap px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${statusFilter === status
-                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
-                    : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                  : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
               >
                 {status}
