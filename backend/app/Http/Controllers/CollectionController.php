@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TransactionNotificationMail;
 
 class CollectionController extends Controller
 {
@@ -202,4 +204,129 @@ class CollectionController extends Controller
             'data' => $collection
         ]);
     }
+
+    public function sendSoaNotification($id)
+    {
+        $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
+
+        $email = null;
+        if ($collection->invoice && $collection->invoice->customer_email) {
+            $email = $collection->invoice->customer_email;
+        } elseif ($collection->customer && $collection->customer->email) {
+            $email = $collection->customer->email;
+        }
+
+        if (!$email) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No valid customer email address found for this collection.'
+            ], 400);
+        }
+
+        $pdfData = $this->buildSoaInvoice($collection);
+        $invoice = $pdfData['invoice'];
+
+        try {
+            Mail::to($email)->send(new TransactionNotificationMail($invoice));
+            return response()->json([
+                'success' => true,
+                'message' => 'Statement of Account notification email sent to ' . $email
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to send email: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Build a unified invoice-like object for the SOA PDF.
+     * Works for both invoice-linked and standalone collections.
+     */
+    private function buildSoaInvoice(Collection $collection): array
+    {
+        $collection->loadMissing(['invoice.items.service', 'customer', 'payments']);
+
+        $email = null;
+        if ($collection->invoice && $collection->invoice->customer_email) {
+            $email = $collection->invoice->customer_email;
+        } elseif ($collection->customer && $collection->customer->email) {
+            $email = $collection->customer->email;
+        }
+
+        if ($collection->invoice) {
+            $invoice = $collection->invoice;
+            // Attach the payment history from the collection side as well
+            if (!$invoice->relationLoaded('payments')) {
+                $invoice->setRelation('payments', $collection->payments);
+            }
+        } else {
+            // Build a virtual Invoice object that the Blade template can consume
+            $invoice = new \App\Models\Invoice([
+                'invoice_number'   => 'COL-' . str_pad($collection->id, 6, '0', STR_PAD_LEFT),
+                'customer_name'    => $collection->client_name,
+                'customer_email'   => $email ?? '',
+                'customer_contact' => $collection->customer?->phone ?? '',
+                'customer_address' => $collection->customer?->address ?? '',
+                'subtotal'         => ($collection->billing_amount ?? $collection->rate ?? 0) / 1.12,
+                'tax_amount'       => ($collection->billing_amount ?? $collection->rate ?? 0) - (($collection->billing_amount ?? $collection->rate ?? 0) / 1.12),
+                'total_amount'     => $collection->billing_amount ?? $collection->rate ?? 0,
+                'amount_received'  => $collection->paid_amount ?? 0,
+                'change'           => 0,
+                'payment_method'   => $collection->payments->last()?->payment_method ?? 'Cash',
+                'payment_type'     => 'downpayment',
+                'balance'          => $collection->remaining_balance ?? ($collection->rate ?? 0),
+                'due_date'         => $collection->due_date,
+                'travel_date'      => $collection->travel_date ?? $collection->due_date,
+                'pick_up'          => $collection->pick_up ?? null,
+                'drop_off'         => $collection->drop_off ?? null,
+                'service_type'     => $collection->service_type,
+                'other_service_type' => $collection->other_service_type,
+                'status'           => ($collection->remaining_balance ?? 1) <= 0 ? 'paid' : (($collection->paid_amount ?? 0) > 0 ? 'partial' : 'pending'),
+                'created_at'       => $collection->created_at,
+            ]);
+
+            $invoice->setRelation('items', collect([]));
+            $invoice->setRelation('payments', $collection->payments);
+        }
+
+        return [
+            'invoice' => $invoice,
+            'taxRate' => 0.12,
+        ];
+    }
+
+    /**
+     * View SOA as inline PDF in the browser.
+     */
+    public function viewSoa($id)
+    {
+        $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
+        $pdfData    = $this->buildSoaInvoice($collection);
+
+        $fileName = 'SOA_' . ($pdfData['invoice']->invoice_number ?? 'COL-' . $id) . '.pdf';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.statement_of_account', $pdfData)
+            ->setPaper('A4', 'portrait');
+
+        return $pdf->stream($fileName, ['Attachment' => false]);
+    }
+
+    /**
+     * Force-download the SOA as a PDF file.
+     */
+    public function downloadSoa($id)
+    {
+        $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
+        $pdfData    = $this->buildSoaInvoice($collection);
+
+        $fileName = 'SOA_' . ($pdfData['invoice']->invoice_number ?? 'COL-' . $id) . '.pdf';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.statement_of_account', $pdfData)
+            ->setPaper('A4', 'portrait');
+
+        return $pdf->download($fileName);
+    }
 }
+

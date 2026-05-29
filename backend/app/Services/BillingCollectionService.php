@@ -36,6 +36,15 @@ class BillingCollectionService
                 'collection_status' => $this->determineStatus($invoice),
                 'auto_generated' => true,
             ]);
+
+            if ($invoice->amount_received > 0) {
+                $collection->payments()->create([
+                    'payment_date' => $invoice->created_at->format('Y-m-d'),
+                    'payment_method' => $invoice->payment_method ?? 'Cash',
+                    'amount' => $invoice->amount_received,
+                    'balance' => $invoice->balance,
+                ]);
+            }
         } else {
             // Update existing collection
             $collection->billing_amount = $invoice->total_amount;

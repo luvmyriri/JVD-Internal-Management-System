@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use App\Notifications\SystemAlert;
 
+use Illuminate\Support\Facades\Mail;
+use App\Mail\TransactionNotificationMail;
 use App\Http\Resources\InvoiceResource;
 
 class BillingController extends Controller
@@ -396,7 +398,17 @@ class BillingController extends Controller
 
             DB::commit();
 
+            // Synchronize outstanding balance with Collections Ledger
             app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+
+            // Dynamically dispatch Invoice / SOA Document to customer via automated email
+            if ($invoice->customer_email) {
+                try {
+                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                } catch (\Exception $mailEx) {
+                    \Log::error("Failed to send POS transaction email to {$invoice->customer_email}: " . $mailEx->getMessage());
+                }
+            }
 
             if ($request->user()) {
                 $request->user()->notify(new SystemAlert(

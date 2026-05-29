@@ -3,10 +3,12 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import {
   LuSearch, LuFileCheck, LuEye,
   LuClock, LuX,
-  LuActivity, LuBanknote, LuPlus
+  LuActivity, LuBanknote, LuPlus,
+  LuMail, LuDownload, LuExternalLink
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
+import client from '../../api/client';
 import type { Collection } from '../../types';
 import { Modal, Button } from '../../components/ui';
 
@@ -147,6 +149,7 @@ export default function Collections() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isDownloadingSoa, setIsDownloadingSoa] = useState(false);
 
   // Payment Form State
   const [paymentForm, setPaymentForm] = useState({
@@ -228,9 +231,66 @@ export default function Collections() {
     }
   });
 
+  const sendSoaMutation = useMutation({
+    mutationFn: (id: number) => collectionApi.sendSoa(id),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || 'SOA email notification sent successfully');
+    },
+    onError: (err: any) => {
+      const errMsg = err?.response?.data?.message || 'Failed to send SOA email notification';
+      toast.error(errMsg);
+    }
+  });
+
   const handleConfirmCollection = (id: number) => {
     if (window.confirm('Are you sure you want to confirm this transaction as fully paid? This will also mark the linked invoice as paid.')) {
       confirmMutation.mutate(id);
+    }
+  };
+
+  const handleSendSoaEmail = (id: number) => {
+    sendSoaMutation.mutate(id);
+  };
+
+  const handleViewSoa = async (id: number) => {
+    // Open the window SYNCHRONOUSLY first (before any await) to avoid popup blockers.
+    // Browsers only allow window.open() as a direct result of a user gesture.
+    const newWin = window.open('', '_blank');
+    if (!newWin) {
+      toast.error('Popup blocked. Please allow popups for this site and try again.');
+      return;
+    }
+    newWin.document.write('<html><body style="margin:0;background:#333;display:flex;align-items:center;justify-content:center;height:100vh;"><p style="color:#fff;font-family:sans-serif;font-size:14px;">Loading SOA PDF...</p></body></html>');
+    try {
+      const blob = await client.get(`/collections/${id}/view-soa`, { responseType: 'blob' }).then(r => r.data);
+      const blobUrl = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      newWin.location.href = blobUrl;
+      setTimeout(() => window.URL.revokeObjectURL(blobUrl), 60000);
+    } catch (err: any) {
+      console.error(err);
+      newWin.close();
+      toast.error('Failed to load SOA PDF. Please try again.');
+    }
+  };
+
+  const handleDownloadSoa = async (id: number) => {
+    try {
+      setIsDownloadingSoa(true);
+      const blob = await client.get(`/collections/${id}/download-soa`, { responseType: 'blob' }).then(r => r.data);
+      const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `SOA_Collection_${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('SOA PDF downloaded!');
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Failed to download SOA PDF. Please try again.');
+    } finally {
+      setIsDownloadingSoa(false);
     }
   };
 
@@ -525,22 +585,50 @@ export default function Collections() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <h3 className="text-sm font-black text-gray-900 dark:text-white uppercase tracking-widest">Payment History</h3>
-                {selectedCollection.collection_status !== 'completed' && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
-                      onClick={() => handleConfirmCollection(selectedCollection.id)}
-                      isLoading={confirmMutation.isPending}
-                    >
-                      <LuFileCheck className="w-4 h-4 mr-1" /> Confirm Transaction
-                    </Button>
-                    <Button size="sm" onClick={() => setShowPaymentModal(true)}>
-                      <LuPlus className="w-4 h-4 mr-1" /> Add Payment
-                    </Button>
-                  </div>
-                )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="border-violet-200 text-violet-600 hover:bg-violet-50 dark:border-violet-800 dark:text-violet-400 dark:hover:bg-violet-950/20"
+                    onClick={() => handleViewSoa(selectedCollection.id)}
+                  >
+                    <LuExternalLink className="w-4 h-4 mr-1" /> View SOA
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="border-gray-200 text-gray-700 hover:bg-gray-50 dark:border-gray-800 dark:text-gray-300 dark:hover:bg-gray-900/40"
+                    onClick={() => handleDownloadSoa(selectedCollection.id)}
+                    isLoading={isDownloadingSoa}
+                  >
+                    <LuDownload className="w-4 h-4 mr-1" /> Download SOA
+                  </Button>
+                  {selectedCollection.collection_status !== 'completed' && (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/20"
+                        onClick={() => handleSendSoaEmail(selectedCollection.id)}
+                        isLoading={sendSoaMutation.isPending}
+                      >
+                        <LuMail className="w-4 h-4 mr-1" /> Notify Customer
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
+                        onClick={() => handleConfirmCollection(selectedCollection.id)}
+                        isLoading={confirmMutation.isPending}
+                      >
+                        <LuFileCheck className="w-4 h-4 mr-1" /> Confirm Transaction
+                      </Button>
+                      <Button size="sm" onClick={() => setShowPaymentModal(true)}>
+                        <LuPlus className="w-4 h-4 mr-1" /> Add Payment
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {selectedCollection.payments && selectedCollection.payments.length > 0 ? (

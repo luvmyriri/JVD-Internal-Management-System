@@ -23,7 +23,7 @@ import {
   LuLoaderCircle
 } from 'react-icons/lu';
 import { Pencil, Trash2 } from 'lucide-react';
-
+import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import type { Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
@@ -94,6 +94,18 @@ export default function POS() {
   const [bookingAdults, setBookingAdults] = useState<number>(1);
   const [bookingChildren, setBookingChildren] = useState<number>(0);
 
+  // Pathway State
+  const [transactionPathway, setTransactionPathway] = useState<'catalog' | 'custom'>('catalog');
+  const [customForm, setCustomForm] = useState({
+    name: '',
+    category: 'Bus Rental',
+    otherCategory: '',
+    price: 0,
+    quantity: 1,
+    description: '',
+  });
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
+
   // Tour booking states
   const [bookingTourVehicle, setBookingTourVehicle] = useState<'Bus' | 'Coaster'>('Bus');
   const [bookingTourExtraDays, setBookingTourExtraDays] = useState<number>(0);
@@ -160,6 +172,69 @@ export default function POS() {
       }
       return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours }];
     });
+  };
+
+  const handleAddCustomTransaction = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customForm.name || customForm.price <= 0 || customForm.quantity <= 0) {
+      toast.error('Please enter a valid service name, price, and quantity.');
+      return;
+    }
+
+    try {
+      setIsAddingCustom(true);
+      // Create service dynamically in the database
+      const res = await billingApi.createService({
+        name: customForm.name,
+        category: customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category,
+        price: customForm.price,
+        description: customForm.description || 'Custom service arrangement',
+        is_tour: false,
+        has_booking_fields: false,
+      });
+
+      if (res?.data?.success || res?.data?.data) {
+        // Handle nesting if nested or direct
+        const createdService = res.data.data;
+        
+        // Add to order
+        addToCart(createdService);
+        
+        // If quantity > 1, update the quantity in the cart
+        if (customForm.quantity > 1) {
+          setCart(prev => prev.map(item => 
+            item.service.id === createdService.id 
+              ? { ...item, quantity: customForm.quantity } 
+              : item
+          ));
+        }
+
+        toast.success('Customized transaction registered & added to order!');
+        
+        // Reset custom form
+        setCustomForm({
+          name: '',
+          category: 'Bus Rental',
+          otherCategory: '',
+          price: 0,
+          quantity: 1,
+          description: '',
+        });
+
+        // Invalidate queries so it shows in catalog if they look for it
+        queryClient.invalidateQueries({ queryKey: ['billing-services'] });
+
+        // Switch pathway back to catalog
+        setTransactionPathway('catalog');
+      } else {
+        toast.error('Failed to register customized service');
+      }
+    } catch (err: any) {
+      console.error(err);
+      toast.error('Error creating custom transaction service: ' + (err.message || 'unknown error'));
+    } finally {
+      setIsAddingCustom(false);
+    }
   };
 
   const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => {
@@ -336,237 +411,388 @@ export default function POS() {
 
   return (
     <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
-      {/* Left Side: Product Grid */}
-      <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm py-4 px-6 md:px-8 relative overflow-hidden shrink-0">
-          {isPlaceholderData && (
-            <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
-              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
-            </div>
-          )}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="relative flex-1">
-              <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
-              <input
-                type="text"
-                placeholder="Search services or categories..."
-                className="w-full pl-12 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center">
-              {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 whitespace-nowrap px-6 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
-                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
-                      : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-            {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-              <button
-                onClick={() => {
-                  setEditingServiceId(null);
-                  setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
-                  setServiceImages([]);
-                  setShowAddService(true);
-                }}
-                className="px-6 h-12 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shrink-0"
-              >
-                <LuPlus className="w-4 h-4" /> Add Service
-              </button>
-            )}
-          </div>
+      {/* Left Side: Product Grid / Pathway */}
+      <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+        {/* Pathway Switcher Pills */}
+        <div className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm p-2 flex gap-2 shrink-0">
+          <button
+            onClick={() => setTransactionPathway('catalog')}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              transactionPathway === 'catalog'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            Add New Service (Fixed Packages)
+          </button>
+          <button
+            onClick={() => setTransactionPathway('custom')}
+            className={`flex-1 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              transactionPathway === 'custom'
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20'
+                : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
+            }`}
+          >
+            New Transaction (Custom Booking)
+          </button>
         </div>
 
-        {filteredServices.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-12 text-center shadow-sm">
-            <div className="w-24 h-24 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
-              <LuBox className="w-10 h-10 text-gray-400 dark:text-gray-500" />
-            </div>
-            <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">No Products Found</h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 font-medium">
-              We couldn't find any services matching your current filters. Adjust your search or add a new product to get started.
-            </p>
-            {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-              <button
-                onClick={() => {
-                  setEditingServiceId(null);
-                  setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
-                  setServiceImages([]);
-                  setShowAddService(true);
-                }}
-                className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2"
-              >
-                <LuPlus className="w-5 h-5" /> Add Your First Product
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:flex-none md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
-            {filteredServices.map((service) => (
-              <div
-                key={service.id}
-                onClick={() => {
-                  setDetailImageIndex(0);
-                  setSelectedServiceForDetail(service);
-                  setBookingAdults(1);
-                  setBookingChildren(0);
-                  if (service.is_tour) {
-                    setBookingTourVehicle('Bus');
-                    setBookingTourExtraDays(0);
-                    setBookingTourExtraHours(0);
-                  }
-                  setShowDetailModal(true);
-                }}
-                className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col shrink-0 w-[85vw] md:w-auto snap-center relative"
-              >
-                {/* Card Image Header */}
-                <div className="h-40 md:h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
-                  {service.images && service.images.length > 0 ? (
-                    <>
-                      <img
-                        src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http')
-                          ? service.images[cardImageIndices[service.id] || 0]
-                          : `/storage/${service.images[cardImageIndices[service.id] || 0]}`}
-                        className="w-full h-full object-cover transition-transform duration-500"
-                        alt={service.name}
-                      />
+        {transactionPathway === 'custom' ? (
+          <div className="flex-1 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-8 shadow-sm overflow-y-auto animate-in fade-in duration-300">
+            <div className="max-w-xl mx-auto space-y-6">
+              <div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
+                  New Customized Transaction
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Record personalized itineraries, custom tour events, transport layouts, or dynamic services directly to checkout.
+                </p>
+              </div>
 
-                      {service.images.length > 1 && (
-                        <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-30">
-                          <button
-                            onClick={(e) => handlePrevImage(e, service.id, service.images?.length || 1)}
-                            className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
-                          >
-                            <LuChevronLeft className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={(e) => handleNextImage(e, service.id, service.images?.length || 1)}
-                            className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
-                          >
-                            <LuChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      )}
+              <form onSubmit={handleAddCustomTransaction} className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                    Service / Booking Title
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Tailored Travel, Tours and Printing Bundle"
+                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                    value={customForm.name}
+                    onChange={(e) => setCustomForm(prev => ({ ...prev, name: e.target.value }))}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                      Category
+                    </label>
+                    <select
+                      className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                      value={customForm.category}
+                      onChange={(e) => setCustomForm(prev => ({ ...prev, category: e.target.value, otherCategory: '' }))}
+                    >
+                      {['Bus Rental', 'Educational Tour', 'Tour Package', 'Visa Processing', 'Joiners', 'Booking', 'Other'].map(cat => (
+                        <option key={cat} value={cat}>{cat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                      Base Rate / Price (PHP)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      step="any"
+                      placeholder="PHP Price"
+                      className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                      value={customForm.price || ''}
+                      onChange={(e) => setCustomForm(prev => ({ ...prev, price: Number(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+
+                {customForm.category === 'Other' && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1">
+                      Specify Service Type
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Corporate Event, Charter Flight..."
+                      className="w-full px-5 py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/10 transition-all dark:text-white"
+                      value={customForm.otherCategory}
+                      onChange={(e) => setCustomForm(prev => ({ ...prev, otherCategory: e.target.value }))}
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    placeholder="1"
+                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                    value={customForm.quantity}
+                    onChange={(e) => setCustomForm(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                    Description & Specifications
+                  </label>
+                  <textarea
+                    placeholder="Enter itinerary details, printing dimensions, travel schedules, or transport conditions..."
+                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[120px] dark:text-white"
+                    value={customForm.description}
+                    onChange={(e) => setCustomForm(prev => ({ ...prev, description: e.target.value }))}
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isAddingCustom}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+                >
+                  {isAddingCustom ? (
+                    <>
+                      <LuLoaderCircle className="w-4 h-4 animate-spin" />
+                      Creating and Adding Custom Service...
                     </>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
-                      <LuImage className="w-12 h-12 opacity-20" />
-                    </div>
+                    <>
+                      <LuPlus className="w-4 h-4" />
+                      Add to Checkout Cart
+                    </>
                   )}
-
-                  {/* View Overlay */}
-                  <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
-                    <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
-                      <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Price & Action Dropdown (outside overflow-hidden image container to prevent clipping) */}
-                <div className="absolute top-4 right-4 flex gap-2 z-20" onClick={(e) => e.stopPropagation()}>
-                  <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
-                    <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">
-                      {(() => {
-                        if (service.is_tour) {
-                          const prices = [Number(service.coaster_price || 0), Number(service.bus_price || 0)].filter(p => p > 0);
-                          if (prices.length > 1) {
-                            const min = Math.min(...prices);
-                            const max = Math.max(...prices);
-                            return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
-                          } else if (prices.length === 1) {
-                            return `₱${prices[0].toLocaleString()}`;
-                          }
-                        }
-
-                        if (service.has_booking_fields) {
-                          const prices = [Number(service.child_price || 0), Number(service.adult_price || 0)].filter(p => p > 0);
-                          if (prices.length > 1) {
-                            const min = Math.min(...prices);
-                            const max = Math.max(...prices);
-                            return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
-                          } else if (prices.length === 1) {
-                            return `₱${prices[0].toLocaleString()}`;
-                          }
-                        }
-
-                        return `₱${Number(service.price || 0).toLocaleString()}`;
-                      })()}
-                    </p>
-                  </div>
-                  {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
-                    <Dropdown
-                      items={[
-                        {
-                          label: 'Edit Service',
-                          icon: <Pencil size={14} />,
-                          onClick: () => handleOpenEditModal(service)
-                        },
-                        {
-                          label: 'Delete',
-                          icon: <Trash2 size={14} />,
-                          onClick: () => handleDeleteService(service.id),
-                          variant: 'danger'
-                        },
-                      ]}
-                    />
-                  )}
-                </div>
-
-                <div className="p-6 flex-1 flex flex-col">
-                  <div className="flex justify-between items-start mb-2">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{service.category}</p>
-                    {service.images && service.images.length > 1 && (
-                      <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
-                        +{service.images.length - 1} Images
-                      </span>
-                    )}
-                  </div>
-                  <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
-                  <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-2">{service.description}</p>
-
-                  {service.creator && (
-                    <div className="flex items-center gap-1.5 mb-4 text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 px-2 py-1 rounded-lg w-fit">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      <span>Published by: {service.creator.first_name} {service.creator.last_name}</span>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (service.has_booking_fields || service.is_tour) {
-                        setSelectedServiceForDetail(service);
-                        setDetailImageIndex(0);
-                        setBookingAdults(1);
-                        setBookingChildren(0);
-                        if (service.is_tour) {
-                          setBookingTourVehicle('Bus');
-                          setBookingTourExtraDays(0);
-                          setBookingTourExtraHours(0);
-                        }
-                        setShowDetailModal(true);
-                      } else {
-                        addToCart(service);
-                      }
-                    }}
-                    className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
-                  >
-                    <LuPlus className="w-3.5 h-3.5" /> Add to Order
-                  </button>
-                </div>
-              </div>
-            ))}
+                </button>
+              </form>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm py-4 px-6 md:px-8 relative overflow-hidden shrink-0">
+              {isPlaceholderData && (
+                <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+                  <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+                </div>
+              )}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="relative flex-1">
+                  <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <input
+                    type="text"
+                    placeholder="Search services or categories..."
+                    className="w-full pl-12 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center">
+                  {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`shrink-0 whitespace-nowrap px-6 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
+                          ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
+                          : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                        }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
+                  <button
+                    onClick={() => {
+                      setEditingServiceId(null);
+                      setIsEditingService(false);
+                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
+                      setServiceImages([]);
+                      setShowAddService(true);
+                    }}
+                    className="px-6 h-12 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shrink-0"
+                  >
+                    <LuPlus className="w-4 h-4" /> Add Service
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {filteredServices.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-12 text-center shadow-sm">
+                <div className="w-24 h-24 bg-gray-50 dark:bg-gray-800 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                  <LuBox className="w-10 h-10 text-gray-400 dark:text-gray-500" />
+                </div>
+                <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">No Products Found</h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-8 font-medium">
+                  We couldn't find any services matching your current filters. Adjust your search or add a new product to get started.
+                </p>
+                {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
+                  <button
+                    onClick={() => {
+                      setEditingServiceId(null);
+                      setIsEditingService(false);
+                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
+                      setServiceImages([]);
+                      setShowAddService(true);
+                    }}
+                    className="px-8 py-4 bg-blue-600 text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2"
+                  >
+                    <LuPlus className="w-5 h-5" /> Add Your First Product
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:flex-none md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
+                {filteredServices.map((service) => (
+                  <div
+                    key={service.id}
+                    onClick={() => {
+                      setDetailImageIndex(0);
+                      setSelectedServiceForDetail(service);
+                      setBookingAdults(1);
+                      setBookingChildren(0);
+                      if (service.is_tour) {
+                        setBookingTourVehicle('Bus');
+                        setBookingTourExtraDays(0);
+                        setBookingTourExtraHours(0);
+                      }
+                      setShowDetailModal(true);
+                    }}
+                    className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col shrink-0 w-[85vw] md:w-auto snap-center relative"
+                  >
+                    {/* Card Image Header */}
+                    <div className="h-40 md:h-40 bg-gray-100 dark:bg-gray-800 relative overflow-hidden shrink-0">
+                      {service.images && service.images.length > 0 ? (
+                        <>
+                          <img
+                            src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http')
+                              ? service.images[cardImageIndices[service.id] || 0]
+                              : `/storage/${service.images[cardImageIndices[service.id] || 0]}`}
+                            className="w-full h-full object-cover transition-transform duration-500"
+                            alt={service.name}
+                          />
+
+                          {service.images.length > 1 && (
+                            <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-30">
+                              <button
+                                onClick={(e) => handlePrevImage(e, service.id, service.images?.length || 1)}
+                                className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                              >
+                                <LuChevronLeft className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={(e) => handleNextImage(e, service.id, service.images?.length || 1)}
+                                className="p-1.5 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-white hover:scale-110 transition-all border border-gray-100 dark:border-gray-800 shadow-md"
+                              >
+                                <LuChevronRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-300 dark:text-gray-600 dark:text-gray-300">
+                          <LuImage className="w-12 h-12 opacity-20" />
+                        </div>
+                      )}
+
+                      {/* View Overlay */}
+                      <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-200">
+                        <div className="bg-white dark:bg-gray-900/10 backdrop-blur-md border border-white/20 px-6 py-2.5 rounded-2xl transform translate-y-4 group-hover:translate-y-0 transition-all duration-200">
+                          <p className="text-[10px] font-black text-black uppercase tracking-[0.4em] drop-shadow-sm">View</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Price & Action Dropdown (outside overflow-hidden image container to prevent clipping) */}
+                    <div className="absolute top-4 right-4 flex gap-2 z-20" onClick={(e) => e.stopPropagation()}>
+                      <div className="bg-white dark:bg-gray-800/90 dark:bg-gray-900/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/20 shadow-sm">
+                        <p className="text-xs font-black text-gray-900 dark:text-white tracking-tighter">
+                          {(() => {
+                            if (service.is_tour) {
+                              const prices = [Number(service.coaster_price || 0), Number(service.bus_price || 0)].filter(p => p > 0);
+                              if (prices.length > 1) {
+                                const min = Math.min(...prices);
+                                const max = Math.max(...prices);
+                                return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                              } else if (prices.length === 1) {
+                                return `₱${prices[0].toLocaleString()}`;
+                              }
+                            }
+
+                            if (service.has_booking_fields) {
+                              const prices = [Number(service.child_price || 0), Number(service.adult_price || 0)].filter(p => p > 0);
+                              if (prices.length > 1) {
+                                const min = Math.min(...prices);
+                                const max = Math.max(...prices);
+                                return `₱${min.toLocaleString()} - ₱${max.toLocaleString()}`;
+                              } else if (prices.length === 1) {
+                                return `₱${prices[0].toLocaleString()}`;
+                              }
+                            }
+
+                            return `₱${Number(service.price || 0).toLocaleString()}`;
+                          })()}
+                        </p>
+                      </div>
+                      {['super_admin', 'admin', 'accounting', 'agent'].includes(user?.role || '') && (
+                        <Dropdown
+                          items={[
+                            {
+                              label: 'Edit Service',
+                              icon: <Pencil size={14} />,
+                              onClick: () => handleOpenEditModal(service)
+                            },
+                            {
+                              label: 'Delete',
+                              icon: <Trash2 size={14} />,
+                              onClick: () => handleDeleteService(service.id),
+                              variant: 'danger'
+                            },
+                          ]}
+                        />
+                      )}
+                    </div>
+
+                    <div className="p-6 flex-1 flex flex-col">
+                      <div className="flex justify-between items-start mb-2">
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{service.category}</p>
+                        {service.images && service.images.length > 1 && (
+                          <span className="text-[9px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-full">
+                            +{service.images.length - 1} Images
+                          </span>
+                        )}
+                      </div>
+                      <h4 className="text-sm font-black text-gray-900 dark:text-white uppercase leading-tight group-hover:text-blue-600 transition-colors mb-2">{service.name}</h4>
+                      <p className="text-[10px] text-gray-400 font-medium leading-relaxed line-clamp-2 mb-2">{service.description}</p>
+
+                      {service.creator && (
+                        <div className="flex items-center gap-1.5 mb-4 text-[9px] font-bold text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/40 px-2 py-1 rounded-lg w-fit">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                          <span>Published by: {service.creator.first_name} {service.creator.last_name}</span>
+                        </div>
+                      )}
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (service.has_booking_fields || service.is_tour) {
+                            setSelectedServiceForDetail(service);
+                            setDetailImageIndex(0);
+                            setBookingAdults(1);
+                            setBookingChildren(0);
+                            if (service.is_tour) {
+                              setBookingTourVehicle('Bus');
+                              setBookingTourExtraDays(0);
+                              setBookingTourExtraHours(0);
+                            }
+                            setShowDetailModal(true);
+                          } else {
+                            addToCart(service);
+                          }
+                        }}
+                        className="mt-auto w-full py-3 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                      >
+                        <LuPlus className="w-3.5 h-3.5" /> Add to Order
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -863,7 +1089,7 @@ export default function POS() {
             </div>
 
             {/* Invoice Content (Scrollable wrapper with dark/light background) */}
-            <div className="flex-1 overflow-y-auto p-8 bg-gray-100 dark:bg-gray-950 flex justify-center print-wrapper no-scrollbar">
+            <div className="flex-1 overflow-y-auto p-8 bg-gray-100 dark:bg-gray-950 flex justify-center items-start print-wrapper">
               {/* Premium Paper Receipt Sheet (Always Light Theme for a real receipt feel) */}
               <div
                 className="w-full max-w-xl bg-white text-gray-900 border border-gray-200/80 shadow-2xl rounded-[2rem] p-10 relative overflow-hidden flex flex-col"
