@@ -16,8 +16,10 @@ return new class extends Migration
             $table->decimal('balance', 15, 2)->default(0)->after('amount_received');
         });
 
-        \DB::statement("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_status_check");
-        \DB::statement("ALTER TABLE invoices ALTER COLUMN status TYPE VARCHAR(255)");
+        if (\DB::getDriverName() === 'pgsql') {
+            \DB::statement("ALTER TABLE invoices DROP CONSTRAINT IF EXISTS invoices_status_check");
+            \DB::statement("ALTER TABLE invoices ALTER COLUMN status TYPE VARCHAR(255)");
+        }
     }
 
     /**
