@@ -22,7 +22,7 @@ class BillingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service']);
+        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection']);
 
         // Search
         if ($request->has('search')) {
@@ -255,6 +255,7 @@ class BillingController extends Controller
             'customer_contact' => ['nullable', 'string', 'regex:/^(09|\+639|639)\d{9}$/'],
             'payment_method' => 'required|string',
             'payment_type' => 'nullable|string|in:full,downpayment',
+            'due_date' => 'nullable|date',
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'required|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -339,6 +340,7 @@ class BillingController extends Controller
                 'payment_method' => $request->payment_method,
                 'payment_type' => $paymentType,
                 'balance' => max(0, $balance),
+                'due_date' => $request->due_date,
                 'status' => $status,
                 'created_by' => auth()->id() ?? 1,
                 'notes' => $request->notes,
@@ -394,6 +396,8 @@ class BillingController extends Controller
 
             DB::commit();
 
+            app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+
             if ($request->user()) {
                 $request->user()->notify(new SystemAlert(
                     'POS Transaction Completed',
@@ -448,6 +452,8 @@ class BillingController extends Controller
         $invoice->update([
             'status' => $request->status,
         ]);
+
+        app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
 
         return response()->json([
             'success' => true,
@@ -530,6 +536,8 @@ class BillingController extends Controller
                         'status' => $newStatus,
                         'amount_received' => $invoice->amount_received + $amountPaidPHP,
                     ]);
+
+                    app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
 
                     // Send SystemAlert to admins/creator
                     if ($invoice->creator) {

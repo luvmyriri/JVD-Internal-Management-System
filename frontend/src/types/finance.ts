@@ -22,6 +22,18 @@ export interface Collection {
   payments?: CollectionPayment[];
   service_type?: string;
   other_service_type?: string;
+  
+  // Billing tracking fields
+  invoice_id?: number;
+  billing_amount?: number;
+  paid_amount?: number;
+  remaining_balance?: number;
+  due_date?: string;
+  collection_status?: 'pending' | 'partial' | 'overdue' | 'completed';
+  remarks?: string;
+  auto_generated?: boolean;
+  invoice?: any;
+
   created_at?: string;
   updated_at?: string;
 }

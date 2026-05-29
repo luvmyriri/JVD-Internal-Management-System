@@ -30,8 +30,10 @@ class InvoiceResource extends JsonResource
             'payment_url' => $this->payment_url,
             'payment_type' => $this->payment_type,
             'balance' => $this->balance !== null ? (float) $this->balance : null,
+            'due_date' => $this->due_date,
             'status' => $this->status,
             'notes' => $this->notes,
+            'collection' => $this->whenLoaded('collection'),
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'items' => $this->whenLoaded('items', function() {

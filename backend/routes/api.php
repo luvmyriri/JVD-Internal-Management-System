@@ -147,6 +147,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // COLLECTIONS / FINANCE
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+        Route::post('/collections/{collection}/confirm', [CollectionController::class, 'confirm'])->name('collections.confirm');
+        Route::post('/collections/{collection}/add-payment', [CollectionController::class, 'addPayment'])->name('collections.add-payment');
+        Route::patch('/collections/{collection}/remarks', [CollectionController::class, 'updateRemarks'])->name('collections.update-remarks');
         Route::apiResource('collections', CollectionController::class);
     });
 

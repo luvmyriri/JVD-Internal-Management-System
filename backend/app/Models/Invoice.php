@@ -28,6 +28,7 @@ class Invoice extends Model
         'payment_id',
         'payment_type',
         'balance',
+        'due_date',
         'status',
         'created_by',
         'notes',
@@ -46,5 +47,10 @@ class Invoice extends Model
     public function items(): HasMany
     {
         return $this->hasMany(InvoiceItem::class);
+    }
+
+    public function collection()
+    {
+        return $this->hasOne(Collection::class);
     }
 }

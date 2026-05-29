@@ -48,11 +48,15 @@ export interface Invoice {
   amount_received?: number;
   change?: number;
   payment_method: string;
+  payment_type?: string;
+  balance?: number;
+  due_date?: string;
   status: string;
   notes?: string;
   created_at: string;
   customer?: any;
   items?: InvoiceItem[];
+  collection?: any;
 }
 
 export const billingApi = {

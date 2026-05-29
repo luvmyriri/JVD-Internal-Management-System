@@ -3,7 +3,7 @@ import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-quer
 import {
   LuSearch, LuPrinter, LuEye, LuFileCheck,
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
-  LuActivity, LuPhone, LuMail, LuMapPin
+  LuActivity, LuPhone, LuMail, LuMapPin, LuBanknote
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
@@ -241,13 +241,25 @@ export default function Billing() {
                 </td>
                 <td className="px-6 py-5">
                   <StatusBadge status={invoice.status} />
+                  {invoice.collection && invoice.status !== 'paid' && (
+                    <div className="mt-2">
+                      <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${
+                        invoice.collection.collection_status === 'overdue' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                        invoice.collection.collection_status === 'pending' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                        'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                      }`}>
+                        Collection: {invoice.collection.collection_status}
+                      </span>
+                    </div>
+                  )}
                 </td>
                 <td className="px-6 py-5 text-right">
                   <div className="flex items-center justify-end">
                     <Dropdown
                       items={[
                         { label: 'View Invoice', icon: <LuEye className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } },
-                        ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : [])
+                        ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : []),
+                        ...(invoice.collection ? [{ label: 'View Collection', icon: <LuBanknote className="w-4 h-4" />, onClick: () => window.location.href = '/accounting/collections' }] : [])
                       ]}
                     />
                   </div>
@@ -303,7 +315,18 @@ export default function Billing() {
             </div>
 
             <div className="flex justify-between items-end mt-2 pt-4 border-t border-gray-200 dark:border-gray-700/50">
-              <StatusBadge status={invoice.status} />
+              <div className="flex flex-col gap-2">
+                <StatusBadge status={invoice.status} />
+                {invoice.collection && invoice.status !== 'paid' && (
+                  <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest w-fit ${
+                    invoice.collection.collection_status === 'overdue' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                    invoice.collection.collection_status === 'pending' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                    'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    Collection: {invoice.collection.collection_status}
+                  </span>
+                )}
+              </div>
               <div className="text-right">
                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Total</p>
                 <p className="text-lg font-black text-blue-600 dark:text-blue-400">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
