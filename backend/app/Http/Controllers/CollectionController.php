@@ -12,7 +12,7 @@ class CollectionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Collection::with(['payments', 'invoice', 'customer']);
+        $query = Collection::with(['payments', 'invoice.items.service', 'customer']);
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;

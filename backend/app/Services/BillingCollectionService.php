@@ -19,38 +19,51 @@ class BillingCollectionService
         if (!$collection) {
             // Determine service type from the first item
             $serviceType = $this->resolveServiceType($invoice);
+            $otherServiceType = null;
+
+            // If it resolved to 'Other', store the actual service name for display
+            if ($serviceType === 'Other') {
+                $firstItem = $invoice->items()->first();
+                $otherServiceType = $firstItem?->service?->name ?? $firstItem?->description ?? null;
+            }
 
             $collection = Collection::create([
-                'invoice_id' => $invoice->id,
-                'client_name' => $invoice->customer_name ?? 'Walk-in Customer',
-                'customer_id' => $invoice->customer_id,
-                'date' => $invoice->created_at->format('Y-m-d'),
-                'travel_date' => $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
-                'rate' => $invoice->total_amount,
-                'status' => 'open',
-                'service_type' => $serviceType,
-                'billing_amount' => $invoice->total_amount,
-                'paid_amount' => $invoice->amount_received ?? 0,
-                'remaining_balance' => $invoice->balance,
-                'due_date' => $invoice->due_date,
-                'collection_status' => $this->determineStatus($invoice),
-                'auto_generated' => true,
+                'invoice_id'         => $invoice->id,
+                'client_name'        => $invoice->customer_name ?? 'Walk-in Customer',
+                'customer_id'        => $invoice->customer_id,
+                'date'               => $invoice->created_at->format('Y-m-d'),
+                'travel_date'        => $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
+                'rate'               => $invoice->total_amount,
+                'status'             => 'open',
+                'service_type'       => $serviceType,
+                'other_service_type' => $otherServiceType,
+                'billing_amount'     => $invoice->total_amount,
+                'paid_amount'        => $invoice->amount_received ?? 0,
+                'remaining_balance'  => $invoice->balance,
+                'due_date'           => $invoice->due_date,
+                'collection_status'  => $this->determineStatus($invoice),
+                'auto_generated'     => true,
             ]);
 
             if ($invoice->amount_received > 0) {
                 $collection->payments()->create([
-                    'payment_date' => $invoice->created_at->format('Y-m-d'),
+                    'payment_date'   => $invoice->created_at->format('Y-m-d'),
                     'payment_method' => $invoice->payment_method ?? 'Cash',
-                    'amount' => $invoice->amount_received,
-                    'balance' => $invoice->balance,
+                    'amount'         => $invoice->amount_received,
+                    'balance'        => $invoice->balance,
                 ]);
             }
         } else {
-            // Update existing collection
-            $collection->billing_amount = $invoice->total_amount;
-            $collection->paid_amount = $invoice->amount_received ?? 0;
+            // Update existing collection — also refresh service type if it was left as bare 'Other'
+            $serviceType = $collection->service_type ?? $this->resolveServiceType($invoice);
+            if ($serviceType === 'Other' && !$collection->other_service_type) {
+                $firstItem = $invoice->items()->first();
+                $collection->other_service_type = $firstItem?->service?->name ?? $firstItem?->description ?? null;
+            }
+            $collection->billing_amount    = $invoice->total_amount;
+            $collection->paid_amount       = $invoice->amount_received ?? 0;
             $collection->remaining_balance = $invoice->balance;
-            $collection->due_date = $invoice->due_date;
+            $collection->due_date          = $invoice->due_date;
             $collection->collection_status = $this->determineStatus($invoice);
             $collection->save();
         }
@@ -80,19 +93,24 @@ class BillingCollectionService
             return 'Other';
         }
 
-        $category = strtolower($firstItem->service->category);
-        
+        // Match against both service name and category
+        $haystack = strtolower($firstItem->service->name . ' ' . $firstItem->service->category);
+
         $validTypes = [
-            'bus rental' => 'Bus Rental',
+            'bus rental'      => 'Bus Rental',
             'educational tour' => 'Educational Tour',
-            'tour package' => 'Tour Package',
+            'tour package'    => 'Tour Package',
+            'package'         => 'Tour Package',
+            'tour'            => 'Tour Package',
+            'travel'          => 'Tour Package',
+            'visa'            => 'Visa Processing',
             'visa processing' => 'Visa Processing',
-            'joiners' => 'Joiners',
-            'booking' => 'Booking',
+            'joiners'         => 'Joiners',
+            'booking'         => 'Booking',
         ];
 
         foreach ($validTypes as $key => $value) {
-            if (str_contains($category, $key)) {
+            if (str_contains($haystack, $key)) {
                 return $value;
             }
         }
