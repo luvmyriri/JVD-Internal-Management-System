@@ -22,7 +22,7 @@ import WorkOrders from './pages/procurement/WorkOrders';
 import Commissions from './pages/operations/Commissions';
 import TripTickets from './pages/operations/TripTickets';
 import CashBudgets from './pages/operations/CashBudgets';
-import Collections from './pages/finance/Collections';
+import Collections from './pages/accounting/Collections';
 import Accreditations from './pages/procurement/Accreditations';
 import Suppliers from './pages/procurement/Suppliers';
 import ProcurementDocuments from './pages/procurement/ProcurementDocuments';

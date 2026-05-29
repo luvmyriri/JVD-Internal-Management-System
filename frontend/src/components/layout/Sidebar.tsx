@@ -55,18 +55,18 @@ export const navigation: NavSection[] = [
   {
     title: 'Accounting',
     items: [
-      { label: 'POS',     path: '/accounting/pos',     icon: <LuReceipt />,       roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.pos' },
-      { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />,      roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.billing' },
-      { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.reports' },
+      { label: 'POS',         path: '/accounting/pos',         icon: <LuReceipt />,       roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.pos' },
+      { label: 'Billing',     path: '/accounting/billing',     icon: <LuFileText />,      roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.billing' },
+      { label: 'Collections', path: '/accounting/collections', icon: <LuBanknote />,      roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'operations.collections' },
+      { label: 'Reports',     path: '/accounting/reports',     icon: <LuClipboardList />, roles: ['super_admin', 'accounting', 'agent'], module: 'accounting', pageKey: 'accounting.reports' },
     ],
   },
   {
     title: 'Operations',
     items: [
-      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />,         roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.trip_tickets' },
-      { label: 'Commissions', path: '/operations/commissions',  icon: <LuSignature />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.commissions' },
-      { label: 'Collections', path: '/accounting/collections',  icon: <LuBanknote />,     roles: ['super_admin', 'accounting', 'agent'],           module: 'accounting', pageKey: 'operations.collections' },
-      { label: 'Cash Budgets',path: '/operations/cash-budgets', icon: <LuWallet />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.cash_budgets' },
+      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.trip_tickets' },
+      { label: 'Commissions', path: '/operations/commissions',  icon: <LuSignature />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.commissions' },
+      { label: 'Cash Budgets',path: '/operations/cash-budgets', icon: <LuWallet />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.cash_budgets' },
     ],
   },
   {

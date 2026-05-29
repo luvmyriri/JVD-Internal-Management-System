@@ -17,6 +17,8 @@ class CollectionController extends Controller
     {
         $validated = $request->validate([
             'client_name' => 'required|string',
+            'service_type' => 'nullable|string',
+            'other_service_type' => 'nullable|string',
             'date' => 'required|date',
             'travel_date' => 'required|date',
             'pick_up' => 'nullable|string',
@@ -54,6 +56,8 @@ class CollectionController extends Controller
         
         $validated = $request->validate([
             'client_name' => 'sometimes|string',
+            'service_type' => 'sometimes|nullable|string',
+            'other_service_type' => 'sometimes|nullable|string',
             'date' => 'sometimes|date',
             'travel_date' => 'sometimes|date',
             'pick_up' => 'sometimes|string',

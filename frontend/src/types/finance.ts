@@ -20,6 +20,8 @@ export interface Collection {
   customer_id?: number;
   status: 'open' | 'completed';
   payments?: CollectionPayment[];
+  service_type?: string;
+  other_service_type?: string;
   created_at?: string;
   updated_at?: string;
 }
