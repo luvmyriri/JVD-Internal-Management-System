@@ -322,7 +322,7 @@ export default function POS() {
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
     const existingImages = service.images?.map(img =>
-      img.startsWith('http') ? img : `http://localhost:8000/storage/${img}`
+      img.startsWith('http') ? img : `/storage/${img}`
     ) || [];
     setServiceImages(existingImages);
     setIsEditingService(true);
@@ -338,7 +338,7 @@ export default function POS() {
     <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8 relative overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm py-4 px-6 md:px-8 relative overflow-hidden shrink-0">
           {isPlaceholderData && (
             <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
@@ -350,17 +350,17 @@ export default function POS() {
               <input
                 type="text"
                 placeholder="Search services or categories..."
-                className="w-full pl-12 pr-4 py-5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
+                className="w-full pl-12 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-700">
+            <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center">
               {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
                 <button
                   key={cat}
                   onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 whitespace-nowrap px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${selectedCategory === cat
+                  className={`shrink-0 whitespace-nowrap px-6 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
                       ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
                       : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                     }`}
@@ -378,7 +378,7 @@ export default function POS() {
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
-                className="px-6 py-4 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center gap-2"
+                className="px-6 h-12 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shrink-0"
               >
                 <LuPlus className="w-4 h-4" /> Add Service
               </button>
@@ -436,7 +436,7 @@ export default function POS() {
                       <img
                         src={service.images[cardImageIndices[service.id] || 0]?.startsWith('http')
                           ? service.images[cardImageIndices[service.id] || 0]
-                          : `http://localhost:8000/storage/${service.images[cardImageIndices[service.id] || 0]}`}
+                          : `/storage/${service.images[cardImageIndices[service.id] || 0]}`}
                         className="w-full h-full object-cover transition-transform duration-500"
                         alt={service.name}
                       />
@@ -1377,7 +1377,7 @@ export default function POS() {
                   <img
                     src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http')
                       ? selectedServiceForDetail.images[detailImageIndex]
-                      : `http://localhost:8000/storage/${selectedServiceForDetail.images[detailImageIndex]}`}
+                      : `/storage/${selectedServiceForDetail.images[detailImageIndex]}`}
                     className="w-full h-full object-contain p-6 mx-auto bg-gray-50 dark:bg-gray-800"
                     alt={selectedServiceForDetail.name}
                   />
