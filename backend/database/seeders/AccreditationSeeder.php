@@ -10,8 +10,10 @@ class AccreditationSeeder extends Seeder
 {
     public function run(): void
     {
-        // Drop the Postgres check constraint created by the enum, since we changed it to a string later.
-        DB::statement('ALTER TABLE accreditations DROP CONSTRAINT IF EXISTS accreditations_entity_type_check');
+        if (DB::getDriverName() === 'pgsql') {
+            // Drop the Postgres check constraint created by the enum, since we changed it to a string later.
+            DB::statement('ALTER TABLE accreditations DROP CONSTRAINT IF EXISTS accreditations_entity_type_check');
+        }
 
         // Clear previous accreditations to avoid duplicates during repeated seeding
         DB::table('accreditations')->truncate();
