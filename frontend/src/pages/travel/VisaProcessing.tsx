@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuGlobe, LuPlus, LuSearch, LuLoaderCircle,
   LuChevronRight, LuCircleCheck, LuCircle,
@@ -352,9 +352,11 @@ export default function VisaProcessing() {
   const [showNew, setShowNew] = useState(false);
   const [selected, setSelected] = useState<VisaCase | null>(null);
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['visa_cases', search, page],
     queryFn: () => passportingApi.list({ case_type: 'visa', search: search || undefined, page, per_page: 20 }),
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const cases: VisaCase[] = response?.data?.data ?? [];
@@ -404,7 +406,12 @@ export default function VisaProcessing() {
           <p className="text-sm text-gray-500 max-w-sm">Open a new visa case to start processing.</p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden relative">
+          {isPlaceholderData && (
+            <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
@@ -418,7 +425,7 @@ export default function VisaProcessing() {
                   <th className="px-8 py-5 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+              <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
                 {cases.map((c) => {
                   const done = VISA_CHECKLIST.filter(i => c.checklist?.[i]).length;
                   const pct = Math.round((done / VISA_CHECKLIST.length) * 100);

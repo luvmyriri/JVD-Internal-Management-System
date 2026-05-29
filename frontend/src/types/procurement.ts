@@ -115,6 +115,7 @@ export interface JobOrder {
   total_cost: number;
   notes: string | null;
   passengers: Passenger[];
+  purchase_order_id?: number | null;
   created_at: string;
   updated_at: string;
 }

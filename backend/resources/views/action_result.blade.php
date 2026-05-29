@@ -90,7 +90,7 @@
                 <!-- Done Actions -->
                 <div class="pt-4 w-full">
                     <div class="flex flex-col sm:flex-row gap-3 items-center justify-center">
-                        <a href="http://localhost:3000" class="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-200/50 dark:shadow-none transition active:scale-95 text-center">
+                        <a href="{{ explode(',', env('FRONTEND_URL', 'http://localhost:3000'))[0] }}" class="w-full sm:w-auto px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-blue-200/50 dark:shadow-none transition active:scale-95 text-center">
                             Return to Dashboard
                         </a>
                         <button onclick="window.close()" class="w-full sm:w-auto px-8 py-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-black uppercase tracking-widest rounded-2xl transition active:scale-95 text-center">

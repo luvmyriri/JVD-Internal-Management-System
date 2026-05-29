@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { userApi } from '../api/users';
 import toast from 'react-hot-toast';
 
@@ -13,6 +13,7 @@ export function useUsers(params?: Record<string, any>) {
       const response = await userApi.list(cleanParams);
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 

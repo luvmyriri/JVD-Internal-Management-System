@@ -144,51 +144,87 @@ class WorkOrderController extends Controller
     }
 
     /**
-     * Designated employee approves an auto-generated WO.
-     * Business Rule: Auto-generated PMS WOs must be approved before any
-     * maintenance work begins. Transitions: pending_approval → open
+     * Designated employee verifies or approves an auto-generated/requested WO.
+     * Transitions: 
+     *  - Head Mechanic: pending_approval → verified
+     *  - Service Adviser: verified → open
      */
     public function approve(Request $request, WorkOrder $workOrder): JsonResponse
     {
-        if ($workOrder->status !== 'pending_approval') {
+        $user = $request->user();
+
+        // 1. Head Mechanic verify transition
+        if ($workOrder->status === 'pending_approval') {
+            if (!$user->hasRole('super_admin', 'admin', 'head_mechanic')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Only head mechanic can verify pending work orders.',
+                ], 403);
+            }
+
+            $workOrder->update([
+                'status'      => 'verified',
+                'verified_by' => $user->id,
+                'verified_at' => now(),
+            ]);
+
+            // Notify Service Adviser for final filing approval
+            \App\Http\Services\NotificationService::notifyWorkOrderVerification($workOrder);
+
             return response()->json([
-                'success' => false,
-                'message' => "Only Work Orders in 'pending_approval' status can be approved. Current status: {$workOrder->status}.",
-            ], 422);
+                'success' => true,
+                'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
+                'message' => 'Work Order verified and passed to Service Adviser for final filing.',
+            ]);
         }
 
-        $validated = $request->validate([
-            'notes'       => ['nullable', 'string', 'max:1000'],
-            'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-            'priority'    => ['nullable', 'in:routine,urgent,critical'],
-        ]);
+        // 2. Service Adviser final approval transition
+        if ($workOrder->status === 'verified') {
+            if (!$user->hasRole('super_admin', 'admin', 'service_adviser')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Only service adviser can file/approve verified work orders.',
+                ], 403);
+            }
 
-        $workOrder->update([
-            'status'       => 'open',
-            'approved_by'  => $request->user()->id,
-            'approved_at'  => now(),
-            'approval_notes' => $validated['notes'] ?? null,
-            'assigned_to'  => $validated['assigned_to'] ?? $workOrder->assigned_to,
-            'priority'     => $validated['priority'] ?? $workOrder->priority,
-        ]);
+            $validated = $request->validate([
+                'notes'       => ['nullable', 'string', 'max:1000'],
+                'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
+                'priority'    => ['nullable', 'in:routine,urgent,critical'],
+            ]);
+
+            $workOrder->update([
+                'status'       => 'open',
+                'approved_by'  => $user->id,
+                'approved_at'  => now(),
+                'approval_notes' => $validated['notes'] ?? null,
+                'assigned_to'  => $validated['assigned_to'] ?? $workOrder->assigned_to,
+                'priority'     => $validated['priority'] ?? $workOrder->priority,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
+                'message' => 'Work Order filed and approved. Maintenance may now proceed.',
+            ]);
+        }
 
         return response()->json([
-            'success' => true,
-            'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-            'message' => 'Work Order approved. Maintenance may now proceed.',
-        ]);
+            'success' => false,
+            'message' => "This Work Order is in status '{$workOrder->status}' and cannot be approved/verified.",
+        ], 422);
     }
 
     /**
-     * Designated employee rejects an auto-generated WO (sends it back for review).
-     * Transitions: pending_approval → cancelled
+     * Designated employee rejects a requested WO.
+     * Transitions: pending_approval | verified → cancelled
      */
     public function reject(Request $request, WorkOrder $workOrder): JsonResponse
     {
-        if ($workOrder->status !== 'pending_approval') {
+        if (!in_array($workOrder->status, ['pending_approval', 'verified'])) {
             return response()->json([
                 'success' => false,
-                'message' => "Only Work Orders in 'pending_approval' status can be rejected.",
+                'message' => "This Work Order is in status '{$workOrder->status}' and cannot be rejected.",
             ], 422);
         }
 

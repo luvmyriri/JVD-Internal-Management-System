@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { 
   LuSearch, 
   LuPlus, 
@@ -25,9 +25,10 @@ export default function Internships() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['internships'],
-    queryFn: internshipsApi.getAll
+    queryFn: internshipsApi.getAll,
+    placeholderData: keepPreviousData,
   });
 
   const internships = Array.isArray(response) ? response : (response?.data || []);
@@ -131,7 +132,12 @@ export default function Internships() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -144,7 +150,7 @@ export default function Internships() {
                 <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-gray-500">Loading...</td>

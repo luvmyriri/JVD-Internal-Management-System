@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   LuBus, LuGauge, LuCalendarDays, LuShield,
@@ -49,6 +49,7 @@ export default function DriverBus() {
       const buses = res.data?.data ?? [];
       return buses.find((b: any) => b.driver?.id === (user as any)?.id) ?? null;
     },
+    placeholderData: keepPreviousData,
   });
 
   const bus = busRes as any;

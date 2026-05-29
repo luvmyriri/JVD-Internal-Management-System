@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
@@ -474,10 +474,11 @@ export default function PMS() {
     toast.success('PMS template downloaded!');
   };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['buses-pms', search],
     queryFn: () => fleetApi.list({ search: search || undefined, per_page: 200 }),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 
   const buses: Bus[] = data?.data?.data ?? [];
@@ -542,7 +543,12 @@ export default function PMS() {
       <ServiceAdviserAlerts overdue={overdueBuses} upcoming={upcomingBuses} />
 
       {/* Table Card */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
 
         {/* Toolbar */}
         <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center justify-between gap-4">
@@ -609,7 +615,7 @@ export default function PMS() {
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr>
                   <td colSpan={6} className="px-8 py-16 text-center text-gray-400">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { LuMap, LuSearch, LuPlus, LuX, LuNavigation, LuUser, LuCoins, LuPrinter, LuCalendar, LuChevronRight } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -853,9 +853,11 @@ export default function TripTickets() {
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['trip-tickets'],
     queryFn: () => tripTicketApi.getAll(),
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const tickets: TripTicket[] = Array.isArray(response) ? response : (response as any)?.data || [];
@@ -913,7 +915,12 @@ export default function TripTickets() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
@@ -927,7 +934,7 @@ export default function TripTickets() {
                 <th className="px-8 py-6 text-right rounded-tr-[2rem]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr><td colSpan={6} className="px-8 py-12 text-center text-gray-500">Loading trip tickets...</td></tr>
               ) : filtered.length === 0 ? (

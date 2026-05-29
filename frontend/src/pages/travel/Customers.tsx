@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuUsers, LuPlus, LuSearch, LuLoaderCircle, LuX, LuPencil,
   LuTrash2, LuMail, LuPhone, LuMapPin, LuUser, LuChevronRight
@@ -234,9 +234,11 @@ export default function Customers() {
   const [modalConfig, setModalConfig] = useState<{ mode: 'create' | 'edit' | 'view'; data?: Customer } | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Customer | null>(null);
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['customers', search, page],
     queryFn: () => customerApi.list({ search: search || undefined, page, per_page: 15 }),
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const customers: Customer[] = response?.data?.data ?? [];
@@ -277,7 +279,12 @@ export default function Customers() {
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -289,7 +296,7 @@ export default function Customers() {
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center text-gray-400">

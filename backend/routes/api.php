@@ -153,14 +153,14 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // PMS WORK ORDER APPROVAL
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin')->group(function () {
+    Route::middleware('role:super_admin,admin,head_mechanic,service_adviser')->group(function () {
         Route::post('/work-orders/{workOrder}/approve', [WorkOrderController::class, 'approve'])->name('work-orders.approve');
         Route::post('/work-orders/{workOrder}/reject',  [WorkOrderController::class, 'reject'])->name('work-orders.reject');
         Route::post('/work-orders/{workOrder}/generate-job-order', [WorkOrderController::class, 'generateJobOrder'])->name('work-orders.generate-jo');
     });
 
-    // Mechanics can REQUEST a Work Order (but not approve)
-    Route::middleware('role:mechanic,super_admin,admin,agent')->group(function () {
+    // Drivers, Mechanics, Dispatchers can REQUEST a Work Order (but not approve)
+    Route::middleware('role:mechanic,head_mechanic,super_admin,admin,agent,driver')->group(function () {
         Route::post('/work-orders/request', [WorkOrderController::class, 'store'])->name('work-orders.request');
     });
 

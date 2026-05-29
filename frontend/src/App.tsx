@@ -54,7 +54,7 @@ import LogisticsOverview from './pages/logistics/Overview';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
+      staleTime: 5 * 1000, // 5 seconds (rapid caching, frequent background updates)
       retry: 1,
       refetchOnWindowFocus: false,
     },

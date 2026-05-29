@@ -13,18 +13,28 @@ class WorkOrderService
     public function create(array $data, int $userId): WorkOrder
     {
         return DB::transaction(function () use ($data, $userId) {
-            return WorkOrder::create([
+            $user = \App\Models\User::find($userId);
+            $requiresApproval = $user && !in_array($user->role, ['super_admin', 'admin', 'service_adviser']);
+            $status = $requiresApproval ? 'pending_approval' : 'open';
+
+            $wo = WorkOrder::create([
                 'wo_number'     => $this->generateWONumber(),
                 'bus_id'        => $data['bus_id'],
                 'assigned_to'   => $data['assigned_to'] ?? null,
                 'created_by'    => $userId,
-                'status'        => 'open',
+                'status'        => $status,
                 'priority'      => $data['priority'],
                 'description'   => $data['description'],
                 'parts_used'    => $data['parts_used'] ?? null,
                 'cost'          => $data['cost'] ?? 0,
                 'auto_generated'=> false,
             ]);
+
+            if ($wo->status === 'pending_approval') {
+                \App\Http\Services\NotificationService::notifyWorkOrderRequest($wo);
+            }
+
+            return $wo;
         });
     }
 

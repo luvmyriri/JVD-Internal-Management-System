@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuTruck, LuPlus, LuSearch, LuShieldCheck, LuShieldX,
   LuBan, LuPhone, LuMail, LuMapPin, LuX, LuLoaderCircle,
@@ -622,7 +622,7 @@ export default function Suppliers() {
   };
 
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['suppliers', search, filter, page],
     queryFn: () => supplierApi.list({ 
       search: search || undefined, 
@@ -630,7 +630,8 @@ export default function Suppliers() {
       page,
       per_page: 10
     }),
-    staleTime: 30_000,
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const suppliers = data?.data?.data ?? [];
@@ -713,6 +714,13 @@ export default function Suppliers() {
         </div>
       </div>
 
+      {/* Premium top progress bar during background loading */}
+      {isPlaceholderData && (
+        <div className="fixed top-0 left-0 w-full h-1 z-[9999] overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+          <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+        </div>
+      )}
+
       {/* Content */}
       {isLoading ? (
         <div className="flex items-center justify-center h-60">
@@ -724,7 +732,7 @@ export default function Suppliers() {
           <p className="text-sm font-medium">No suppliers found</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        <div className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
           {suppliers.map(s => <SupplierCard 
              key={s.id} 
              supplier={s} 

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuTruck,
@@ -526,6 +526,7 @@ export default function LogisticsOverview() {
   const { data: tripsData, isLoading: isTripsLoading } = useQuery<TripTicket[]>({
     queryKey: ['trip-tickets-all'],
     queryFn: () => tripTicketApi.getAll(),
+    placeholderData: keepPreviousData,
   });
   const tripsList = tripsData || [];
 

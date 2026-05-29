@@ -16,7 +16,7 @@ class SupplierController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Supplier::query();
+        $query = Supplier::query()->withCount('purchaseOrders');
 
         if ($request->filled('search')) {
             $search = $request->search;

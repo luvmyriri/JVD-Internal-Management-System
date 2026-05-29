@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuCalendarDays, LuMapPin, LuUsers, LuClock,
@@ -66,7 +66,7 @@ export default function DriverSchedule() {
   });
 
   // Fetch job orders for the visible week
-  const { data: joRes, isLoading, refetch } = useQuery({
+  const { data: joRes, isLoading, isPlaceholderData, refetch } = useQuery({
     queryKey: ['driver-schedule', toYMD(start), toYMD(end)],
     queryFn: async () => {
       const res = await jobOrderApi.list({
@@ -76,6 +76,7 @@ export default function DriverSchedule() {
       });
       return res.data?.data ?? [];
     },
+    placeholderData: keepPreviousData,
   });
 
   const startMutation = useMutation({
@@ -220,28 +221,35 @@ export default function DriverSchedule() {
       </div>
 
       {/* Selected day trips */}
-      <div>
+      <div className="relative min-h-[150px]">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
+        
         <h2 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-3 ml-1">
           {new Date(selectedDay + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' })}
           {selectedTrips.length > 0 && ` · ${selectedTrips.length} trip${selectedTrips.length > 1 ? 's' : ''}`}
         </h2>
 
-        {isLoading ? (
-          <div className="py-16 text-center text-gray-400">
-            <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm font-medium">Loading schedule…</p>
-          </div>
-        ) : selectedTrips.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-16 text-center"
-          >
-            <LuCalendarDays size={36} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" strokeWidth={1.5} />
-            <p className="text-sm font-bold text-gray-400">No trips scheduled for this day</p>
-            <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Check another day or wait for your dispatcher</p>
-          </motion.div>
-        ) : (
+        <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+          {isLoading ? (
+            <div className="py-16 text-center text-gray-400">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium">Loading schedule…</p>
+            </div>
+          ) : selectedTrips.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-16 text-center"
+            >
+              <LuCalendarDays size={36} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" strokeWidth={1.5} />
+              <p className="text-sm font-bold text-gray-400">No trips scheduled for this day</p>
+              <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Check another day or wait for your dispatcher</p>
+            </motion.div>
+          ) : (
           <AnimatePresence mode="popLayout">
             <div className="space-y-3">
               {selectedTrips.map((trip: any, idx: number) => (
@@ -317,8 +325,9 @@ export default function DriverSchedule() {
                 </motion.div>
               ))}
             </div>
-          </AnimatePresence>
-        )}
+            </AnimatePresence>
+          )}
+        </div>
       </div>
     </div>
   );

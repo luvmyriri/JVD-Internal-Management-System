@@ -70,7 +70,10 @@ class PublicRequestActionController extends Controller
     }
 
     /**
-     * Handle Work Order Approval / Rejection
+     * Handle Work Order Actions (Verify / Approve / Reject)
+     * Supporting multi-stage approvals:
+     * - Head Mechanic verifies (pending_approval -> verified)
+     * - Service Adviser approves/files (verified -> open)
      */
     private function handleWorkOrder(int $id, string $action, User $actor): View
     {
@@ -87,56 +90,23 @@ class PublicRequestActionController extends Controller
             ]);
         }
 
-        // Check if already processed
-        if ($workOrder->status !== 'pending_approval') {
-            return view('action_result', [
-                'status'  => 'warning',
-                'title'   => 'Already Processed',
-                'message' => "This Work Order has already been processed by another officer. No further remote action is needed.",
-                'details' => [
-                    'Work Order #' => $workOrder->wo_number,
-                    'Current Status' => strtoupper($workOrder->status),
-                    'Assigned To' => $workOrder->assignee ? ($workOrder->assignee->first_name . ' ' . $workOrder->assignee->last_name) : 'Unassigned',
-                ]
-            ]);
-        }
-
-        try {
-            DB::beginTransaction();
-
-            if ($action === 'approve') {
-                $workOrder->update([
-                    'status'         => 'open',
-                    'approved_by'    => $actor->id,
-                    'approved_at'    => now(),
-                    'approval_notes' => 'Approved remotely via secure email link.',
-                ]);
-
-                // Create log entry if service available
-                if (class_exists(AuditLogService::class)) {
-                    AuditLogService::log(
-                        action: 'APPROVE_WO',
-                        module: 'work-orders',
-                        entityType: 'work_order',
-                        entityId: $workOrder->id,
-                        new: ['status' => 'open', 'approved_by' => $actor->id]
-                    );
-                }
-
-                DB::commit();
-
+        // Rejection logic handles both states
+        if ($action === 'reject') {
+            if (!in_array($workOrder->status, ['pending_approval', 'verified'])) {
                 return view('action_result', [
-                    'status'  => 'success',
-                    'title'   => 'Work Order Approved',
-                    'message' => 'The Work Order has been successfully approved. The maintenance team has been authorized to begin operations.',
+                    'status'  => 'warning',
+                    'title'   => 'Finalized Action',
+                    'message' => "This Work Order has already been finalized and cannot be rejected.",
                     'details' => [
                         'Work Order #' => $workOrder->wo_number,
-                        'Bus Fleet' => $workOrder->bus->plate_number ?? 'N/A',
-                        'Approved By' => $actor->first_name . ' ' . $actor->last_name,
-                        'Timestamp' => now()->format('Y-m-d H:i:s'),
+                        'Current Status' => strtoupper($workOrder->status),
                     ]
                 ]);
-            } elseif ($action === 'reject') {
+            }
+
+            try {
+                DB::beginTransaction();
+
                 $workOrder->update([
                     'status'         => 'cancelled',
                     'approved_by'    => $actor->id,
@@ -167,18 +137,148 @@ class PublicRequestActionController extends Controller
                         'Status' => 'CANCELLED',
                     ]
                 ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return view('action_result', [
+                    'status'  => 'error',
+                    'title'   => 'Execution Error',
+                    'message' => 'An unexpected database error occurred while rejecting the Work Order.',
+                    'details' => [
+                        'Error Details' => $e->getMessage()
+                    ]
+                ]);
             }
-        } catch (\Exception $e) {
-            DB::rollBack();
-            throw $e;
         }
 
+        // Stage 1: Head Mechanic verification
+        if ($workOrder->status === 'pending_approval') {
+            if ($action !== 'verify' && $action !== 'approve') {
+                return view('action_result', [
+                    'status'  => 'error',
+                    'title'   => 'Invalid Request Action',
+                    'message' => 'This action cannot be processed on a pending Work Order.',
+                    'details' => [
+                        'Action Attempted' => $action,
+                    ]
+                ]);
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $workOrder->update([
+                    'status'      => 'verified',
+                    'verified_by' => $actor->id,
+                    'verified_at' => now(),
+                ]);
+
+                // Dispatch notification for Service Adviser approval
+                NotificationService::notifyWorkOrderVerification($workOrder);
+
+                if (class_exists(AuditLogService::class)) {
+                    AuditLogService::log(
+                        action: 'VERIFY_WO',
+                        module: 'work-orders',
+                        entityType: 'work_order',
+                        entityId: $workOrder->id,
+                        new: ['status' => 'verified', 'verified_by' => $actor->id]
+                    );
+                }
+
+                DB::commit();
+
+                return view('action_result', [
+                    'status'  => 'success',
+                    'title'   => 'Work Order Verified',
+                    'message' => 'Work Order verification complete! The request has been successfully passed to the Service Adviser for final filing.',
+                    'details' => [
+                        'Work Order #' => $workOrder->wo_number,
+                        'Bus Fleet' => $workOrder->bus->plate_number ?? 'N/A',
+                        'Verified By' => $actor->first_name . ' ' . $actor->last_name,
+                        'Target Action' => 'Service Adviser Final Approval',
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return view('action_result', [
+                    'status'  => 'error',
+                    'title'   => 'Execution Error',
+                    'message' => 'An unexpected database error occurred while verifying the Work Order.',
+                    'details' => [
+                        'Error Details' => $e->getMessage()
+                    ]
+                ]);
+            }
+        }
+
+        // Stage 2: Service Adviser final approval
+        if ($workOrder->status === 'verified') {
+            if ($action !== 'approve') {
+                return view('action_result', [
+                    'status'  => 'error',
+                    'title'   => 'Invalid Request Action',
+                    'message' => 'This action cannot be processed on a verified Work Order.',
+                    'details' => [
+                        'Action Attempted' => $action,
+                    ]
+                ]);
+            }
+
+            try {
+                DB::beginTransaction();
+
+                $workOrder->update([
+                    'status'       => 'open',
+                    'approved_by'  => $actor->id,
+                    'approved_at'  => now(),
+                    'approval_notes' => 'Approved remotely via secure email link.',
+                ]);
+
+                if (class_exists(AuditLogService::class)) {
+                    AuditLogService::log(
+                        action: 'APPROVE_WO',
+                        module: 'work-orders',
+                        entityType: 'work_order',
+                        entityId: $workOrder->id,
+                        new: ['status' => 'open', 'approved_by' => $actor->id]
+                    );
+                }
+
+                DB::commit();
+
+                return view('action_result', [
+                    'status'  => 'success',
+                    'title'   => 'Work Order Filed & Approved',
+                    'message' => 'The Work Order has been successfully filed and approved! The maintenance crew is authorized to begin work.',
+                    'details' => [
+                        'Work Order #' => $workOrder->wo_number,
+                        'Bus Fleet' => $workOrder->bus->plate_number ?? 'N/A',
+                        'Approved By' => $actor->first_name . ' ' . $actor->last_name,
+                        'Current Status' => 'OPEN',
+                    ]
+                ]);
+            } catch (\Exception $e) {
+                DB::rollBack();
+                return view('action_result', [
+                    'status'  => 'error',
+                    'title'   => 'Execution Error',
+                    'message' => 'An unexpected database error occurred while approving the Work Order.',
+                    'details' => [
+                        'Error Details' => $e->getMessage()
+                    ]
+                ]);
+            }
+        }
+
+        // Already processed fallback
         return view('action_result', [
-            'status'  => 'error',
-            'title'   => 'Execution Error',
-            'message' => 'An unexpected database error occurred while updating the Work Order.',
+            'status'  => 'warning',
+            'title'   => 'Already Processed',
+            'message' => "This Work Order has already been fully processed. No further action is required.",
             'details' => [
-                'Error Details' => $e->getMessage()
+                'Work Order #' => $workOrder->wo_number,
+                'Current Status' => strtoupper($workOrder->status),
+                'Assigned To' => $workOrder->assignee ? ($workOrder->assignee->first_name . ' ' . $workOrder->assignee->last_name) : 'Unassigned',
             ]
         ]);
     }

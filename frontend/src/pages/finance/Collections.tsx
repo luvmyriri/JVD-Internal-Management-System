@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { LuBanknote, LuSearch, LuPlus, LuX, LuChevronRight } from 'react-icons/lu';
 import { Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -250,9 +250,10 @@ export default function Collections() {
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
-  const { data: response, isLoading } = useQuery({
+  const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['collections'],
     queryFn: () => collectionApi.getAll(),
+    placeholderData: keepPreviousData,
   });
 
   const collections: Collection[] = Array.isArray(response) ? response : (response as any)?.data || [];
@@ -289,7 +290,12 @@ export default function Collections() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-teal-100/50 dark:bg-teal-950/50">
+            <div className="h-full bg-teal-600 dark:bg-teal-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="hidden md:block overflow-x-auto custom-scrollbar">
           <table className="w-full min-w-[700px] text-sm text-left">
             <thead className="bg-gray-55 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
@@ -302,7 +308,7 @@ export default function Collections() {
                 <th className="px-8 py-6 text-right rounded-tr-[2rem]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr><td colSpan={6} className="px-8 py-12 text-center text-gray-500">Loading collections...</td></tr>
               ) : filtered.length === 0 ? (
@@ -332,7 +338,7 @@ export default function Collections() {
         </div>
 
         {/* Mobile Card Layout */}
-        <div className="md:hidden flex flex-col p-4 gap-4">
+        <div className={`md:hidden flex flex-col p-4 gap-4 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
           {isLoading ? (
             <div className="animate-pulse bg-gray-100 dark:bg-gray-800 rounded-[2rem] h-32 w-full"></div>
           ) : filtered.length === 0 ? (

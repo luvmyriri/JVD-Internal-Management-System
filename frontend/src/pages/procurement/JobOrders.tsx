@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuClipboardList, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCalendar, LuMapPin, LuArrowRight, LuWrench, LuUsers, LuChevronRight, LuTrash2,
@@ -17,7 +17,8 @@ import { fleetApi } from '../../api/fleet';
 import { supplierApi } from '../../api/suppliers';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
-import { Pagination, Dropdown } from '../../components/ui';
+import { Pagination, Dropdown, ConfirmDialog } from '../../components/ui';
+import toast from 'react-hot-toast';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -244,11 +245,11 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
-      alert(`Purchase Order ${res.data?.data?.po_number ?? ''} generated successfully!`);
+      toast.success(`Purchase Order ${res.data?.data?.po_number ?? ''} generated successfully!`);
       onClose();
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to generate Purchase Order.');
+      toast.error(err?.response?.data?.message || 'Failed to generate Purchase Order.');
     }
   });
 
@@ -431,8 +432,8 @@ function JORow({
 }: {
   jo: JobOrder;
   onDetail: (jo: JobOrder) => void;
-  onConfirm: (id: number) => void;
-  onComplete: (id: number) => void;
+  onConfirm: (jo: JobOrder) => void;
+  onComplete: (jo: JobOrder) => void;
   onGeneratePO: (jo: JobOrder) => void;
 }) {
   return (
@@ -477,12 +478,12 @@ function JORow({
             ...(jo.status === 'created' ? [{
               label: 'Confirm Order',
               icon: <Send size={14} />,
-              onClick: () => onConfirm(jo.id)
+              onClick: () => onConfirm(jo)
             }] : []),
             ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{
               label: 'Mark Completed',
               icon: <CheckCircle size={14} />,
-              onClick: () => onComplete(jo.id)
+              onClick: () => onComplete(jo)
             }] : []),
             ...(!jo.purchase_order_id && jo.status !== 'cancelled' ? [{
               label: 'Generate P.O.',
@@ -492,7 +493,9 @@ function JORow({
             ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{
               label: 'Edit Order',
               icon: <FileEdit size={14} />,
-              onClick: () => alert('Edit feature coming soon')
+              onClick: () => {
+                toast('Edit feature coming soon', { icon: 'ℹ️' });
+              }
             }] : []),
           ]}
         />
@@ -511,10 +514,12 @@ export default function JobOrders() {
   const [showCreate, setShowCreate] = useState(false);
   const [detailJO, setDetailJO] = useState<JobOrder | null>(null);
   const [generatePOJO, setGeneratePOJO] = useState<JobOrder | null>(null);
+  const [confirmJO, setConfirmJO] = useState<JobOrder | null>(null);
+  const [confirmComplete, setConfirmComplete] = useState<JobOrder | null>(null);
 
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['job-orders', search, status, serviceType, page],
     queryFn: () => jobOrderApi.list({
       search: search || undefined,
@@ -523,17 +528,18 @@ export default function JobOrders() {
       page,
       per_page: 10
     }),
-    staleTime: 30_000,
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const confirmMutation = useMutation({
     mutationFn: (id: number) => jobOrderApi.confirm(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
-      alert('Job order confirmed successfully!');
+      toast.success('Job order confirmed successfully!');
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to confirm job order.');
+      toast.error(err?.response?.data?.message || 'Failed to confirm job order.');
     }
   });
 
@@ -541,10 +547,10 @@ export default function JobOrders() {
     mutationFn: (id: number) => jobOrderApi.complete(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
-      alert('Job order marked as completed!');
+      toast.success('Job order marked as completed!');
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to mark job order as completed.');
+      toast.error(err?.response?.data?.message || 'Failed to mark job order as completed.');
     }
   });
 
@@ -601,7 +607,12 @@ export default function JobOrders() {
       </div>
 
       {/* Table */}
-      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden ${jos.length > 0 ? 'min-h-[350px]' : ''}`}>
+      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative ${jos.length > 0 ? 'min-h-[350px]' : ''}`}>
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : jos.length === 0 ? (
@@ -619,14 +630,14 @@ export default function JobOrders() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
                 {jos.map(jo => (
                   <JORow
                     key={jo.id}
                     jo={jo}
                     onDetail={setDetailJO}
-                    onConfirm={(id) => confirmMutation.mutate(id)}
-                    onComplete={(id) => completeMutation.mutate(id)}
+                    onConfirm={(item) => setConfirmJO(item)}
+                    onComplete={(item) => setConfirmComplete(item)}
                     onGeneratePO={(jo) => setGeneratePOJO(jo)}
                   />
                 ))}
@@ -639,6 +650,30 @@ export default function JobOrders() {
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}
       {detailJO && <JODetailModal jo={detailJO} onClose={() => setDetailJO(null)} />}
       {generatePOJO && <GeneratePOModal jo={generatePOJO} onClose={() => setGeneratePOJO(null)} />}
+
+      {confirmJO && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setConfirmJO(null)}
+          onConfirm={() => confirmMutation.mutate(confirmJO.id)}
+          title="Confirm Job Order"
+          message={`Are you sure you want to confirm Job Order ${confirmJO.jo_number}?`}
+          confirmText="Confirm"
+          variant="success"
+        />
+      )}
+
+      {confirmComplete && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setConfirmComplete(null)}
+          onConfirm={() => completeMutation.mutate(confirmComplete.id)}
+          title="Mark Completed"
+          message={`Are you sure you want to mark Job Order ${confirmComplete.jo_number} as completed?`}
+          confirmText="Complete"
+          variant="success"
+        />
+      )}
 
       {meta && meta.last_page > 1 && (
         <Pagination

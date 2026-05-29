@@ -20,6 +20,14 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Prevent browser/tunnel caching on GET requests
+    if (config.method?.toLowerCase() === 'get') {
+      config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+      config.headers['Pragma'] = 'no-cache';
+      config.headers['Expires'] = '0';
+    }
+
     // When sending FormData, let the browser/axios auto-set multipart boundary
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];

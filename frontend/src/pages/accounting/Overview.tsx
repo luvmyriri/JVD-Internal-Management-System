@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   LuFileText,
   LuTrendingUp,
@@ -22,48 +23,26 @@ import {
 import { billingApi } from '../../api/billing';
 
 export default function AccountingOverview() {
-  const [isMounted, setIsMounted] = useState(false);
-  const [kpis, setKpis] = useState({
-    revenue: 0,
-    transactions: 0,
-    avg_ticket: 0,
-    profit_margin: 0
-  });
-  const [trendData, setTrendData] = useState<any[]>([]);
-  const [categoryData, setCategoryData] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    setIsMounted(true);
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
+  const [isMounted] = useState(true); // Keeping isMounted for Recharts check but it's statically true now
+  const { data: overviewData, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['accounting-overview'],
+    queryFn: async () => {
       const res = await billingApi.getReportsSummary('month');
-      const data = res.data.data;
-      
-      setKpis(data.kpis);
-      
-      const mappedTrend = data.trend.map((t: any) => ({
-        name: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-        revenue: parseFloat(t.total),
-      }));
-      setTrendData(mappedTrend);
+      return res.data.data;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
 
-      const mappedCategories = data.categories.map((c: any) => ({
-        name: c.category || 'Uncategorized',
-        value: parseFloat(c.total),
-      }));
-      setCategoryData(mappedCategories);
-      
-    } catch (error) {
-      console.error("Failed to fetch overview data", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const kpis = overviewData?.kpis || { revenue: 0, transactions: 0, avg_ticket: 0, profit_margin: 0 };
+  const trendData = overviewData?.trend?.map((t: any) => ({
+    name: new Date(t.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+    revenue: parseFloat(t.total),
+  })) || [];
+  const categoryData = overviewData?.categories?.map((c: any) => ({
+    name: c.category || 'Uncategorized',
+    value: parseFloat(c.total),
+  })) || [];
 
   const formatCurrency = (val: number) => {
     if (val >= 1000000) return `₱${(val / 1000000).toFixed(1)}M`;
@@ -83,7 +62,12 @@ export default function AccountingOverview() {
   }
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="relative space-y-10 pb-12">
+      {isPlaceholderData && (
+        <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+          <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+        </div>
+      )}
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {stats.map((stat) => (
@@ -155,7 +139,7 @@ export default function AccountingOverview() {
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={(val) => `₱${val/1000}k`} />
                   <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }} />
                   <Bar dataKey="value" radius={[10, 10, 0, 0]}>
-                    {categoryData.map((_, index) => (
+                    {categoryData.map((_: any, index: number) => (
                       <Cell key={`cell-${index}`} fill={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b'][index % 4]} />
                     ))}
                   </Bar>

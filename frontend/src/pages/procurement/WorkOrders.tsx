@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCheck, LuBan, LuTriangleAlert, LuClock,
@@ -15,7 +15,8 @@ import { workOrderApi } from '../../api/workOrders';
 import { fleetApi } from '../../api/fleet';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
-import { Pagination, Dropdown } from '../../components/ui';
+import { Pagination, Dropdown, ConfirmDialog } from '../../components/ui';
+import toast from 'react-hot-toast';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -311,8 +312,8 @@ function WORow({
   wo: WorkOrder; 
   onReview: (wo: WorkOrder) => void;
   onDetail: (wo: WorkOrder) => void;
-  onComplete: (id: number) => void;
-  onGenerateJO: (id: number) => void;
+  onComplete: (wo: WorkOrder) => void;
+  onGenerateJO: (wo: WorkOrder) => void;
 }) {
   return (
     <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
@@ -352,25 +353,19 @@ function WORow({
             ...(wo.status === 'open' ? [{ 
               label: 'Generate J.O.', 
               icon: <LuArrowRight size={14} />, 
-              onClick: () => {
-                if (confirm(`Generate a Job Order from Work Order ${wo.wo_number}?`)) {
-                  onGenerateJO(wo.id);
-                }
-              }
+              onClick: () => onGenerateJO(wo)
             }] : []),
             ...(wo.status === 'in_progress' ? [{ 
               label: 'Mark Completed', 
               icon: <CheckCircle size={14} />, 
-              onClick: () => {
-                if (confirm('Are you sure you want to mark this work order as completed?')) {
-                  onComplete(wo.id);
-                }
-              }
+              onClick: () => onComplete(wo)
             }] : []),
             ...(wo.status !== 'completed' && wo.status !== 'cancelled' ? [{ 
               label: 'Edit Request', 
               icon: <FileEdit size={14} />, 
-              onClick: () => alert('Edit feature coming soon') 
+              onClick: () => {
+                toast('Edit feature coming soon', { icon: 'ℹ️' });
+              }
             }] : []),
           ]}
         />
@@ -388,10 +383,12 @@ export default function WorkOrders() {
   const [showCreate, setShowCreate] = useState(false);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
   const [detailWO, setDetailWO] = useState<WorkOrder | null>(null);
+  const [confirmJO, setConfirmJO] = useState<WorkOrder | null>(null);
+  const [confirmComplete, setConfirmComplete] = useState<WorkOrder | null>(null);
 
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['work-orders', search, status, page],
     queryFn: () => workOrderApi.list({ 
       search: search || undefined, 
@@ -399,17 +396,18 @@ export default function WorkOrders() {
       page,
       per_page: 10
     }),
-    staleTime: 30_000,
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const completeMutation = useMutation({
     mutationFn: (id: number) => workOrderApi.complete(id, {}),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
-      alert('Work order marked as completed!');
+      toast.success('Work order marked as completed!');
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to mark work order as completed.');
+      toast.error(err?.response?.data?.message || 'Failed to mark work order as completed.');
     }
   });
 
@@ -418,10 +416,10 @@ export default function WorkOrders() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       qc.invalidateQueries({ queryKey: ['job-orders'] });
-      alert(`Job Order generated successfully: ${res.data?.data?.jo_number ?? ''}`);
+      toast.success(`Job Order generated successfully: ${res.data?.data?.jo_number ?? ''}`);
     },
     onError: (err: any) => {
-      alert(err?.response?.data?.message || 'Failed to generate Job Order.');
+      toast.error(err?.response?.data?.message || 'Failed to generate Job Order.');
     }
   });
 
@@ -482,7 +480,12 @@ export default function WorkOrders() {
       </div>
 
       {/* Table */}
-      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden ${wos.length > 0 ? 'min-h-[350px]' : ''}`}>
+      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative ${wos.length > 0 ? 'min-h-[350px]' : ''}`}>
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : wos.length === 0 ? (
@@ -500,15 +503,15 @@ export default function WorkOrders() {
                   ))}
                 </tr>
               </thead>
-              <tbody className="">
+              <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
                 {wos.map(wo => (
                   <WORow 
                     key={wo.id} 
                     wo={wo} 
                     onReview={setReviewWO} 
                     onDetail={setDetailWO}
-                    onComplete={(id) => completeMutation.mutate(id)}
-                    onGenerateJO={(id) => generateJOMutation.mutate(id)}
+                    onComplete={(item) => setConfirmComplete(item)}
+                    onGenerateJO={(item) => setConfirmJO(item)}
                   />
                 ))}
               </tbody>
@@ -520,6 +523,30 @@ export default function WorkOrders() {
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
       {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
       {detailWO && <WODetailModal wo={detailWO} onClose={() => setDetailWO(null)} />}
+
+      {confirmJO && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setConfirmJO(null)}
+          onConfirm={() => generateJOMutation.mutate(confirmJO.id)}
+          title="Generate Job Order"
+          message={`Generate a Job Order from Work Order ${confirmJO.wo_number}?`}
+          confirmText="Generate J.O."
+          variant="success"
+        />
+      )}
+
+      {confirmComplete && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setConfirmComplete(null)}
+          onConfirm={() => completeMutation.mutate(confirmComplete.id)}
+          title="Mark Completed"
+          message="Are you sure you want to mark this work order as completed?"
+          confirmText="Complete"
+          variant="success"
+        />
+      )}
 
       {meta && meta.last_page > 1 && (
         <Pagination

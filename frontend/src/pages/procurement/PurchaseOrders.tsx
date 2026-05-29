@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuPlus, LuSearch, LuLoaderCircle, LuX,
   LuTrash2, LuChevronDown, LuSendHorizontal, LuCheck, LuTriangleAlert,
@@ -11,6 +11,7 @@ import { supplierApi } from '../../api/suppliers';
 import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../types/procurement';
 import { PO_STATUS_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
+import toast from 'react-hot-toast';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -398,7 +399,7 @@ export default function PurchaseOrders() {
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [page, setPage] = useState(1);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['purchase-orders', search, status, page],
     queryFn: () => purchaseOrderApi.list({ 
       search: search || undefined, 
@@ -406,18 +407,19 @@ export default function PurchaseOrders() {
       page,
       per_page: 10
     }),
-    staleTime: 30_000,
+    staleTime: 10_000,
+    placeholderData: keepPreviousData,
   });
 
   const submitMutation = useMutation({
     mutationFn: (id: number) => purchaseOrderApi.submit(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
-      alert('Purchase order submitted for review successfully!');
+      toast.success('Purchase order submitted for review successfully!');
     },
     onError: (err: any) => {
       console.error(err);
-      alert(err?.response?.data?.message || 'Failed to submit purchase order.');
+      toast.error(err?.response?.data?.message || 'Failed to submit purchase order.');
     }
   });
 
@@ -425,11 +427,11 @@ export default function PurchaseOrders() {
     mutationFn: (id: number) => purchaseOrderApi.verify(id, { approved: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
-      alert('Purchase order verified successfully!');
+      toast.success('Purchase order verified successfully!');
     },
     onError: (err: any) => {
       console.error(err);
-      alert(err?.response?.data?.message || 'Failed to verify purchase order.');
+      toast.error(err?.response?.data?.message || 'Failed to verify purchase order.');
     }
   });
 
@@ -437,11 +439,11 @@ export default function PurchaseOrders() {
     mutationFn: (id: number) => purchaseOrderApi.approve(id, { approved: true }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['purchase-orders'] });
-      alert('Purchase order approved successfully!');
+      toast.success('Purchase order approved successfully!');
     },
     onError: (err: any) => {
       console.error(err);
-      alert(err?.response?.data?.message || 'Failed to approve purchase order.');
+      toast.error(err?.response?.data?.message || 'Failed to approve purchase order.');
     }
   });
 
@@ -502,7 +504,12 @@ export default function PurchaseOrders() {
       </div>
 
       {/* Table */}
-      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden ${pos.length > 0 ? 'min-h-[350px]' : ''}`}>
+      <div className={`bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm overflow-hidden relative ${pos.length > 0 ? 'min-h-[350px]' : ''}`}>
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         {isLoading ? (
           <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
         ) : pos.length === 0 ? (
@@ -519,7 +526,7 @@ export default function PurchaseOrders() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
+            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {pos.map(po => (
                 <PORow
                   key={po.id}

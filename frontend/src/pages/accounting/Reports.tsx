@@ -1,21 +1,19 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { 
   LuFileSpreadsheet, LuFileText, LuCalendar,
   LuTrendingUp, LuDollarSign, LuActivity, LuSearch, 
   LuUser, LuMapPin, LuEye, LuX, LuTrophy, LuDownload, LuArrowUpRight, LuTriangleAlert, LuChevronRight
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
-import { LoadingScreen } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 
 // Replaced seed data with real backend data mapping
 
 export default function Reports() {
-  const [data, setData] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
   const [range, setRange] = useState('month');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -38,60 +36,47 @@ export default function Reports() {
     return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${color}&color=fff&bold=true&size=128`;
   };
 
-  const fetchSummary = async () => {
-    setIsLoading(true);
-    try {
-      // Pull detailed transactions from the backend to integrate seamlessly
-      const detailedRes = await billingApi.getReportsDetailed(range);
-      const invoices = detailedRes.data.data || [];
-      
-      let mappedInvoices: any[] = [];
-      if (invoices.length > 0) {
-        mappedInvoices = invoices.map((inv: any) => {
-          let dest = 'N/A';
-          if (inv.items && inv.items.length > 0) {
-            const sName = inv.items[0].service?.name || '';
-            if (sName.toLowerCase().includes('boracay')) dest = 'Boracay';
-            else if (sName.toLowerCase().includes('palawan')) dest = 'Palawan';
-            else if (sName.toLowerCase().includes('cebu')) dest = 'Cebu';
-            else if (sName.toLowerCase().includes('siargao')) dest = 'Siargao';
-            else if (sName.toLowerCase().includes('bohol')) dest = 'Bohol';
-            else if (inv.notes && inv.notes?.toLowerCase().includes('travel')) {
-              const dests = ['Boracay', 'Palawan', 'Cebu', 'Siargao', 'Bohol'];
-              dest = dests[inv.id % dests.length];
-            }
-          }
-
-          return {
-            id: inv.invoice_number || `TXN-2605-${1000 + inv.id}`,
-            agentName: inv.creator ? `${inv.creator.first_name} ${inv.creator.last_name}` : 'Unknown Agent',
-            agentEmail: inv.creator ? inv.creator.email : 'unknown@jvd.com',
-            clientName: inv.customer_name || 'Walk-in Client',
-            serviceType: inv.items?.[0]?.service?.category || 'Standard Service',
-            destination: dest,
-            amount: parseFloat(inv.total_amount) || 0,
-            status: inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partial' : inv.status === 'pending' ? 'Pending' : 'Cancelled',
-            date: inv.created_at || new Date().toISOString(),
-            notes: inv.notes || `Invoice processed dynamically on ${new Date(inv.created_at).toLocaleDateString()}. Payment method: ${inv.payment_method || 'Cash'}.`
-          };
-        });
+  const mapInvoices = (invoices: any[]) => {
+    return invoices.map((inv: any) => {
+      let dest = 'N/A';
+      if (inv.items && inv.items.length > 0) {
+        const sName = inv.items[0].service?.name || '';
+        if (sName.toLowerCase().includes('boracay')) dest = 'Boracay';
+        else if (sName.toLowerCase().includes('palawan')) dest = 'Palawan';
+        else if (sName.toLowerCase().includes('cebu')) dest = 'Cebu';
+        else if (sName.toLowerCase().includes('siargao')) dest = 'Siargao';
+        else if (sName.toLowerCase().includes('bohol')) dest = 'Bohol';
+        else if (inv.notes && inv.notes?.toLowerCase().includes('travel')) {
+          const dests = ['Boracay', 'Palawan', 'Cebu', 'Siargao', 'Bohol'];
+          dest = dests[inv.id % dests.length];
+        }
       }
-      
-      // Deduplicate by ID just in case
-      const uniqueTxns = Array.from(new Map(mappedInvoices.map(item => [item.id, item])).values());
-      
-      setData(uniqueTxns);
-    } catch (err) {
-      console.warn('Failed to fetch detailed invoices', err);
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
+      return {
+        id: inv.invoice_number || `TXN-2605-${1000 + inv.id}`,
+        agentName: inv.creator ? `${inv.creator.first_name} ${inv.creator.last_name}` : 'Unknown Agent',
+        agentEmail: inv.creator ? inv.creator.email : 'unknown@jvd.com',
+        clientName: inv.customer_name || 'Walk-in Client',
+        serviceType: inv.items?.[0]?.service?.category || 'Standard Service',
+        destination: dest,
+        amount: parseFloat(inv.total_amount) || 0,
+        status: inv.status === 'paid' ? 'Paid' : inv.status === 'partial' ? 'Partial' : inv.status === 'pending' ? 'Pending' : 'Cancelled',
+        date: inv.created_at || new Date().toISOString(),
+        notes: inv.notes || `Invoice processed dynamically on ${new Date(inv.created_at).toLocaleDateString()}. Payment method: ${inv.payment_method || 'Cash'}.`
+      };
+    });
   };
 
-  useEffect(() => {
-    fetchSummary();
-  }, [range]);
+  const { data: data, isPlaceholderData } = useQuery({
+    queryKey: ['billing-reports', range],
+    queryFn: async () => {
+      const detailedRes = await billingApi.getReportsDetailed(range);
+      const invoices = detailedRes.data.data || [];
+      const mapped = mapInvoices(invoices);
+      return Array.from(new Map(mapped.map((item: any) => [item.id, item])).values());
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
 
   // Click outside listener for Export Dropdown
   useEffect(() => {
@@ -354,10 +339,6 @@ export default function Reports() {
     }
   };
 
-  if (isLoading && !data) {
-    return <LoadingScreen />;
-  }
-
   return (
     <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
       
@@ -536,7 +517,12 @@ export default function Reports() {
               </div>
             ) : (
               <>
-                <div className="hidden md:block">
+                <div className="hidden md:block relative">
+                  {isPlaceholderData && (
+                    <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+                      <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+                    </div>
+                  )}
                   <table className="w-full min-w-[800px] text-left border-collapse select-none">
                     <thead>
                       <tr className="border-b border-gray-50 dark:border-gray-800">

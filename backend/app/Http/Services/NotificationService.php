@@ -142,6 +142,33 @@ class NotificationService
     }
 
     /**
+     * Notify Service Adviser of a verified Work Order pending final filing.
+     */
+    public static function notifyWorkOrderVerification(WorkOrder $wo)
+    {
+        $serviceAdvisers = User::whereIn('role', ['super_admin', 'admin', 'service_adviser'])->get();
+        
+        $details = [
+            'W.O. Number' => $wo->wo_number,
+            'Bus Fleet'   => $wo->bus->plate_number ?? 'N/A',
+            'Odometer'    => number_format($wo->odometer ?? 0) . ' km',
+            'Priority'    => strtoupper($wo->priority),
+            'Description' => $wo->description ?? 'N/A',
+            'Verified By' => $wo->verifier ? ($wo->verifier->first_name . ' ' . $wo->verifier->last_name) : 'Head Mechanic',
+        ];
+
+        foreach ($serviceAdvisers as $adviser) {
+            $adviser->notify(new ActionableApprovalNotification(
+                "Work Order Verified: " . $wo->wo_number,
+                "A maintenance Work Order has been verified by the Head Mechanic and is pending your final filing and approval.",
+                'work_order',
+                $wo->id,
+                $details
+            ));
+        }
+    }
+
+    /**
      * Notify travel agent that they have been assigned a task.
      */
     public static function notifyTaskAssignment(AgentTask $task)

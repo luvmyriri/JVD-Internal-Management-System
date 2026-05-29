@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight } from 'react-icons/lu';
 import { procurementDocumentApi, type ProcurementDocumentFormData } from '../../api/procurementDocuments';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
-import { Modal, Button } from '../../components/ui';
+import { Modal, Button, ConfirmDialog } from '../../components/ui';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 
 interface AddDocumentModalProps { onClose: () => void; }
@@ -186,12 +186,15 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
 export default function ProcurementDocuments() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
   const qc = useQueryClient();
   const { showPreview } = useEntityPreview();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['procurement-documents', searchTerm],
-    queryFn: () => procurementDocumentApi.list(searchTerm ? { search: searchTerm } : {})
+    queryFn: () => procurementDocumentApi.list(searchTerm ? { search: searchTerm } : {}),
+    staleTime: 10_000,
+    placeholderData: keepPreviousData
   });
 
   const deleteMutation = useMutation({
@@ -219,7 +222,12 @@ export default function ProcurementDocuments() {
         </Button>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden">
+      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden relative">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="p-4 border-b border-gray-100 dark:border-gray-800 flex items-center gap-4 bg-gray-50/50 dark:bg-gray-800/30">
           <div className="relative flex-1 max-w-md">
             <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -245,7 +253,7 @@ export default function ProcurementDocuments() {
                 <th className="px-6 py-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800 block md:table-row-group">
+            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 block md:table-row-group transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr className="block md:table-row"><td colSpan={6} className="px-6 py-8 text-center text-gray-500 block md:table-cell">Loading...</td></tr>
               ) : data?.data.data.length === 0 ? (
@@ -308,7 +316,7 @@ export default function ProcurementDocuments() {
                         <a href={`${getApiUrl()}/storage/${doc.file_path}`} target="_blank" rel="noopener noreferrer" className="flex-1 md:flex-none flex justify-center items-center gap-2 p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 rounded-lg transition-colors text-xs font-medium" title="View/Download">
                           <LuFileDown size={16} /> <span className="md:hidden">View</span>
                         </a>
-                        <button onClick={() => { if (confirm('Delete this document?')) deleteMutation.mutate(doc.id); }} className="flex-1 md:flex-none flex justify-center items-center gap-2 p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors text-xs font-medium" title="Delete">
+                        <button onClick={() => setDeleteDocId(doc.id)} className="flex-1 md:flex-none flex justify-center items-center gap-2 p-2 text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-900/30 dark:hover:bg-red-900/50 rounded-lg transition-colors text-xs font-medium" title="Delete">
                           <LuTrash size={16} /> <span className="md:hidden">Delete</span>
                         </button>
                       </div>
@@ -322,6 +330,18 @@ export default function ProcurementDocuments() {
       </div>
 
       {isAddOpen && <AddDocumentModal onClose={() => setIsAddOpen(false)} />}
+      
+      {deleteDocId !== null && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setDeleteDocId(null)}
+          onConfirm={() => deleteMutation.mutate(deleteDocId)}
+          title="Delete Document"
+          message="Are you sure you want to delete this document? This action cannot be undone."
+          confirmText="Delete"
+          variant="error"
+        />
+      )}
     </div>
   );
 }

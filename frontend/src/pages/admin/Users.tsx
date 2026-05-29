@@ -181,7 +181,7 @@ export default function Users() {
   const canCreateUser = hasPermission('users', 'can_create');
   const canEditUser = hasPermission('users', 'can_edit');
 
-  const { data: usersData, isLoading } = useUsers({ 
+  const { data: usersData, isLoading, isPlaceholderData } = useUsers({ 
     search, 
     role: roleFilter, 
     page,
@@ -640,7 +640,12 @@ export default function Users() {
       </div>
 
       {/* Users Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm relative min-h-[400px]">
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm relative min-h-[400px] overflow-hidden">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead>
@@ -677,7 +682,7 @@ export default function Users() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       transition={{ delay: idx * 0.03 }}
                       key={user.id} 
-                      className="group relative hover:bg-blue-50/30 dark:hover:bg-gray-800/50 transition-all border-b border-gray-50 dark:border-gray-800/50 last:border-0"
+                      className={`group relative hover:bg-blue-50/30 dark:hover:bg-gray-800/50 transition-all border-b border-gray-50 dark:border-gray-800/50 last:border-0 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}
                     >
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">

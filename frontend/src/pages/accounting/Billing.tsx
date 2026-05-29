@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuSearch, LuPrinter, LuEye, LuFileCheck,
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
@@ -9,10 +10,7 @@ import type { Invoice } from '../../api/billing';
 import { Dropdown } from '../../components/ui';
 
 export default function Billing() {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [pagination, setPagination] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,46 +19,42 @@ export default function Billing() {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const fetchInvoices = async () => {
-    setIsLoading(true);
-    try {
+  // Debounce search so we don't fire a query on every keystroke
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setCurrentPage(1);
+    }, 400);
+    return () => clearTimeout(t);
+  }, [searchTerm]);
+
+  // Reset to page 1 when filter changes
+  useEffect(() => { setCurrentPage(1); }, [statusFilter]);
+
+  const { data: invoiceData, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['billing-invoices', { page: currentPage, search: debouncedSearch, status: statusFilter }],
+    queryFn: async () => {
       const response = await billingApi.getInvoices({
         page: currentPage,
-        search: searchTerm,
+        search: debouncedSearch,
         status: statusFilter
       });
+      return response.data;
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
 
-      const resData = response.data;
-      if (resData?.success) {
-        setInvoices(resData.data || []);
-        setPagination(resData.meta || null);
-        setStats(resData.stats || null);
-      }
-    } catch (err) {
-      console.error('Failed to fetch invoices', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchInvoices();
-  }, [currentPage, statusFilter]);
-
-  // Debounced Search
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      setCurrentPage(1);
-      fetchInvoices();
-    }, 500);
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
+  const invoices: Invoice[] = invoiceData?.data || [];
+  const stats = invoiceData?.stats || null;
+  const pagination = invoiceData?.meta || null;
 
   const handleMarkAsPaid = async (id: number) => {
     if (!confirm('Mark this invoice as paid?')) return;
     try {
       await billingApi.updateStatus(id, 'paid');
-      fetchInvoices();
+      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       if (selectedInvoice?.id === id) {
         setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
       }
@@ -186,7 +180,13 @@ export default function Billing() {
         </div>
       </div>
     {/* Data Table */}
-    <div className={`hidden md:block overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
+    <div className={`relative hidden md:block overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
+      {/* Background sweep bar while refetching */}
+      {isPlaceholderData && (
+        <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+          <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+        </div>
+      )}
       <table className="w-full min-w-[700px] text-left border-collapse">
         <thead>
           <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">

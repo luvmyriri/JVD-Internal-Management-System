@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { userApi } from '../../api/users';
 import { jobApplicationsApi } from '../../api/jobApplications';
 import { internshipsApi } from '../../api/internships';
@@ -205,18 +205,21 @@ export default function HRDashboard() {
   const { data: usersResponse } = useQuery({
     queryKey: ['users-list-hr-dashboard'],
     queryFn: () => userApi.list({ per_page: 1000 }).then(res => res.data),
+    placeholderData: keepPreviousData,
   });
 
   // Load real job applications from backend
   const { data: applicationsResponse } = useQuery({
     queryKey: ['job-applications-list-hr-dashboard'],
     queryFn: jobApplicationsApi.getAll,
+    placeholderData: keepPreviousData,
   });
 
   // Load real internships from backend
   const { data: internshipsResponse } = useQuery({
     queryKey: ['internships-list-hr-dashboard'],
     queryFn: internshipsApi.getAll,
+    placeholderData: keepPreviousData,
   });
 
   const totalEmployeesCount = usersResponse?.data?.length ?? 0;

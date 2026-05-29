@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   LuMapPin, LuUsers, LuSearch,
@@ -37,12 +37,13 @@ export default function DriverTrips() {
   const params: Record<string, any> = { per_page: 15, page };
   if (statusFilter !== 'all') params.status = statusFilter;
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isPlaceholderData, refetch } = useQuery({
     queryKey: ['driver-trips', statusFilter, page],
     queryFn: async () => {
       const res = await jobOrderApi.list(params);
       return res.data;
     },
+    placeholderData: keepPreviousData,
   });
 
   const startMutation = useMutation({
@@ -145,92 +146,101 @@ export default function DriverTrips() {
       </div>
 
       {/* Trip list */}
-      {isLoading ? (
-        <div className="py-16 text-center text-gray-400">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm font-medium">Loading trips…</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-16 text-center">
-          <LuRoute size={36} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" strokeWidth={1.5} />
-          <p className="text-sm font-bold text-gray-400">No trips found</p>
-          <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different filter or check back later</p>
-        </div>
-      ) : (
-        <AnimatePresence mode="popLayout">
-          <div className="space-y-3">
-            {filtered.map((trip: any, idx: number) => (
-              <motion.div
-                key={trip.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={{ delay: idx * 0.03 }}
-                className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] p-5 shadow-sm hover:shadow-md transition-shadow"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
-                      <span className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status])}>
-                        {STATUS_ICON[trip.status]}
-                        {trip.status.replace('_', ' ')}
-                      </span>
-                      <span className="px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-700">
-                        {SERVICE_LABELS[trip.service_type] ?? trip.service_type}
-                      </span>
-                    </div>
-
-                    <p className="font-black text-gray-900 dark:text-white text-base">{trip.jo_number}</p>
-
-                    {trip.destination && (
-                      <div className="flex items-center gap-1.5 mt-2 text-gray-500 dark:text-gray-400 text-sm">
-                        <LuMapPin size={14} className="shrink-0 text-blue-400" />
-                        <span className="font-medium">{trip.destination}</span>
-                      </div>
-                    )}
-                    {trip.customer && (
-                      <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
-                        <LuUsers size={14} className="shrink-0 text-emerald-400" />
-                        <span className="font-medium">{trip.customer.first_name} {trip.customer.last_name}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 shrink-0">
-                    <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold">
-                      <LuCalendar size={13} />
-                      <span>{trip.service_date?.split('T')[0]}</span>
-                    </div>
-                    {trip.bus && (
-                      <span className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black tracking-widest">
-                        {trip.bus.plate_number}
-                      </span>
-                    )}
-                    {trip.status === 'confirmed' && (
-                      <button
-                        onClick={() => startMutation.mutate(trip.id)}
-                        disabled={startMutation.isPending}
-                        className="mt-2 px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50"
-                      >
-                        Start Trip
-                      </button>
-                    )}
-                    {trip.status === 'in_progress' && (
-                      <button
-                        onClick={() => completeMutation.mutate(trip.id)}
-                        disabled={completeMutation.isPending}
-                        className="mt-2 px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
-                      >
-                        Complete Trip
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+      <div className="relative min-h-[200px]">
+        {isPlaceholderData && (
+          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
-        </AnimatePresence>
-      )}
+        )}
+        <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+          {isLoading ? (
+            <div className="py-16 text-center text-gray-400">
+              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium">Loading trips…</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-16 text-center">
+              <LuRoute size={36} className="mx-auto mb-3 text-gray-300 dark:text-gray-700" strokeWidth={1.5} />
+              <p className="text-sm font-bold text-gray-400">No trips found</p>
+              <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different filter or check back later</p>
+            </div>
+          ) : (
+            <AnimatePresence mode="popLayout">
+              <div className="space-y-3">
+                {filtered.map((trip: any, idx: number) => (
+                  <motion.div
+                    key={trip.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] p-5 shadow-sm hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
+                          <span className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status])}>
+                            {STATUS_ICON[trip.status]}
+                            {trip.status.replace('_', ' ')}
+                          </span>
+                          <span className="px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-700">
+                            {SERVICE_LABELS[trip.service_type] ?? trip.service_type}
+                          </span>
+                        </div>
+
+                        <p className="font-black text-gray-900 dark:text-white text-base">{trip.jo_number}</p>
+
+                        {trip.destination && (
+                          <div className="flex items-center gap-1.5 mt-2 text-gray-500 dark:text-gray-400 text-sm">
+                            <LuMapPin size={14} className="shrink-0 text-blue-400" />
+                            <span className="font-medium">{trip.destination}</span>
+                          </div>
+                        )}
+                        {trip.customer && (
+                          <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
+                            <LuUsers size={14} className="shrink-0 text-emerald-400" />
+                            <span className="font-medium">{trip.customer.first_name} {trip.customer.last_name}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold">
+                          <LuCalendar size={13} />
+                          <span>{trip.service_date?.split('T')[0]}</span>
+                        </div>
+                        {trip.bus && (
+                          <span className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black tracking-widest">
+                            {trip.bus.plate_number}
+                          </span>
+                        )}
+                        {trip.status === 'confirmed' && (
+                          <button
+                            onClick={() => startMutation.mutate(trip.id)}
+                            disabled={startMutation.isPending}
+                            className="mt-2 px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50"
+                          >
+                            Start Trip
+                          </button>
+                        )}
+                        {trip.status === 'in_progress' && (
+                          <button
+                            onClick={() => completeMutation.mutate(trip.id)}
+                            disabled={completeMutation.isPending}
+                            className="mt-2 px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
+                          >
+                            Complete Trip
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+            </AnimatePresence>
+          )}
+        </div>
+      </div>
 
       {/* Pagination */}
       {meta && meta.last_page > 1 && (

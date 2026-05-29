@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuSearch,
   LuShoppingCart,
@@ -44,8 +45,9 @@ export default function POS() {
   const { user } = useAuth();
   const { theme } = useTheme();
 
+  const queryClient = useQueryClient();
+
   // State
-  const [services, setServices] = useState<Service[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -57,7 +59,6 @@ export default function POS() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastInvoice, setLastInvoice] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [amountReceived, setAmountReceived] = useState<number | string>('');
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
@@ -106,20 +107,17 @@ export default function POS() {
   const TAX_RATE = 0.12;
 
   // Load initial data
-  useEffect(() => {
-    const fetchServices = async () => {
-      try {
-        const res = await billingApi.getServices();
-        setServices(Array.isArray(res?.data?.data) ? res.data.data : []);
-      } catch (err) {
-        console.error('Failed to fetch services:', err);
-        setServices([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchServices();
-  }, []);
+  const { data: servicesData, isLoading, isPlaceholderData } = useQuery({
+    queryKey: ['billing-services'],
+    queryFn: async () => {
+      const res = await billingApi.getServices();
+      return Array.isArray(res?.data?.data) ? res.data.data : [];
+    },
+    placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
+
+  const services: Service[] = servicesData || [];
 
   // Card image slideshow controllers
   const handlePrevImage = (e: React.MouseEvent, serviceId: number, maxImages: number) => {
@@ -295,7 +293,7 @@ export default function POS() {
     if (confirmDelete.id === null) return;
     try {
       await billingApi.deleteService(confirmDelete.id);
-      setServices(prev => prev.filter(s => s.id !== confirmDelete.id));
+      queryClient.invalidateQueries({ queryKey: ['billing-services'] });
       setShowDetailModal(false);
       setAlertDialog({ open: true, title: 'Deleted!', message: 'The service has been successfully deleted.', variant: 'success' });
     } catch (err) {
@@ -340,7 +338,12 @@ export default function POS() {
     <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
       {/* Left Side: Product Grid */}
       <div className="flex-1 flex flex-col gap-6">
-        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8">
+        <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-8 relative overflow-hidden">
+          {isPlaceholderData && (
+            <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+            </div>
+          )}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div className="relative flex-1">
               <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -1344,12 +1347,7 @@ export default function POS() {
                     } else {
                       await billingApi.createService({ ...newService, images: serviceImages });
                     }
-                    const response = await billingApi.getServices();
-                    if (response?.data?.data && Array.isArray(response.data.data)) {
-                      setServices(response.data.data);
-                    } else {
-                      setServices([]);
-                    }
+                    queryClient.invalidateQueries({ queryKey: ['billing-services'] });
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);

@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fleetApi } from '../api/fleet';
 import toast from 'react-hot-toast';
 import type { Bus } from '../types/inventory';
@@ -11,6 +11,7 @@ export function useBuses(params?: Record<string, unknown>) {
       const response = await fleetApi.list({ per_page: 999, ...params });
       return response.data;
     },
+    placeholderData: keepPreviousData,
   });
 }
 
