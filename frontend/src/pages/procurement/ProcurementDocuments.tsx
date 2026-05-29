@@ -205,7 +205,12 @@ export default function ProcurementDocuments() {
     }
   });
 
-  const getApiUrl = () => import.meta.env.VITE_API_BASE_URL?.replace('/api', '') || 'http://localhost:8000';
+  const getApiUrl = () => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
+    return apiBase.startsWith('/')
+      ? apiBase.replace(/\/api$/, '')
+      : apiBase.replace(/\/api$/, '') || 'http://localhost:8000';
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
