@@ -20,10 +20,22 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+const SERVICE_TYPES = [
+  'Bus Rental',
+  'Educational Tour',
+  'Tour Package',
+  'Visa Processing',
+  'Joiners',
+  'Booking',
+  'Other',
+] as const;
+
 function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
     client_name: '',
+    service_type: '',
+    other_service_type: '',
     date: new Date().toISOString().split('T')[0],
     travel_date: new Date().toISOString().split('T')[0],
     pick_up: '',
@@ -49,6 +61,8 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     mutation.mutate(form);
   };
 
+  const isOther = form.service_type === 'Other';
+
   return (
     <Modal isOpen={true} onClose={onClose} title="New Collection" size="md">
       <form onSubmit={handleSubmit} className="space-y-6 p-2">
@@ -63,6 +77,41 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
             placeholder="e.g. John Doe"
           />
         </div>
+
+        {/* Service Type Dropdown */}
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Service Type</label>
+          <div className="relative">
+            <select
+              value={form.service_type}
+              onChange={e => setForm(p => ({ ...p, service_type: e.target.value, other_service_type: '' }))}
+              className="w-full px-4 py-3 pr-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer"
+            >
+              <option value="">— Select service type —</option>
+              {SERVICE_TYPES.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            <svg className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Custom service type field — visible only when "Other" is selected */}
+        {isOther && (
+          <div className="space-y-2 animate-[fadeIn_0.2s_ease-out]">
+            <label className="text-[10px] font-black text-teal-500 uppercase tracking-widest ml-1">Specify Service Type</label>
+            <input
+              type="text"
+              required={isOther}
+              value={form.other_service_type}
+              onChange={e => setForm(p => ({ ...p, other_service_type: e.target.value }))}
+              className="w-full px-4 py-3 bg-teal-50 dark:bg-teal-900/20 border border-teal-200 dark:border-teal-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500"
+              placeholder="e.g. Charter Flight, Hotel Package..."
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
@@ -124,14 +173,19 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
-            <select
-              value={form.status}
-              onChange={e => setForm(p => ({ ...p, status: e.target.value as 'open' | 'completed' }))}
-              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none bg-transparent"
-            >
-              <option value="open">Open</option>
-              <option value="completed">Completed</option>
-            </select>
+            <div className="relative">
+              <select
+                value={form.status}
+                onChange={e => setForm(p => ({ ...p, status: e.target.value as 'open' | 'completed' }))}
+                className="w-full px-4 py-3 pr-10 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-teal-500 appearance-none cursor-pointer"
+              >
+                <option value="open">Open</option>
+                <option value="completed">Completed</option>
+              </select>
+              <svg className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
         </div>
 
@@ -147,6 +201,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     </Modal>
   );
 }
+
 
 function CollectionDetailModal({ collection, onClose }: { collection: Collection; onClose: () => void }) {
   const totalPaid = collection.payments?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
@@ -184,6 +239,17 @@ function CollectionDetailModal({ collection, onClose }: { collection: Collection
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{collection.travel_date}</h3>
             </div>
           </div>
+
+          {collection.service_type && (
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Type</p>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
+                {collection.service_type === 'Other' && collection.other_service_type
+                  ? collection.other_service_type
+                  : collection.service_type}
+              </h3>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-8">
             <div>
@@ -316,7 +382,16 @@ export default function Collections() {
               ) : (
                 filtered.map((collection) => (
                   <tr key={collection.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-8 py-5 font-bold text-gray-900 dark:text-white">{collection.client_name}</td>
+                    <td className="px-8 py-5">
+                      <div className="font-bold text-gray-900 dark:text-white">{collection.client_name}</div>
+                      {collection.service_type && (
+                        <div className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mt-1">
+                          {collection.service_type === 'Other' && collection.other_service_type
+                            ? collection.other_service_type
+                            : collection.service_type}
+                        </div>
+                      )}
+                    </td>
                     <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{collection.travel_date}</td>
                     <td className="px-8 py-5 text-gray-600 dark:text-gray-300">
                       {collection.pick_up && collection.drop_off 
@@ -354,6 +429,13 @@ export default function Collections() {
                   <div className="overflow-hidden flex-1">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1">Client</p>
                     <p className="font-bold text-gray-900 dark:text-white truncate">{collection.client_name}</p>
+                    {collection.service_type && (
+                      <p className="text-[10px] font-bold text-teal-600 dark:text-teal-400 uppercase tracking-wider mt-1 truncate">
+                        {collection.service_type === 'Other' && collection.other_service_type
+                          ? collection.other_service_type
+                          : collection.service_type}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <StatusBadge status={collection.status} />
