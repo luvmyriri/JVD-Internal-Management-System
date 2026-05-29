@@ -146,8 +146,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [messages, setMessages] = useState<MessageItem[]>([]);
   const [activeImagePreview, setActiveImagePreview] = useState<{ path: string; name: string } | null>(null);
   const [showExtraMenu, setShowExtraMenu] = useState(false);
+  const [wsConnectedState, setWsConnectedState] = useState(false);
 
   const unreadMessagesCount = messages.filter(m => !m.read).length;
+
 
   const handleMarkAllMessagesRead = async () => {
     setMessages(prev => prev.map(m => ({ ...m, read: true })));
@@ -696,7 +698,6 @@ export default function Header({ onMenuClick }: HeaderProps) {
     fetchUsersAndMapToChats();
 
     let ws: WebSocket | null = null;
-    let wsConnected = false;
     let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
 
     const connectWs = () => {
@@ -704,7 +705,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         ws = new WebSocket('ws://localhost:6001');
 
         ws.onopen = () => {
-          wsConnected = true;
+          setWsConnectedState(true);
           console.log('[Chat WS] Connected');
         };
 
@@ -813,7 +814,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         };
 
         ws.onclose = () => {
-          wsConnected = false;
+          setWsConnectedState(false);
           console.log('[Chat WS] Disconnected — will retry in 5s');
           reconnectTimeout = setTimeout(connectWs, 5000);
         };
@@ -828,23 +829,32 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
     connectWs();
 
-    // Fallback polling — 12s when WS is connected, 3s when WS is offline
-    const poll = setInterval(() => {
-      fetchNotifications();
-      if (!wsConnected) {
-        fetchUsersAndMapToChats();
-      }
-    }, wsConnected ? 12000 : 3000);
-
     return () => {
       if (reconnectTimeout) clearTimeout(reconnectTimeout);
       if (ws) {
         ws.onclose = null; // prevent reconnect on intentional close
         ws.close();
       }
-      clearInterval(poll);
     };
   }, [user]);
+
+  // High-efficiency notifications polling (every 15s)
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [user]);
+
+  // Just-in-Time chat polling (every 5s, only if offline AND chat is actively open)
+  useEffect(() => {
+    if (!user) return;
+    const shouldPoll = !wsConnectedState && (messagesOpen || activeChats.length > 0);
+    if (shouldPoll) {
+      const interval = setInterval(fetchUsersAndMapToChats, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [user, wsConnectedState, messagesOpen, activeChats.length]);
+
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
