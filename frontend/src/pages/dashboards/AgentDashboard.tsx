@@ -222,11 +222,11 @@ export default function AgentDashboard() {
   const kpis             = dashboardData?.kpis ?? {};
   const liveTopAgents    = dashboardData?.top_agents ?? [];
   const liveTopDrivers   = dashboardData?.top_drivers ?? [];
-  const liveChartData    = dashboardData?.monthly_chart ?? [];
+  // const liveChartData    = dashboardData?.monthly_chart ?? [];
 
   const activeTopAgents  = liveTopAgents.length  > 0 ? liveTopAgents  : topAgents;
   const activeTopDrivers = liveTopDrivers.length > 0 ? liveTopDrivers : topDrivers;
-  const activeChartData  = liveChartData.length  > 0 ? liveChartData  : monthlyChartData;
+  // const activeChartData  = liveChartData.length  > 0 ? liveChartData  : monthlyChartData;
 
   const tickets = (ticketsRaw as any[]) ?? [];
   const buses   = (busesRaw as any)?.data ?? [];

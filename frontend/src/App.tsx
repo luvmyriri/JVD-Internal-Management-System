@@ -20,7 +20,7 @@ import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
 import Commissions from './pages/operations/Commissions';
-import TripTickets from './pages/operations/TripTickets';
+import TripTickets from './pages/logistics/TripTickets';
 import CashBudgets from './pages/operations/CashBudgets';
 import Collections from './pages/accounting/Collections';
 import Accreditations from './pages/procurement/Accreditations';
@@ -103,11 +103,11 @@ export default function App() {
 
                 {/* Operations */}
                 <Route path="/operations/commissions" element={<Commissions />} />
-                <Route path="/operations/trip-tickets" element={<TripTickets />} />
                 <Route path="/operations/cash-budgets" element={<CashBudgets />} />
 
                 {/* Logistics */}
                 <Route path="/logistics" element={<LogisticsOverview />} />
+                <Route path="/logistics/trip-tickets" element={<TripTickets />} />
 
                 {/* Procurement */}
                 <Route path="/procurement" element={<Navigate to="/procurement/overview" replace />} />

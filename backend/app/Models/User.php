@@ -53,6 +53,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'custom_permissions' => 'array',
+            'totp_secret' => 'encrypted',
         ];
     }
 

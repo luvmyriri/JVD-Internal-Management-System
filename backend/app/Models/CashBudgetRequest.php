@@ -21,10 +21,13 @@ class CashBudgetRequest extends Model
         'coach_captain_salary',
         'spare_driver_salary',
         'total_amount',
+        'disbursed_amount',
         'status',
         'prepared_by',
         'approved_by',
+        'disbursed_by',
         'purchase_order_id',
+        'trip_ticket_id',
     ];
 
     protected function casts(): array
@@ -46,9 +49,19 @@ class CashBudgetRequest extends Model
         return $this->belongsTo(User::class, 'approved_by');
     }
 
+    public function disbursedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'disbursed_by');
+    }
+
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function tripTicket(): BelongsTo
+    {
+        return $this->belongsTo(TripTicket::class, 'trip_ticket_id');
     }
 
     public function invoice(): HasOne

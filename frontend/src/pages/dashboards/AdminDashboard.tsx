@@ -6,7 +6,6 @@ import {
   LuUsers,
   LuBanknote,
   LuGlobe,
-  LuArrowUpRight,
   LuFileText,
   LuBus,
   LuDownload,
@@ -977,12 +976,12 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const allBuses = useMemo(() => {
-    if (!buses || buses.length === 0) {
-      return ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
-    }
-    return buses.map((b: any) => `BUS-${b.id}`);
-  }, [buses]);
+  // const allBuses = useMemo(() => {
+  //   if (!buses || buses.length === 0) {
+  //     return ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
+  //   }
+  //   return buses.map((b: any) => `BUS-${b.id}`);
+  // }, [buses]);
 
   const occupiedToday = useMemo(() => {
     return Array.from(new Set(selectedEvents.map(d => d.bus)));

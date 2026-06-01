@@ -24,16 +24,23 @@ class DashboardController extends Controller
     private function monthlyChartData(): array
     {
         $year = Carbon::now()->year;
+        $driver = DB::connection()->getDriverName();
+        $monthExpr = match ($driver) {
+            'sqlite' => "strftime('%m', created_at)",
+            'mysql' => "DATE_FORMAT(created_at, '%m')",
+            'pgsql' => "to_char(created_at, 'MM')",
+            default => "to_char(created_at, 'MM')"
+        };
 
         // Revenue by month (from paid/partial invoices)
         $revenueRows = Invoice::select(
-                DB::raw("strftime('%m', created_at) as month_num"),
+                DB::raw("{$monthExpr} as month_num"),
                 DB::raw('SUM(total_amount) as revenue'),
                 DB::raw('COUNT(*) as bookings')
             )
             ->whereIn('status', ['paid', 'partial'])
             ->whereYear('created_at', $year)
-            ->groupBy('month_num')
+            ->groupBy(DB::raw($monthExpr))
             ->get()
             ->keyBy('month_num');
 
@@ -41,12 +48,12 @@ class DashboardController extends Controller
         $totalBuses = Bus::count() ?: 1;
 
         $joRows = JobOrder::select(
-                DB::raw("strftime('%m', created_at) as month_num"),
+                DB::raw("{$monthExpr} as month_num"),
                 DB::raw('COUNT(DISTINCT bus_id) as active_buses')
             )
             ->whereNotNull('bus_id')
             ->whereYear('created_at', $year)
-            ->groupBy('month_num')
+            ->groupBy(DB::raw($monthExpr))
             ->get()
             ->keyBy('month_num');
 

@@ -24,9 +24,11 @@ class Supplier extends Model
     protected function casts(): array
     {
         return [
-            'is_verified'    => 'boolean',
-            'is_consignment' => 'boolean',
-            'verified_at'    => 'datetime',
+            'is_verified'         => 'boolean',
+            'is_consignment'      => 'boolean',
+            'verified_at'         => 'datetime',
+            'bank_account_number' => 'encrypted',
+            'tin_number'          => 'encrypted',
         ];
     }
 

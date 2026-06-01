@@ -35,9 +35,7 @@ class Collection extends Model
 
         if ($this->remaining_balance <= 0) {
             $this->collection_status = 'completed';
-            $this->status = 'completed';
         } else {
-            $this->status = 'open';
             if ($this->paid_amount == 0) {
                 $this->collection_status = 'pending';
             } elseif ($this->due_date && $this->due_date < date('Y-m-d')) {

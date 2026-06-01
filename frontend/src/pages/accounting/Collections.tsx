@@ -33,7 +33,6 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     pick_up: '',
     drop_off: '',
     rate: 0,
-    status: 'open' as 'open' | 'completed',
   });
 
   const mutation = useMutation({

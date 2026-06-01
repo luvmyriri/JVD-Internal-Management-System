@@ -74,6 +74,7 @@ export interface CashBudgetRequest {
   plate_number?: string;
   destination?: string;
   purchase_order_id?: number;
+  trip_ticket_id?: number;
   
   diesel?: number;
   meal_allowance?: number;
@@ -84,16 +85,19 @@ export interface CashBudgetRequest {
   spare_driver_salary?: number;
   
   total_amount?: number;
-  status: 'draft' | 'approved' | 'disbursed';
+  disbursed_amount?: number;
+  status: 'draft' | 'pending_accounting' | 'approved' | 'disbursed';
   
   prepared_by: number;
   approved_by?: number;
+  disbursed_by?: number;
   
   created_at?: string;
   updated_at?: string;
   
-  preparedBy?: { id: number; name: string };
+  preparedBy?: { id: number; name: string; first_name?: string; last_name?: string };
   approvedBy?: { id: number; name: string };
+  disbursedBy?: { id: number; name: string };
   purchaseOrder?: {
     id: number;
     po_number: string;
@@ -106,4 +110,13 @@ export interface CashBudgetRequest {
       unit_price: number;
     }>;
   };
+  tripTicket?: TripTicket;
+  invoice?: {
+    id: number;
+    invoice_number: string;
+    status: string;
+    total_amount: number;
+    created_at?: string;
+  };
 }
+
