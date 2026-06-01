@@ -22,5 +22,7 @@ export const cashBudgetApi = {
   getById: (id: number) => client.get<CashBudgetRequest>(`/cash-budgets/${id}`).then((res) => res.data),
   create: (data: Partial<CashBudgetRequest>) => client.post<CashBudgetRequest>('/cash-budgets', data).then((res) => res.data),
   update: (id: number, data: Partial<CashBudgetRequest>) => client.put<CashBudgetRequest>(`/cash-budgets/${id}`, data).then((res) => res.data),
+  approve: (id: number) => client.put<CashBudgetRequest>(`/cash-budgets/${id}`, { status: 'approved' }).then((res) => res.data),
+  decline: (id: number) => client.delete(`/cash-budgets/${id}`).then((res) => res.data),
   delete: (id: number) => client.delete(`/cash-budgets/${id}`).then((res) => res.data),
 };

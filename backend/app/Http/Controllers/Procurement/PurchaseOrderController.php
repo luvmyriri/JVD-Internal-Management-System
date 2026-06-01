@@ -23,7 +23,7 @@ class PurchaseOrderController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PurchaseOrder::with(['supplier', 'creator']);
+        $query = PurchaseOrder::with(['supplier', 'creator', 'lineItems']);
 
         // Non-admins only see their own POs
         $user = $request->user();

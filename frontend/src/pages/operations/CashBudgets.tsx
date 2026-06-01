@@ -22,6 +22,32 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest; onClose: () => void }) {
+  const qc = useQueryClient();
+
+  const approveMutation = useMutation({
+    mutationFn: () => cashBudgetApi.update(budget.id, { status: 'approved' }),
+    onSuccess: () => {
+      toast.success('Budget Request approved! Invoice generated in Billing.');
+      qc.invalidateQueries({ queryKey: ['cash-budgets'] });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to approve budget request.');
+    }
+  });
+
+  const declineMutation = useMutation({
+    mutationFn: () => cashBudgetApi.delete(budget.id),
+    onSuccess: () => {
+      toast.success('Budget Request declined successfully.');
+      qc.invalidateQueries({ queryKey: ['cash-budgets'] });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to decline budget request.');
+    }
+  });
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -73,8 +99,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
             <div className="space-y-3">
               {budget.purchase_order_id ? (
                 <>
-                  {budget.purchaseOrder?.lineItems && budget.purchaseOrder.lineItems.length > 0 ? (
-                    budget.purchaseOrder.lineItems.map((item, idx) => (
+                  {budget.purchase_order?.line_items && budget.purchase_order.line_items.length > 0 ? (
+                    budget.purchase_order.line_items.map((item, idx) => (
                       <div key={idx} className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-gray-900 dark:text-white">{item.item_name}</span>
@@ -130,8 +156,26 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
           </div>
         </div>
 
-        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end">
-          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
+        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end gap-3 flex-wrap">
+          {budget.status === 'draft' && (
+            <>
+              <button 
+                onClick={() => declineMutation.mutate()} 
+                disabled={declineMutation.isPending || approveMutation.isPending}
+                className="px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {declineMutation.isPending ? 'Declining...' : 'Decline'}
+              </button>
+              <button 
+                onClick={() => approveMutation.mutate()} 
+                disabled={approveMutation.isPending || declineMutation.isPending}
+                className="px-6 py-3 bg-indigo-600 text-white hover:bg-indigo-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
+              >
+                {approveMutation.isPending ? 'Approving...' : 'Approve'}
+              </button>
+            </>
+          )}
+          <button onClick={onClose} className="px-6 py-3 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-200 dark:hover:bg-gray-700 transition-all cursor-pointer">
             Close
           </button>
         </div>
