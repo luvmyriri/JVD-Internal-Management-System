@@ -1,4 +1,5 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
+﻿import { useState, useMemo, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -26,6 +27,10 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { dashboardApi } from '../../api/dashboards';
+import { tripTicketApi } from '../../api/operations';
+import { fleetApi } from '../../api/fleet';
+import { LoadingScreen } from '../../components/ui';
 
 // Donut â€“ user distribution
 const userDistributionData = [
@@ -90,9 +95,6 @@ const detailedRevenueData = [
   { Month: 'April', 'Gross Revenue': 'PHP 1,850,000', Expenses: 'PHP 900,000', 'Net Profit': 'PHP 950,000', Status: 'Audited' },
   { Month: 'May', 'Gross Revenue': 'PHP 2,210,000', Expenses: 'PHP 1,000,000', 'Net Profit': 'PHP 1,210,000', Status: 'Estimated' },
 ];
-
-
-
 
 const topAgents = [
   {
@@ -196,6 +198,28 @@ export default function AccountingDashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
+
+  // ── Live API Queries ──────────────────────────────────────────────────────
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboard', 'accounting'],
+    queryFn: dashboardApi.getAccounting,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: ticketsRaw } = useQuery({
+    queryKey: ['trip-tickets-accounting'],
+    queryFn: tripTicketApi.getAll,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: busesRaw } = useQuery({
+    queryKey: ['buses-accounting'],
+    queryFn: () => fleetApi.list({ per_page: 100 }).then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const tickets = (ticketsRaw as any[]) ?? [];
+  const buses   = (busesRaw as any)?.data ?? [];
 
 
   const exportToPDF = (title: string, data: any[]) => {
@@ -440,7 +464,27 @@ export default function AccountingDashboard() {
     }
   };
 
-  if (!user) return null;
+  if (isLoading) return <LoadingScreen />;
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-500 gap-4">
+        <p className="text-sm font-bold text-red-500 uppercase tracking-widest">Failed to load dashboard data</p>
+        <button 
+          onClick={() => window.location.reload()} 
+          className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-all"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const kpis = dashboardData?.kpis ?? {};
+  const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : monthlyChartData;
+  const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : topAgents;
+  const drivers = dashboardData?.top_drivers && dashboardData.top_drivers.length > 0 ? dashboardData.top_drivers : topDrivers;
+  const recentBookings = dashboardData?.recent_bookings && dashboardData.recent_bookings.length > 0 ? dashboardData.recent_bookings : detailedBranchData.travel;
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -512,11 +556,7 @@ export default function AccountingDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Pending Invoices</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">45</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
-                <LuArrowUpRight className="w-2 h-2" />
-                +12%
-              </span>
+              <span className="text-xl font-black leading-none">{kpis.pending_invoices ?? 0}</span>
             </div>
           </div>
           <div className="shrink-0 flex items-center">
@@ -532,7 +572,7 @@ export default function AccountingDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Pending Budgets</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">8</span>
+              <span className="text-xl font-black leading-none">{kpis.pending_budgets ?? 0}</span>
             </div>
           </div>
           <div className="shrink-0 flex items-center">
@@ -548,11 +588,7 @@ export default function AccountingDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Total Processed Collections</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">125</span>
-              <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
-                <LuArrowUpRight className="w-2 h-2" />
-                +15%
-              </span>
+              <span className="text-xl font-black leading-none">{kpis.processed_collections ?? 0}</span>
             </div>
           </div>
           <div className="shrink-0 flex items-center">
@@ -568,7 +604,9 @@ export default function AccountingDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Monthly Gross Revenue</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">&#8369;3.2M</span>
+              <span className="text-xl font-black leading-none">
+                ₱{(kpis.monthly_revenue ?? 0) >= 1000000 ? `${((kpis.monthly_revenue ?? 0) / 1000000).toFixed(1)}M` : (kpis.monthly_revenue ?? 0).toLocaleString()}
+              </span>
             </div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
@@ -587,7 +625,7 @@ export default function AccountingDashboard() {
 
         {/* Column 1: Fleet Calendar */}
         <div className="h-full min-h-[500px] min-w-0">
-          <CalendarFleetAvailability />
+          <CalendarFleetAvailability tickets={tickets} buses={busesRes?.data} />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
@@ -650,11 +688,11 @@ export default function AccountingDashboard() {
                 <LuTicket className="w-3 h-3 text-violet-500" />
                 Travel Bookings
               </h3>
-              <DownloadActions variant="dark" title="Travel Bookings Weekly" data={detailedBranchData.travel} />
+              <DownloadActions variant="dark" title="Travel Bookings Weekly" data={recentBookings} />
             </div>
 
             <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5">
-              {detailedBranchData.travel.slice(0, 6).map((item, idx) => (
+              {recentBookings.slice(0, 6).map((item, idx) => (
                 <div key={item['Booking ID']} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                   <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
@@ -703,7 +741,7 @@ export default function AccountingDashboard() {
               <div>
                 <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">Top Agents</h4>
                 <div className="space-y-0.5">
-                  {topAgents.map((agent) => (
+                  {agents.map((agent) => (
                     <div key={agent.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
                         agent.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
@@ -715,7 +753,7 @@ export default function AccountingDashboard() {
                       <img src={agent.image} alt={agent.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{agent.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{agent.bookings} Bk â€¢ {agent.rating}â˜…</p>
+                        <p className="text-[7px] text-gray-400 font-medium">{agent.bookings} Bk • {agent.rating}★</p>
                       </div>
                       <p className="text-[8.5px] font-black text-rose-600 dark:text-rose-400 shrink-0 pr-0.5">{agent.sales}</p>
                     </div>
@@ -727,7 +765,7 @@ export default function AccountingDashboard() {
               <div className="pt-1 border-t border-gray-50 dark:border-gray-800/50">
                 <h4 className="text-[8px] font-black text-blue-500 uppercase tracking-wider mb-1">Top Coach Drivers</h4>
                 <div className="space-y-0.5">
-                  {topDrivers.map((driver) => (
+                  {drivers.map((driver) => (
                     <div key={driver.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
                         driver.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
@@ -739,7 +777,7 @@ export default function AccountingDashboard() {
                       <img src={driver.image} alt={driver.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
                       <div className="flex-1 min-w-0">
                         <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{driver.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{driver.trips} Trips â€¢ {driver.rating}â˜…</p>
+                        <p className="text-[7px] text-gray-400 font-medium">{driver.trips} Trips • {driver.rating}★</p>
                       </div>
                       <p className="text-[8.5px] font-black text-blue-600 dark:text-blue-400 shrink-0 pr-0.5">{driver.hours}h</p>
                     </div>
@@ -784,11 +822,11 @@ export default function AccountingDashboard() {
                   </>
                 ) : (
                   <>
-                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
+                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2026</span></span>
                     <DownloadActions
                       variant="dark"
-                      title="Fleet Utilization 2025"
-                      data={monthlyChartData.map(d => ({
+                      title="Fleet Utilization 2026"
+                      data={monthlyData.map(d => ({
                         Month: d.month,
                         'Utilization (%)': d.utilization,
                         'Bookings': d.bookings,
@@ -803,7 +841,7 @@ export default function AccountingDashboard() {
             <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
                 {chartTab === 'revenue' ? (
-                  <AreaChart data={monthlyChartData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
+                  <AreaChart data={monthlyData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
                     <defs>
                       <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
@@ -832,7 +870,7 @@ export default function AccountingDashboard() {
                     <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
                   </AreaChart>
                 ) : (
-                  <BarChart data={monthlyChartData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
+                  <BarChart data={monthlyData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
                     <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -865,24 +903,11 @@ const today = new Date();
 const y = today.getFullYear();
 const m = today.getMonth();
 
-const FLEET_SCHEDULES = [
-  { id: 1,  date: new Date(y, m, 1), bus: 'BUS-001', plate: 'ABC 1234', route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
-  { id: 2,  date: new Date(y, m, 3), bus: 'BUS-002', plate: 'DEF 5678', route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
-  { id: 3,  date: new Date(y, m, 5), bus: 'BUS-003', plate: 'GHI 9012', route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
-  { id: 4,  date: new Date(y, m, today.getDate()), bus: 'BUS-004', plate: 'JKL 3456', route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
-  { id: 5,  date: new Date(y, m, today.getDate()), bus: 'BUS-001', plate: 'ABC 1234', route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
-  { id: 6,  date: new Date(y, m, today.getDate()), bus: 'BUS-005', plate: 'MNO 7890', route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
-  { id: 7,  date: new Date(y, m, today.getDate() + 1), bus: 'BUS-002', plate: 'DEF 5678', route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
-  { id: 8,  date: new Date(y, m, today.getDate() + 2), bus: 'BUS-006', plate: 'PQR 1111', route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
-  { id: 9,  date: new Date(y, m, today.getDate() + 3), bus: 'BUS-003', plate: 'GHI 9012', route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
-  { id: 10, date: new Date(y, m, today.getDate() + 5), bus: 'BUS-007', plate: 'STU 2222', route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
-];
-
 function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function CalendarFleetAvailability() {
+function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any[]; buses?: any[] }) {
   const [calDate, setCalDate] = useState(new Date(y, m, 1));
   const [selected, setSelected] = useState<Date>(today);
 
@@ -898,13 +923,58 @@ function CalendarFleetAvailability() {
     return arr;
   }, [calYear, calMonth, daysInMonth, firstWeekday]);
 
-  const selectedEvents = FLEET_SCHEDULES.filter(s => isSameDay(s.date, selected));
+  const fleetSchedules = useMemo(() => {
+    if (!tickets || tickets.length === 0) {
+      return [
+        { id: 1,  date: new Date(y, m, 1), bus: 'BUS-001', plate: 'ABC 1234', route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
+        { id: 2,  date: new Date(y, m, 3), bus: 'BUS-002', plate: 'DEF 5678', route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
+        { id: 3,  date: new Date(y, m, 5), bus: 'BUS-003', plate: 'GHI 9012', route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
+        { id: 4,  date: new Date(y, m, today.getDate()), bus: 'BUS-004', plate: 'JKL 3456', route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
+        { id: 5,  date: new Date(y, m, today.getDate()), bus: 'BUS-001', plate: 'ABC 1234', route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
+        { id: 6,  date: new Date(y, m, today.getDate()), bus: 'BUS-005', plate: 'MNO 7890', route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
+        { id: 7,  date: new Date(y, m, today.getDate() + 1), bus: 'BUS-002', plate: 'DEF 5678', route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
+        { id: 8,  date: new Date(y, m, today.getDate() + 2), bus: 'BUS-006', plate: 'PQR 1111', route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
+        { id: 9,  date: new Date(y, m, today.getDate() + 3), bus: 'BUS-003', plate: 'GHI 9012', route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
+        { id: 10, date: new Date(y, m, today.getDate() + 5), bus: 'BUS-007', plate: 'STU 2222', route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
+      ];
+    }
+    return tickets.map((t: any) => ({
+      id: t.id,
+      date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
+      bus: t.bus ? `BUS-${t.bus.id}` : 'N/A',
+      plate: t.bus?.plate_number || t.plate_no || 'N/A',
+      route: `${t.pick_up || 'N/A'} - ${t.drop_off || 'N/A'}`,
+      driver: t.driver?.name || 'N/A',
+      depart: '09:00 AM',
+      status: t.status === 'completed' ? 'completed' : t.status === 'approved' ? 'in_service' : 'scheduled',
+      seats: t.no_of_passengers || 45,
+    }));
+  }, [tickets]);
+
+  const selectedEvents = useMemo(() => {
+    return fleetSchedules.filter(s => isSameDay(s.date, selected));
+  }, [fleetSchedules, selected]);
+
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const allBuses = ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
-  const occupiedToday = Array.from(new Set(selectedEvents.map(d => d.bus)));
-  const availableToday = allBuses.filter(b => !occupiedToday.includes(b));
+  const allBuses = useMemo(() => {
+    if (!buses || buses.length === 0) {
+      return ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
+    }
+    return buses.map((b: any) => `BUS-${b.id}`);
+  }, [buses]);
+
+  const occupiedToday = useMemo(() => {
+    return Array.from(new Set(selectedEvents.map(d => d.bus)));
+  }, [selectedEvents]);
+
+  const availableToday = useMemo(() => {
+    if (!buses || buses.length === 0) {
+      return ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'].filter(b => !occupiedToday.includes(b));
+    }
+    return buses.filter((b: any) => !occupiedToday.includes(`BUS-${b.id}`));
+  }, [buses, occupiedToday]);
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex flex-col h-full min-h-0">
@@ -953,7 +1023,7 @@ function CalendarFleetAvailability() {
         <div className="grid grid-cols-7 gap-0.5">
           {cells.map((date, i) => {
             if (!date) return <div key={`empty-${i}`} className="h-6.5" />;
-            const events = FLEET_SCHEDULES.filter(s => isSameDay(s.date, date));
+            const events = fleetSchedules.filter(s => isSameDay(s.date, date));
             const isToday = isSameDay(date, today);
             const isSel = isSameDay(date, selected);
             return (
@@ -988,13 +1058,19 @@ function CalendarFleetAvailability() {
           </div>
           <div className="space-y-1 overflow-y-auto pr-1 flex-1">
             {availableToday.map(b => {
-              const seats = b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50;
-              const plate = b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222';
+              const isStr = typeof b === 'string';
+              const name = isStr ? b : `BUS-${b.id}`;
+              const seats = isStr 
+                ? (b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50)
+                : (b.seating_capacity || 50);
+              const plate = isStr
+                ? (b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222')
+                : (b.plate_number || 'N/A');
               return (
-                <div key={b} className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-850 transition-all shadow-sm">
+                <div key={name} className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-855 transition-all shadow-sm">
                   <div className="flex items-center gap-1 min-w-0 flex-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{b}</span>
+                    <span className="text-[8.5px] font-black text-gray-900 dark:text-white uppercase tracking-wider shrink-0">{name}</span>
                     <span className="text-[7.5px] text-gray-400 dark:text-gray-500 font-bold truncate">({plate})</span>
                   </div>
                   <span className="text-[8.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1 py-0.5 rounded shrink-0">{seats} Seats</span>
@@ -1044,4 +1120,3 @@ function CalendarFleetAvailability() {
     </div>
   );
 }
-

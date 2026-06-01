@@ -328,7 +328,7 @@ export default function Collections() {
   };
 
   return (
-    <div className="space-y-8 pb-12 mt-10">
+    <div className="space-y-8 pb-12">
       <div className="flex justify-between items-center no-print">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Collections</h1>
         <button
@@ -497,17 +497,17 @@ export default function Collections() {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                       <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                         {(() => {
-                           const st = coll.service_type;
-                           if (st && st !== 'Other') return st;
-                           if (coll.other_service_type) return coll.other_service_type;
-                           // Fallback: derive from the linked invoice's first item
-                           const invoiceService = coll.invoice?.items?.[0]?.service?.name;
-                           if (invoiceService) return invoiceService;
-                           return 'N/A';
-                         })()}
-                       </p>
+                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+                        {(() => {
+                          const st = coll.service_type;
+                          if (st && st !== 'Other') return st;
+                          if (coll.other_service_type) return coll.other_service_type;
+                          // Fallback: derive from the linked invoice's first item
+                          const invoiceService = coll.invoice?.items?.[0]?.service?.name;
+                          if (invoiceService) return invoiceService;
+                          return 'N/A';
+                        })()}
+                      </p>
                     </td>
                     <td className="px-6 py-5">
                       <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">Total: ₱{Number(coll.billing_amount || coll.rate || 0).toLocaleString()}</p>

@@ -97,6 +97,8 @@ class ActionableApprovalNotification extends Notification
             'message' => $this->summary,
             'type' => 'warning',
             'link' => $this->modelType === 'purchase_order' ? '/procurement/purchase-orders' : '/fleet/maintenance',
+            'model_type' => $this->modelType,
+            'model_id' => $this->modelId,
         ];
     }
 }

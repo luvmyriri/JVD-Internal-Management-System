@@ -32,6 +32,7 @@ class Invoice extends Model
         'status',
         'created_by',
         'notes',
+        'cash_budget_request_id',
     ];
 
     public function customer(): BelongsTo
@@ -52,5 +53,10 @@ class Invoice extends Model
     public function collection()
     {
         return $this->hasOne(Collection::class);
+    }
+
+    public function cashBudgetRequest(): BelongsTo
+    {
+        return $this->belongsTo(CashBudgetRequest::class);
     }
 }

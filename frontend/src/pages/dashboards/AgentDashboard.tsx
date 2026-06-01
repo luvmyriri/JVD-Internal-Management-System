@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import {
@@ -26,6 +27,10 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { dashboardApi } from '../../api/dashboards';
+import { tripTicketApi } from '../../api/operations';
+import { fleetApi } from '../../api/fleet';
+import { LoadingScreen } from '../../components/ui';
 
 // Donut â€“ user distribution
 const userDistributionData = [
@@ -90,9 +95,6 @@ const detailedRevenueData = [
   { Month: 'April', 'Gross Revenue': 'PHP 1,850,000', Expenses: 'PHP 900,000', 'Net Profit': 'PHP 950,000', Status: 'Audited' },
   { Month: 'May', 'Gross Revenue': 'PHP 2,210,000', Expenses: 'PHP 1,000,000', 'Net Profit': 'PHP 1,210,000', Status: 'Estimated' },
 ];
-
-
-
 
 const topAgents = [
   {
@@ -196,6 +198,38 @@ export default function AgentDashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
   const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
+
+  // ── Live API Queries ──────────────────────────────────────────────────────
+  const { data: dashboardData, isLoading, error } = useQuery({
+    queryKey: ['dashboard', 'agent'],
+    queryFn: dashboardApi.getAgent,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: ticketsRaw } = useQuery({
+    queryKey: ['trip-tickets-agent'],
+    queryFn: tripTicketApi.getAll,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const { data: busesRaw } = useQuery({
+    queryKey: ['buses-agent'],
+    queryFn: () => fleetApi.list({ per_page: 100 }).then(r => r.data),
+    staleTime: 1000 * 60 * 5,
+  });
+
+  // Derive live values with mock fallbacks
+  const kpis             = dashboardData?.kpis ?? {};
+  const liveTopAgents    = dashboardData?.top_agents ?? [];
+  const liveTopDrivers   = dashboardData?.top_drivers ?? [];
+  const liveChartData    = dashboardData?.monthly_chart ?? [];
+
+  const activeTopAgents  = liveTopAgents.length  > 0 ? liveTopAgents  : topAgents;
+  const activeTopDrivers = liveTopDrivers.length > 0 ? liveTopDrivers : topDrivers;
+  const activeChartData  = liveChartData.length  > 0 ? liveChartData  : monthlyChartData;
+
+  const tickets = (ticketsRaw as any[]) ?? [];
+  const buses   = (busesRaw as any)?.data ?? [];
 
 
   const exportToPDF = (title: string, data: any[]) => {
@@ -441,6 +475,12 @@ export default function AgentDashboard() {
   };
 
   if (!user) return null;
+  if (isLoading) return <LoadingScreen />;
+  if (error) return (
+    <div className="flex items-center justify-center h-64 text-red-500 text-sm font-bold">
+      Failed to load dashboard data. Please try again.
+    </div>
+  );
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -512,7 +552,7 @@ export default function AgentDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">My Active Bookings</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">28</span>
+              <span className="text-xl font-black leading-none">{kpis.active_bookings ?? 28}</span>
               <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
                 <LuArrowUpRight className="w-2 h-2" />
                 +12%
@@ -532,7 +572,7 @@ export default function AgentDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Processed Visas</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">15</span>
+              <span className="text-xl font-black leading-none">{kpis.processed_visas ?? 15}</span>
             </div>
           </div>
           <div className="shrink-0 flex items-center">
@@ -548,7 +588,7 @@ export default function AgentDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Processed Passports</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">42</span>
+              <span className="text-xl font-black leading-none">{kpis.processed_passports ?? 42}</span>
               <span className="px-1.5 py-0.5 rounded-full text-[7px] font-black bg-white/25 text-white flex items-center gap-0.5">
                 <LuArrowUpRight className="w-2 h-2" />
                 +15%
@@ -568,7 +608,9 @@ export default function AgentDashboard() {
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Monthly Commissions</p>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-xl font-black leading-none">&#8369;45K</span>
+              <span className="text-xl font-black leading-none">
+                &#8369;{kpis.monthly_commission ? Number(kpis.monthly_commission).toLocaleString() : '45K'}
+              </span>
             </div>
           </div>
           <div className="shrink-0 flex items-center gap-2">
@@ -587,7 +629,7 @@ export default function AgentDashboard() {
 
         {/* Column 1: Fleet Calendar */}
         <div className="h-full min-h-[500px] min-w-0">
-          <CalendarFleetAvailability />
+          <CalendarFleetAvailability tickets={tickets} buses={buses} />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
@@ -703,7 +745,7 @@ export default function AgentDashboard() {
               <div>
                 <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">Top Agents</h4>
                 <div className="space-y-0.5">
-                  {topAgents.map((agent) => (
+                  {activeTopAgents.map((agent) => (
                     <div key={agent.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
                         agent.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
@@ -727,7 +769,7 @@ export default function AgentDashboard() {
               <div className="pt-1 border-t border-gray-50 dark:border-gray-800/50">
                 <h4 className="text-[8px] font-black text-blue-500 uppercase tracking-wider mb-1">Top Coach Drivers</h4>
                 <div className="space-y-0.5">
-                  {topDrivers.map((driver) => (
+                  {activeTopDrivers.map((driver) => (
                     <div key={driver.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
                         driver.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
@@ -882,7 +924,7 @@ function isSameDay(a: Date, b: Date) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-function CalendarFleetAvailability() {
+function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any[]; buses?: any[] }) {
   const [calDate, setCalDate] = useState(new Date(y, m, 1));
   const [selected, setSelected] = useState<Date>(today);
 
@@ -898,13 +940,36 @@ function CalendarFleetAvailability() {
     return arr;
   }, [calYear, calMonth, daysInMonth, firstWeekday]);
 
-  const selectedEvents = FLEET_SCHEDULES.filter(s => isSameDay(s.date, selected));
+  // Build schedule entries from live tickets + buses, fallback to static mock
+  const liveSchedules = useMemo(() => {
+    if (tickets.length === 0) return FLEET_SCHEDULES;
+    return tickets.map((t: any) => ({
+      id: t.id,
+      date: new Date(t.dispatch_date ?? t.created_at),
+      bus: t.bus?.bus_number ?? t.bus_id ?? 'N/A',
+      plate: t.bus?.plate_number ?? t.plate_number ?? 'N/A',
+      route: t.route ?? t.destination ?? 'N/A',
+      driver: t.driver ? `${t.driver.first_name} ${t.driver.last_name}` : 'N/A',
+      depart: t.departure_time ?? 'N/A',
+      status: t.status ?? 'scheduled',
+      seats: t.bus?.seating_capacity ?? 40,
+    }));
+  }, [tickets]);
+
+  // Build bus list from live fleet, fallback to static mock
+  const allBusIds = useMemo(() => {
+    if (buses.length === 0) return ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
+    return buses.map((b: any) => b.bus_number ?? b.id?.toString() ?? 'BUS-?');
+  }, [buses]);
+
+  const selectedEvents = liveSchedules.filter(s => isSameDay(s.date, selected));
   const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
-  const allBuses = ['BUS-001', 'BUS-002', 'BUS-003', 'BUS-004', 'BUS-005', 'BUS-006', 'BUS-007'];
   const occupiedToday = Array.from(new Set(selectedEvents.map(d => d.bus)));
-  const availableToday = allBuses.filter(b => !occupiedToday.includes(b));
+  const availableToday = allBusIds.filter(b => !occupiedToday.includes(b));
+
+
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 shadow-sm p-3 flex flex-col h-full min-h-0">
@@ -953,7 +1018,7 @@ function CalendarFleetAvailability() {
         <div className="grid grid-cols-7 gap-0.5">
           {cells.map((date, i) => {
             if (!date) return <div key={`empty-${i}`} className="h-6.5" />;
-            const events = FLEET_SCHEDULES.filter(s => isSameDay(s.date, date));
+            const events = liveSchedules.filter(s => isSameDay(s.date, date));
             const isToday = isSameDay(date, today);
             const isSel = isSameDay(date, selected);
             return (
@@ -988,8 +1053,9 @@ function CalendarFleetAvailability() {
           </div>
           <div className="space-y-1 overflow-y-auto pr-1 flex-1">
             {availableToday.map(b => {
-              const seats = b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50;
-              const plate = b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222';
+              const liveBus = buses.find((bus: any) => (bus.bus_number ?? bus.id?.toString()) === b);
+              const seats = liveBus?.seating_capacity ?? (b === 'BUS-002' ? 45 : b === 'BUS-003' ? 40 : b === 'BUS-006' ? 45 : 50);
+              const plate = liveBus?.plate_number ?? (b === 'BUS-002' ? 'JKL 5678' : b === 'BUS-003' ? 'GHI 9012' : b === 'BUS-006' ? 'PQR 1111' : 'STU 2222');
               return (
                 <div key={b} className="flex items-center justify-between p-1.5 rounded-lg bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-855 transition-all shadow-sm">
                   <div className="flex items-center gap-1 min-w-0 flex-1">

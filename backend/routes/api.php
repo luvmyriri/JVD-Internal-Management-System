@@ -27,6 +27,7 @@ use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\TripTicketController;
 use App\Http\Controllers\CashBudgetRequestController;
 use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\DashboardController;
 
 /*
 |--------------------------------------------------------------------------
@@ -287,6 +288,22 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::get('/role-permissions/{role}',        [RolePermissionController::class, 'show'])->name('role-permissions.show');
         Route::put('/role-permissions/{role}',        [RolePermissionController::class, 'update'])->name('role-permissions.update');
         Route::post('/role-permissions/{role}/reset', [RolePermissionController::class, 'reset'])->name('role-permissions.reset');
+    });
+
+    // ──────────────────────────────────────
+    // DASHBOARD AGGREGATIONS (role-specific)
+    // ──────────────────────────────────────
+    Route::prefix('dashboards')->group(function () {
+        Route::get('/admin',      [DashboardController::class, 'admin'])
+            ->middleware('role:super_admin,admin')->name('dashboards.admin');
+        Route::get('/accounting', [DashboardController::class, 'accounting'])
+            ->middleware('role:super_admin,admin,accounting')->name('dashboards.accounting');
+        Route::get('/agent',      [DashboardController::class, 'agent'])
+            ->middleware('role:super_admin,admin,agent')->name('dashboards.agent');
+        Route::get('/driver',     [DashboardController::class, 'driver'])
+            ->middleware('role:super_admin,admin,driver')->name('dashboards.driver');
+        Route::get('/hr',         [DashboardController::class, 'hr'])
+            ->middleware('role:super_admin,admin,human_resource')->name('dashboards.hr');
     });
 });
 

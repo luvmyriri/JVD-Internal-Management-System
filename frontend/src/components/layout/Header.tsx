@@ -4,6 +4,7 @@ import Swal from 'sweetalert2';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials, getAvatarUrl } from '../../utils';
 import client from '../../api/client';
+import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { 
   LuBell, 
   LuChevronDown, 
@@ -39,6 +40,8 @@ interface NotificationItem {
   type: 'info' | 'success' | 'warning' | 'error';
   read: boolean;
   link?: string;
+  model_type?: string;
+  model_id?: number;
 }
 
 interface MessageDetail {
@@ -1589,6 +1592,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
           setSelectedNotification(null);
           navigate(link);
         }}
+        onRefreshNotifications={fetchNotifications}
       />
     )}
 
@@ -1819,12 +1823,160 @@ function NotificationModal({
   theme,
   onClose,
   onNavigate,
+  onRefreshNotifications,
 }: {
   notification: NotificationItem;
   theme: string;
   onClose: () => void;
   onNavigate: (link: string) => void;
+  onRefreshNotifications?: () => void;
 }) {
+  const { user } = useAuth();
+  const [poDetails, setPoDetails] = useState<any>(null);
+  const [isLoadingPo, setIsLoadingPo] = useState(false);
+  const [isActionPending, setIsActionPending] = useState(false);
+
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  // 1. Try to get po_number from title or message or model
+  let poNumber = '';
+  const match = notification.title.match(/(PO-\d{4}-\d+|PO-[A-Z0-9-]+)/i);
+  if (match) {
+    poNumber = match[1];
+  }
+
+  const isPendingCeoApprovalPo = isSuperAdmin && (
+    notification.title.toLowerCase().includes('pending ceo approval') ||
+    notification.message.toLowerCase().includes('ceo approval')
+  );
+
+  useEffect(() => {
+    if (isPendingCeoApprovalPo) {
+      setIsLoadingPo(true);
+      const fetchPo = async () => {
+        try {
+          if (notification.model_id) {
+            const res = await purchaseOrderApi.get(Number(notification.model_id));
+            if (res.data.success && res.data.data.status === 'pending_ceo_approval') {
+              setPoDetails(res.data.data);
+            }
+          } else if (poNumber) {
+            const res = await client.get(`/purchase-orders`, {
+              params: { po_number: poNumber }
+            });
+            if (res.data.success && res.data.data.length > 0) {
+              const matchedPo = res.data.data.find((p: any) => p.po_number === poNumber);
+              if (matchedPo && matchedPo.status === 'pending_ceo_approval') {
+                setPoDetails(matchedPo);
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to load PO details for quick approval", err);
+        } finally {
+          setIsLoadingPo(false);
+        }
+      };
+      fetchPo();
+    }
+  }, [isPendingCeoApprovalPo, poNumber, notification.model_id]);
+
+  const handleApprovePo = async () => {
+    if (!poDetails) return;
+    
+    const confirm = await Swal.fire({
+      title: 'Approve Purchase Order?',
+      text: `Are you sure you want to approve ${poDetails.po_number} of amount ₱${Number(poDetails.total_amount || poDetails.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}? This will automatically generate the corresponding Cash Budget Request.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Approve',
+      confirmButtonColor: '#10b981',
+      cancelButtonText: 'Cancel',
+      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      setIsActionPending(true);
+      const res = await purchaseOrderApi.approve(poDetails.id, { approved: true });
+      if (res.data.success || res.status === 200) {
+        Swal.fire({
+          title: 'Approved!',
+          text: `Purchase Order ${poDetails.po_number} approved successfully.`,
+          icon: 'success',
+          timer: 2000,
+          showConfirmButton: false,
+          background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+          color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+        });
+        
+        if (onRefreshNotifications) onRefreshNotifications();
+        onClose();
+      }
+    } catch (err: any) {
+      console.error("Failed to approve PO from notification", err);
+      Swal.fire({
+        title: 'Error',
+        text: err?.response?.data?.message || 'Failed to approve purchase order.',
+        icon: 'error',
+        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+      });
+    } finally {
+      setIsActionPending(false);
+    }
+  };
+
+  const handleRejectPo = async () => {
+    if (!poDetails) return;
+    
+    const { value: notes, isConfirmed } = await Swal.fire({
+      title: 'Reject Purchase Order',
+      input: 'text',
+      inputPlaceholder: 'Provide reason for rejection (optional)...',
+      showCancelButton: true,
+      confirmButtonText: 'Reject PO',
+      confirmButtonColor: '#ef4444',
+      cancelButtonText: 'Cancel',
+      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      setIsActionPending(true);
+      const res = await purchaseOrderApi.approve(poDetails.id, { approved: false, notes: notes || '' });
+      if (res.data.success || res.status === 200) {
+        Swal.fire({
+          title: 'Rejected',
+          text: `Purchase Order ${poDetails.po_number} has been rejected.`,
+          icon: 'error',
+          timer: 2000,
+          showConfirmButton: false,
+          background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+          color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+        });
+        
+        if (onRefreshNotifications) onRefreshNotifications();
+        onClose();
+      }
+    } catch (err: any) {
+      console.error("Failed to reject PO from notification", err);
+      Swal.fire({
+        title: 'Error',
+        text: err?.response?.data?.message || 'Failed to reject purchase order.',
+        icon: 'error',
+        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+      });
+    } finally {
+      setIsActionPending(false);
+    }
+  };
+
   const typeConfig = {
     info:    { Icon: LuInfo,          bg: 'bg-blue-50 dark:bg-blue-950/40',    icon: 'text-blue-500',    badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300',    label: 'Info' },
     success: { Icon: LuCheck,         bg: 'bg-emerald-50 dark:bg-emerald-950/40', icon: 'text-emerald-500', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/60 dark:text-emerald-300', label: 'Success' },
@@ -1883,28 +2035,107 @@ function NotificationModal({
           <p className={`text-sm leading-relaxed ${ theme === 'dark' ? 'text-gray-300' : 'text-gray-600' }`}>
             {notification.message}
           </p>
+
+          {/* Quick Approval PO Details Section */}
+          {isLoadingPo && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 py-3 bg-slate-50 dark:bg-gray-800/40 rounded-xl">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span>Fetching Purchase Order details...</span>
+            </div>
+          )}
+
+          {!isLoadingPo && poDetails && (
+            <div className="mt-4 p-4 rounded-xl border border-slate-100 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-800/30 flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-gray-400">PO Details Summary</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-450 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-lg border border-blue-100/40 dark:border-blue-900/30">
+                  {poDetails.po_number}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs text-slate-655 dark:text-gray-300">
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-400 dark:text-gray-500">Supplier:</span>
+                  <span className="font-bold text-slate-800 dark:text-white truncate max-w-[200px]">
+                    {poDetails.supplier?.name || 'N/A'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-400 dark:text-gray-500">Grand Total:</span>
+                  <span className="font-black text-rose-500 dark:text-rose-400 text-sm">
+                    ₱{Number(poDetails.total_amount || poDetails.grand_total || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+
+              {/* PO Line Items */}
+              {poDetails.lineItems && poDetails.lineItems.length > 0 && (
+                <div className="mt-1 border-t border-slate-100 dark:border-gray-800 pt-2">
+                  <div className="text-[10px] uppercase font-bold text-slate-400 dark:text-gray-500 tracking-wider mb-1.5">Items ({poDetails.lineItems.length})</div>
+                  <div className="max-h-[100px] overflow-y-auto pr-1 flex flex-col gap-1.5">
+                    {poDetails.lineItems.map((item: any, idx: number) => (
+                      <div key={idx} className="flex justify-between items-start text-[11px] py-1 px-2 bg-white dark:bg-gray-900 rounded-lg border border-slate-100 dark:border-gray-800">
+                        <span className="font-medium text-slate-700 dark:text-gray-300 truncate max-w-[180px]">
+                          {item.item_name}
+                        </span>
+                        <span className="font-bold text-slate-500 dark:text-gray-400 shrink-0 ml-2">
+                          {item.quantity} x ₱{Number(item.unit_price).toLocaleString()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
-        <div className={`px-6 pb-6 flex items-center gap-3 ${ notification.link ? 'justify-between' : 'justify-end' }`}>
-          <button
-            onClick={onClose}
-            className={`px-4 py-2 text-xs font-bold rounded-xl transition ${
-              theme === 'dark'
-                ? 'text-gray-400 hover:bg-gray-800 hover:text-white'
-                : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
-            }`}
-          >
-            Dismiss
-          </button>
-          {notification.link && (
-            <button
-              onClick={() => onNavigate(notification.link!)}
-              className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
-            >
-              <LuExternalLink className="w-3.5 h-3.5" />
-              Go to Page
-            </button>
+        <div className={`px-6 pb-6 flex items-center gap-3 ${ poDetails ? 'justify-between' : (notification.link ? 'justify-between' : 'justify-end') }`}>
+          {poDetails ? (
+            <div className="flex items-center gap-2.5 w-full">
+              <button
+                onClick={handleRejectPo}
+                disabled={isActionPending}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded-xl shadow-md shadow-red-500/20 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <LuX className="w-3.5 h-3.5" />
+                Reject
+              </button>
+              <button
+                onClick={handleApprovePo}
+                disabled={isActionPending}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-500/20 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isActionPending ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <LuCheck className="w-3.5 h-3.5" />
+                )}
+                Approve
+              </button>
+            </div>
+          ) : (
+            <>
+              <button
+                onClick={onClose}
+                className={`px-4 py-2 text-xs font-bold rounded-xl transition ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                Dismiss
+              </button>
+              {notification.link && (
+                <button
+                  onClick={() => onNavigate(notification.link!)}
+                  className="flex items-center gap-1.5 px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
+                >
+                  <LuExternalLink className="w-3.5 h-3.5" />
+                  Go to Page
+                </button>
+              )}
+            </>
           )}
         </div>
       </div>

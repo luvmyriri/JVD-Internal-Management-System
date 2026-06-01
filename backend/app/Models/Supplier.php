@@ -42,10 +42,11 @@ class Supplier extends Model
                 ->exists();
 
             if (!$exists) {
+                $status = ($supplier->accreditation_status === 'accredited' || $supplier->is_verified) ? 'active' : 'pending_renewal';
                 $supplier->accreditations()->create([
                     'accreditation_type' => 'Supplier Verification',
                     'issuing_body'       => 'JVD Management',
-                    'status'             => 'pending_renewal',
+                    'status'             => $status,
                     'entity_name'        => $supplier->company_name,
                     'contact_person'     => $supplier->contact_person,
                     'contact_email'      => $supplier->email,
@@ -57,13 +58,15 @@ class Supplier extends Model
 
         static::updated(function (Supplier $supplier) {
             // Keep associated Accreditations in sync
+            $status = ($supplier->accreditation_status === 'accredited' || $supplier->is_verified) ? 'active' : 'pending_renewal';
             $supplier->accreditations()
                      ->where('accreditation_type', 'Supplier Verification')
                      ->update([
-                         'entity_name'    => $supplier->company_name,
-                         'contact_person' => $supplier->contact_person,
-                         'contact_email'  => $supplier->email,
-                     ]);
+                          'entity_name'    => $supplier->company_name,
+                          'contact_person' => $supplier->contact_person,
+                          'contact_email'  => $supplier->email,
+                          'status'         => $status,
+                      ]);
         });
 
         static::deleted(function (Supplier $supplier) {

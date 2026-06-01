@@ -35,6 +35,14 @@ class PurchaseOrderController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('po_number')) {
+            $query->where('po_number', $request->po_number);
+        }
+
+        if ($request->filled('search')) {
+            $query->where('po_number', 'like', "%{$request->search}%");
+        }
+
         $pos = $query->orderByDesc('created_at')
                      ->paginate($request->per_page ?? 20);
 
@@ -203,6 +211,15 @@ class PurchaseOrderController extends Controller
                 $inventory->unit_cost = $item->unit_price;
                 $inventory->save();
             }
+
+            // Automatically create a Cash Budget Request for the approved P.O.
+            \App\Models\CashBudgetRequest::create([
+                'date' => now()->toDateString(),
+                'total_amount' => $purchaseOrder->total_amount,
+                'status' => 'draft',
+                'prepared_by' => auth()->id(),
+                'purchase_order_id' => $purchaseOrder->id,
+            ]);
         }
 
         \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);

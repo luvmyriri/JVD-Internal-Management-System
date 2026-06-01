@@ -53,6 +53,7 @@ export interface Invoice {
   due_date?: string;
   status: string;
   notes?: string;
+  cash_budget_request_id?: number;
   created_at: string;
   customer?: any;
   items?: InvoiceItem[];

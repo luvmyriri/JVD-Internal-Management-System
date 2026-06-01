@@ -70,9 +70,10 @@ export interface TripTicket {
 export interface CashBudgetRequest {
   id: number;
   date: string;
-  travel_date: string;
+  travel_date?: string;
   plate_number?: string;
-  destination: string;
+  destination?: string;
+  purchase_order_id?: number;
   
   diesel?: number;
   meal_allowance?: number;
@@ -93,4 +94,16 @@ export interface CashBudgetRequest {
   
   preparedBy?: { id: number; name: string };
   approvedBy?: { id: number; name: string };
+  purchaseOrder?: {
+    id: number;
+    po_number: string;
+    total_amount: number;
+    lineItems?: Array<{
+      id: number;
+      item_name: string;
+      description?: string;
+      quantity: number;
+      unit_price: number;
+    }>;
+  };
 }

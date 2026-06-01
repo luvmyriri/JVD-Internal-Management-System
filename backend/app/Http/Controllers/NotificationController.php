@@ -28,6 +28,8 @@ class NotificationController extends Controller
                 'link'    => $data['link'] ?? null,
                 'read'    => !is_null($n->read_at),
                 'time'    => $n->created_at->diffForHumans(),
+                'model_type' => $data['model_type'] ?? null,
+                'model_id'   => $data['model_id'] ?? null,
             ];
         });
 

@@ -44,43 +44,84 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
 
         <div className="p-10 overflow-y-auto space-y-8 custom-scrollbar">
           <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{budget.travel_date}</h3>
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Destination</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{budget.destination}</h3>
-            </div>
+            {budget.purchase_order_id ? (
+              <div className="col-span-2 bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800">
+                <p className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Linked Purchase Order</p>
+                <h3 className="text-lg font-bold text-indigo-900 dark:text-indigo-300">P.O. #{budget.purchase_order_id}</h3>
+              </div>
+            ) : null}
+            
+            {budget.travel_date && (
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{budget.travel_date}</h3>
+              </div>
+            )}
+            
+            {budget.destination && (
+              <div>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Destination</p>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white">{budget.destination}</h3>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-6">
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Budget Breakdown</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">
+              {budget.purchase_order_id ? 'P.O. Line Items Breakdown' : 'Budget Breakdown'}
+            </p>
             <div className="space-y-3">
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Diesel</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.diesel?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Meal Allowance</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.meal_allowance?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">SOP</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.sop?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Tolls (Autosweep/Easytrip)</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((budget.autosweep || 0) + (budget.easytrip || 0)).toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Coach Captain Salary</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.coach_captain_salary?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                <span className="text-sm text-gray-600 dark:text-gray-400">Spare Driver Salary</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.spare_driver_salary?.toLocaleString() || 0}</span>
-              </div>
+              {budget.purchase_order_id ? (
+                <>
+                  {budget.purchaseOrder?.lineItems && budget.purchaseOrder.lineItems.length > 0 ? (
+                    budget.purchaseOrder.lineItems.map((item, idx) => (
+                      <div key={idx} className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-gray-900 dark:text-white">{item.item_name}</span>
+                          {item.description && (
+                            <span className="text-xs text-gray-400">{item.description}</span>
+                          )}
+                        </div>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">
+                          {item.quantity} x ₱ {item.unit_price?.toLocaleString()}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                      <span className="text-sm text-gray-600 dark:text-gray-400">PO Total Value</span>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.total_amount?.toLocaleString() || 0}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Diesel</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.diesel?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Meal Allowance</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.meal_allowance?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">SOP</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.sop?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Tolls (Autosweep/Easytrip)</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((budget.autosweep || 0) + (budget.easytrip || 0)).toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Coach Captain Salary</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.coach_captain_salary?.toLocaleString() || 0}</span>
+                  </div>
+                  <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Spare Driver Salary</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.spare_driver_salary?.toLocaleString() || 0}</span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-sm font-black text-gray-900 dark:text-white uppercase">Total Amount</span>
                 <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">₱ {budget.total_amount?.toLocaleString() || 0}</span>
@@ -146,7 +187,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
   };
 
   // Compute live sum reactively
-  const liveTotal = 
+  const liveTotal =
     Number(form.diesel) +
     Number(form.meal_allowance) +
     Number(form.sop) +
@@ -333,7 +374,8 @@ export default function CashBudgets() {
 
   const filtered = budgets.filter((b) =>
     b.destination?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.plate_number?.toLowerCase().includes(searchTerm.toLowerCase())
+    b.plate_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(b.purchase_order_id ?? '').includes(searchTerm)
   );
 
   return (
@@ -373,6 +415,7 @@ export default function CashBudgets() {
             <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
               <tr>
                 <th className="px-8 py-6 rounded-tl-[2rem]">ID</th>
+                <th className="px-8 py-6">Source</th>
                 <th className="px-8 py-6">Travel Date</th>
                 <th className="px-8 py-6">Destination</th>
                 <th className="px-8 py-6">Plate No</th>
@@ -390,9 +433,20 @@ export default function CashBudgets() {
                 filtered.map((budget) => (
                   <tr key={budget.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
                     <td className="px-8 py-5 font-bold text-gray-900 dark:text-white">#{budget.id}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.travel_date}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.destination}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.plate_number || 'TBA'}</td>
+                    <td className="px-8 py-5">
+                      {budget.purchase_order_id ? (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                          P.O. #{budget.purchase_order_id}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400">
+                          Trip
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.travel_date || '—'}</td>
+                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.destination || '—'}</td>
+                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{budget.plate_number || '—'}</td>
                     <td className="px-8 py-5 text-right font-bold text-gray-900 dark:text-white">₱ {budget.total_amount?.toLocaleString() || 0}</td>
                     <td className="px-8 py-5"><StatusBadge status={budget.status} /></td>
                     <td className="px-8 py-5 text-right">
