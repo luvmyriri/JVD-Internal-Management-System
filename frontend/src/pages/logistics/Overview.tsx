@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  LuTruck,
-  LuUsers,
-  LuCalendar,
-  LuSearch,
-  LuLoaderCircle,
-  LuEye,
-  LuPrinter,
-  LuCompass,
-  LuInfo,
-} from 'react-icons/lu';
+
 import { useUsers } from '../../hooks/useUsers';
 import { useBuses } from '../../hooks/useFleet';
 import { tripTicketApi } from '../../api/operations';
@@ -385,30 +375,24 @@ function printTripTicket(ticket: TripTicket) {
     </div>
   </div>
 </body>
-</html>`;
-
+</html>
+`;
   win.document.write(html);
   win.document.close();
 }
 
 function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in">
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-gray-100 dark:border-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-[1.5rem] bg-orange-50 dark:bg-orange-950/40 flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 dark:border-orange-900/30">
-              <LuCompass size={24} />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <StatusBadge status={ticket.status} />
-              </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
+            <div className="flex items-center gap-2 mt-1">
+              <StatusBadge status={ticket.status} />
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all">
-            <span className="sr-only">Close</span>
+          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm">
             ✕
           </button>
         </div>
@@ -417,28 +401,28 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
           <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-1">{ticket.date_of_travel}</h3>
-              {ticket.duration && <p className="text-xs text-gray-500 mt-1 font-medium">{ticket.duration}</p>}
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.date_of_travel}</h3>
+              {ticket.duration && <p className="text-xs text-gray-500 mt-1">{ticket.duration}</p>}
             </div>
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Passengers</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-1">{ticket.no_of_passengers} pax</h3>
-              {ticket.passenger_name && <p className="text-xs text-gray-500 mt-1 font-medium">{ticket.passenger_name}</p>}
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.no_of_passengers} pax</h3>
+              {ticket.passenger_name && <p className="text-xs text-gray-500 mt-1">{ticket.passenger_name}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-8 border-t border-b border-gray-50 dark:border-gray-800 py-6">
+          <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Route</p>
-              <div className="mt-3 space-y-3">
+              <div className="mt-2 space-y-3">
                 <div className="flex gap-3">
                   <div className="flex flex-col items-center mt-1">
                     <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-900 shadow-sm z-10" />
                     <div className="w-0.5 h-6 bg-gray-200 dark:bg-gray-800" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Pick Up</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">{ticket.pick_up}</p>
+                    <p className="text-xs text-gray-500 font-medium">Pick Up</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.pick_up}</p>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -446,58 +430,52 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
                     <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-900 shadow-sm" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Drop Off</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">{ticket.drop_off}</p>
+                    <p className="text-xs text-gray-500 font-medium">Drop Off</p>
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.drop_off}</p>
                   </div>
                 </div>
               </div>
             </div>
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vehicle & Driver</p>
-              <div className="mt-3 space-y-3 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800/60">
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Assigned Bus</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</p>
-                </div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Coach Captain</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white mt-0.5">{ticket.driver?.name || 'TBA'}</p>
-                </div>
+              <div className="mt-2 space-y-2">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">{ticket.driver?.name || 'TBA'}</p>
               </div>
             </div>
           </div>
 
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Allowances</p>
-            <div className="bg-gray-50 dark:bg-gray-800/40 rounded-2xl p-5 grid grid-cols-2 gap-4 border border-gray-100 dark:border-gray-800/60">
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50 pb-2">
-                <span className="text-xs font-bold text-gray-500">Meal Allowance</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {Number(ticket.meal_allowance || 0).toLocaleString()}</span>
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 grid grid-cols-2 gap-4">
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                <span className="text-sm text-gray-500">Meal</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.meal_allowance?.toLocaleString() || 0}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50 pb-2">
-                <span className="text-xs font-bold text-gray-500">Diesel Fund</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {Number(ticket.diesel || 0).toLocaleString()}</span>
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                <span className="text-sm text-gray-500">Diesel</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.diesel?.toLocaleString() || 0}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50 pb-2 font-medium">
-                <span className="text-xs font-bold text-gray-500">SOP</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {Number(ticket.sop || 0).toLocaleString()}</span>
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                <span className="text-sm text-gray-500">SOP</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.sop?.toLocaleString() || 0}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700/50 pb-2">
-                <span className="text-xs font-bold text-gray-500">Tolls / RFID</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {Number((ticket.easy_trip || 0) + (ticket.autosweep || 0)).toLocaleString()}</span>
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
+                <span className="text-sm text-gray-500">Tolls</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((ticket.easy_trip || 0) + (ticket.autosweep || 0)).toLocaleString()}</span>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between shrink-0">
+        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between">
           <button
             onClick={() => printTripTicket(ticket)}
-            className="flex items-center gap-2 px-6 py-3.5 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 active:scale-95 border border-orange-500/20"
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 active:scale-95 border border-blue-500/20"
           >
-            <LuPrinter size={16} /> Print DTT
+            Print DTT
           </button>
-          <button onClick={onClose} className="px-8 py-3.5 bg-gray-900 hover:bg-gray-800 text-white dark:bg-gray-800 dark:hover:bg-gray-700 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all border border-gray-200 dark:border-gray-700">
+          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
             Close
           </button>
         </div>
@@ -567,8 +545,8 @@ export default function LogisticsOverview() {
               Fleet & Crew Operations
             </p>
           </div>
-          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight mt-2 flex items-center gap-3">
-            <LuTruck className="text-blue-600" /> Logistics Control
+          <h1 className="text-4xl font-black text-gray-900 dark:text-white tracking-tight mt-2">
+            Logistics Control
           </h1>
         </div>
       </div>
@@ -576,10 +554,10 @@ export default function LogisticsOverview() {
       {/* KPI Cards section with Harmony HSL Glow Effects */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {[
-          { label: 'Total Captains', value: totalDrivers, desc: 'Drivers under Logistics Dept', icon: LuUsers, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-500/10' },
-          { label: 'Active Fleet', value: activeBuses, desc: 'Buses assigned & on duty', icon: LuTruck, from: 'from-indigo-500', to: 'to-indigo-700', shadow: 'shadow-indigo-500/10' },
-          { label: 'Ongoing Trips', value: ongoingTrips, desc: 'Trips currently dispatched', icon: LuCompass, from: 'from-amber-500', to: 'to-amber-700', shadow: 'shadow-amber-500/10' },
-          { label: 'Completed Jobs', value: completedTrips, desc: 'Successfully finalized trips', icon: LuCalendar, from: 'from-emerald-500', to: 'to-emerald-700', shadow: 'shadow-emerald-500/10' },
+          { label: 'Total Captains', value: totalDrivers, desc: 'Drivers under Logistics Dept', from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-500/10' },
+          { label: 'Active Fleet', value: activeBuses, desc: 'Buses assigned & on duty', from: 'from-indigo-500', to: 'to-indigo-700', shadow: 'shadow-indigo-500/10' },
+          { label: 'Ongoing Trips', value: ongoingTrips, desc: 'Trips currently dispatched', from: 'from-amber-500', to: 'to-amber-700', shadow: 'shadow-amber-500/10' },
+          { label: 'Completed Jobs', value: completedTrips, desc: 'Successfully finalized trips', from: 'from-emerald-500', to: 'to-emerald-700', shadow: 'shadow-emerald-500/10' },
         ].map((stat, i) => (
           <motion.div
             key={stat.label}
@@ -595,13 +573,7 @@ export default function LogisticsOverview() {
             <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10 blur-md pointer-events-none" />
             <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white/5 blur-md pointer-events-none" />
 
-            <div className="flex justify-between items-start">
-              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/10 group-hover:bg-white/30 transition-colors">
-                <stat.icon size={22} className="text-white" />
-              </div>
-            </div>
-
-            <div className="mt-8">
+            <div className="mt-4">
               <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">{stat.label}</p>
               <h3 className="text-3xl font-black tracking-tight">{stat.value}</h3>
               <p className="text-[10px] opacity-80 mt-1.5 font-medium">{stat.desc}</p>
@@ -624,7 +596,7 @@ export default function LogisticsOverview() {
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               )}
             >
-              <LuUsers size={16} /> Driver Directory
+              Driver Directory
             </button>
             <button
               onClick={() => { setActiveTab('trips'); setSearchQuery(''); }}
@@ -635,13 +607,12 @@ export default function LogisticsOverview() {
                   : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
               )}
             >
-              <LuCalendar size={16} /> Scheduled Trips
+              Scheduled Trips
             </button>
           </div>
 
           {/* Search bar */}
-          <div className="flex items-center gap-4 bg-white dark:bg-gray-800/80 px-4 py-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-sm flex-1">
-            <LuSearch className="text-gray-400 shrink-0" size={18} />
+          <div className="flex items-center gap-4 bg-white dark:bg-gray-800/80 px-6 py-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-sm flex-1">
             <input
               type="text"
               placeholder={activeTab === 'drivers' ? "Search driver name or ID..." : "Search trip, route, driver..."}
@@ -678,14 +649,13 @@ export default function LogisticsOverview() {
                     {isDriversLoading ? (
                       <tr>
                         <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <LuLoaderCircle size={28} className="animate-spin mx-auto mb-2 text-blue-500" />
+                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                           <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Driver Database...</p>
                         </td>
                       </tr>
                     ) : filteredDrivers.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <LuUsers size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
                           <p className="text-sm font-bold text-gray-500">No captain records matched the query.</p>
                         </td>
                       </tr>
@@ -728,8 +698,8 @@ export default function LogisticsOverview() {
                             <td className="px-8 py-6">
                               {driverBus ? (
                                 <div className="space-y-0.5">
-                                  <div className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                                    <LuTruck size={14} className="text-gray-400" /> {driverBus.plate_number}
+                                  <div className="text-sm font-bold text-gray-900 dark:text-white">
+                                    {driverBus.plate_number}
                                   </div>
                                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{driverBus.model}</div>
                                 </div>
@@ -781,14 +751,13 @@ export default function LogisticsOverview() {
                     {isTripsLoading ? (
                       <tr>
                         <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <LuLoaderCircle size={28} className="animate-spin mx-auto mb-2 text-blue-500" />
+                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
                           <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Trip Schedule...</p>
                         </td>
                       </tr>
                     ) : filteredTrips.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <LuCalendar size={36} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
                           <p className="text-sm font-bold text-gray-500">No scheduled trips matched the search criteria.</p>
                         </td>
                       </tr>
@@ -840,17 +809,17 @@ export default function LogisticsOverview() {
                             <div className="flex items-center justify-center gap-2">
                               <button
                                 onClick={() => setSelectedTicket(trip)}
-                                className="p-2.5 rounded-xl bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all border border-gray-100 dark:border-gray-800/80 active:scale-95"
+                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
                                 title="View Details"
                               >
-                                <LuEye size={15} />
+                                Details
                               </button>
                               <button
                                 onClick={() => printTripTicket(trip)}
-                                className="p-2.5 rounded-xl bg-orange-50 dark:bg-orange-950/20 hover:bg-orange-100 dark:hover:bg-orange-900/30 text-orange-600 transition-all border border-orange-100/50 dark:border-orange-900/20 active:scale-95"
+                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
                                 title="Print DTT"
                               >
-                                <LuPrinter size={15} />
+                                Print
                               </button>
                             </div>
                           </td>
@@ -867,7 +836,7 @@ export default function LogisticsOverview() {
 
       {/* Info notice about departments */}
       <div className="p-5 bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/30 rounded-3xl flex items-start gap-4">
-        <LuInfo className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+        <span className="font-bold text-sm text-blue-600 dark:text-blue-400 shrink-0 mt-0.5">INFO:</span>
         <div>
           <h4 className="text-sm font-black text-blue-900 dark:text-blue-300">Organizational Directive Adherence</h4>
           <p className="text-xs text-blue-700/80 dark:text-blue-400/80 mt-1 font-medium leading-relaxed">

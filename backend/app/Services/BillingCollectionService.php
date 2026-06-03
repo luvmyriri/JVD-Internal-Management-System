@@ -34,7 +34,6 @@ class BillingCollectionService
                 'date'               => $invoice->created_at->format('Y-m-d'),
                 'travel_date'        => $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
                 'rate'               => $invoice->total_amount,
-                'status'             => 'open',
                 'service_type'       => $serviceType,
                 'other_service_type' => $otherServiceType,
                 'billing_amount'     => $invoice->total_amount,

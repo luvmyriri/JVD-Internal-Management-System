@@ -114,7 +114,6 @@ class CollectionController extends Controller
             'pick_up' => 'sometimes|string',
             'drop_off' => 'sometimes|string',
             'rate' => 'sometimes|numeric',
-            'status' => 'sometimes|in:open,completed',
             'payments' => 'nullable|array',
         ]);
 
@@ -146,7 +145,6 @@ class CollectionController extends Controller
 
         $collection->update([
             'collection_status' => 'completed',
-            'status'            => 'completed',
             'paid_amount'       => $collection->billing_amount,
             'remaining_balance' => 0,
         ]);

@@ -64,7 +64,6 @@ export const navigation: NavSection[] = [
   {
     title: 'Operations',
     items: [
-      { label: 'Trip Tickets', path: '/operations/trip-tickets', icon: <LuMap />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.trip_tickets' },
       { label: 'Commissions', path: '/operations/commissions',  icon: <LuSignature />, roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.commissions' },
       { label: 'Cash Budgets',path: '/operations/cash-budgets', icon: <LuWallet />,    roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'operations', pageKey: 'operations.cash_budgets' },
     ],
@@ -73,6 +72,7 @@ export const navigation: NavSection[] = [
     title: 'Logistics',
     items: [
       { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'admin', 'agent'], module: 'logistics', pageKey: 'logistics.overview' },
+      { label: 'Trip Tickets', path: '/logistics/trip-tickets', icon: <LuMap />,       roles: ['super_admin', 'admin', 'accounting', 'agent'], module: 'logistics', pageKey: 'logistics.trip_tickets' },
     ],
   },
   {
@@ -271,6 +271,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                     <li key={item.path}>
                       <NavLink
                         to={item.path}
+                        end
                         onClick={() => onClose?.()}
                         className={({ isActive }) =>
                           `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ${

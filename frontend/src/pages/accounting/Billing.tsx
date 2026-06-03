@@ -43,7 +43,8 @@ export default function Billing() {
       return response.data;
     },
     placeholderData: keepPreviousData,
-    staleTime: 10_000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const invoices: Invoice[] = invoiceData?.data || [];
@@ -67,12 +68,16 @@ export default function Billing() {
     const styles: any = {
       paid: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50',
       pending_payment: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
+      disbursed_budget: 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900/50',
       cancelled: 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50',
+      partial: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
     };
     const icons: any = {
       paid: <LuFileCheck className="w-3 h-3" />,
       pending_payment: <LuClock className="w-3 h-3" />,
+      disbursed_budget: <LuBanknote className="w-3 h-3" />,
       cancelled: <LuX className="w-3 h-3" />,
+      partial: <LuClock className="w-3 h-3" />,
     };
 
     return (
@@ -165,7 +170,7 @@ export default function Billing() {
 
           {/* Segmented active capsules */}
           <div className="flex overflow-x-auto hide-scrollbar flex-nowrap w-full sm:w-auto bg-gray-50 dark:bg-gray-800/70 p-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/30">
-            {['all', 'paid', 'pending_payment'].map((status) => (
+            {(['all', 'paid', 'pending_payment', 'partial', 'disbursed_budget'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setStatusFilter(status)}
@@ -174,7 +179,7 @@ export default function Billing() {
                   : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                   }`}
               >
-                {status.replace('_', ' ')}
+                {status.replaceAll('_', ' ')}
               </button>
             ))}
           </div>
@@ -490,6 +495,14 @@ export default function Billing() {
                       <p className="text-[10px] text-violet-500 dark:text-violet-500 mt-1 font-mono">{selectedInvoice.notes}</p>
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Notes (non-CB invoices only) */}
+              {!selectedInvoice.cash_budget_request_id && selectedInvoice.notes && (
+                <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Notes</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">{selectedInvoice.notes}</p>
                 </div>
               )}
 

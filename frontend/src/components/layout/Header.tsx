@@ -1835,8 +1835,11 @@ function NotificationModal({
   const [poDetails, setPoDetails] = useState<any>(null);
   const [isLoadingPo, setIsLoadingPo] = useState(false);
   const [isActionPending, setIsActionPending] = useState(false);
+  const [cashBudgetDetails, setCashBudgetDetails] = useState<any>(null);
+  const [isLoadingCb, setIsLoadingCb] = useState(false);
 
   const isSuperAdmin = user?.role === 'super_admin';
+  const isAccountingRole = ['accounting', 'accounting_executive', 'super_admin'].includes(user?.role ?? '');
 
   // 1. Try to get po_number from title or message or model
   let poNumber = '';
@@ -1880,6 +1883,72 @@ function NotificationModal({
       fetchPo();
     }
   }, [isPendingCeoApprovalPo, poNumber, notification.model_id]);
+
+  // ── Cash Budget quick-disburse ─────────────────────────────
+  const isCashBudgetNotification = isAccountingRole &&
+    notification.model_type === 'cash_budget' &&
+    !!notification.model_id;
+
+  useEffect(() => {
+    if (!isCashBudgetNotification) return;
+    setIsLoadingCb(true);
+    const fetchCb = async () => {
+      try {
+        const res = await client.get(`/cash-budgets/${notification.model_id}`);
+        const data = res.data?.data ?? res.data;
+        // Only show quick-action if still pending accounting action (status === 'pending_accounting')
+        if (data && data.status === 'pending_accounting') {
+          setCashBudgetDetails(data);
+        }
+      } catch (err) {
+        console.error('Failed to load cash budget details for quick disburse', err);
+      } finally {
+        setIsLoadingCb(false);
+      }
+    };
+    fetchCb();
+  }, [isCashBudgetNotification, notification.model_id]);
+
+  const handleApproveCb = async () => {
+    if (!cashBudgetDetails) return;
+    const confirm = await Swal.fire({
+      title: 'Approve Cash Budget?',
+      text: `Approve cash budget of ₱${Number(cashBudgetDetails.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}?`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonText: 'Yes, Approve',
+      confirmButtonColor: '#2563eb',
+      cancelButtonText: 'Cancel',
+      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    });
+    if (!confirm.isConfirmed) return;
+    try {
+      setIsActionPending(true);
+      await client.put(`/cash-budgets/${cashBudgetDetails.id}`, { status: 'approved' });
+      Swal.fire({
+        title: 'Approved!',
+        text: 'Cash budget has been approved and is ready for disbursement.',
+        icon: 'success',
+        timer: 2500,
+        showConfirmButton: false,
+        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+      });
+      if (onRefreshNotifications) onRefreshNotifications();
+      onClose();
+    } catch (err: any) {
+      Swal.fire({
+        title: 'Error',
+        text: err?.response?.data?.message || 'Failed to approve cash budget.',
+        icon: 'error',
+        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
+        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+      });
+    } finally {
+      setIsActionPending(false);
+    }
+  };
 
   const handleApprovePo = async () => {
     if (!poDetails) return;
@@ -2087,11 +2156,77 @@ function NotificationModal({
               )}
             </div>
           )}
+          {/* Cash Budget Quick-Disburse Section */}
+          {isLoadingCb && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-gray-400 py-3 bg-slate-50 dark:bg-gray-800/40 rounded-xl">
+              <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+              <span>Loading cash budget details...</span>
+            </div>
+          )}
+
+          {!isLoadingCb && cashBudgetDetails && (
+            <div className="mt-4 p-4 rounded-xl border border-slate-100 dark:border-gray-800 bg-slate-50/50 dark:bg-gray-800/30 flex flex-col gap-3">
+              <div className="flex items-center justify-between border-b border-slate-100 dark:border-gray-800 pb-2">
+                <span className="text-xs font-bold text-slate-500 dark:text-gray-400">Cash Budget Summary</span>
+                <span className="text-xs font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-lg border border-blue-100/40 dark:border-blue-900/30">
+                  CB #{cashBudgetDetails.id}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5 text-xs">
+                {cashBudgetDetails.destination && (
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-400 dark:text-gray-500">Destination:</span>
+                    <span className="font-bold text-slate-800 dark:text-white">{cashBudgetDetails.destination}</span>
+                  </div>
+                )}
+                {cashBudgetDetails.tripTicket?.control_no && (
+                  <div className="flex justify-between">
+                    <span className="font-semibold text-slate-400 dark:text-gray-500">Trip Ticket:</span>
+                    <span className="font-bold text-slate-800 dark:text-white">DTT #{cashBudgetDetails.tripTicket.control_no}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="font-semibold text-slate-400 dark:text-gray-500">Total Amount:</span>
+                  <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">
+                    ₱{Number(cashBudgetDetails.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer Actions */}
-        <div className={`px-6 pb-6 flex items-center gap-3 ${ poDetails ? 'justify-between' : (notification.link ? 'justify-between' : 'justify-end') }`}>
-          {poDetails ? (
+        <div className={`px-6 pb-6 flex items-center gap-3 ${ (poDetails || cashBudgetDetails) ? 'justify-between' : (notification.link ? 'justify-between' : 'justify-end') }`}>
+          {cashBudgetDetails && !poDetails ? (
+            <div className="flex items-center gap-2.5 w-full">
+              <button
+                onClick={onClose}
+                disabled={isActionPending}
+                className={`px-4 py-2 text-xs font-bold rounded-xl transition ${
+                  theme === 'dark'
+                    ? 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                    : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'
+                }`}
+              >
+                Dismiss
+              </button>
+              <button
+                onClick={handleApproveCb}
+                disabled={isActionPending}
+                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-600 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-500/20 transition active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isActionPending ? (
+                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+                )}
+                {!isActionPending && (
+                  <span>Approve Budget</span>
+                )}
+              </button>
+            </div>
+          ) : poDetails ? (
             <div className="flex items-center gap-2.5 w-full">
               <button
                 onClick={handleRejectPo}

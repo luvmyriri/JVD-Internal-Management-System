@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { LuMap, LuSearch, LuPlus, LuX, LuNavigation, LuUser, LuCoins, LuPrinter, LuCalendar, LuChevronRight } from 'react-icons/lu';
-import { Eye } from 'lucide-react';
+
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 import { tripTicketApi } from '../../api/operations';
 import type { TripTicket } from '../../types';
 import { Modal, Button } from '../../components/ui';
@@ -32,7 +32,7 @@ function TripTypeBadge({ type }: { type?: string }) {
         ? 'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-900/20 dark:text-violet-400 dark:border-violet-900/40'
         : 'bg-teal-50 text-teal-700 border-teal-200 dark:bg-teal-900/20 dark:text-teal-400 dark:border-teal-900/40'
     }`}>
-      {isIntl ? '🌏' : '🏠'} {isIntl ? 'International' : 'Domestic'}
+      {isIntl ? 'International' : 'Domestic'}
     </span>
   );
 }
@@ -409,15 +409,13 @@ function printTripTicket(ticket: TripTicket) {
   win.document.close();
 }
 
-function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClose: () => void }) {
+function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket: TripTicket; onClose: () => void; onCustomizeApprove?: (ticket: TripTicket) => void }) {
+  const { user } = useAuth();
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 rounded-[1.5rem] bg-orange-50 dark:bg-orange-900/30 flex items-center justify-center text-orange-600 shadow-sm">
-              <LuMap size={24} />
-            </div>
             <div>
               <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
               <div className="flex items-center gap-2 mt-1">
@@ -425,8 +423,8 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 transition-all">
-            <LuX size={20} />
+          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm">
+            ✕
           </button>
         </div>
 
@@ -502,12 +500,25 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
         </div>
 
         <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between">
-          <button
-            onClick={() => printTripTicket(ticket)}
-            className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-orange-600/20 active:scale-95"
-          >
-            <LuPrinter size={16} /> Print DTT
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => printTripTicket(ticket)}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 active:scale-95"
+            >
+              Print DTT
+            </button>
+            {ticket.status === 'draft' && user?.role !== 'driver' && onCustomizeApprove && (
+              <button
+                onClick={() => {
+                  onCustomizeApprove(ticket);
+                  onClose();
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer"
+              >
+                Customize & Approve
+              </button>
+            )}
+          </div>
           <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
             Close
           </button>
@@ -517,7 +528,7 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
   );
 }
 
-function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
+function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose: () => void }) {
   const qc = useQueryClient();
   const { data: busesData } = useBuses({ per_page: 999 });
   const { data: driversData } = useUsers({ role: 'driver', per_page: 999 });
@@ -526,34 +537,39 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
   const drivers = driversData?.data || [];
 
   const [form, setForm] = useState({
-    control_no: '',
-    issue_date: new Date().toISOString().split('T')[0],
-    date_of_travel: new Date().toISOString().split('T')[0],
-    duration: '',
-    pick_up: '',
-    drop_off: '',
-    bus_id: '' as string | number,
-    plate_no: '',
-    no_of_passengers: 1,
-    driver_id: '' as string | number,
-    meal_allowance: 0,
-    diesel: 0,
-    sop: 0,
-    easy_trip: 0,
-    autosweep: 0,
-    passenger_name: '',
-    trip_type: 'domestic' as 'domestic' | 'international',
+    control_no: ticket?.control_no || '',
+    issue_date: ticket?.issue_date ? ticket.issue_date.split('T')[0] : new Date().toISOString().split('T')[0],
+    date_of_travel: ticket?.date_of_travel ? ticket.date_of_travel.split('T')[0] : new Date().toISOString().split('T')[0],
+    duration: ticket?.duration || '',
+    pick_up: ticket?.pick_up || '',
+    drop_off: ticket?.drop_off || '',
+    bus_id: ticket?.bus_id || '' as string | number,
+    plate_no: ticket?.plate_no || '',
+    no_of_passengers: ticket?.no_of_passengers || 1,
+    driver_id: ticket?.driver_id || '' as string | number,
+    meal_allowance: ticket?.meal_allowance || 0,
+    diesel: ticket?.diesel || 0,
+    sop: ticket?.sop || 0,
+    easy_trip: ticket?.easy_trip || 0,
+    autosweep: ticket?.autosweep || 0,
+    passenger_name: ticket?.passenger_name || '',
+    trip_type: (ticket as any)?.trip_type || 'domestic' as 'domestic' | 'international',
   });
 
   const mutation = useMutation({
-    mutationFn: (data: any) => tripTicketApi.create(data),
+    mutationFn: (data: any) => {
+      if (ticket) {
+        return tripTicketApi.update(ticket.id, { ...data, status: 'approved' });
+      }
+      return tripTicketApi.create(data);
+    },
     onSuccess: () => {
-      toast.success('Trip Ticket created successfully');
+      toast.success(ticket ? 'Trip Ticket approved successfully' : 'Trip Ticket created successfully');
       qc.invalidateQueries({ queryKey: ['trip-tickets'] });
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to create trip ticket');
+      toast.error(error.response?.data?.message || `Failed to ${ticket ? 'approve' : 'create'} trip ticket`);
     },
   });
 
@@ -585,13 +601,12 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="New Trip Ticket" size="xl">
+    <Modal isOpen={true} onClose={onClose} title={ticket ? "Customize & Approve Trip Ticket" : "New Trip Ticket"} size="xl">
       <form onSubmit={handleSubmit} className="space-y-4 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {/* Section 1: Document Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-orange-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuCalendar size={14} /> Document Details</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span>Document Details</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -602,7 +617,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   required
                   value={form.control_no}
                   onChange={e => setForm(p => ({ ...p, control_no: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. DTT-2024-001"
                 />
               </div>
@@ -613,7 +628,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   required
                   value={form.issue_date}
                   onChange={e => setForm(p => ({ ...p, issue_date: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -623,7 +638,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   required
                   value={form.date_of_travel}
                   onChange={e => setForm(p => ({ ...p, date_of_travel: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -644,7 +659,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                         : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-400'
                     }`}
                   >
-                    {t === 'international' ? '🌏 International' : '🏠 Domestic'}
+                    {t === 'international' ? 'International' : 'Domestic'}
                   </button>
                 ))}
               </div>
@@ -654,9 +669,8 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
 
         {/* Section 2: Route & Passenger Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-orange-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuNavigation size={14} /> Route & Passenger Details</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span>Route & Passenger Details</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -667,7 +681,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   required
                   value={form.pick_up}
                   onChange={e => setForm(p => ({ ...p, pick_up: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. JVD Terminal, Cubao"
                 />
               </div>
@@ -678,7 +692,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   required
                   value={form.drop_off}
                   onChange={e => setForm(p => ({ ...p, drop_off: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Baguio City Terminal"
                 />
               </div>
@@ -692,7 +706,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="1"
                   value={form.no_of_passengers}
                   onChange={e => setForm(p => ({ ...p, no_of_passengers: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -701,7 +715,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   type="text"
                   value={form.passenger_name}
                   onChange={e => setForm(p => ({ ...p, passenger_name: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Lakbay Aral Tour Group"
                 />
               </div>
@@ -711,7 +725,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   type="text"
                   value={form.duration}
                   onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. 3 Days Roundtrip"
                 />
               </div>
@@ -721,9 +735,8 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
 
         {/* Section 3: Bus & Crew Assignment */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-orange-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuUser size={14} /> Bus & Crew Assignment</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span>Bus & Crew Assignment</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -732,7 +745,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                 <select
                   value={form.driver_id}
                   onChange={e => setForm(p => ({ ...p, driver_id: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none bg-transparent"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-transparent"
                 >
                   <option value="">Select a Driver (TBA)</option>
                   {drivers.map((driver: any) => (
@@ -747,7 +760,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                 <select
                   value={form.bus_id}
                   onChange={e => setForm(p => ({ ...p, bus_id: e.target.value, plate_no: '' }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 appearance-none bg-transparent"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-transparent"
                 >
                   <option value="">Select a Fleet Bus (or type manual)</option>
                   {buses.map((bus: any) => (
@@ -765,7 +778,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   value={form.bus_id ? buses.find((b: any) => b.id === Number(form.bus_id))?.plate_number || '' : form.plate_no}
                   onChange={e => setForm(p => ({ ...p, plate_no: e.target.value }))}
                   placeholder={form.bus_id ? "Auto-synced with fleet" : "e.g. NDG-5818"}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-800"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:bg-gray-50 dark:disabled:bg-gray-800"
                 />
               </div>
             </div>
@@ -774,9 +787,8 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
 
         {/* Section 4: Operational Allowances */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-orange-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuCoins size={14} /> Operational Allowances (₱)</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+            <span>Operational Allowances (₱)</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -787,7 +799,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="0"
                   value={form.meal_allowance}
                   onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -797,7 +809,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="0"
                   value={form.diesel}
                   onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -807,7 +819,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="0"
                   value={form.sop}
                   onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
@@ -817,7 +829,7 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="0"
                   value={form.easy_trip}
                   onChange={e => setForm(p => ({ ...p, easy_trip: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
@@ -827,20 +839,39 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
                   min="0"
                   value={form.autosweep}
                   onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
           </div>
         </details>
 
+        {ticket && (
+          <div className="mx-2 mb-2 px-5 py-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
+            <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Auto-Budget Notice</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Upon approval, a <strong>Cash Budget Request</strong> will be automatically created in the Operations module based on the allowances entered above.
+            </p>
+          </div>
+        )}
+
         <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button type="submit" isLoading={mutation.isPending}>
-            Create Ticket
-          </Button>
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {mutation.isPending && (
+              <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+            )}
+            {ticket ? "Approve & Send to Cash Budgets" : "Create Ticket"}
+          </button>
         </div>
       </form>
     </Modal>
@@ -848,10 +879,12 @@ function CreateTripTicketModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function TripTickets() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'domestic' | 'international'>('all');
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [editingTicket, setEditingTicket] = useState<TripTicket | null>(null);
 
   const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['trip-tickets'],
@@ -875,20 +908,19 @@ export default function TripTickets() {
     <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
         <div>
-          <div className="flex items-center gap-3 text-sm font-bold text-orange-600 dark:text-orange-500 mb-2 uppercase tracking-widest">
-            <LuMap size={18} /> Operations Module
+          <div className="flex items-center gap-3 text-sm font-bold text-blue-600 dark:text-blue-500 mb-2 uppercase tracking-widest">
+            Logistics Module
           </div>
           <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Trip Tickets</h1>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
           <div className="relative group w-full sm:w-auto">
-            <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" size={18} />
             <input
               type="text"
               placeholder="Search route or control no..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500 transition-all text-sm"
+              className="px-5 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
             />
           </div>
           {/* Trip Type Filter */}
@@ -905,13 +937,15 @@ export default function TripTickets() {
                         : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-white shadow'
                     : 'text-gray-500 hover:text-gray-700 dark:hover:text-white'
                 }`}>
-                {t === 'international' ? '🌏' : t === 'domestic' ? '🏠' : 'All'}
+                {t === 'international' ? 'International' : t === 'domestic' ? 'Domestic' : 'All'}
               </button>
             ))}
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-orange-600 hover:bg-orange-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-orange-600/20 active:scale-95 cursor-pointer">
-            <LuPlus size={18} /> New Trip Ticket
-          </button>
+          {user?.role !== 'driver' && (
+            <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
+              + New Trip Ticket
+            </button>
+          )}
         </div>
       </div>
 
@@ -957,8 +991,8 @@ export default function TripTickets() {
                     </td>
                     <td className="px-8 py-5"><StatusBadge status={ticket.status} /></td>
                     <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedTicket(ticket)} className="p-2 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-xl transition-all">
-                        <Eye size={18} />
+                      <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
+                        Details
                       </button>
                     </td>
                   </tr>
@@ -970,11 +1004,15 @@ export default function TripTickets() {
       </div>
 
       {selectedTicket && (
-        <TripTicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} />
+        <TripTicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onCustomizeApprove={setEditingTicket} />
       )}
 
       {showCreate && (
-        <CreateTripTicketModal onClose={() => setShowCreate(false)} />
+        <TripTicketFormModal onClose={() => setShowCreate(false)} />
+      )}
+
+      {editingTicket && (
+        <TripTicketFormModal ticket={editingTicket} onClose={() => setEditingTicket(null)} />
       )}
     </div>
   );
