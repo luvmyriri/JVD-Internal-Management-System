@@ -87,17 +87,6 @@ class CashBudgetRequestController extends Controller
             // Auto-generate invoice in Billing if it doesn't exist yet
             $existingInvoice = \App\Models\Invoice::where('cash_budget_request_id', $budget->id)->first();
             if (!$existingInvoice) {
-                // Find or create a generic service for PO/Internal Billing
-                $service = \App\Models\Service::firstOrCreate(
-                    ['name' => 'Procurement Expense'],
-                    [
-                        'category' => 'Internal',
-                        'price' => 0,
-                        'is_active' => true,
-                        'created_by' => auth()->id() ?? 1,
-                    ]
-                );
-
                 $customerName = 'Internal Expense';
                 if ($budget->purchase_order_id) {
                     $po = \App\Models\PurchaseOrder::with('supplier')->find($budget->purchase_order_id);
@@ -105,6 +94,12 @@ class CashBudgetRequestController extends Controller
                         $customerName = $po->supplier->name;
                     }
                 }
+
+                // Build invoice notes with destination/plate info
+                $notesParts = ['Auto-generated from Cash Budget Request #' . $budget->id];
+                if ($budget->destination) $notesParts[] = 'Destination: ' . $budget->destination;
+                if ($budget->plate_number) $notesParts[] = 'Plate: ' . $budget->plate_number;
+                if ($budget->travel_date) $notesParts[] = 'Travel Date: ' . $budget->travel_date->format('Y-m-d');
 
                 $invoice = \App\Models\Invoice::create([
                     'invoice_number' => 'INV-CB-' . strtoupper(\Illuminate\Support\Str::random(6)),
@@ -119,17 +114,44 @@ class CashBudgetRequestController extends Controller
                     'balance' => $budget->total_amount,
                     'status' => 'pending_payment',
                     'created_by' => auth()->id() ?? 1,
-                    'notes' => 'Auto-generated from Cash Budget Request #' . $budget->id,
+                    'notes' => implode(' | ', $notesParts),
                     'cash_budget_request_id' => $budget->id,
                 ]);
 
-                \App\Models\InvoiceItem::create([
-                    'invoice_id' => $invoice->id,
-                    'service_id' => $service->id,
-                    'quantity' => 1,
-                    'unit_price' => $budget->total_amount,
-                    'total_price' => $budget->total_amount,
-                ]);
+                // Map each cash budget expense field to a human-readable label
+                $expenseFields = [
+                    'diesel'               => 'Diesel',
+                    'meal_allowance'       => 'Meal Allowance',
+                    'sop'                  => 'SOP',
+                    'autosweep'            => 'Autosweep',
+                    'easytrip'             => 'Easytrip',
+                    'coach_captain_salary' => 'Coach Captain Salary',
+                    'spare_driver_salary'  => 'Spare Driver Salary',
+                ];
+
+                foreach ($expenseFields as $field => $label) {
+                    $amount = (float) ($budget->$field ?? 0);
+                    if ($amount <= 0) continue;
+
+                    // Get or create a service per expense type
+                    $service = \App\Models\Service::firstOrCreate(
+                        ['name' => $label],
+                        [
+                            'category' => 'Cash Budget',
+                            'price'    => 0,
+                            'is_active' => true,
+                            'created_by' => auth()->id() ?? 1,
+                        ]
+                    );
+
+                    \App\Models\InvoiceItem::create([
+                        'invoice_id'  => $invoice->id,
+                        'service_id'  => $service->id,
+                        'quantity'    => 1,
+                        'unit_price'  => $amount,
+                        'total_price' => $amount,
+                    ]);
+                }
             }
         }
 

@@ -86,6 +86,7 @@ export default function POS() {
     coaster_price: 0,
     tour_kms: 0,
     tour_hours: 0,
+    cost_breakdown: '',
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
@@ -392,7 +393,8 @@ export default function POS() {
       bus_price: service.bus_price !== undefined && service.bus_price !== null ? Number(service.bus_price) : 0,
       coaster_price: service.coaster_price !== undefined && service.coaster_price !== null ? Number(service.coaster_price) : 0,
       tour_kms: service.tour_kms !== undefined && service.tour_kms !== null ? Number(service.tour_kms) : 0,
-      tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? Number(service.tour_hours) : 0
+      tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? Number(service.tour_hours) : 0,
+      cost_breakdown: service.cost_breakdown || '',
     });
     // For images, we need to handle existing ones. 
     // We'll map them to full URLs for preview but keep track that they are existing
@@ -598,7 +600,7 @@ export default function POS() {
                     onClick={() => {
                       setEditingServiceId(null);
                       setIsEditingService(false);
-                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
+                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
                       setServiceImages([]);
                       setShowAddService(true);
                     }}
@@ -624,7 +626,7 @@ export default function POS() {
                     onClick={() => {
                       setEditingServiceId(null);
                       setIsEditingService(false);
-                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
+                      setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
                       setServiceImages([]);
                       setShowAddService(true);
                     }}
@@ -1523,6 +1525,23 @@ export default function POS() {
                   onChange={e => setNewService({ ...newService, description: e.target.value })}
                 />
               </div>
+
+              {/* Cost Breakdown — Admin/Super Admin only */}
+              {['super_admin', 'admin'].includes(user?.role || '') && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1">Cost Breakdown</label>
+                    <span className="text-[9px] font-black text-amber-500 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full uppercase tracking-widest">Admin Only</span>
+                  </div>
+                  <textarea
+                    placeholder="e.g. Transportation: ₱5,000 | Hotel: ₱8,000 | Meals: ₱2,000 | Guide: ₱1,500..."
+                    className="w-full bg-amber-50/50 dark:bg-amber-900/10 border border-amber-100 dark:border-amber-800/50 rounded-[2rem] py-5 px-6 text-sm font-medium dark:text-white focus:ring-4 focus:ring-amber-500/10 transition-all outline-none min-h-[100px]"
+                    value={newService.cost_breakdown}
+                    onChange={e => setNewService({ ...newService, cost_breakdown: e.target.value })}
+                  />
+                  <p className="text-[10px] text-amber-500 font-bold pl-1">This breakdown is only visible to Super Admin and Admin roles.</p>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Image URL</label>
                 <div className="flex gap-2">
@@ -1560,7 +1579,7 @@ export default function POS() {
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button
-                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 }); }}
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
@@ -1577,7 +1596,7 @@ export default function POS() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0 });
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -1697,6 +1716,19 @@ export default function POS() {
                         </p>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Cost Breakdown — Admin/Super Admin view only */}
+                {['super_admin', 'admin'].includes(user?.role || '') && selectedServiceForDetail.cost_breakdown && (
+                  <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/40">
+                    <div className="flex items-center gap-2 mb-3">
+                      <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cost Breakdown</p>
+                      <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Admin Only</span>
+                    </div>
+                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap">
+                      {selectedServiceForDetail.cost_breakdown}
+                    </p>
                   </div>
                 )}
 
