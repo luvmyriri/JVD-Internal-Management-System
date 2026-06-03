@@ -44,7 +44,7 @@ class ActionableApprovalNotification extends Notification
     {
         // 1. Determine targeted approval action based on role
         $approveAction = 'approve';
-        if ($this->modelType === 'purchase_order' && $notifiable->role === 'accounting') {
+        if ($this->modelType === 'purchase_order' && $notifiable->role === 'accounting_executive') {
             $approveAction = 'verify';
         }
 

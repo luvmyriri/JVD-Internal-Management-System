@@ -122,8 +122,9 @@ class WorkOrderController extends Controller
         }
 
         $validated = $request->validate([
+            'bus_id'     => ['sometimes', 'integer', 'exists:buses,id'],
             'assigned_to'=> ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'priority'   => ['sometimes', 'in:low,medium,high,critical'],
+            'priority'   => ['sometimes', 'in:routine,urgent,critical'],
             'description'=> ['sometimes', 'string', 'max:2000'],
             'parts_used' => ['sometimes', 'nullable', 'string', 'max:1000'],
             'cost'       => ['sometimes', 'nullable', 'numeric', 'min:0'],
@@ -149,13 +150,67 @@ class WorkOrderController extends Controller
      *  - Head Mechanic: pending_approval → verified
      *  - Service Adviser: verified → open
      */
+    /**
+     * Designated employee verifies or approves an auto-generated/requested WO.
+     * Transitions: 
+     *  - Head Mechanic: pending_validation → pending_approval
+     *  - Head Mechanic: pending_approval → verified
+     *  - Service Adviser: verified → open
+     *  - Trip Work Orders: direct transition from pending_approval → open
+     */
     public function approve(Request $request, WorkOrder $workOrder): JsonResponse
     {
         $user = $request->user();
+        $isSuperAdmin = $user->hasRole('super_admin');
 
-        // 1. Head Mechanic verify transition
+        // 0. Head Mechanic validate driver request
+        if ($workOrder->status === 'pending_validation') {
+            if (!$user->hasRole('super_admin', 'executive_vice_president', 'head_mechanic')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Only head mechanic can validate driver maintenance requests.',
+                ], 403);
+            }
+
+            $workOrder->update([
+                'status' => 'pending_approval',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
+                'message' => 'Maintenance request validated. Work Order is now pending approval.',
+            ]);
+        }
+
+        // Direct approval of Trip Work Orders
+        if ($workOrder->isTrip() && $workOrder->status === 'pending_approval') {
+            if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'service_adviser')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. Only operations manager, logistics in charge, dispatcher, or service adviser can approve trip work orders.',
+                ], 403);
+            }
+
+            $workOrder->update([
+                'status'       => 'open',
+                'approved_by'  => $user->id,
+                'approved_at'  => now(),
+            ]);
+
+            // Auto-generate J.O.
+            $this->generateJobOrderInternal($request, $workOrder);
+
+            return response()->json([
+                'success' => true,
+                'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
+                'message' => 'Trip Work Order approved. Job Order generated automatically.',
+            ]);
+        }
+
+        // 1. Head Mechanic verify transition (for maintenance)
         if ($workOrder->status === 'pending_approval') {
-            if (!$user->hasRole('super_admin', 'admin', 'head_mechanic')) {
+            if (!$user->hasRole('super_admin', 'executive_vice_president', 'head_mechanic')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized. Only head mechanic can verify pending work orders.',
@@ -178,9 +233,9 @@ class WorkOrderController extends Controller
             ]);
         }
 
-        // 2. Service Adviser final approval transition
+        // 2. Service Adviser final approval transition (for maintenance)
         if ($workOrder->status === 'verified') {
-            if (!$user->hasRole('super_admin', 'admin', 'service_adviser')) {
+            if (!$user->hasRole('super_admin', 'executive_vice_president', 'service_adviser')) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized. Only service adviser can file/approve verified work orders.',
@@ -202,10 +257,13 @@ class WorkOrderController extends Controller
                 'priority'     => $validated['priority'] ?? $workOrder->priority,
             ]);
 
+            // Auto-generate J.O. for maintenance once approved
+            $this->generateJobOrderInternal($request, $workOrder);
+
             return response()->json([
                 'success' => true,
                 'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-                'message' => 'Work Order filed and approved. Maintenance may now proceed.',
+                'message' => 'Work Order filed and approved. Job Order generated automatically.',
             ]);
         }
 
@@ -214,6 +272,67 @@ class WorkOrderController extends Controller
             'message' => "This Work Order is in status '{$workOrder->status}' and cannot be approved/verified.",
         ], 422);
     }
+
+    private function generateJobOrderInternal(Request $request, WorkOrder $workOrder, bool $requiresPo = false): \App\Models\JobOrder
+    {
+        // Avoid duplicate JOs
+        $existing = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $year = now()->year;
+        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
+        $sequence = 1;
+        if ($latest) {
+            $parts = explode('-', $latest->jo_number);
+            $sequence = (int) end($parts) + 1;
+        }
+        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
+
+        $invoice = $workOrder->invoice;
+        $busId = $workOrder->bus_id;
+        $driverId = null;
+        $driverName = null;
+
+        if ($busId) {
+            $bus = \App\Models\Bus::find($busId);
+            if ($bus) {
+                $driverId = $bus->assigned_driver;
+                if ($bus->driver) {
+                    $driverName = "{$bus->driver->first_name} {$bus->driver->last_name}";
+                }
+            }
+        }
+
+        $serviceType = $workOrder->isTrip() ? 'bus_rental' : 'maintenance';
+        $destination = $workOrder->isTrip() ? ($invoice?->customer_address ?? 'TBD') : 'Internal Maintenance';
+        $notes = $workOrder->isTrip() 
+            ? 'Generated from Trip Work Order ' . $workOrder->wo_number 
+            : 'Generated from Maintenance Work Order ' . $workOrder->wo_number;
+
+        $jo = \App\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'customer_id' => $invoice?->customer_id,
+            'bus_id' => $busId,
+            'driver_id' => $driverId,
+            'driver_name' => $driverName,
+            'work_order_id' => $workOrder->id,
+            'invoice_id' => $workOrder->invoice_id,
+            'created_by' => auth()->id() ?? 1,
+            'requested_by' => $workOrder->assigned_to ?? $workOrder->created_by ?? auth()->id() ?? 1,
+            'service_type' => $serviceType,
+            'status' => 'created',
+            'service_date' => $invoice?->due_date ?? now()->toDateString(),
+            'destination' => $destination,
+            'total_cost' => $workOrder->cost ?? 0,
+            'notes' => $notes,
+            'requires_po' => $requiresPo,
+        ]);
+
+        return $jo;
+    }
+
 
     /**
      * Designated employee rejects a requested WO.
@@ -265,29 +384,7 @@ class WorkOrderController extends Controller
             ], 422);
         }
 
-        $year = now()->year;
-        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
-        $sequence = 1;
-        if ($latest) {
-            $parts = explode('-', $latest->jo_number);
-            $sequence = (int) end($parts) + 1;
-        }
-        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
-
-        $jobOrder = \App\Models\JobOrder::create([
-            'jo_number' => $joNumber,
-            'bus_id' => $workOrder->bus_id,
-            'work_order_id' => $workOrder->id,
-            'created_by' => $request->user()->id,
-            'requested_by' => $workOrder->assigned_to ?? $workOrder->created_by ?? $request->user()->id,
-            'service_type' => 'maintenance',
-            'status' => 'created',
-            'service_date' => now()->toDateString(),
-            'destination' => 'Internal Maintenance',
-            'total_cost' => $workOrder->cost ?? 0,
-            'notes' => 'Generated from Work Order ' . $workOrder->wo_number,
-            'requires_po' => $request->boolean('requires_po', false),
-        ]);
+        $jobOrder = $this->generateJobOrderInternal($request, $workOrder, $request->boolean('requires_po', false));
 
         return response()->json([
             'success' => true,

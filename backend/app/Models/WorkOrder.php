@@ -11,10 +11,10 @@ class WorkOrder extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'wo_number', 'bus_id', 'assigned_to', 'created_by',
+        'wo_number', 'type', 'bus_id', 'invoice_id', 'assigned_to', 'created_by',
         'approved_by', 'approved_at', 'approval_notes',
         'status', 'priority', 'description', 'parts_used',
-        'cost', 'auto_generated',
+        'cost', 'auto_generated', 'trip_ticket_id',
     ];
 
     protected function casts(): array
@@ -26,11 +26,34 @@ class WorkOrder extends Model
         ];
     }
 
+    // ── Helpers ─────────────────────────────────────────────────────
+
+    public function isTrip(): bool
+    {
+        return $this->type === 'trip';
+    }
+
+    public function isMaintenance(): bool
+    {
+        return $this->type === 'maintenance';
+    }
+
+
     // ── Relationships ───────────────────────────────────────────────
+
+    public function tripTicket()
+    {
+        return $this->belongsTo(TripTicket::class, 'trip_ticket_id');
+    }
 
     public function bus()
     {
         return $this->belongsTo(Bus::class);
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function assignee()

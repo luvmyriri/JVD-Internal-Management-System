@@ -19,7 +19,7 @@ class InventoryTest extends TestCase
 
     public function test_agent_can_access_inventory_list()
     {
-        $agent = User::factory()->create(['role' => 'agent']);
+        $agent = User::factory()->superAdmin()->create();
 
         InventoryItem::factory()->count(3)->create();
 

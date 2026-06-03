@@ -11,7 +11,7 @@ class ReviewPurchaseOrderRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()->hasRole('super_admin', 'admin', 'accounting');
+        return $this->user()->hasRole('super_admin', 'executive_vice_president', 'accounting_executive');
     }
 
     public function rules(): array

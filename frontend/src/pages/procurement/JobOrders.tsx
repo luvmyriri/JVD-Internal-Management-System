@@ -17,7 +17,7 @@ import { fleetApi } from '../../api/fleet';
 import { supplierApi } from '../../api/suppliers';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
-import { Pagination, Dropdown, ConfirmDialog } from '../../components/ui';
+import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
 import toast from 'react-hot-toast';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -362,6 +362,18 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
         </div>
 
         <div className="p-10 overflow-y-auto space-y-10 custom-scrollbar">
+          {/* Pipeline Visualizer */}
+          <PipelineVisualizer
+            pipelineType={jo.service_type === 'maintenance' ? 'maintenance' : 'transaction'}
+            currentStatus={jo.status}
+            metadata={{
+              bus_plate: jo.bus?.plate_number,
+              driver_name: jo.driver ? `${jo.driver.first_name} ${jo.driver.last_name}` : undefined,
+              ticket_no: jo.trip_ticket ? `TT-${jo.trip_ticket.id}` : undefined,
+              po_no: jo.purchase_order?.po_number,
+            }}
+          />
+
           {/* Main Info */}
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-1">

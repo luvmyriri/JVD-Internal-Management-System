@@ -17,7 +17,7 @@
                         <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 1px solid #f3f4f6; background-color: #ffffff;">
                             <img src="{{ $message->embed(base_path('../frontend/public/JVD 3D.png')) }}" alt="JVD Logo" height="64" style="display: block; margin: 0 auto 15px auto;">
                             <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.5px;">JVD</h1>
-                            <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Events and Travel Management, Co.</p>
+                            <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Event and Travel Management Company</p>
                         </td>
                     </tr>
                     
@@ -37,7 +37,7 @@
                             </p>
                             
                             <p style="font-size: 14px; line-height: 1.6; color: #6b7280; margin: 0;">
-                                Thank you for choosing JVD Events and Travel Management!
+                                Thank you for choosing JVD Event and Travel Management Company!
                             </p>
                         </td>
                     </tr>
@@ -46,7 +46,7 @@
                     <tr>
                         <td style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 30px 40px; text-align: center;">
                             <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; font-weight: 700;">
-                                &copy; {{ date('Y') }} JVD Events & Travels Management Co.
+                                &copy; {{ date('Y') }} JVD Event and Travel Management Company
                             </p>
                             <p style="margin: 0; font-size: 11px; color: #9ca3af;">
                                 This message was sent securely via the JVD Internal Management System.

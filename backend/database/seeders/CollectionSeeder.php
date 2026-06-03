@@ -21,7 +21,6 @@ class CollectionSeeder extends Seeder
             'drop_off' => 'Session Road, Baguio City',
             'rate' => 25000.00,
             'customer_id' => $customer?->id,
-            'status' => 'open',
         ]);
 
         CollectionPayment::create([
@@ -40,7 +39,6 @@ class CollectionSeeder extends Seeder
             'drop_off' => 'Enchanted Kingdom, Santa Rosa',
             'rate' => 18000.00,
             'customer_id' => $customer?->id,
-            'status' => 'open',
         ]);
 
         CollectionPayment::create([

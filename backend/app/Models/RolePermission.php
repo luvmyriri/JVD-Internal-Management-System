@@ -32,19 +32,17 @@ class RolePermission extends Model
 
     /** All top-level modules that can be permissioned. */
     public const MODULES = [
-        'dashboard'      => 'Dashboard',
-        'accounting'     => 'Accounting',
-        'operations'     => 'Operations',
-        'logistics'      => 'Logistics',
-        'procurement'    => 'Procurement',
-        'accreditations' => 'Accreditations',
-        'inventory'      => 'Inventory',
-        'fleet'          => 'Fleet',
-        'travel'         => 'Travel',
-        'hr'             => 'HR & Employees',
-        'admin'          => 'Administration',
-        'settings'       => 'System Settings',
-        'driver'         => 'Driver Operations',
+        'dashboard'   => 'Management Overview',
+        'accounting'  => 'Accounting',
+        'operations'  => 'Operations',
+        'logistics'   => 'Logistics',
+        'procurement' => 'Procurement',
+        'inventory'   => 'Inventory',
+        'sales'       => 'Sales',
+        'hr'          => 'Human Resource',
+        'driver'      => 'Driver',
+        'travel'      => 'Travel Assistance',
+        'admin'       => 'Administration',
     ];
 
     /**
@@ -55,66 +53,65 @@ class RolePermission extends Model
         'dashboard' => [],   // Single page — no sub-pages
 
         'accounting' => [
-            'accounting.pos'      => 'POS',
-            'accounting.billing'  => 'Billing',
-            'accounting.reports'  => 'Reports',
+            'accounting.billing'      => 'Billing',
+            'accounting.reports'      => 'Reports',
+            'accounting.collections'  => 'Collections',
+            'accounting.cash_budgets' => 'Cash Budgets',
+            'accounting.commissions'  => 'Commissions',
         ],
 
         'operations' => [
-            'operations.trip_tickets'  => 'Trip Tickets',
-            'operations.commissions'   => 'Commissions',
-            'operations.collections'   => 'Collections',
-            'operations.cash_budgets'  => 'Cash Budgets',
+            'operations.customers'      => 'Customer Information Management',
+            'operations.accreditations' => 'Accreditations',
+            'operations.documents'      => 'Company Documents',
         ],
 
         'logistics' => [
-            'logistics.overview' => 'Overview',
+            'logistics.overview'      => 'Overview',
+            'logistics.trip_tickets'  => 'Trip Ticket',
+            'logistics.fleet'         => 'Fleet',
+            'logistics.pms'           => 'Predictive Maintenance System',
         ],
 
         'procurement' => [
-            'procurement.work_orders'    => 'Work Orders',
-            'procurement.job_orders'     => 'Job Orders',
-            'procurement.purchase_orders'=> 'Purchase Orders',
-            'procurement.suppliers'      => 'Suppliers',
-            'procurement.accreditations' => 'Accreditations',
-            'procurement.documents'      => 'Documents',
+            'procurement.work_orders'     => 'W.O',
+            'procurement.job_orders'      => 'J.O',
+            'procurement.purchase_orders' => 'P.O',
+            'procurement.suppliers'       => 'Suppliers',
         ],
-
-        'accreditations' => [],  // Shown under procurement in sidebar
 
         'inventory' => [
             'inventory.supplies' => 'Supplies',
-            'inventory.fleet'    => 'Fleet',
-            'inventory.pms'      => 'PMS',
         ],
 
-        'fleet' => [],  // Managed under inventory
+        'sales' => [
+            'sales.fixed_packages'      => 'Fixed Packages and Services',
+            'sales.custom_transactions' => 'Custom Client Transactions',
+        ],
+
+        'hr' => [
+            'hr.employees'   => 'Employees',
+            'hr.applications'=> 'Job Applications',
+            'hr.internships' => 'Internship Management',
+            'hr.payroll'     => 'Payroll Management',
+        ],
+
+        'driver' => [
+            'driver.overview'        => 'Overview',
+            'driver.scheduled_trips' => 'Scheduled Trips',
+            'driver.my_fleet'        => 'My Fleet',
+        ],
 
         'travel' => [
             'travel.passporting'     => 'Passporting',
             'travel.visa_processing' => 'Visa Processing',
-            'travel.customers'       => 'Customers',
-            'travel.documents'       => 'Documents',
-        ],
-
-        'hr' => [
-            'hr.employees'    => 'Employees',
-            'hr.applications' => 'Applications',
-            'hr.internships'  => 'Internships',
         ],
 
         'admin' => [
-            'admin.users'      => 'Users',
-            'admin.audit_logs' => 'Audit Logs',
-            'admin.settings'   => 'Settings',
-        ],
-
-        'settings' => [],  // Managed under admin
-
-        'driver' => [
-            'driver.schedule' => 'My Schedule',
-            'driver.trips'    => 'My Trips',
-            'driver.bus'      => 'My Bus',
+            'admin.users'            => 'Users',
+            'admin.role_permissions' => 'Role Permissions',
+            'admin.audit_logs'       => 'Audit Logs',
+            'admin.settings'         => 'Settings',
         ],
     ];
 
@@ -130,12 +127,7 @@ class RolePermission extends Model
 
     /** Roles that can have configurable permissions. Super Admin always bypasses. */
     public const CONFIGURABLE_ROLES = [
-        'admin',
         'executive_vice_president',
-        'human_resource',
-        'accounting',
-        'agent',
-        'driver',
         'operations_manager',
         'reservation_officer',
         'office_staff',
@@ -144,8 +136,9 @@ class RolePermission extends Model
         'logistics_in_charge',
         'dispatcher',
         'purchasing_manager',
-        'service_adviser',
         'head_mechanic',
+        'service_adviser',
+        'driver',
     ];
 
     // ──────────────────────────────────────────

@@ -23,7 +23,7 @@ class UserFactory extends Factory
             'password'             => Hash::make('password'),
             'first_name'           => $this->faker->firstName(),
             'last_name'            => $this->faker->lastName(),
-            'role'                 => $this->faker->randomElement(['admin', 'agent', 'accounting', 'human_resource']),
+            'role'                 => $this->faker->randomElement(['operations_manager', 'reservation_officer', 'office_staff', 'accounting_executive', 'corporate_secretary', 'dispatcher', 'purchasing_manager', 'driver']),
             'department'           => $this->faker->randomElement(['Operations', 'Finance', 'HR', 'Administration']),
             'is_active'            => true,
             'must_change_password' => false,

@@ -20,8 +20,9 @@ class PurchaseOrderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->agent      = User::factory()->create(['role' => 'agent']);
-        $this->accounting = User::factory()->create(['role' => 'accounting']);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->agent      = User::factory()->create(['role' => 'dispatcher']);
+        $this->accounting = User::factory()->create(['role' => 'accounting_executive']);
         $this->superAdmin = User::factory()->superAdmin()->create();
         $this->supplier   = Supplier::factory()->create(['accreditation_status' => 'accredited']);
         $this->supplier->accreditations()->create([

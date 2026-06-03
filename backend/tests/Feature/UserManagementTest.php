@@ -16,8 +16,9 @@ class UserManagementTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin']);
-        $this->agent = User::factory()->create(['role' => 'agent']);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->admin = User::factory()->superAdmin()->create();
+        $this->agent = User::factory()->create(['role' => 'reservation_officer']);
     }
 
     // ── List ──────────────────────────────────────────────
@@ -51,7 +52,7 @@ class UserManagementTest extends TestCase
             'last_name'   => 'Santos',
             'email'       => 'maria.santos@jvd.com',
             'password'    => 'SecurePass123!',
-            'role'        => 'accounting',
+            'role'        => 'accounting_executive',
             'department'  => 'Finance',
         ];
 
@@ -72,7 +73,7 @@ class UserManagementTest extends TestCase
                  'last_name'   => 'Dela Cruz',
                  'email'       => 'dup@jvd.com',
                  'password'    => 'SecurePass123!',
-                 'role'        => 'agent',
+                 'role'        => 'reservation_officer',
              ])
              ->assertUnprocessable()
              ->assertJsonValidationErrors(['email']);
@@ -82,7 +83,7 @@ class UserManagementTest extends TestCase
 
     public function test_admin_can_deactivate_a_user()
     {
-        $target = User::factory()->create(['role' => 'agent']);
+        $target = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($this->admin)
              ->postJson("/api/users/{$target->id}/deactivate")
@@ -117,7 +118,7 @@ class UserManagementTest extends TestCase
 
     public function test_admin_can_reset_password()
     {
-        $target = User::factory()->create(['role' => 'agent']);
+        $target = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($this->admin)
              ->postJson("/api/users/{$target->id}/reset-password", [

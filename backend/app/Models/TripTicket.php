@@ -27,5 +27,20 @@ class TripTicket extends Model
     {
         return $this->belongsTo(User::class, 'approved_by');
     }
+
+    public function workOrders()
+    {
+        return $this->hasMany(WorkOrder::class, 'trip_ticket_id');
+    }
+
+    public function jobOrder()
+    {
+        return $this->belongsTo(JobOrder::class, 'job_order_id');
+    }
+
+    public function cashBudgetRequest()
+    {
+        return $this->hasOne(CashBudgetRequest::class, 'trip_ticket_id');
+    }
 }
 

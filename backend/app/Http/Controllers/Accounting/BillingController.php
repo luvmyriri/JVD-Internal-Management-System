@@ -405,6 +405,53 @@ class BillingController extends Controller
                     ]);
                 }
             }
+            // Auto-generate Work Order for trips if it involves buses
+            $hasBusService = false;
+            $busServiceDescription = '';
+            foreach ($processedItems as $pItem) {
+                $service = Service::find($pItem['service_id']);
+                if ($service) {
+                    $cat = strtolower($service->category);
+                    $name = strtolower($service->name);
+                    if (in_array($cat, ['transport', 'package', 'bus rental', 'educational tour', 'tour package', 'joiners']) 
+                        || str_contains($cat, 'bus') 
+                        || str_contains($cat, 'tour') 
+                        || str_contains($name, 'bus') 
+                        || str_contains($name, 'tour')
+                    ) {
+                        $hasBusService = true;
+                        $busServiceDescription .= "- {$service->name} (Qty: {$pItem['quantity']})\n";
+                    }
+                }
+            }
+
+            if ($hasBusService) {
+                $year = now()->year;
+                $latest = \App\Models\WorkOrder::where('wo_number', 'like', "WO-{$year}-%")
+                    ->orderByDesc('id')
+                    ->first();
+
+                $sequence = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->wo_number);
+                    $sequence = (int) end($parts) + 1;
+                }
+                $woNumber = sprintf('WO-%d-%04d', $year, $sequence);
+
+                $wo = \App\Models\WorkOrder::create([
+                    'wo_number' => $woNumber,
+                    'type' => 'trip',
+                    'bus_id' => null, // Bus assigned at JO stage
+                    'invoice_id' => $invoice->id,
+                    'created_by' => auth()->id() ?? 1,
+                    'status' => 'pending_approval',
+                    'priority' => 'routine',
+                    'description' => "Trip Work Order auto-generated for Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
+                    'auto_generated' => true,
+                ]);
+
+                \App\Http\Services\NotificationService::notifyWorkOrderRequest($wo);
+            }
 
             DB::commit();
 

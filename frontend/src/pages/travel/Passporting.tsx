@@ -146,7 +146,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   const { user } = useAuth();
   
   const isHandler = user?.id === caseData.handler?.id;
-  const isAdmin = user?.role ? ['admin', 'super_admin'].includes(user.role) : false;
+  const isAdmin = user?.role ? ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user.role) : false;
   const readOnly = !isHandler && !isAdmin;
 
   const [activeTab, setActiveTab] = useState<'details'|'history'>('details');

@@ -65,6 +65,19 @@ export interface TripTicket {
   driver?: { id: number; name: string };
   requestedBy?: { id: number; name: string };
   approvedBy?: { id: number; name: string };
+  cash_budget_request?: CashBudgetRequest;
+  work_orders?: Array<{
+    id: number;
+    wo_number: string;
+    status: 'pending_approval' | 'verified' | 'open' | 'in_progress' | 'completed' | 'cancelled';
+    priority: string;
+    description: string;
+    job_orders?: Array<{
+      id: number;
+      jo_number: string;
+      status: 'created' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
+    }>;
+  }>;
 }
 
 export interface CashBudgetRequest {

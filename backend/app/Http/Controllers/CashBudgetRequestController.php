@@ -89,7 +89,7 @@ class CashBudgetRequestController extends Controller
             $message = "{$preparedByName} submitted a cash budget of ₱{$totalAmount} for {$destination}. Please review and approve in Operations → Cash Budgets.";
 
             // Notify every accounting & super_admin user
-            $accountingUsers = User::whereIn('role', ['accounting', 'accounting_executive', 'super_admin'])
+            $accountingUsers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'accounting_executive'])
                 ->where('is_active', true)
                 ->get();
 
@@ -108,6 +108,16 @@ class CashBudgetRequestController extends Controller
         // ── STEP 2: Accounting approves ──────
         if ($request->has('status') && $request->status === 'approved') {
             $budget->update(['approved_by' => auth()->id()]);
+
+            // Link to the Invoice
+            $invoiceId = $budget->tripTicket?->jobOrder?->invoice_id;
+            if ($invoiceId) {
+                $invoice = \App\Models\Invoice::find($invoiceId);
+                if ($invoice) {
+                    $invoice->update(['cash_budget_request_id' => $budget->id]);
+                }
+            }
+
             // Optional: notify the preparer that it is approved and ready for disbursement
             if ($budget->preparedBy) {
                 $reference = $budget->tripTicket?->control_no ?? ('CB-' . $budget->id);

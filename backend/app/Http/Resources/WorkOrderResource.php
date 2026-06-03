@@ -32,6 +32,11 @@ class WorkOrderResource extends JsonResource
                 'model'        => $this->bus->model,
                 'make'         => $this->bus->make ?? null,
             ]),
+            'trip_ticket_id' => $this->trip_ticket_id,
+            'trip_ticket'    => $this->whenLoaded('tripTicket', fn() => [
+                'id'         => $this->tripTicket->id,
+                'control_no' => $this->tripTicket->control_no,
+            ]),
             'assignee'       => $this->whenLoaded('assignee', fn() => [
                 'id'         => $this->assignee->id,
                 'first_name' => $this->assignee->first_name,

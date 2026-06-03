@@ -13,7 +13,7 @@ class PurchaseOrderPolicy
      */
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('super_admin', 'admin', 'accounting', 'agent');
+        return $user->hasPermission('procurement', 'view') || $user->hasRole('accounting_executive');
     }
 
     /**
@@ -22,7 +22,7 @@ class PurchaseOrderPolicy
      */
     public function view(User $user, PurchaseOrder $po): bool
     {
-        if ($user->hasRole('super_admin', 'admin', 'accounting')) {
+        if ($user->hasRole('super_admin', 'executive_vice_president', 'purchasing_manager', 'accounting_executive')) {
             return true;
         }
         return $po->created_by === $user->id;
@@ -33,7 +33,7 @@ class PurchaseOrderPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole('super_admin', 'admin', 'accounting', 'agent');
+        return $user->hasPermission('procurement', 'create');
     }
 
     /**
@@ -41,7 +41,7 @@ class PurchaseOrderPolicy
      */
     public function update(User $user, PurchaseOrder $po): bool
     {
-        if ($user->hasRole('super_admin', 'admin')) {
+        if ($user->hasRole('super_admin', 'executive_vice_president', 'purchasing_manager')) {
             return true;
         }
         return $po->created_by === $user->id && $po->status === 'draft';
@@ -60,7 +60,7 @@ class PurchaseOrderPolicy
      */
     public function verify(User $user, PurchaseOrder $po): bool
     {
-        return $user->hasRole('super_admin', 'admin', 'accounting');
+        return $user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive');
     }
 
     /**

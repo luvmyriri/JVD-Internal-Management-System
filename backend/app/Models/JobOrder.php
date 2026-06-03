@@ -39,6 +39,21 @@ class JobOrder extends Model
         return $this->belongsTo(Bus::class);
     }
 
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
+    }
+
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
+    public function tripTicket()
+    {
+        return $this->hasOne(TripTicket::class, 'job_order_id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

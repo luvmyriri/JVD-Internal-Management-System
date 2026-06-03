@@ -13,15 +13,20 @@ use Illuminate\Database\Seeder;
  */
 class AvatarFixSeeder extends Seeder
 {
-    // Deterministic role-to-color mapping
     private array $roleColors = [
-        'super_admin'   => '6366f1', // indigo
-        'admin'         => '3b82f6', // blue
-        'accounting'    => '10b981', // emerald
-        'human_resource'=> 'f59e0b', // amber
-        'agent'         => '8b5cf6', // violet
-        'driver'        => 'ef4444', // red
-        'mechanic'      => 'f97316', // orange
+        'super_admin'              => 'f43f5e', // rose
+        'executive_vice_president' => 'f43f5e', // rose
+        'operations_manager'       => '06b6d4', // cyan
+        'reservation_officer'      => 'f97316', // orange
+        'office_staff'             => 'eab308', // yellow
+        'accounting_executive'     => '14b8a6', // teal
+        'corporate_secretary'      => 'ec4899', // pink
+        'logistics_in_charge'      => '84cc16', // lime
+        'dispatcher'               => 'd946ef', // fuchsia
+        'purchasing_manager'       => '0ea5e9', // sky
+        'service_adviser'          => '78716c', // stone
+        'head_mechanic'            => '737373', // neutral/slate
+        'driver'                   => '6366f1', // indigo
     ];
 
     public function run(): void

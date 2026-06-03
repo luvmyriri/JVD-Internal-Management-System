@@ -17,8 +17,9 @@ class JobOrderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->agent = User::factory()->create(['role' => 'agent']);
-        $this->admin = User::factory()->create(['role' => 'admin']);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->agent = User::factory()->create(['role' => 'purchasing_manager']);
+        $this->admin = User::factory()->superAdmin()->create();
     }
 
     private function validPayload(array $overrides = []): array
@@ -73,8 +74,9 @@ class JobOrderTest extends TestCase
     public function test_valid_status_transition_draft_to_confirmed()
     {
         $jo = JobOrder::factory()->create([
-            'status'     => 'draft',
-            'created_by' => $this->agent->id,
+            'status'       => 'draft',
+            'created_by'   => $this->agent->id,
+            'service_type' => 'maintenance',
         ]);
 
         $this->actingAs($this->agent)
@@ -83,9 +85,24 @@ class JobOrderTest extends TestCase
              ->assertJsonPath('data.status', 'confirmed');
     }
 
+    public function test_travel_job_order_cannot_be_confirmed_without_bus_and_driver()
+    {
+        $jo = JobOrder::factory()->create([
+            'status'       => 'draft',
+            'created_by'   => $this->agent->id,
+            'service_type' => 'bus_rental',
+            'bus_id'       => null,
+            'driver_id'    => null,
+        ]);
+
+        $this->actingAs($this->agent)
+             ->putJson("/api/job-orders/{$jo->id}", ['status' => 'confirmed'])
+             ->assertStatus(422);
+    }
+
     public function test_agent_cannot_update_another_agents_job_order()
     {
-        $otherAgent = User::factory()->create(['role' => 'agent']);
+        $otherAgent = User::factory()->create(['role' => 'purchasing_manager']);
         $jo = JobOrder::factory()->create([
             'status'     => 'draft',
             'created_by' => $otherAgent->id,

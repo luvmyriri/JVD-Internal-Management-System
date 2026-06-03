@@ -97,30 +97,38 @@ class User extends Authenticatable
 
     public function isAdmin(): bool
     {
-        return $this->hasRole('admin');
+        return $this->role === 'super_admin';
     }
 
+    public function isExecutiveVP(): bool
+    {
+        return $this->role === 'executive_vice_president';
+    }
+
+    /**
+     * Check if the user has one of the given role(s).
+     * Each role is matched exactly — no group expansion.
+     * Super admin always passes.
+     */
     public function hasRole(string ...$roles): bool
     {
-        $groups = [
-            'super_admin'          => ['super_admin'],
-            'admin'                => ['super_admin', 'admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'],
-            'human_resource'       => ['human_resource', 'corporate_secretary'],
-            'accounting'           => ['accounting', 'accounting_executive'],
-            'agent'                => ['agent', 'reservation_officer', 'office_staff'],
-            'driver'               => ['driver'],
-        ];
+        return in_array($this->role, $roles);
+    }
 
-        foreach ($roles as $role) {
-            if ($this->role === $role) {
-                return true;
-            }
-            if (isset($groups[$role]) && in_array($this->role, $groups[$role])) {
-                return true;
-            }
+    /**
+     * Check if the user has a specific permission on a module.
+     * Super admin always passes.
+     */
+    public function hasPermission(string $module, string $action = 'view'): bool
+    {
+        if ($this->role === 'super_admin') {
+            return true;
         }
 
-        return false;
+        $actionKey = 'can_' . $action;
+        $permissions = $this->getAllPermissions();
+
+        return isset($permissions[$module][$actionKey]) && $permissions[$module][$actionKey] === true;
     }
 
     public function getAllPermissions(): array

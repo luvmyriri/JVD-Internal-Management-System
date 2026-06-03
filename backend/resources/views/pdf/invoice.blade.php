@@ -37,7 +37,7 @@
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="company-logo">JVD TRAVEL & TOURS</div>
+                <div class="company-logo">JVD Event and Travel Management Company</div>
                 <div>Reg No: 912-883-911-000</div>
                 <div>UNIT 6 -Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City</div>
                 <div>Phone: 0976 471 1294 | Tel: 02 8293 8068</div>
@@ -160,7 +160,7 @@
                 </td>
                 <td class="footer-right">
                     <strong>Support & Contacts:</strong><br>
-                    Thank you for choosing JVD Travel & Tours!<br>
+                    Thank you for choosing JVD Event and Travel Management Company!<br>
                     <strong>Support Tel:</strong> 0976 471 1294<br>
                     <strong>Support Email:</strong> accounts@jvd-travel.com
                 </td>

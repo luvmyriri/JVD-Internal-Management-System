@@ -44,6 +44,7 @@ class JobOrderService
     {
         $validTransitions = [
             'created'       => ['confirmed', 'cancelled'],
+            'draft'         => ['confirmed', 'cancelled'],
             'confirmed'   => ['in_progress', 'cancelled'],
             'in_progress' => ['completed', 'cancelled'],
         ];
@@ -56,8 +57,88 @@ class JobOrderService
             );
         }
 
+        // Automatic driver resolution if bus is assigned
+        if ($jo->bus_id && !$jo->driver_id) {
+            $bus = \App\Models\Bus::find($jo->bus_id);
+            if ($bus) {
+                $jo->driver_id = $bus->assigned_driver;
+                if ($bus->driver) {
+                    $jo->driver_name = "{$bus->driver->first_name} {$bus->driver->last_name}";
+                }
+            }
+        }
+
+        // Strict Process Guard:
+        $isSuperAdmin = auth()->user() && auth()->user()->hasRole('super_admin');
+        if ($newStatus === 'confirmed' && $jo->service_type !== 'maintenance' && !$isSuperAdmin) {
+            if (!$jo->bus_id) {
+                throw new \InvalidArgumentException("Cannot confirm Job Order: A vehicle (bus) must be assigned first.");
+            }
+            if (!$jo->driver_id) {
+                throw new \InvalidArgumentException("Cannot confirm Job Order: A Coach Captain (driver) must be assigned first.");
+            }
+        }
+
         $jo->update(['status' => $newStatus]);
+
+        // Auto-generate Trip Ticket for travel JOs when confirmed
+        if ($newStatus === 'confirmed' && $jo->service_type !== 'maintenance') {
+            $existingTicket = \App\Models\TripTicket::where('job_order_id', $jo->id)->first();
+            if (!$existingTicket) {
+                $year = now()->year;
+                $latest = \App\Models\TripTicket::where('control_no', 'like', "TT-{$year}-%")->orderByDesc('id')->first();
+                $sequence = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->control_no);
+                    $sequence = (int) end($parts) + 1;
+                }
+                $controlNo = sprintf('TT-%d-%04d', $year, $sequence);
+
+                $ticket = \App\Models\TripTicket::create([
+                    'control_no' => $controlNo,
+                    'issue_date' => now()->toDateString(),
+                    'date_of_travel' => $jo->service_date ?? now()->toDateString(),
+                    'duration' => '1 Day',
+                    'pick_up' => 'Terminal / Branch',
+                    'drop_off' => $jo->destination ?? 'TBD',
+                    'bus_id' => $jo->bus_id,
+                    'plate_no' => $jo->bus?->plate_number,
+                    'no_of_passengers' => $jo->passengers()->count() ?: 1,
+                    'driver_id' => $jo->driver_id,
+                    'requested_by' => $jo->created_by ?? auth()->id() ?? 1,
+                    'status' => 'draft',
+                    'job_order_id' => $jo->id,
+                ]);
+
+                if ($ticket->bus_id) {
+                    app(\App\Http\Controllers\TripTicketController::class)->autoGeneratePreTripWorkOrder($ticket);
+                }
+            }
+        }
+
+        if ($newStatus === 'completed' && $jo->work_order_id) {
+            $wo = \App\Models\WorkOrder::find($jo->work_order_id);
+            if ($wo && $wo->status !== 'completed') {
+                $wo->update(['status' => 'completed']);
+                
+                // Recalculate PMS next service if auto-generated
+                if ($wo->auto_generated && $wo->bus_id) {
+                    $maintenanceService = app(\App\Http\Services\MaintenanceService::class);
+                    $maintenanceService->recalculateNextService($wo->bus);
+                }
+
+                // If linked to a trip ticket, send notification!
+                if ($wo->trip_ticket_id) {
+                    $ticket = \App\Models\TripTicket::find($wo->trip_ticket_id);
+                    if ($ticket) {
+                        \App\Http\Services\NotificationService::notifyPreTripCleared($ticket);
+                    }
+                }
+            }
+        }
+
         return $jo->fresh();
+
     }
 
     /**

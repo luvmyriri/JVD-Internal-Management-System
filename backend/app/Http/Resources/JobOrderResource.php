@@ -49,6 +49,27 @@ class JobOrderResource extends JsonResource
                 ])
             ),
             'created_by'   => $this->created_by,
+            'driver_id'    => $this->driver_id,
+            'driver'       => $this->whenLoaded('driver', fn() => [
+                'id'         => $this->driver->id,
+                'first_name' => $this->driver->first_name,
+                'last_name'  => $this->driver->last_name,
+            ]),
+            'trip_ticket'  => $this->whenLoaded('tripTicket', fn() => [
+                'id'            => $this->tripTicket->id,
+                'ticket_number' => $this->tripTicket->ticket_number,
+                'status'        => $this->tripTicket->status,
+            ]),
+            'purchase_order' => $this->whenLoaded('purchaseOrder', fn() => [
+                'id'        => $this->purchaseOrder->id,
+                'po_number' => $this->purchaseOrder->po_number,
+                'status'    => $this->purchaseOrder->status,
+            ]),
+            'work_order'   => $this->whenLoaded('workOrder', fn() => [
+                'id'        => $this->workOrder->id,
+                'wo_number' => $this->workOrder->wo_number,
+                'status'    => $this->workOrder->status,
+            ]),
             'created_at'   => $this->created_at->toISOString(),
             'updated_at'   => $this->updated_at->toISOString(),
         ];

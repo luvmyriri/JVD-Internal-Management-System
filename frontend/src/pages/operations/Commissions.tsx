@@ -1,22 +1,33 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { LuSignature, LuSearch, LuPlus, LuX, LuNavigation, LuTrash2, LuChevronRight } from 'react-icons/lu';
-import { Eye } from 'lucide-react';
+import {
+  LuSignature, LuSearch, LuPlus, LuX,
+  LuNavigation, LuTrash2, LuChevronRight,
+  LuEye, LuClock, LuActivity, LuFileCheck
+} from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { commissionApi } from '../../api/operations';
 import type { Commission } from '../../types';
 import { Modal, Button } from '../../components/ui';
 
-const statusStyles: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
-  approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  released: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-};
-
 function StatusBadge({ status }: { status: string }) {
+  const styles: any = {
+    released: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50',
+    draft: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
+    approved: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
+  };
+  const icons: any = {
+    released: <LuFileCheck className="w-3.5 h-3.5" />,
+    draft: <LuClock className="w-3.5 h-3.5" />,
+    approved: <LuActivity className="w-3.5 h-3.5" />,
+  };
+
+  const s = status || 'draft';
+
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${statusStyles[status] ?? 'bg-gray-100 text-gray-600'}`}>
-      {status}
+    <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit ${styles[s] || styles.draft}`}>
+      {icons[s] || icons.draft}
+      {s.replace('_', ' ')}
     </span>
   );
 }
@@ -347,6 +358,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
 
 export default function Commissions() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'approved' | 'released'>('all');
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -360,73 +372,223 @@ export default function Commissions() {
   // Handle ApiResponse structure where data is inside response.data
   const commissions: Commission[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const filtered = commissions.filter((c) =>
-    c.commissioner_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    c.serial_no?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filtered = commissions.filter((c) => {
+    const q = searchTerm.toLowerCase();
+    const matchSearch = !q ||
+      c.commissioner_name?.toLowerCase().includes(q) ||
+      c.serial_no?.toLowerCase().includes(q);
+    const matchStatus = statusFilter === 'all' || c.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  // Summary counts
+  const counts = {
+    all: commissions.length,
+    draft: commissions.filter(c => c.status === 'draft').length,
+    approved: commissions.filter(c => c.status === 'approved').length,
+    released: commissions.filter(c => c.status === 'released').length,
+  };
+
+  const getRowIndicatorStyle = (status?: string) => {
+    switch (status) {
+      case 'draft': return 'border-l-4 border-amber-400';
+      case 'approved': return 'border-l-4 border-blue-500';
+      case 'released': return 'border-l-4 border-emerald-500';
+      default: return 'border-l-4 border-transparent';
+    }
+  };
+
+  const STATUS_FILTERS = ['all', 'draft', 'approved', 'released'] as const;
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
-        <div>
-          <div className="flex items-center gap-3 text-sm font-bold text-blue-600 dark:text-blue-500 mb-2 uppercase tracking-widest">
-            <LuSignature size={18} /> Operations Module
+    <div className="space-y-8 pb-12">
+      <div className="flex justify-between items-center no-print">
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Commissions</h1>
+        <button
+          onClick={() => setShowCreate(true)}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+        >
+          <LuPlus className="w-4 h-4" /> New Commission
+        </button>
+      </div>
+
+      {/* Top Metric Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0 relative z-20 no-print">
+
+        {/* KPI 1: Draft */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <LuClock className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
+              Draft
+            </div>
           </div>
-          <h1 className="text-3xl md:text-4xl font-black text-gray-900 dark:text-white tracking-tight">Commissions</h1>
+          <div className="mt-1">
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Pending Approval</p>
+            <p className="text-2xl font-black leading-none">{counts.draft || 0}</p>
+          </div>
         </div>
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
-          <div className="relative group w-full sm:w-auto">
-            <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+
+        {/* KPI 2: Approved */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <LuActivity className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
+              Approved
+            </div>
+          </div>
+          <div className="mt-1">
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Ready to Release</p>
+            <p className="text-2xl font-black leading-none">{counts.approved || 0}</p>
+          </div>
+        </div>
+
+        {/* KPI 3: Released */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <LuFileCheck className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
+              Released
+            </div>
+          </div>
+          <div className="mt-1">
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Paid Commissions</p>
+            <p className="text-2xl font-black leading-none">{counts.released || 0}</p>
+          </div>
+        </div>
+
+        {/* KPI 4: Total */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-purple-500 to-indigo-700 text-white shadow-lg shadow-purple-300/30 dark:shadow-purple-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <LuSignature className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
+              Total
+            </div>
+          </div>
+          <div className="mt-1">
+            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Records</p>
+            <p className="text-2xl font-black leading-none">{counts.all || 0}</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Main Panel */}
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800/80 shadow-md p-6 sm:p-8 space-y-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="relative w-full sm:w-72">
+            <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search serial no or name..."
+              className="pl-11 pr-4 py-3 bg-gray-55 dark:bg-gray-800/70 border border-transparent dark:border-gray-700/50 rounded-full text-xs focus:ring-4 focus:ring-blue-600/5 focus:bg-white dark:focus:bg-gray-800 w-full transition-all font-semibold dark:text-white shadow-inner"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-11 pr-4 py-3 w-full sm:w-64 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-sm"
             />
           </div>
-          <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
-            <LuPlus size={18} /> New Commission
-          </button>
-        </div>
-      </div>
 
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] overflow-hidden shadow-sm relative">
-        {isPlaceholderData && (
-          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
-            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          <div className="flex overflow-x-auto hide-scrollbar flex-nowrap w-full sm:w-auto bg-gray-50 dark:bg-gray-800/70 p-1.5 rounded-full border border-gray-100/50 dark:border-gray-700/30">
+            {STATUS_FILTERS.map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`shrink-0 whitespace-nowrap px-5 py-2.5 rounded-full text-[9px] font-black uppercase tracking-widest transition-all ${statusFilter === s
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-600/25'
+                  : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+              >
+                {s}
+              </button>
+            ))}
           </div>
-        )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-              <tr>
-                <th className="px-8 py-6 rounded-tl-[2rem]">Serial No.</th>
-                <th className="px-8 py-6">Commissioner</th>
-                <th className="px-8 py-6">Date</th>
-                <th className="px-8 py-6">Status</th>
-                <th className="px-8 py-6 text-right rounded-tr-[2rem]">Actions</th>
+        </div>
+
+        {/* Data Table */}
+        <div className={`relative overflow-x-auto custom-scrollbar ${filtered.length > 0 ? 'min-h-[350px]' : ''}`}>
+          {isPlaceholderData && (
+            <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
+              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+            </div>
+          )}
+          <table className="w-full min-w-[900px] text-left border-collapse">
+            <thead>
+              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Serial No.</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Commissioner</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
               </tr>
             </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800/50 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
-                <tr><td colSpan={5} className="px-8 py-12 text-center text-gray-500">Loading commissions...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={5} className="px-8 py-12 text-center text-gray-500">No commissions found.</td></tr>
-              ) : (
-                filtered.map((commission) => (
-                  <tr key={commission.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-8 py-5 font-bold text-gray-900 dark:text-white">{commission.serial_no}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{commission.commissioner_name}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{commission.date}</td>
-                    <td className="px-8 py-5"><StatusBadge status={commission.status} /></td>
-                    <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedCommission(commission)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                        <Eye size={18} />
-                      </button>
-                    </td>
+                [...Array(5)].map((_, i) => (
+                  <tr key={i} className="animate-pulse">
+                    <td colSpan={6} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
                   </tr>
                 ))
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
+                </tr>
+              ) : (
+                filtered.map((commission) => {
+                  const totalAmt = commission.items?.reduce((sum, item) => sum + (Number(item.amount || 0) * Number(item.quantity || 1)), 0) || 0;
+                  return (
+                    <tr key={commission.id} className={`group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${getRowIndicatorStyle(commission.status)}`}>
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+                            <LuSignature className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{commission.serial_no}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+                          {commission.commissioner_name}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+                          {commission.date || '—'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">
+                          ₱{totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </td>
+                      <td className="px-6 py-5">
+                        <StatusBadge status={commission.status} />
+                      </td>
+                      <td className="px-6 py-5 text-right">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => setSelectedCommission(commission)}
+                        >
+                          <LuEye className="w-4 h-4 mr-2" /> Details
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

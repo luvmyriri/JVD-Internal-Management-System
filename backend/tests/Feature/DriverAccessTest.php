@@ -26,8 +26,9 @@ class DriverAccessTest extends TestCase
     {
         parent::setUp();
 
-        $this->admin = User::factory()->create([
-            'role' => 'admin',
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+
+        $this->admin = User::factory()->superAdmin()->create([
             'employee_id' => 'ADM001',
         ]);
 
@@ -56,6 +57,7 @@ class DriverAccessTest extends TestCase
             'customer_id' => $this->customer->id,
             'created_by' => $this->admin->id,
             'status' => 'confirmed',
+            'service_type' => 'maintenance',
         ]);
 
         $this->jobOrder2 = JobOrder::factory()->create([
@@ -63,6 +65,7 @@ class DriverAccessTest extends TestCase
             'customer_id' => $this->customer->id,
             'created_by' => $this->admin->id,
             'status' => 'confirmed',
+            'service_type' => 'maintenance',
         ]);
     }
 

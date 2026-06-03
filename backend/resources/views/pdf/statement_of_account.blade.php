@@ -92,7 +92,7 @@
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="company-logo">JVD TRAVEL &amp; TOURS</div>
+                <div class="company-logo">JVD Event and Travel Management Company</div>
                 <div class="company-sub">
                     Reg No: 912-883-911-000<br>
                     UNIT 6 - Aryanna Village Center Brgy 175 Susano Road,<br>
@@ -259,7 +259,7 @@
                 <td class="footer-left">
                     <strong>Bank Transfer:</strong><br>
                     UnionBank of the Philippines<br>
-                    Account Name: JVD Travel &amp; Tours Inc.<br>
+                    Account Name: JVD Event and Travel Management Company<br>
                     Account Number: 1029-4829-1928<br><br>
                     <strong>GCash:</strong> 0976 471 1294
                 </td>
