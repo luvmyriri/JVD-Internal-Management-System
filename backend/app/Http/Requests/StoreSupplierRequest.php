@@ -8,7 +8,7 @@ class StoreSupplierRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasRole('super_admin', 'admin', 'accounting');
+        return $this->user()->hasPermission('procurement', 'create');
     }
 
     public function rules(): array

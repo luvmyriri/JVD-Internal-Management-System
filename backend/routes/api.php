@@ -103,15 +103,15 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // ADMINISTRATION — Audit Logs (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,human_resource,admin:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,admin:view')->group(function () {
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 
     // ──────────────────────────────────────
-    // PROCUREMENT — Suppliers
+    // PROCUREMENT — Suppliers & Documents
     // (dynamic permissions via procurement module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting,agent,procurement:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,dispatcher,service_adviser,procurement:view')->group(function () {
         Route::apiResource('suppliers', SupplierController::class);
         // Supplier cross-check / counter-check verification (boss-mandated)
         Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
@@ -123,7 +123,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // PROCUREMENT — Purchase Orders
     // (dynamic permissions via procurement module)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting,agent,procurement:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,dispatcher,service_adviser,accounting_executive,procurement:view')->group(function () {
         Route::get('/procurement/overview', [\App\Http\Controllers\Procurement\OverviewController::class, 'getStats'])->name('procurement.overview');
         Route::apiResource('purchase-orders', PurchaseOrderController::class)->except(['destroy', 'update']);
         Route::post('/purchase-orders/{purchaseOrder}/submit',  [PurchaseOrderController::class, 'submit'])->name('purchase-orders.submit');
@@ -132,10 +132,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // OPERATIONS — Job Orders & Work Orders
-    // (dynamic permissions via operations module)
+    // OPERATIONS — Job Orders, Work Orders, Trip Tickets, Cash Budgets, Commissions
+    // (dynamic permissions via operations / logistics / accounting modules)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent,driver,operations:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,dispatcher,service_adviser,logistics_in_charge,purchasing_manager,accounting_executive,driver')->group(function () {
         Route::apiResource('job-orders',  JobOrderController::class)->except(['destroy']);
         Route::post('/job-orders/{jobOrder}/generate-purchase-order', [JobOrderController::class, 'generatePurchaseOrder'])->name('job-orders.generate-po');
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
@@ -147,7 +147,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // COLLECTIONS / FINANCE
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,accounting,agent')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,accounting_executive,accounting:view')->group(function () {
         Route::post('/collections/{collection}/confirm', [CollectionController::class, 'confirm'])->name('collections.confirm');
         Route::post('/collections/{collection}/add-payment', [CollectionController::class, 'addPayment'])->name('collections.add-payment');
         Route::patch('/collections/{collection}/remarks', [CollectionController::class, 'updateRemarks'])->name('collections.update-remarks');
@@ -160,22 +160,22 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // PMS WORK ORDER APPROVAL
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,head_mechanic,service_adviser')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge,head_mechanic,service_adviser')->group(function () {
         Route::post('/work-orders/{workOrder}/approve', [WorkOrderController::class, 'approve'])->name('work-orders.approve');
         Route::post('/work-orders/{workOrder}/reject',  [WorkOrderController::class, 'reject'])->name('work-orders.reject');
         Route::post('/work-orders/{workOrder}/generate-job-order', [WorkOrderController::class, 'generateJobOrder'])->name('work-orders.generate-jo');
     });
 
     // Drivers, Mechanics, Dispatchers can REQUEST a Work Order (but not approve)
-    Route::middleware('role:mechanic,head_mechanic,super_admin,admin,agent,driver')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,head_mechanic,dispatcher,service_adviser,driver')->group(function () {
         Route::post('/work-orders/request', [WorkOrderController::class, 'store'])->name('work-orders.request');
     });
 
     // ──────────────────────────────────────
-    // TRAVEL — Customers, Passengers, Passport Cases
-    // (dynamic permissions via travel module)
+    // OPERATIONS & TRAVEL — Customers, Passengers, Passport Cases
+    // (dynamic permissions via operations / travel modules)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent,travel:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,travel:view')->group(function () {
         Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
         Route::get('/customers/{customer}/passports', [CustomerPassportController::class, 'index']);
         Route::post('/customers/{customer}/passports', [CustomerPassportController::class, 'store']);
@@ -208,25 +208,27 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     });
 
     // ──────────────────────────────────────
-    // FLEET & ACCREDITATIONS
-    // (dynamic permissions via fleet / accreditations modules)
+    // FLEET (now under Logistics)
     // ──────────────────────────────────────
-    // Drivers can read buses (for My Bus page)
-    Route::middleware('role:super_admin,admin,driver,fleet:view')->group(function () {
+    // Drivers can read buses (for My Fleet page)
+    Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge,dispatcher,purchasing_manager,head_mechanic,service_adviser,driver,logistics:view')->group(function () {
         Route::get('buses',       [BusController::class, 'index'])->name('buses.index');
         Route::get('buses/{bus}', [BusController::class, 'show'])->name('buses.show');
     });
-    Route::middleware('role:super_admin,admin')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge')->group(function () {
         Route::post('buses',           [BusController::class, 'store'])->name('buses.store');
         Route::put('buses/{bus}',      [BusController::class, 'update'])->name('buses.update');
     });
 
-    // Allow HR to assign drivers via patch
-    Route::middleware('role:super_admin,admin,human_resource')->group(function () {
+    // Allow Corporate Secretary to assign drivers via patch
+    Route::middleware('role:super_admin,executive_vice_president,corporate_secretary')->group(function () {
         Route::patch('buses/{bus}',    [BusController::class, 'update']);
     });
 
-    Route::middleware('role:super_admin,admin,accreditations:view')->group(function () {
+    // ──────────────────────────────────────
+    // ACCREDITATIONS (now under Operations)
+    // ──────────────────────────────────────
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,operations:view')->group(function () {
         Route::post('/accreditations/{accreditation}/generate-kyc', [AccreditationController::class, 'generateKycLink'])->name('accreditations.generate-kyc');
         Route::post('/accreditations/{accreditation}/documents/{type}', [AccreditationController::class, 'uploadDocument'])->name('accreditations.upload-document');
         Route::apiResource('accreditations', AccreditationController::class);
@@ -235,7 +237,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // INVENTORY (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,agent,inventory:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,inventory:view')->group(function () {
         Route::apiResource('inventory', InventoryController::class)->except(['destroy']);
     });
 
@@ -246,8 +248,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // Webhook for PayMongo (no auth required)
     Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum');
 
-    Route::middleware('role:super_admin,accounting,agent,accounting:view')->group(function () {
-        // POS / Billing / Reports
+    Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,accounting:view')->group(function () {
+        // Billing / Reports / Sales
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
         Route::put('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'updateService'])->name('billing.services.update');
@@ -261,7 +263,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // HR (dynamic permissions)
     // ──────────────────────────────────────
-    Route::middleware('role:super_admin,admin,human_resource,hr:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary,hr:view')->group(function () {
         // User/Employee Management
         Route::apiResource('users', UserController::class)->except(['destroy']);
         Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
@@ -295,15 +297,15 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::prefix('dashboards')->group(function () {
         Route::get('/admin',      [DashboardController::class, 'admin'])
-            ->middleware('role:super_admin,admin')->name('dashboards.admin');
+            ->middleware('role:super_admin,executive_vice_president,operations_manager,logistics_in_charge')->name('dashboards.admin');
         Route::get('/accounting', [DashboardController::class, 'accounting'])
-            ->middleware('role:super_admin,admin,accounting')->name('dashboards.accounting');
+            ->middleware('role:super_admin,executive_vice_president,accounting_executive')->name('dashboards.accounting');
         Route::get('/agent',      [DashboardController::class, 'agent'])
-            ->middleware('role:super_admin,admin,agent')->name('dashboards.agent');
+            ->middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff')->name('dashboards.agent');
         Route::get('/driver',     [DashboardController::class, 'driver'])
-            ->middleware('role:super_admin,admin,driver')->name('dashboards.driver');
+            ->middleware('role:super_admin,executive_vice_president,driver')->name('dashboards.driver');
         Route::get('/hr',         [DashboardController::class, 'hr'])
-            ->middleware('role:super_admin,admin,human_resource')->name('dashboards.hr');
+            ->middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary')->name('dashboards.hr');
     });
 });
 

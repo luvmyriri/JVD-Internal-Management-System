@@ -18,7 +18,7 @@ class AuditLogTest extends TestCase
     {
         parent::setUp();
         $this->superAdmin = User::factory()->superAdmin()->create();
-        $this->agent      = User::factory()->create(['role' => 'agent']);
+        $this->agent      = User::factory()->create(['role' => 'reservation_officer']);
     }
 
     public function test_admin_can_list_audit_logs()

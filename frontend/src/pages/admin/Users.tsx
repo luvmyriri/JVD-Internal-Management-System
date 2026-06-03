@@ -41,6 +41,7 @@ import {
 import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
 import { useQuery } from '@tanstack/react-query';
 import { rolePermissionsApi, type ModulePermission } from '../../api/rolePermissions';
+import { type UserRole } from '../../types/auth';
 
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
@@ -117,7 +118,7 @@ interface User {
   email: string;
   first_name: string;
   last_name: string;
-  role: 'super_admin' | 'admin' | 'human_resource' | 'accounting' | 'agent' | 'driver';
+  role: UserRole;
   department: string;
   is_active: boolean;
   is_online?: boolean;
@@ -130,11 +131,7 @@ interface User {
 
 const ROLES = [
   { value: 'super_admin', label: 'Super Admin', icon: LuShieldCheck, color: 'text-rose-500', bg: 'bg-rose-500/10' },
-  { value: 'admin', label: 'Admin', icon: LuShield, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-  { value: 'human_resource', label: 'HR', icon: LuUsers, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-  { value: 'accounting', label: 'Accounting', icon: LuBadgeCheck, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  { value: 'agent', label: 'Agent', icon: LuBriefcase, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-  { value: 'driver', label: 'Driver', icon: LuTruck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  { value: 'executive_vice_president', label: 'Executive VP', icon: LuShield, color: 'text-rose-500', bg: 'bg-rose-500/10' },
   { value: 'operations_manager', label: 'Operations Manager', icon: LuShieldCheck, color: 'text-cyan-500', bg: 'bg-cyan-500/10' },
   { value: 'reservation_officer', label: 'Reservation Officer', icon: LuBriefcase, color: 'text-orange-500', bg: 'bg-orange-500/10' },
   { value: 'office_staff', label: 'Office Staff', icon: LuBriefcase, color: 'text-yellow-500', bg: 'bg-yellow-500/10' },
@@ -145,6 +142,7 @@ const ROLES = [
   { value: 'purchasing_manager', label: 'Purchasing Manager', icon: LuShield, color: 'text-sky-500', bg: 'bg-sky-500/10' },
   { value: 'service_adviser', label: 'Service Adviser', icon: LuShield, color: 'text-stone-500', bg: 'bg-stone-500/10' },
   { value: 'head_mechanic', label: 'Head Mechanic', icon: LuShield, color: 'text-neutral-500', bg: 'bg-neutral-500/10' },
+  { value: 'driver', label: 'Driver', icon: LuTruck, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
 ];
 
 const DEPARTMENTS = [
@@ -210,7 +208,7 @@ export default function Users() {
   const allBuses = (busesData?.data ?? []) as any[];
 
   const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
-  const watchedRole = watch('role', selectedUser?.role ?? 'agent');
+  const watchedRole = watch('role', selectedUser?.role ?? 'reservation_officer');
 
   const handleOpenModal = (user?: User) => {
     if (user) {
@@ -224,7 +222,7 @@ export default function Users() {
     } else {
       setSelectedUser(null);
       reset({
-        role: 'agent',
+        role: 'reservation_officer',
         department: 'Operations',
         send_invitation: true,
         employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
@@ -710,10 +708,10 @@ export default function Users() {
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-3">
                           <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shadow-sm", {
-                            'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 text-blue-500': ['admin', 'super_admin', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
-                            'bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20 text-purple-500': ['human_resource', 'corporate_secretary'].includes(user.role),
-                            'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-500': ['accounting', 'accounting_executive'].includes(user.role),
-                            'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 text-amber-500': ['agent', 'reservation_officer', 'office_staff'].includes(user.role),
+                            'bg-blue-50 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 text-blue-500': ['super_admin', 'executive_vice_president', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
+                            'bg-purple-50 dark:bg-purple-500/10 border-purple-100 dark:border-purple-500/20 text-purple-500': ['corporate_secretary'].includes(user.role),
+                            'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20 text-emerald-500': ['accounting_executive'].includes(user.role),
+                            'bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20 text-amber-500': ['reservation_officer', 'office_staff'].includes(user.role),
                             'bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20 text-indigo-500': user.role === 'driver',
                           })}>
                             {getRoleIcon(user.role)}

@@ -24,12 +24,12 @@
 <body>
 
     <div class="email-wrapper">
-        <div class="logo">JVD Travel & Tours</div>
+        <div class="logo">JVD Event and Travel Management Company</div>
 
         @if($invoice->status === 'paid')
             <h1>Payment Settled Successfully!</h1>
             <p>Dear {{ $invoice->customer_name }},</p>
-            <p>Thank you for choosing JVD Travel & Tours. We have successfully processed your payment. Attached to this email is your official copy of your printable Invoice <strong>(#{{ $invoice->invoice_number }})</strong> for your records.</p>
+            <p>Thank you for choosing JVD Event and Travel Management Company. We have successfully processed your payment. Attached to this email is your official copy of your printable Invoice <strong>(#{{ $invoice->invoice_number }})</strong> for your records.</p>
         @else
             <h1>Statement of Account Issued</h1>
             <p>Dear {{ $invoice->customer_name }},</p>
@@ -67,7 +67,7 @@
         <p>If you have any questions, feel free to reply directly to this email or reach out to our treasury support team at <strong>accounts@jvd-travel.com</strong>.</p>
 
         <div class="footer-note">
-            This is an automated system-generated billing communication from JVD Travel & Tours Inc. Please do not modify the attachment headers upon reply.
+            This is an automated system-generated billing communication from JVD Event and Travel Management Company. Please do not modify the attachment headers upon reply.
         </div>
     </div>
 

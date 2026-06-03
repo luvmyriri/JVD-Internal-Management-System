@@ -11,7 +11,7 @@ class UserPolicy
      */
     public function viewAny(User $authUser): bool
     {
-        return $authUser->hasRole('super_admin', 'admin');
+        return $authUser->hasPermission('admin', 'view');
     }
 
     /**
@@ -19,7 +19,7 @@ class UserPolicy
      */
     public function view(User $authUser, User $targetUser): bool
     {
-        return $authUser->hasRole('super_admin', 'admin');
+        return $authUser->hasPermission('admin', 'view');
     }
 
     /**
@@ -27,7 +27,7 @@ class UserPolicy
      */
     public function create(User $authUser): bool
     {
-        return $authUser->hasRole('super_admin', 'admin');
+        return $authUser->hasPermission('admin', 'create');
     }
 
     /**
@@ -39,7 +39,7 @@ class UserPolicy
         if ($authUser->isSuperAdmin()) {
             return true;
         }
-        return $authUser->isAdmin() && !$targetUser->isSuperAdmin();
+        return $authUser->hasPermission('admin', 'edit') && !$targetUser->isSuperAdmin();
     }
 
     /**

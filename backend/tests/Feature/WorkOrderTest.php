@@ -17,8 +17,9 @@ class WorkOrderTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->admin = User::factory()->create(['role' => 'admin']);
-        $this->agent = User::factory()->create(['role' => 'agent']);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->admin = User::factory()->superAdmin()->create();
+        $this->agent = User::factory()->create(['role' => 'dispatcher']);
     }
 
     public function test_admin_can_list_work_orders()
@@ -76,7 +77,7 @@ class WorkOrderTest extends TestCase
     public function test_can_reassign_work_order()
     {
         $wo       = WorkOrder::factory()->create(['status' => 'open']);
-        $mechanic = User::factory()->create(['role' => 'agent']);
+        $mechanic = User::factory()->create(['role' => 'service_adviser']);
 
         $this->actingAs($this->admin)
              ->putJson("/api/work-orders/{$wo->id}", ['assigned_to' => $mechanic->id])
@@ -86,7 +87,7 @@ class WorkOrderTest extends TestCase
 
     public function test_accounting_user_cannot_access_work_orders()
     {
-        $accounting = User::factory()->create(['role' => 'accounting']);
+        $accounting = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($accounting)
              ->getJson('/api/work-orders')

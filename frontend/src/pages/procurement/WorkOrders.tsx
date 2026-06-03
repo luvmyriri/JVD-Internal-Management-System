@@ -15,8 +15,9 @@ import { workOrderApi } from '../../api/workOrders';
 import { fleetApi } from '../../api/fleet';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
-import { Pagination, Dropdown, ConfirmDialog } from '../../components/ui';
+import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../context/AuthContext';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -149,6 +150,19 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
         </div>
 
         <div className="p-10 overflow-y-auto space-y-10 custom-scrollbar">
+          {/* Pipeline Visualizer */}
+          <PipelineVisualizer 
+            pipelineType={wo.type === 'trip' ? 'transaction' : 'maintenance'}
+            currentStatus={wo.status}
+            metadata={{
+              approved_by: wo.approver ? `${wo.approver.first_name} ${wo.approver.last_name}` : undefined,
+              approved_at: wo.approved_at || undefined,
+              bus_plate: wo.bus?.plate_number,
+              driver_name: wo.assignee ? `${wo.assignee.first_name} ${wo.assignee.last_name}` : undefined,
+              ticket_no: wo.trip_ticket_id ? `TT-${wo.trip_ticket_id}` : undefined,
+            }}
+          />
+
           {/* Main Info */}
           <div className="grid grid-cols-2 gap-8">
             <div className="space-y-1">
@@ -300,6 +314,139 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Edit WO Modal ────────────────────────────────────────────────────────────
+
+function EditWOModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<Partial<WorkOrderFormData>>({
+    bus_id: wo.bus_id,
+    assigned_to: wo.assigned_to || undefined,
+    priority: wo.priority as any,
+    description: wo.description,
+    parts_used: wo.parts_used || '',
+    cost: wo.cost ? Number(wo.cost) : 0,
+  });
+
+  const mutation = useMutation({
+    mutationFn: () => workOrderApi.update(wo.id, form),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      toast.success('Work Order updated successfully!');
+      onClose();
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update work order.');
+    },
+  });
+
+  const { data: busesData, isLoading: busesLoading } = useQuery({
+    queryKey: ['buses-dropdown'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+    staleTime: 60_000,
+  });
+  const buses = busesData?.data?.data ?? [];
+
+  const f = (label: string, key: keyof Partial<WorkOrderFormData>, type = 'text') => (
+    <div>
+      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
+      <input 
+        type={type} 
+        value={(form[key] as string | number) || ''} 
+        onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
+        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" 
+        placeholder={`Enter ${label.toLowerCase()}...`} 
+      />
+    </div>
+  );
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between p-8 pb-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Edit Work Order</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Modify work order details, priority, assignment, parts, or cost.</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-400 transition bg-gray-50 dark:bg-gray-800"><LuX size={20} /></button>
+        </div>
+        
+        <div className="p-8 overflow-y-auto">
+          <form id="edit-wo-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
+            <div className="grid grid-cols-2 gap-6">
+              {/* Bus ID Dropdown */}
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID *</label>
+                <div className="relative">
+                  <select
+                    value={form.bus_id || ''}
+                    onChange={e => setForm(p => ({ ...p, bus_id: Number(e.target.value) }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                  >
+                    <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
+                    {buses.map((bus) => (
+                      <option key={bus.id} value={bus.id}>
+                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+              {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Priority Level</label>
+                <div className="relative">
+                  <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value as any }))}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                    <option value="routine">Routine</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="critical">Critical</option>
+                  </select>
+                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+              {f('Cost (₱)', 'cost', 'number')}
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detailed Description *</label>
+              <textarea rows={3} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                placeholder="Describe the issue or maintenance required..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" />
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Parts Used</label>
+              <textarea rows={2} value={form.parts_used} onChange={e => setForm(p => ({ ...p, parts_used: e.target.value }))}
+                placeholder="List parts used or required (comma-separated)..."
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" />
+            </div>
+
+            {mutation.isError && (
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
+                {(mutation.error as any)?.response?.data?.message || 'Failed to update work order.'}
+              </p>
+            )}
+          </form>
+        </div>
+
+        <div className="p-6 px-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3 rounded-b-[2rem]">
+          <button type="button" onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 hover:bg-gray-200 hover:text-gray-900 dark:text-white transition">
+            Cancel
+          </button>
+          <button form="edit-wo-form" type="submit" disabled={!form.bus_id || !form.description || mutation.isPending}
+            className="px-8 py-2.5 rounded-xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 disabled:opacity-60 flex items-center gap-2 transition shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
+            {mutation.isPending && <LuLoaderCircle size={16} className="animate-spin" />} Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── WO Row ───────────────────────────────────────────────────────────────────
 
 function WORow({ 
@@ -308,13 +455,18 @@ function WORow({
   onDetail, 
   onComplete,
   onGenerateJO,
+  onEdit,
 }: { 
   wo: WorkOrder; 
   onReview: (wo: WorkOrder) => void;
   onDetail: (wo: WorkOrder) => void;
   onComplete: (wo: WorkOrder) => void;
   onGenerateJO: (wo: WorkOrder) => void;
+  onEdit: (wo: WorkOrder) => void;
 }) {
+  const { user } = useAuth();
+  const canApproveOrEdit = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.role === 'head_mechanic' || user?.role === 'service_adviser';
+
   return (
     <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
       <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
@@ -345,7 +497,7 @@ function WORow({
               icon: <Eye size={14} />, 
               onClick: () => onDetail(wo) 
             },
-            ...(wo.status === 'pending_approval' ? [{ 
+            ...(wo.status === 'pending_approval' && canApproveOrEdit ? [{ 
               label: 'Review Order', 
               icon: <ShieldCheck size={14} />, 
               onClick: () => onReview(wo) 
@@ -360,12 +512,10 @@ function WORow({
               icon: <CheckCircle size={14} />, 
               onClick: () => onComplete(wo)
             }] : []),
-            ...(wo.status !== 'completed' && wo.status !== 'cancelled' ? [{ 
+            ...(wo.status !== 'completed' && wo.status !== 'cancelled' && canApproveOrEdit ? [{ 
               label: 'Edit Request', 
               icon: <FileEdit size={14} />, 
-              onClick: () => {
-                toast('Edit feature coming soon', { icon: 'ℹ️' });
-              }
+              onClick: () => onEdit(wo)
             }] : []),
           ]}
         />
@@ -381,6 +531,7 @@ export default function WorkOrders() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
+  const [editWO, setEditWO] = useState<WorkOrder | null>(null);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
   const [detailWO, setDetailWO] = useState<WorkOrder | null>(null);
   const [confirmJO, setConfirmJO] = useState<WorkOrder | null>(null);
@@ -512,6 +663,7 @@ export default function WorkOrders() {
                     onDetail={setDetailWO}
                     onComplete={(item) => setConfirmComplete(item)}
                     onGenerateJO={(item) => setConfirmJO(item)}
+                    onEdit={setEditWO}
                   />
                 ))}
               </tbody>
@@ -521,6 +673,7 @@ export default function WorkOrders() {
       </div>
 
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}
+      {editWO && <EditWOModal wo={editWO} onClose={() => setEditWO(null)} />}
       {reviewWO && <ApprovalModal wo={reviewWO} onClose={() => setReviewWO(null)} />}
       {detailWO && <WODetailModal wo={detailWO} onClose={() => setDetailWO(null)} />}
 

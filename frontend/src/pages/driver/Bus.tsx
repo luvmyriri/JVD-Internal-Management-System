@@ -1,13 +1,16 @@
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import {
   LuBus, LuGauge, LuCalendarDays, LuShield,
   LuTriangleAlert, LuCircleCheck, LuWrench,
-  LuHash, LuUsers,
+  LuHash, LuUsers, LuX,
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
+import { workOrderApi } from '../../api/workOrders';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils';
+import toast from 'react-hot-toast';
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   available:         { label: 'Available',         color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20' },
@@ -39,8 +42,116 @@ function StatCard({ icon, label, value, sub, accent = false }: {
   );
 }
 
+function RequestMaintenanceModal({ busId, onClose }: { busId: number; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [description, setDescription] = useState('');
+  const [priority, setPriority] = useState<'routine' | 'urgent' | 'critical'>('routine');
+
+  const mutation = useMutation({
+    mutationFn: () => workOrderApi.create({
+      bus_id: busId,
+      priority,
+      description,
+      type: 'maintenance',
+    } as any),
+    onSuccess: () => {
+      toast.success('Maintenance request submitted successfully! Pending validation by head mechanic.');
+      qc.invalidateQueries({ queryKey: ['driver-my-bus'] });
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to submit maintenance request.');
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!description.trim()) return;
+    mutation.mutate();
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-md p-8">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">Request Maintenance/Repair</h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Submit ad-hoc repairs outside of the PMS window</p>
+          </div>
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 text-gray-450 dark:hover:text-white transition bg-gray-50 dark:bg-gray-800">
+            <LuX size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Priority Level *</label>
+            <div className="grid grid-cols-3 gap-2">
+              {(['routine', 'urgent', 'critical'] as const).map(p => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPriority(p)}
+                  className={cn(
+                    "py-2 rounded-xl text-xs font-bold uppercase tracking-wider border-2 transition-all",
+                    priority === p
+                      ? p === 'critical'
+                        ? 'bg-red-600 border-red-600 text-white shadow-lg shadow-red-200 dark:shadow-none'
+                        : p === 'urgent'
+                        ? 'bg-orange-600 border-orange-600 text-white shadow-lg shadow-orange-200 dark:shadow-none'
+                        : 'bg-gray-700 border-gray-700 text-white'
+                      : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-750 text-gray-500 hover:border-gray-400'
+                  )}
+                >
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Description of Issue *</label>
+            <textarea
+              required
+              rows={4}
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe the issue, parts needing replacement, or symptoms (e.g. squeaking brakes, engine knocking...)"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-gray-500 hover:bg-gray-100 transition"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!description.trim() || mutation.isPending}
+              className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold uppercase tracking-wider hover:bg-blue-700 disabled:opacity-60 transition shadow-lg shadow-blue-200/50"
+            >
+              {mutation.isPending && (
+                <svg className="animate-spin h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              )}
+              Submit Request
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function DriverBus() {
   const { user } = useAuth();
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
   const { data: busRes, isLoading } = useQuery({
     queryKey: ['driver-my-bus', (user as any)?.id],
@@ -88,9 +199,17 @@ export default function DriverBus() {
   return (
     <div className="space-y-6 p-1">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">My Bus</h1>
-        <p className="text-gray-400 text-sm font-medium mt-1">Details and maintenance status of your assigned vehicle</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">My Bus</h1>
+          <p className="text-gray-400 text-sm font-medium mt-1">Details and maintenance status of your assigned vehicle</p>
+        </div>
+        <button
+          onClick={() => setShowRequestModal(true)}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-650 text-white text-sm font-bold hover:bg-rose-700 active:scale-95 transition-all shadow-lg shadow-rose-200/50 dark:shadow-none"
+        >
+          <LuWrench size={16} /> Request Maintenance / Repair
+        </button>
       </div>
 
       {/* Hero card */}
@@ -219,6 +338,9 @@ export default function DriverBus() {
           </div>
         </div>
       </div>
+      {showRequestModal && (
+        <RequestMaintenanceModal busId={bus.id} onClose={() => setShowRequestModal(false)} />
+      )}
     </div>
   );
 }

@@ -21,7 +21,7 @@ class NotificationService
      */
     public static function notifyKycSubmission(Accreditation $accreditation)
     {
-        $admins = User::whereIn('role', ['super_admin', 'admin', 'accounting'])->get();
+        $admins = User::whereIn('role', ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'])->get();
         foreach ($admins as $admin) {
             $admin->notify(new SystemAlert(
                 "KYC Submitted: " . $accreditation->entity_name,
@@ -38,7 +38,7 @@ class NotificationService
     public static function notifyPoSubmission(PurchaseOrder $po)
     {
         $creatorName = $po->creator ? ($po->creator->first_name . ' ' . $po->creator->last_name) : 'An agent';
-        $recipients = User::whereIn('role', ['super_admin', 'admin', 'accounting'])->get();
+        $recipients = User::whereIn('role', ['super_admin', 'executive_vice_president', 'purchasing_manager', 'accounting_executive'])->get();
 
         $details = [
             'P.O. Number' => $po->po_number,
@@ -67,7 +67,7 @@ class NotificationService
     {
         // 1. Send secure actionable approval links to CEO when verified by accounting
         if ($status === 'pending_ceo_approval') {
-            $ceos = User::whereIn('role', ['super_admin', 'admin'])->get();
+            $ceos = User::whereIn('role', ['super_admin', 'executive_vice_president'])->get();
             $details = [
                 'P.O. Number'  => $po->po_number,
                 'Supplier'     => $po->supplier->name ?? 'N/A',
@@ -119,7 +119,7 @@ class NotificationService
      */
     public static function notifyWorkOrderRequest(WorkOrder $wo)
     {
-        $approvers = User::whereIn('role', ['super_admin', 'admin', 'service_adviser'])->get();
+        $approvers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'service_adviser', 'head_mechanic'])->get();
         
         $details = [
             'W.O. Number' => $wo->wo_number,
@@ -146,7 +146,7 @@ class NotificationService
      */
     public static function notifyWorkOrderVerification(WorkOrder $wo)
     {
-        $serviceAdvisers = User::whereIn('role', ['super_admin', 'admin', 'service_adviser'])->get();
+        $serviceAdvisers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'service_adviser'])->get();
         
         $details = [
             'W.O. Number' => $wo->wo_number,
@@ -180,6 +180,48 @@ class NotificationService
                 "You have been assigned: " . $task->title,
                 "warning",
                 "/travel/passporting"
+            ));
+        }
+    }
+
+    /**
+     * Notify Accounting that a new Cash Budget Request has been auto-generated.
+     */
+    public static function notifyCashBudgetSpawn(\App\Models\CashBudgetRequest $budget)
+    {
+        $accountingStaff = User::whereIn('role', ['super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager'])->get();
+        
+        $message = "A new Cash Budget Request of amount ₱" . number_format($budget->total_amount, 2) . " has been auto-generated for destination: " . ($budget->destination ?? 'N/A') . ". Ready for review.";
+
+        foreach ($accountingStaff as $staff) {
+            $staff->notify(new SystemAlert(
+                "New Cash Budget Generated",
+                $message,
+                "info",
+                "/operations/commissions",
+                "cash_budget_request",
+                $budget->id
+            ));
+        }
+    }
+
+    /**
+     * Notify Logistics officers that the pre-trip safety inspection is completed and cleared.
+     */
+    public static function notifyPreTripCleared(\App\Models\TripTicket $ticket)
+    {
+        $logisticsStaff = User::whereIn('role', ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher'])->get();
+        
+        $message = "Pre-trip safety inspection for Trip Ticket #" . $ticket->control_no . " (Plate: " . ($ticket->bus?->plate_number ?? $ticket->plate_no ?? 'TBA') . ") is fully completed and cleared for travel.";
+
+        foreach ($logisticsStaff as $staff) {
+            $staff->notify(new SystemAlert(
+                "Pre-trip Safety Cleared",
+                $message,
+                "success",
+                "/logistics/trip-tickets",
+                "trip_ticket",
+                $ticket->id
             ));
         }
     }

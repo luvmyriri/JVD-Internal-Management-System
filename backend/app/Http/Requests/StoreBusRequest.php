@@ -8,7 +8,7 @@ class StoreBusRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasRole('super_admin', 'admin');
+        return $this->user()->hasPermission('logistics', 'create');
     }
 
     public function rules(): array

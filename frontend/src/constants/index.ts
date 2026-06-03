@@ -1,19 +1,33 @@
 export const ROLES = {
   SUPER_ADMIN: 'super_admin',
-  ADMIN: 'admin',
-  HUMAN_RESOURCE: 'human_resource',
-  ACCOUNTING: 'accounting',
-  AGENT: 'agent',
-  MECHANIC: 'mechanic',
+  EXECUTIVE_VICE_PRESIDENT: 'executive_vice_president',
+  OPERATIONS_MANAGER: 'operations_manager',
+  RESERVATION_OFFICER: 'reservation_officer',
+  OFFICE_STAFF: 'office_staff',
+  ACCOUNTING_EXECUTIVE: 'accounting_executive',
+  CORPORATE_SECRETARY: 'corporate_secretary',
+  LOGISTICS_IN_CHARGE: 'logistics_in_charge',
+  DISPATCHER: 'dispatcher',
+  PURCHASING_MANAGER: 'purchasing_manager',
+  SERVICE_ADVISER: 'service_adviser',
+  HEAD_MECHANIC: 'head_mechanic',
+  DRIVER: 'driver',
 } as const;
 
 export const ROLE_LABELS: Record<string, string> = {
   super_admin: 'Super Admin (CEO)',
-  admin: 'Admin',
-  human_resource: 'Human Resource',
-  accounting: 'Accounting',
-  agent: 'Agent / Staff',
-  mechanic: 'Mechanic',
+  executive_vice_president: 'Executive Vice President',
+  operations_manager: 'Operations Manager',
+  reservation_officer: 'Reservation Officer',
+  office_staff: 'Office Staff',
+  accounting_executive: 'Accounting Executive',
+  corporate_secretary: 'Corporate Secretary',
+  logistics_in_charge: 'Logistics in Charge',
+  dispatcher: 'Booking Officer/Dispatcher',
+  purchasing_manager: 'Purchasing Manager',
+  service_adviser: 'Service Adviser',
+  head_mechanic: 'Head Mechanic',
+  driver: 'Coach Captain (Driver)',
 };
 
 // ──────────────────────────────────────────

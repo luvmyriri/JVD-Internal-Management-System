@@ -47,12 +47,7 @@ export interface SetupTwoFactorResponse {
 
 export type UserRole =
   | 'super_admin'
-  | 'admin'
   | 'executive_vice_president'
-  | 'human_resource'
-  | 'accounting'
-  | 'agent'
-  | 'driver'
   | 'operations_manager'
   | 'reservation_officer'
   | 'office_staff'
@@ -62,7 +57,8 @@ export type UserRole =
   | 'dispatcher'
   | 'purchasing_manager'
   | 'service_adviser'
-  | 'head_mechanic';
+  | 'head_mechanic'
+  | 'driver';
 
 
 export interface User {

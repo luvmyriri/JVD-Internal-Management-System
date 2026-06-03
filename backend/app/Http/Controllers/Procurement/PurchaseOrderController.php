@@ -27,7 +27,7 @@ class PurchaseOrderController extends Controller
 
         // Non-admins only see their own POs
         $user = $request->user();
-        if (!$user->hasRole('super_admin', 'admin', 'accounting')) {
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'purchasing_manager', 'accounting_executive')) {
             $query->where('created_by', $user->id);
         }
 
@@ -171,10 +171,10 @@ class PurchaseOrderController extends Controller
      */
     public function approve(ReviewPurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
-        if (!auth()->user()->hasRole('super_admin', 'admin')) {
+        if (!auth()->user()->hasRole('super_admin', 'executive_vice_president', 'purchasing_manager')) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Only super admin or admin can approve P.O.s.',
+                'message' => 'Unauthorized. Only super admin, executive vice president, or purchasing manager can approve P.O.s.',
             ], 403);
         }
 
@@ -213,12 +213,17 @@ class PurchaseOrderController extends Controller
             }
 
             // Automatically create a Cash Budget Request for the approved P.O.
+            $jo = \App\Models\JobOrder::where('purchase_order_id', $purchaseOrder->id)->first();
+            $plateNumber = $jo?->bus?->plate_number ?? $jo?->plate_no;
+
             \App\Models\CashBudgetRequest::create([
                 'date' => now()->toDateString(),
                 'total_amount' => $purchaseOrder->total_amount,
                 'status' => 'draft',
-                'prepared_by' => auth()->id(),
+                'prepared_by' => auth()->id() ?? 1,
                 'purchase_order_id' => $purchaseOrder->id,
+                'plate_number' => $plateNumber,
+                'destination' => "Maintenance/Repair PO #{$purchaseOrder->po_number}",
             ]);
         }
 

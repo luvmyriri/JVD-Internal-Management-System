@@ -30,8 +30,21 @@ class JobOrderController extends Controller
                 return response()->json(['success' => true, 'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'last_page' => 1, 'per_page' => 20]]);
             }
             $query->where('bus_id', $assignedBus->id);
-        } elseif (!$user->hasRole('super_admin', 'admin')) {
+        } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             $query->where('created_by', $user->id);
+        }
+
+        // Filter travel job orders for drivers to only show when cash budget is approved/disbursed/liquidated
+        if ($user->hasRole('driver')) {
+            $query->where(function ($q) {
+                $q->where('service_type', 'maintenance')
+                  ->orWhereHas('tripTicket.cashBudgetRequest', function ($subQ) {
+                      $subQ->whereIn('status', ['approved', 'disbursed', 'liquidated']);
+                  })
+                  ->orWhereHas('workOrder.tripTicket.cashBudgetRequest', function ($subQ) {
+                      $subQ->whereIn('status', ['approved', 'disbursed', 'liquidated']);
+                  });
+            });
         }
 
         // Optional filters (all roles)
@@ -91,7 +104,7 @@ class JobOrderController extends Controller
             if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
-        } elseif (!$user->hasRole('super_admin', 'admin')) {
+        } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             if ($jobOrder->created_by !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
@@ -100,7 +113,7 @@ class JobOrderController extends Controller
         return response()->json([
             'success' => true,
             'data'    => new JobOrderResource(
-                $jobOrder->load(['customer', 'bus', 'passengers', 'legalDocuments'])
+                $jobOrder->load(['customer', 'bus', 'passengers', 'legalDocuments', 'driver', 'tripTicket', 'purchaseOrder', 'workOrder'])
             ),
         ]);
     }
@@ -116,7 +129,7 @@ class JobOrderController extends Controller
             if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
-        } elseif (!$user->hasRole('super_admin', 'admin')) {
+        } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             if ($jobOrder->created_by !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }

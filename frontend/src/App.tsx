@@ -12,10 +12,10 @@ import { Toaster } from 'react-hot-toast';
 // Pages
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import POS from './pages/accounting/POS';
+import FixedPackages from './pages/sales/FixedPackages';
+import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
-import ProcurementOverview from './pages/procurement/Overview';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
@@ -33,10 +33,10 @@ import Passporting from './pages/travel/Passporting';
 import VisaProcessing from './pages/travel/VisaProcessing';
 import Customers from './pages/travel/Customers';
 import CustomerProfile from './pages/travel/CustomerProfile';
-import Documents from './pages/travel/Documents';
 import Employees from './pages/hr/Employees';
 import Applications from './pages/hr/Applications';
 import Internships from './pages/hr/Internships';
+import Payroll from './pages/hr/Payroll';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
@@ -96,45 +96,63 @@ export default function App() {
 
                 {/* Accounting */}
                 <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
-                <Route path="/accounting/pos" element={<POS />} />
                 <Route path="/accounting/billing" element={<Billing />} />
                 <Route path="/accounting/reports" element={<Reports />} />
                 <Route path="/accounting/collections" element={<Collections />} />
+                <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
+                <Route path="/accounting/commissions" element={<Commissions />} />
+                <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
 
                 {/* Operations */}
-                <Route path="/operations/commissions" element={<Commissions />} />
-                <Route path="/operations/cash-budgets" element={<CashBudgets />} />
+                <Route path="/operations" element={<Navigate to="/operations/customers" replace />} />
+                <Route path="/operations/customers" element={<Customers />} />
+                <Route path="/operations/customers/:id" element={<CustomerProfile />} />
+                <Route path="/operations/accreditations" element={<Accreditations />} />
+                <Route path="/operations/documents" element={<ProcurementDocuments />} />
+                <Route path="/operations/commissions" element={<Navigate to="/accounting/commissions" replace />} />
+                <Route path="/operations/cash-budgets" element={<Navigate to="/accounting/cash-budgets" replace />} />
 
                 {/* Logistics */}
                 <Route path="/logistics" element={<LogisticsOverview />} />
                 <Route path="/logistics/trip-tickets" element={<TripTickets />} />
+                <Route path="/logistics/fleet" element={<Fleet />} />
+                <Route path="/logistics/pms" element={<PMS />} />
 
                 {/* Procurement */}
-                <Route path="/procurement" element={<Navigate to="/procurement/overview" replace />} />
-                <Route path="/procurement/overview" element={<ProcurementOverview />} />
+                <Route path="/procurement" element={<Navigate to="/procurement/work-orders" replace />} />
+                <Route path="/procurement/overview" element={<Navigate to="/logistics" replace />} />
                 <Route path="/procurement/purchase-orders" element={<PurchaseOrders />} />
                 <Route path="/procurement/job-orders" element={<JobOrders />} />
                 <Route path="/procurement/work-orders" element={<WorkOrders />} />
-                <Route path="/procurement/accreditations" element={<Accreditations />} />
                 <Route path="/procurement/suppliers" element={<Suppliers />} />
-                <Route path="/procurement/documents" element={<ProcurementDocuments />} />
+                <Route path="/procurement/accreditations" element={<Navigate to="/operations/accreditations" replace />} />
+                <Route path="/procurement/documents" element={<Navigate to="/operations/documents" replace />} />
 
                 {/* Inventory */}
+                <Route path="/inventory" element={<Navigate to="/inventory/supplies" replace />} />
                 <Route path="/inventory/supplies" element={<Supplies />} />
-                <Route path="/inventory/fleet" element={<Fleet />} />
-                <Route path="/inventory/pms" element={<PMS />} />
+                <Route path="/inventory/fleet" element={<Navigate to="/logistics/fleet" replace />} />
+                <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
 
-                {/* Travel */}
+                {/* Sales */}
+                <Route path="/sales" element={<Navigate to="/sales/fixed-packages" replace />} />
+                <Route path="/sales/fixed-packages" element={<FixedPackages />} />
+                <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
+
+                {/* Travel Assistance */}
+                <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />
                 <Route path="/travel/passporting" element={<Passporting />} />
                 <Route path="/travel/visa-processing" element={<VisaProcessing />} />
-                <Route path="/travel/customers" element={<Customers />} />
-                <Route path="/travel/customers/:id" element={<CustomerProfile />} />
-                <Route path="/travel/documents" element={<Documents />} />
+                <Route path="/travel/customers" element={<Navigate to="/operations/customers" replace />} />
+                <Route path="/travel/customers/:id" element={<Navigate to="/operations/customers/:id" replace />} />
+                <Route path="/travel/documents" element={<Navigate to="/operations/documents" replace />} />
 
                 {/* HR */}
+                <Route path="/hr" element={<Navigate to="/hr/employees" replace />} />
                 <Route path="/hr/employees" element={<Employees />} />
                 <Route path="/hr/applications" element={<Applications />} />
                 <Route path="/hr/internships" element={<Internships />} />
+                <Route path="/hr/payroll" element={<Payroll />} />
 
                 {/* Admin */}
                 <Route path="/admin/users" element={<Users />} />
@@ -143,9 +161,12 @@ export default function App() {
                 <Route path="/admin/role-permissions" element={<RolePermissions />} />
 
                 {/* Driver */}
-                <Route path="/driver/schedule" element={<DriverSchedule />} />
-                <Route path="/driver/trips" element={<DriverTrips />} />
-                <Route path="/driver/bus" element={<DriverBus />} />
+                <Route path="/driver/overview" element={<DriverTrips />} />
+                <Route path="/driver/scheduled-trips" element={<DriverSchedule />} />
+                <Route path="/driver/my-fleet" element={<DriverBus />} />
+                <Route path="/driver/schedule" element={<Navigate to="/driver/scheduled-trips" replace />} />
+                <Route path="/driver/trips" element={<Navigate to="/driver/overview" replace />} />
+                <Route path="/driver/bus" element={<Navigate to="/driver/my-fleet" replace />} />
               </Route>
 
               <Route path="*" element={<DefaultRedirect />} />

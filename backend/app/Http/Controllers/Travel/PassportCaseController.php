@@ -33,7 +33,7 @@ class PassportCaseController extends Controller
         $query = PassportCase::with(['customer', 'passenger', 'handler']);
 
         $user = $request->user();
-        if (!$user->hasRole('super_admin', 'admin')) {
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             $query->where('handled_by', $user->id);
         }
 

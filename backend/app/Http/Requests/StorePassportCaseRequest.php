@@ -8,7 +8,7 @@ class StorePassportCaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasRole('super_admin', 'admin', 'agent');
+        return $this->user()->hasPermission('travel', 'create');
     }
 
     public function rules(): array

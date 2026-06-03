@@ -103,7 +103,7 @@
 
         <!-- Sleek Footer -->
         <div class="text-center mt-6 space-y-1">
-            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; {{ date('Y') }} JVD Events & Travels Management Co.</p>
+            <p class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">&copy; {{ date('Y') }} JVD Event and Travel Management Company</p>
             <p class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Secure Remote Action Endpoint Verified</p>
         </div>
     </div>

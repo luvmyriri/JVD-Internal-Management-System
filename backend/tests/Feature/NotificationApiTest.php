@@ -20,7 +20,7 @@ class NotificationApiTest extends TestCase
 
         // Create a user for authentication
         $this->user = User::factory()->create([
-            'role' => 'agent',
+            'role' => 'reservation_officer',
             'is_active' => true,
             'must_change_password' => false,
         ]);

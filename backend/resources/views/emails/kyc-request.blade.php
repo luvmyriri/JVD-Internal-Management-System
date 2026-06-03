@@ -17,7 +17,7 @@
                         <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 1px solid #f3f4f6; background-color: #ffffff;">
                             <img src="{{ $message->embed(base_path('../frontend/public/JVD 3D.png')) }}" alt="JVD Logo" height="64" style="display: block; margin: 0 auto 15px auto;">
                             <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: 900; letter-spacing: -0.5px;">JVD</h1>
-                            <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Events and Travel Management, Co.</p>
+                            <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Event and Travel Management Company</p>
                         </td>
                     </tr>
                     
@@ -39,7 +39,7 @@
                                 <tr>
                                     <td style="padding: 16px; font-size: 14px; color: #1e3a8a; line-height: 1.6;">
                                         <strong style="color: #1d4ed8; display: block; margin-bottom: 4px;">Why is this needed?</strong> 
-                                        Maintaining up-to-date compliance records ensures seamless operations and partnership continuity with JVD Management.
+                                        Maintaining up-to-date compliance records ensures seamless operations and partnership continuity with JVD Event and Travel Management Company.
                                     </td>
                                 </tr>
                             </table>
@@ -69,7 +69,7 @@
                     <tr>
                         <td style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 30px 40px; text-align: center;">
                             <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; font-weight: 700;">
-                                &copy; {{ date('Y') }} JVD Events & Travels Management Co.
+                                &copy; {{ date('Y') }} JVD Event and Travel Management Company
                             </p>
                             <p style="margin: 0; font-size: 11px; color: #9ca3af;">
                                 This is an automated system message.<br>Please do not reply directly to this email.

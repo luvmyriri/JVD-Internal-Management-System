@@ -8,7 +8,7 @@ class StoreWorkOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasRole('super_admin', 'admin', 'agent');
+        return $this->user()->hasPermission('procurement', 'create') || $this->user()->hasRole('driver');
     }
 
     public function rules(): array
@@ -20,6 +20,7 @@ class StoreWorkOrderRequest extends FormRequest
             'description' => ['required', 'string', 'max:2000'],
             'parts_used'  => ['nullable', 'string', 'max:1000'],
             'cost'        => ['nullable', 'numeric', 'min:0'],
+            'type'        => ['nullable', 'in:maintenance,trip'],
         ];
     }
 }

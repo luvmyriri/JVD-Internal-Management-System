@@ -14,8 +14,15 @@ class WorkOrderService
     {
         return DB::transaction(function () use ($data, $userId) {
             $user = \App\Models\User::find($userId);
-            $requiresApproval = $user && !in_array($user->role, ['super_admin', 'admin', 'service_adviser']);
-            $status = $requiresApproval ? 'pending_approval' : 'open';
+            
+            $status = 'open';
+            if ($user) {
+                if ($user->hasRole('driver')) {
+                    $status = 'pending_validation';
+                } elseif (!in_array($user->role, ['super_admin', 'executive_vice_president', 'service_adviser'])) {
+                    $status = 'pending_approval';
+                }
+            }
 
             $wo = WorkOrder::create([
                 'wo_number'     => $this->generateWONumber(),
@@ -23,6 +30,7 @@ class WorkOrderService
                 'assigned_to'   => $data['assigned_to'] ?? null,
                 'created_by'    => $userId,
                 'status'        => $status,
+                'type'          => $data['type'] ?? 'maintenance',
                 'priority'      => $data['priority'],
                 'description'   => $data['description'],
                 'parts_used'    => $data['parts_used'] ?? null,

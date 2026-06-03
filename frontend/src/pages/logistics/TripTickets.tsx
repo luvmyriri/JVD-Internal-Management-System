@@ -5,7 +5,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { tripTicketApi } from '../../api/operations';
 import type { TripTicket } from '../../types';
-import { Modal, Button } from '../../components/ui';
+import { Modal, Button, PipelineVisualizer } from '../../components/ui';
 import { useBuses } from '../../hooks/useFleet';
 import { useUsers } from '../../hooks/useUsers';
 
@@ -411,6 +411,51 @@ function printTripTicket(ticket: TripTicket) {
 
 function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket: TripTicket; onClose: () => void; onCustomizeApprove?: (ticket: TripTicket) => void }) {
   const { user } = useAuth();
+
+  // Pre-trip safety inspection calculation
+  const hasBus = !!ticket.bus_id;
+  const wo = (ticket as any).work_orders && (ticket as any).work_orders.length > 0 ? (ticket as any).work_orders[0] : null;
+  const jo = wo && wo.job_orders && wo.job_orders.length > 0 ? wo.job_orders[0] : null;
+
+  let safetyMessage = '';
+  let safetyColor = '';
+  let isSafetyComplete = false;
+
+  if (!hasBus) {
+    safetyMessage = '⚠️ Bus assignment is pending. Please assign a vehicle to spawn a pre-trip safety clearance.';
+    safetyColor = 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40 text-amber-800 dark:text-amber-400';
+  } else if (!wo) {
+    safetyMessage = '🛠️ Pre-trip safety inspection Work Order is not yet spawned. Please assign a vehicle to spawn safety clearance.';
+    safetyColor = 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40 text-red-800 dark:text-red-400';
+  } else if (wo.status === 'pending_approval') {
+    safetyMessage = `🛠️ Pre-trip Safety Work Order (${wo.wo_number}) is pending Head Mechanic verification.`;
+    safetyColor = 'bg-purple-50 dark:bg-purple-950/20 border-purple-200 dark:border-purple-900/40 text-purple-800 dark:text-purple-400';
+  } else if (wo.status === 'verified') {
+    safetyMessage = `🛠️ Work Order (${wo.wo_number}) has been verified. Pending Service Adviser final approval.`;
+    safetyColor = 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-800 dark:text-indigo-400';
+  } else if (wo.status === 'open' && !jo) {
+    safetyMessage = `🛠️ Work Order (${wo.wo_number}) is approved. Pending Job Order generation to execute safety checks.`;
+    safetyColor = 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/40 text-blue-800 dark:text-blue-400';
+  } else if (wo.status === 'completed') {
+    safetyMessage = `✅ Pre-trip safety inspection completed. Work Order (${wo.wo_number}) cleared. Ready for travel.`;
+    safetyColor = 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40 text-emerald-800 dark:text-emerald-400';
+    isSafetyComplete = true;
+  } else if (jo) {
+    if (jo.status === 'created' || jo.status === 'confirmed') {
+      safetyMessage = `🛠️ Pre-trip Job Order (${jo.jo_number}) generated. Pending scheduling and mechanic confirmation.`;
+      safetyColor = 'bg-sky-50 dark:bg-sky-950/20 border-sky-200 dark:border-sky-900/40 text-sky-800 dark:text-sky-400';
+    } else if (jo.status === 'in_progress') {
+      safetyMessage = `⚙️ Pre-trip maintenance is currently IN PROGRESS on Job Order (${jo.jo_number}).`;
+      safetyColor = 'bg-teal-50 dark:bg-teal-950/20 border-teal-200 dark:border-teal-900/40 text-teal-800 dark:text-teal-400';
+    } else {
+      safetyMessage = `🛠️ Safety maintenance holds status: WO (${wo.status}) | JO (${jo.status}).`;
+      safetyColor = 'bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-900/40 text-slate-800 dark:text-slate-400';
+    }
+  } else {
+    safetyMessage = `🛠️ Pre-trip Safety Work Order (${wo.wo_number}) is in state '${wo.status}'. Clearances must be finalized.`;
+    safetyColor = 'bg-indigo-50 dark:bg-indigo-950/20 border-indigo-200 dark:border-indigo-900/40 text-indigo-800 dark:text-indigo-400';
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -429,6 +474,37 @@ function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket
         </div>
 
         <div className="p-10 overflow-y-auto space-y-8 custom-scrollbar">
+          {/* Pipeline Visualizer */}
+          <PipelineVisualizer
+            pipelineType="transaction"
+            currentStatus={ticket.status === 'approved' ? (ticket.cash_budget_request?.status === 'disbursed' ? 'disbursed' : 'approved') : ticket.status}
+            metadata={{
+              approved_by: ticket.approvedBy?.name,
+              bus_plate: ticket.bus?.plate_number || ticket.plate_no,
+              driver_name: ticket.driver?.name,
+              ticket_no: ticket.control_no,
+              budget_status: ticket.cash_budget_request?.status,
+            }}
+          />
+
+          {/* Pre-Trip Safety Inspection Banner */}
+          <div className={`p-6 border rounded-[1.5rem] flex flex-col gap-2 ${safetyColor} transition-all duration-300`}>
+            <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Pre-Trip Safety Clearance</p>
+            <p className="text-sm font-semibold leading-relaxed">{safetyMessage}</p>
+            {wo && (
+              <div className="mt-2 flex flex-wrap gap-4 text-xs opacity-90 font-medium">
+                <div>
+                  <strong>Work Order:</strong> <span className="underline">{wo.wo_number}</span> ({wo.status.toUpperCase()})
+                </div>
+                {jo && (
+                  <div>
+                    <strong>Job Order:</strong> <span className="underline">{jo.jo_number}</span> ({jo.status.toUpperCase()})
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-8">
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
@@ -509,13 +585,20 @@ function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket
             </button>
             {ticket.status === 'draft' && user?.role !== 'driver' && onCustomizeApprove && (
               <button
+                disabled={!isSafetyComplete}
                 onClick={() => {
+                  if (!isSafetyComplete) return;
                   onCustomizeApprove(ticket);
                   onClose();
                 }}
-                className="flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer"
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all ${
+                  isSafetyComplete
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                }`}
+                title={!isSafetyComplete ? "Cannot approve: Pre-trip safety clearance is not yet completed." : "Approve this trip ticket"}
               >
-                Customize & Approve
+                {!isSafetyComplete ? '🔒 Safety Clearance Pending' : 'Customize & Approve'}
               </button>
             )}
           </div>

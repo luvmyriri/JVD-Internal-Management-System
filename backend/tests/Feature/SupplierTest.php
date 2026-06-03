@@ -17,8 +17,9 @@ class SupplierTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->accounting = User::factory()->create(['role' => 'accounting']);
-        $this->agent      = User::factory()->create(['role' => 'agent']);
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->accounting = User::factory()->create(['role' => 'purchasing_manager']);
+        $this->agent      = User::factory()->create(['role' => 'dispatcher']);
     }
 
     public function test_accounting_can_list_suppliers()

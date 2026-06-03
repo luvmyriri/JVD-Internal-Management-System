@@ -16,7 +16,7 @@ class CustomerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->agent = User::factory()->create(['role' => 'agent']);
+        $this->agent = User::factory()->superAdmin()->create();
     }
 
     public function test_agent_can_list_customers()

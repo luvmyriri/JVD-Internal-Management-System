@@ -12,7 +12,6 @@ export default function Dashboard() {
 
   switch (user.role) {
     case 'super_admin':
-    case 'admin':
     case 'executive_vice_president':
     case 'operations_manager':
     case 'logistics_in_charge':
@@ -21,13 +20,10 @@ export default function Dashboard() {
     case 'service_adviser':
     case 'head_mechanic':
       return <AdminDashboard />;
-    case 'human_resource':
     case 'corporate_secretary':
       return <HRDashboard />;
-    case 'accounting':
     case 'accounting_executive':
       return <AccountingDashboard />;
-    case 'agent':
     case 'reservation_officer':
     case 'office_staff':
       return <AgentDashboard />;

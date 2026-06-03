@@ -116,6 +116,11 @@ export interface JobOrder {
   notes: string | null;
   passengers: Passenger[];
   purchase_order_id?: number | null;
+  driver_id?: number | null;
+  driver?: { id: number; first_name: string; last_name: string } | null;
+  trip_ticket?: { id: number; ticket_number: string; status: string } | null;
+  purchase_order?: { id: number; po_number: string; status: string } | null;
+  work_order?: { id: number; wo_number: string; status: string } | null;
   created_at: string;
   updated_at: string;
 }
@@ -161,6 +166,9 @@ export interface WorkOrder {
   parts_used: string | null;
   cost: number;
   auto_generated: boolean;
+  type?: 'maintenance' | 'trip';
+  trip_ticket_id?: number | null;
+  invoice_id?: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -170,6 +178,8 @@ export interface WorkOrderFormData {
   assigned_to: number;
   priority: WOPriority;
   description: string;
+  parts_used?: string;
+  cost?: number;
 }
 
 // ──────────────────────────────────────────

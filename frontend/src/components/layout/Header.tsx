@@ -1839,7 +1839,7 @@ function NotificationModal({
   const [isLoadingCb, setIsLoadingCb] = useState(false);
 
   const isSuperAdmin = user?.role === 'super_admin';
-  const isAccountingRole = ['accounting', 'accounting_executive', 'super_admin'].includes(user?.role ?? '');
+  const isAccountingRole = ['accounting_executive', 'super_admin'].includes(user?.role ?? '');
 
   // 1. Try to get po_number from title or message or model
   let poNumber = '';
