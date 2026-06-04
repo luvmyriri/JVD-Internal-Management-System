@@ -504,7 +504,7 @@ export default function Fleet() {
                       <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
                     </td>
                     <td className="px-8 py-6">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
+                      <span className="inline-block whitespace-nowrap px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
                         {bus.seating_capacity} pax
                       </span>
                     </td>

@@ -262,7 +262,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-y-6 gap-x-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-6 gap-x-4">
           <div>
             <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact Person</p>
             <p className="text-sm font-medium text-gray-800 dark:text-gray-200">{acc.contact_person}</p>
@@ -318,7 +318,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
         {/* Compliance Portal Documents Section */}
         <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
           <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Compliance Portal Documents</p>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {['nda', 'terms', 'kyc'].map(docKey => {
               const url = acc[`${docKey}_document_url` as keyof Accreditation] as string | undefined;
               const docName = docKey.toUpperCase();
@@ -773,8 +773,9 @@ export default function Accreditations() {
         </button>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-start gap-4">
-        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full sm:w-auto">
+      <div className="flex flex-col lg:flex-row lg:items-center gap-4 w-full">
+        {/* Tabs */}
+        <div className="flex items-center gap-1 bg-white dark:bg-gray-800 p-1 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full lg:w-auto overflow-x-auto hide-scrollbar shrink-0">
           {[
             { id: 'all', label: 'All Records' },
             { id: 'assets', label: 'Fleet & Assets' },
@@ -783,7 +784,7 @@ export default function Accreditations() {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id as any); setPage(1); }}
-              className={`flex-1 sm:flex-none px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
+              className={`flex-1 sm:flex-none shrink-0 whitespace-nowrap px-6 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all ${
                 activeTab === tab.id 
                   ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 shadow-sm' 
                   : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'
@@ -794,7 +795,8 @@ export default function Accreditations() {
           ))}
         </div>
 
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md w-full sm:w-96">
+        {/* Search Bar */}
+        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full lg:w-auto lg:flex-1 lg:max-w-md">
           <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 shrink-0">
             <LuSearch size={18} />
           </div>
@@ -803,15 +805,16 @@ export default function Accreditations() {
             placeholder="Search accreditations..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-gray-800 placeholder:text-gray-400 outline-none"
+            className="flex-1 bg-transparent border-none text-sm focus:ring-0 text-gray-800 dark:text-white placeholder:text-gray-400 outline-none"
           />
         </div>
 
-        <div className="flex items-center gap-2">
-          <button onClick={downloadTemplate} className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 w-full lg:w-auto shrink-0 justify-end sm:justify-start lg:justify-end lg:ml-auto">
+          <button onClick={downloadTemplate} className="flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
             <LuFileDown className="w-4 h-4" /> Format
           </button>
-          <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+          <label className="cursor-pointer flex-1 sm:flex-none justify-center flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
             <LuFileUp className="w-4 h-4" /> Bulk Upload
             <input type="file" multiple className="hidden" accept=".csv,.xlsx" onChange={handleFileChange} ref={fileInputRef} />
           </label>
