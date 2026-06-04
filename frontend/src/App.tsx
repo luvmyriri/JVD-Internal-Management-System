@@ -8,6 +8,7 @@ import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
 import { Toaster } from 'react-hot-toast';
+import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation';
 
 // Pages
 import Login from './pages/Login';
@@ -64,8 +65,8 @@ const queryClient = new QueryClient({
 const DefaultRedirect = () => {
   const { user } = useAuth();
   let defaultLandingPage = localStorage.getItem('jvd_landing_page');
-  if (!defaultLandingPage) {
-    defaultLandingPage = user?.role === 'driver' ? '/driver/schedule' : '/dashboard';
+  if (!defaultLandingPage || !isPathAllowedForUser(defaultLandingPage, user, user?.effective_permissions)) {
+    defaultLandingPage = getLandingPageForUser(user, user?.effective_permissions);
   }
   return <Navigate to={defaultLandingPage} replace />;
 };

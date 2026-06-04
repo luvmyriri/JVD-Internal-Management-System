@@ -26,6 +26,7 @@ class Service extends Model
         'coaster_price',
         'tour_kms',
         'tour_hours',
+        'cost_breakdown',
     ];
 
     protected $casts = [

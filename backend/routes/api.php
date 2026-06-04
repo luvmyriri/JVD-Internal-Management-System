@@ -297,7 +297,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::prefix('dashboards')->group(function () {
         Route::get('/admin',      [DashboardController::class, 'admin'])
-            ->middleware('role:super_admin,executive_vice_president,operations_manager,logistics_in_charge')->name('dashboards.admin');
+            ->middleware('role:super_admin,executive_vice_president,operations_manager')->name('dashboards.admin');
         Route::get('/accounting', [DashboardController::class, 'accounting'])
             ->middleware('role:super_admin,executive_vice_president,accounting_executive')->name('dashboards.accounting');
         Route::get('/agent',      [DashboardController::class, 'agent'])

@@ -141,16 +141,6 @@ class CashBudgetRequestController extends Controller
             // Only create invoice if one doesn't already exist
             $existingInvoice = \App\Models\Invoice::where('cash_budget_request_id', $budget->id)->first();
             if (!$existingInvoice) {
-                $service = \App\Models\Service::firstOrCreate(
-                    ['name' => 'Cash Budget Disbursement'],
-                    [
-                        'category'   => 'Internal',
-                        'price'      => 0,
-                        'is_active'  => true,
-                        'created_by' => auth()->id() ?? 1,
-                    ]
-                );
-
                 // Determine customer/payee label
                 $customerName = 'Internal Expense';
                 if ($budget->tripTicket) {
@@ -162,6 +152,13 @@ class CashBudgetRequestController extends Controller
                     $customerName = $budget->purchaseOrder->supplier->name;
                 }
 
+                // Build invoice notes with destination/plate info
+                $notesParts = ['Auto-generated from Cash Budget Request #' . $budget->id];
+                if ($budget->destination) $notesParts[] = 'Destination: ' . $budget->destination;
+                if ($budget->plate_number) $notesParts[] = 'Plate: ' . $budget->plate_number;
+                if ($budget->travel_date) $notesParts[] = 'Travel Date: ' . $budget->travel_date->format('Y-m-d');
+
+                // Use a timestamped invoice number for better traceability
                 $invoiceNumber = 'INV-CB-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
 
                 $invoice = \App\Models\Invoice::create([
@@ -177,19 +174,45 @@ class CashBudgetRequestController extends Controller
                     'balance'                => $disbursedAmount,
                     'status'                 => 'disbursed_budget',
                     'created_by'             => auth()->id() ?? 1,
-                    'notes'                  => 'Disbursement for Cash Budget #' . $budget->id . ($budget->destination ? " — {$budget->destination}" : ''),
+                    'notes'                  => implode(' | ', $notesParts),
                     'cash_budget_request_id' => $budget->id,
                 ]);
 
-                \App\Models\InvoiceItem::create([
-                    'invoice_id'  => $invoice->id,
-                    'service_id'  => $service->id,
-                    'quantity'    => 1,
-                    'unit_price'  => $disbursedAmount,
-                    'total_price' => $disbursedAmount,
-                ]);
+                // Map each cash budget expense field to a human-readable label and create an invoice item per expense
+                $expenseFields = [
+                    'diesel'               => 'Diesel',
+                    'meal_allowance'       => 'Meal Allowance',
+                    'sop'                  => 'SOP',
+                    'autosweep'            => 'Autosweep',
+                    'easytrip'             => 'Easytrip',
+                    'coach_captain_salary' => 'Coach Captain Salary',
+                    'spare_driver_salary'  => 'Spare Driver Salary',
+                ];
 
-                // Notify the person who prepared the budget that it was disbursed
+                foreach ($expenseFields as $field => $label) {
+                    $amount = (float) ($budget->$field ?? 0);
+                    if ($amount <= 0) continue;
+
+                    $service = \App\Models\Service::firstOrCreate(
+                        ['name' => $label],
+                        [
+                            'category'   => 'Cash Budget',
+                            'price'      => 0,
+                            'is_active'  => true,
+                            'created_by' => auth()->id() ?? 1,
+                        ]
+                    );
+
+                    \App\Models\InvoiceItem::create([
+                        'invoice_id'  => $invoice->id,
+                        'service_id'  => $service->id,
+                        'quantity'    => 1,
+                        'unit_price'  => $amount,
+                        'total_price' => $amount,
+                    ]);
+                }
+
+                // Notify the preparer that the budget was disbursed
                 if ($budget->preparedBy) {
                     $budget->preparedBy->notify(new SystemAlert(
                         "Cash Budget Disbursed — {$invoiceNumber}",
