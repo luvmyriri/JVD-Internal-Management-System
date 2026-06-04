@@ -71,6 +71,12 @@ class BillingController extends Controller
             ->where('is_active', true)
             ->get();
 
+        // Strip cost_breakdown from non-admin/super_admin users
+        $userRole = auth()->user()?->role;
+        if (!in_array($userRole, ['super_admin', 'admin'])) {
+            $services->makeHidden('cost_breakdown');
+        }
+
         return response()->json([
             'success' => true,
             'data' => $services
@@ -95,6 +101,7 @@ class BillingController extends Controller
             'coaster_price' => 'nullable|numeric|min:0',
             'tour_kms' => 'nullable|integer|min:0',
             'tour_hours' => 'nullable|integer|min:0',
+            'cost_breakdown' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -137,6 +144,7 @@ class BillingController extends Controller
             'coaster_price' => $request->coaster_price,
             'tour_kms' => $request->tour_kms,
             'tour_hours' => $request->tour_hours,
+            'cost_breakdown' => $request->cost_breakdown,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -170,6 +178,7 @@ class BillingController extends Controller
             'coaster_price' => 'nullable|numeric|min:0',
             'tour_kms' => 'nullable|integer|min:0',
             'tour_hours' => 'nullable|integer|min:0',
+            'cost_breakdown' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -213,6 +222,7 @@ class BillingController extends Controller
             'coaster_price' => $request->coaster_price ?? $service->coaster_price,
             'tour_kms' => $request->tour_kms ?? $service->tour_kms,
             'tour_hours' => $request->tour_hours ?? $service->tour_hours,
+            'cost_breakdown' => array_key_exists('cost_breakdown', $request->all()) ? $request->cost_breakdown : $service->cost_breakdown,
         ]);
 
         return response()->json([

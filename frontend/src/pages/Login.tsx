@@ -152,6 +152,7 @@ export default function Login() {
       }
     } catch (err: any) {
       console.error('Login error:', err);
+      setPassword('');
       if (err.response) {
         setError(err.response.data?.message || 'Invalid credentials');
       } else if (err.request) {
@@ -327,7 +328,8 @@ export default function Login() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-5 text-slate-350 hover:text-slate-500 transition-colors"
+                        className="absolute right-5 hover:opacity-80 transition-opacity"
+                        style={{ color: '#454444' }}
                       >
                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                       </button>

@@ -280,6 +280,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                           to={item.path}
                           end
                           onClick={() => onClose?.()}
+                          title={item.label}
                           className={({ isActive }) =>
                             `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ${isActive
                               ? 'bg-white text-blue-900 font-black shadow-lg shadow-white/10'

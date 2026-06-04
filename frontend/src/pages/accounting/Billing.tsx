@@ -478,20 +478,27 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Cash Budget Disbursement Source Banner */}
+              {/* Cash Budget Banner */}
               {selectedInvoice.cash_budget_request_id && (
-                <div className="mb-8 p-5 bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40">
-                  <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-2">Disbursement Source</p>
-                  <p className="text-sm font-bold text-gray-900 dark:text-white">
-                    Cash Budget Request #{selectedInvoice.cash_budget_request_id}
-                  </p>
-                  {selectedInvoice.notes && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 leading-relaxed">{selectedInvoice.notes}</p>
-                  )}
+                <div className="mb-8 p-4 rounded-2xl bg-violet-50 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800/40 flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-violet-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-violet-700 dark:text-violet-300 uppercase tracking-widest">Cash Budget Request</p>
+                    <p className="text-[11px] text-violet-600 dark:text-violet-400 mt-0.5 font-medium">
+                      Auto-generated from Cash Budget Request #{selectedInvoice.cash_budget_request_id}. Items below reflect the approved expense breakdown.
+                    </p>
+                    {selectedInvoice.notes && (
+                      <p className="text-[10px] text-violet-500 dark:text-violet-500 mt-1 font-mono">{selectedInvoice.notes}</p>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {/* Notes (non-CB invoices) */}
+              {/* Notes (non-CB invoices only) */}
               {!selectedInvoice.cash_budget_request_id && selectedInvoice.notes && (
                 <div className="mb-8 p-4 bg-gray-50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800">
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">Notes</p>
@@ -504,20 +511,28 @@ export default function Billing() {
                   <tr className="border-b-2 border-gray-900 dark:border-gray-100">
                     <th className="text-left py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
                     <th className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                    <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
                     <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {selectedInvoice.items?.map((item: any) => (
-                    <tr key={item.id}>
-                      <td className="py-5">
-                        <p className="font-black text-gray-900 dark:text-white">{item.service?.name}</p>
-                        <p className="text-[10px] text-gray-400 font-medium uppercase">{item.service?.category}</p>
-                      </td>
-                      <td className="py-5 text-center font-bold text-gray-600 dark:text-gray-400">{item.quantity}</td>
-                      <td className="py-5 text-right font-black text-gray-900 dark:text-white">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                  {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
+                    selectedInvoice.items.map((item: any) => (
+                      <tr key={item.id}>
+                        <td className="py-5">
+                          <p className="font-black text-gray-900 dark:text-white">{item.service?.name || item.service_name || 'Service'}</p>
+                          <p className="text-[10px] text-gray-400 font-medium uppercase">{item.service?.category}</p>
+                        </td>
+                        <td className="py-5 text-center font-bold text-gray-600 dark:text-gray-400">{item.quantity}</td>
+                        <td className="py-5 text-right font-bold text-gray-600 dark:text-gray-400">₱{Number(item.unit_price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        <td className="py-5 text-right font-black text-gray-900 dark:text-white">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={4} className="py-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">No line items found</td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
 

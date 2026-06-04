@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
-import { 
-  LuUpload, 
-  LuCheck, 
-  LuLoaderCircle, 
-  LuBuilding2, 
-  LuUser, 
-  LuMail, 
-  LuFileCheck, 
+import {
+  LuUpload,
+  LuCheck,
+  LuLoaderCircle,
+  LuBuilding2,
+  LuUser,
+  LuMail,
+  LuFileCheck,
   LuTriangleAlert,
   LuLock,
   LuShieldCheck,
@@ -220,7 +220,7 @@ export default function KycSubmission() {
     try {
       const apiUrl = getApiUrl();
       const response = await axios.post(
-        `${apiUrl}/api/accreditations/${ref}/submit-kyc/upload/${type}?token=${token}`, 
+        `${apiUrl}/api/accreditations/${ref}/submit-kyc/upload/${type}?token=${token}`,
         formData,
         {
           headers: {
@@ -878,16 +878,16 @@ export default function KycSubmission() {
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white font-sans">
         <div className="bg-slate-900 max-w-2xl w-full rounded-[3rem] shadow-2xl border border-slate-800/80 p-12 text-center relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-blue-500 to-emerald-500" />
-          
+
           <div className="w-24 h-24 bg-emerald-950/40 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 border border-emerald-900/30 shadow-inner">
             <LuCheck size={48} className="stroke-[3]" />
           </div>
-          
+
           <h2 className="text-4xl font-black tracking-tight mb-4 bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Compliance Completed</h2>
           <p className="text-slate-400 leading-relaxed max-w-lg mx-auto mb-10 text-sm">
             Thank you! Your verified business details and signed compliance files have been securely updated. The JVD Procurement team will examine your accreditation status immediately.
           </p>
-          
+
           <div className="bg-slate-950/60 border border-slate-800 rounded-2xl p-6 mb-10 text-left grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <span className="text-[10px] uppercase tracking-wider font-bold text-slate-500">Accredited Entity</span>
@@ -905,8 +905,8 @@ export default function KycSubmission() {
             </div>
           </div>
 
-          <button 
-            onClick={() => window.close()} 
+          <button
+            onClick={() => window.close()}
             className="bg-white text-slate-950 font-black py-4 px-8 rounded-2xl hover:bg-slate-100 transition-all shadow-lg text-sm"
           >
             Close Session Window
@@ -919,7 +919,7 @@ export default function KycSubmission() {
   // Render Full Screen split-pane layout
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col md:flex-row text-white font-sans overflow-x-hidden relative">
-      
+
       {/* LEFT COLUMN: Sidebar with JVD branding and guidelines */}
       <div className="w-full md:w-[38%] bg-slate-900 border-b md:border-b-0 md:border-r border-slate-800/80 p-8 md:p-12 flex flex-col justify-between shrink-0">
         <div className="space-y-8">
@@ -951,11 +951,10 @@ export default function KycSubmission() {
           {/* Step checklist - Interactive progression access point */}
           <div className="space-y-6 pt-4">
             <div className="flex items-start gap-4">
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                entityName && contactPerson && contactEmail 
-                  ? 'bg-blue-600/20 border-blue-500 text-blue-400' 
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${entityName && contactPerson && contactEmail
+                  ? 'bg-blue-600/20 border-blue-500 text-blue-400'
                   : 'bg-slate-950/60 border-slate-800 text-slate-500'
-              }`}>
+                }`}>
                 <LuUser size={16} />
               </div>
               <div className="space-y-0.5">
@@ -965,7 +964,7 @@ export default function KycSubmission() {
             </div>
 
             {/* NDA Sidebar item (Clickable if uploaded) */}
-            <div 
+            <div
               onClick={() => {
                 if (ndaUrl) {
                   setPreviewUrl(ndaUrl);
@@ -974,11 +973,10 @@ export default function KycSubmission() {
               }}
               className={`flex items-start gap-4 ${ndaUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                ndaUrl 
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' 
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${ndaUrl
+                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
                   : 'bg-slate-950/60 border-slate-800 text-slate-500'
-              }`}>
+                }`}>
                 {ndaUrl ? <LuEye size={14} /> : <LuFileText size={16} />}
               </div>
               <div className="space-y-0.5">
@@ -991,7 +989,7 @@ export default function KycSubmission() {
             </div>
 
             {/* Terms Sidebar item (Clickable if uploaded) */}
-            <div 
+            <div
               onClick={() => {
                 if (termsUrl) {
                   setPreviewUrl(termsUrl);
@@ -1000,11 +998,10 @@ export default function KycSubmission() {
               }}
               className={`flex items-start gap-4 ${termsUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                termsUrl 
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' 
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${termsUrl
+                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
                   : 'bg-slate-950/60 border-slate-800 text-slate-500'
-              }`}>
+                }`}>
                 {termsUrl ? <LuEye size={14} /> : <LuFileCheck size={16} />}
               </div>
               <div className="space-y-0.5">
@@ -1017,7 +1014,7 @@ export default function KycSubmission() {
             </div>
 
             {/* KYC Sidebar item (Clickable if uploaded) */}
-            <div 
+            <div
               onClick={() => {
                 if (kycUrl) {
                   setPreviewUrl(kycUrl);
@@ -1026,11 +1023,10 @@ export default function KycSubmission() {
               }}
               className={`flex items-start gap-4 ${kycUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                kycUrl 
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' 
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${kycUrl
+                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
                   : 'bg-slate-950/60 border-slate-800 text-slate-500'
-              }`}>
+                }`}>
                 {kycUrl ? <LuEye size={14} /> : <LuShieldCheck size={16} />}
               </div>
               <div className="space-y-0.5">
@@ -1062,7 +1058,7 @@ export default function KycSubmission() {
       {/* RIGHT COLUMN: The spacious Main Form Page */}
       <div className="flex-1 bg-slate-950 p-8 md:p-16 flex flex-col justify-start overflow-y-auto">
         <div className="max-w-3xl w-full mx-auto space-y-10">
-          
+
           <div className="space-y-1">
             <h2 className="text-2xl font-black text-slate-100 tracking-tight">Accreditation Registration</h2>
             <p className="text-xs text-slate-500">Please review the instructions, fill out contact profiles, and upload verified credentials.</p>
@@ -1076,7 +1072,7 @@ export default function KycSubmission() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-10">
-            
+
             {/* Section 1: Business Profile */}
             <div className="space-y-6">
               <div className="border-b border-slate-800/85 pb-3">
@@ -1272,11 +1268,11 @@ export default function KycSubmission() {
               </div>
 
               <div className="space-y-6">
-                
+
                 {/* Doc 1: NDA */}
                 <div className="relative w-full">
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     id="nda-upload-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileChange(e, 'nda')}
@@ -1319,16 +1315,15 @@ export default function KycSubmission() {
                     </div>
                   ) : (
                     /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div 
+                    <div
                       onClick={() => triggerFileInput('nda-upload-input')}
                       onDragOver={(e) => handleDragOver(e, 'nda')}
                       onDragLeave={(e) => handleDragLeave(e, 'nda')}
                       onDrop={(e) => handleDrop(e, 'nda')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${
-                        dragOverState.nda 
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]' 
+                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.nda
+                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
                           : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                      }`}
+                        }`}
                     >
                       {uploadProgress.nda > 0 ? (
                         <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
@@ -1339,8 +1334,8 @@ export default function KycSubmission() {
                           </div>
                           {/* Premium Progress Bar Track */}
                           <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300" 
+                            <div
+                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
                               style={{ width: `${uploadProgress.nda}%` }}
                             />
                           </div>
@@ -1362,8 +1357,8 @@ export default function KycSubmission() {
 
                 {/* Doc 2: Terms */}
                 <div className="relative w-full">
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     id="terms-upload-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileChange(e, 'terms')}
@@ -1406,16 +1401,15 @@ export default function KycSubmission() {
                     </div>
                   ) : (
                     /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div 
+                    <div
                       onClick={() => triggerFileInput('terms-upload-input')}
                       onDragOver={(e) => handleDragOver(e, 'terms')}
                       onDragLeave={(e) => handleDragLeave(e, 'terms')}
                       onDrop={(e) => handleDrop(e, 'terms')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${
-                        dragOverState.terms 
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]' 
+                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.terms
+                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
                           : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                      }`}
+                        }`}
                     >
                       {uploadProgress.terms > 0 ? (
                         <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
@@ -1426,8 +1420,8 @@ export default function KycSubmission() {
                           </div>
                           {/* Premium Progress Bar Track */}
                           <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300" 
+                            <div
+                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
                               style={{ width: `${uploadProgress.terms}%` }}
                             />
                           </div>
@@ -1449,8 +1443,8 @@ export default function KycSubmission() {
 
                 {/* Doc 3: KYC Packet */}
                 <div className="relative w-full">
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     id="kyc-upload-input"
                     accept=".pdf,.jpg,.jpeg,.png"
                     onChange={(e) => handleFileChange(e, 'kyc')}
@@ -1493,16 +1487,15 @@ export default function KycSubmission() {
                     </div>
                   ) : (
                     /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div 
+                    <div
                       onClick={() => triggerFileInput('kyc-upload-input')}
                       onDragOver={(e) => handleDragOver(e, 'kyc')}
                       onDragLeave={(e) => handleDragLeave(e, 'kyc')}
                       onDrop={(e) => handleDrop(e, 'kyc')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${
-                        dragOverState.kyc 
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]' 
+                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.kyc
+                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
                           : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                      }`}
+                        }`}
                     >
                       {uploadProgress.kyc > 0 ? (
                         <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
@@ -1513,8 +1506,8 @@ export default function KycSubmission() {
                           </div>
                           {/* Premium Progress Bar Track */}
                           <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div 
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300" 
+                            <div
+                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
                               style={{ width: `${uploadProgress.kyc}%` }}
                             />
                           </div>
@@ -1542,9 +1535,9 @@ export default function KycSubmission() {
               <p className="text-[11px] text-slate-550 flex items-center gap-1.5">
                 <LuLock size={12} className="text-blue-500" /> Transmitted securely under automated 256-bit TLS pipelines.
               </p>
-              
-              <button 
-                type="submit" 
+
+              <button
+                type="submit"
                 disabled={isSubmitting || Object.values(uploadProgress).some(val => val > 0)}
                 className="bg-blue-600 text-white font-black py-4 px-8 rounded-xl hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg shadow-blue-600/10 shrink-0 text-sm"
               >
@@ -1576,7 +1569,7 @@ export default function KycSubmission() {
                 </span>
                 <h3 className="text-sm font-black text-slate-200">{previewTitle}</h3>
               </div>
-              <button 
+              <button
                 type="button"
                 onClick={() => setPreviewUrl(null)}
                 className="bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white px-5 py-2.5 rounded-xl text-xs font-black transition-all"
@@ -1588,15 +1581,15 @@ export default function KycSubmission() {
             {/* Document Preview Frame */}
             <div className="flex-1 bg-slate-950 p-6 flex items-center justify-center overflow-auto">
               {previewUrl.toLowerCase().endsWith('.pdf') || previewUrl.toLowerCase().includes('.pdf') ? (
-                <iframe 
-                  src={`${formatDocUrl(previewUrl)}#toolbar=0`} 
+                <iframe
+                  src={`${formatDocUrl(previewUrl)}#toolbar=0`}
                   className="w-full h-full rounded-xl border border-slate-850"
                   title="Document Preview"
                 />
               ) : (
-                <img 
-                  src={formatDocUrl(previewUrl)} 
-                  alt="Document Preview" 
+                <img
+                  src={formatDocUrl(previewUrl)}
+                  alt="Document Preview"
                   className="max-w-full max-h-full object-contain rounded-xl border border-slate-850 shadow-lg"
                 />
               )}
