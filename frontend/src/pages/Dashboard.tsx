@@ -14,11 +14,6 @@ export default function Dashboard() {
     case 'super_admin':
     case 'executive_vice_president':
     case 'operations_manager':
-    case 'logistics_in_charge':
-    case 'dispatcher':
-    case 'purchasing_manager':
-    case 'service_adviser':
-    case 'head_mechanic':
       return <AdminDashboard />;
     case 'corporate_secretary':
       return <HRDashboard />;

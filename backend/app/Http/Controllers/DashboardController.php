@@ -205,8 +205,8 @@ class DashboardController extends Controller
         $month = $now->copy()->startOfMonth();
 
         $pendingInvoices     = Invoice::where('status', 'pending')->count();
-        $pendingBudgets      = CashBudgetRequest::where('status', 'pending')->count();
-        $processedCollections = Collection::where('status', 'completed')->count();
+        $pendingBudgets      = CashBudgetRequest::where('status', 'pending_accounting')->count();
+        $processedCollections = Collection::where('collection_status', 'completed')->count();
         $monthlyRevenue      = Invoice::whereIn('status', ['paid', 'partial'])
             ->where('created_at', '>=', $month)->sum('total_amount');
 
@@ -314,7 +314,7 @@ class DashboardController extends Controller
         $totalHours = $tripsThisMonth * 4;
 
         // Assigned bus
-        $bus = Bus::where('driver_id', $user->id)->first();
+        $bus = Bus::where('assigned_driver', $user->id)->first();
         $assignedVehicle = $bus ? $bus->plate_number : 'Unassigned';
 
         return response()->json([
