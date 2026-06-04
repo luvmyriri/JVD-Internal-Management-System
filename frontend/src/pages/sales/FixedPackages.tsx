@@ -718,12 +718,12 @@ export default function FixedPackages() {
                 />
               </div>
 
-              {/* Cost Breakdown — Admin/Super Admin only */}
-              {['super_admin', 'admin'].includes(user?.role || '') && (
+              {/* Cost Breakdown — Management roles */}
+              {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 mb-1">
                     <label className="text-[10px] font-black text-amber-500 uppercase tracking-widest pl-1">Cost Breakdown</label>
-                    <span className="text-[9px] font-black text-amber-500 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full uppercase tracking-widest">Admin Only</span>
+                    <span className="text-[9px] font-black text-amber-500 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-2 py-0.5 rounded-full uppercase tracking-widest">Internal Only</span>
                   </div>
                   <textarea
                     placeholder="e.g. Transportation: ₱5,000 | Hotel: ₱8,000 | Meals: ₱2,000 | Guide: ₱1,500..."
@@ -731,7 +731,7 @@ export default function FixedPackages() {
                     value={newService.cost_breakdown}
                     onChange={e => setNewService({ ...newService, cost_breakdown: e.target.value })}
                   />
-                  <p className="text-[10px] text-amber-500 font-bold pl-1">This breakdown is only visible to Super Admin and Admin roles.</p>
+                  <p className="text-[10px] text-amber-500 font-bold pl-1">This breakdown is visible to management and agent roles.</p>
                 </div>
               )}
               <div className="space-y-2">
@@ -892,12 +892,12 @@ export default function FixedPackages() {
                   </p>
                 </div>
 
-                {/* Cost Breakdown — Admin/Super Admin view only */}
-                {['super_admin', 'admin'].includes(user?.role || '') && selectedServiceForDetail.cost_breakdown && (
+                {/* Cost Breakdown — Visible to all Sales page viewers */}
+                {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'reservation_officer', 'office_staff'].includes(user?.role || '') && selectedServiceForDetail.cost_breakdown && (
                   <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/40">
                     <div className="flex items-center gap-2 mb-3">
                       <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cost Breakdown</p>
-                      <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Admin Only</span>
+                      <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Internal Use Only</span>
                     </div>
                     <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap">
                       {selectedServiceForDetail.cost_breakdown}
