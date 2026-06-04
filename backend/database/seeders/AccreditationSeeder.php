@@ -18,6 +18,29 @@ class AccreditationSeeder extends Seeder
         // Clear previous accreditations to avoid duplicates during repeated seeding
         DB::table('accreditations')->truncate();
 
+        // Create mock documents in local public storage so they can be viewed
+        $publicAccredDir = storage_path('app/public/accreditations');
+        if (!file_exists($publicAccredDir)) {
+            mkdir($publicAccredDir, 0755, true);
+        }
+
+        $dummyPdfContent = "%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length 51 >>\nstream\nBT\n/F1 12 Tf\n72 712 Td\n(Mock Accreditation Document) Tj\nET\nendstream\nendobj\nxref\n0 5\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \n0000000216 00000 n \ntrailer\n<< /Size 5 /Root 1 0 R >>\nstartxref\n316\n%%EOF";
+
+        $mockFiles = [
+            'kyc-caltex.pdf',
+            'nda-caltex.pdf',
+            'terms.pdf',
+            'bus-orcr.pdf',
+            'license-pedro.pdf'
+        ];
+
+        foreach ($mockFiles as $filename) {
+            $filePath = $publicAccredDir . '/' . $filename;
+            if (!file_exists($filePath)) {
+                file_put_contents($filePath, $dummyPdfContent);
+            }
+        }
+
         $accreditations = [
             // Partnerships & Suppliers
             [
@@ -31,8 +54,8 @@ class AccreditationSeeder extends Seeder
                 'status' => 'active',
                 'contact_person' => 'Juan Dela Cruz',
                 'contact_email' => 'johnemmanuelnalang@gmail.com',
-                'kyc_document_url' => 'https://example.com/kyc-caltex.pdf',
-                'nda_document_url' => 'https://example.com/nda-caltex.pdf',
+                'kyc_document_url' => '/uploads/accreditations/kyc-caltex.pdf',
+                'nda_document_url' => '/uploads/accreditations/nda-caltex.pdf',
             ],
             [
                 'entity_type' => 'partner',
@@ -45,7 +68,7 @@ class AccreditationSeeder extends Seeder
                 'status' => 'expired',
                 'contact_person' => 'Maria Santos',
                 'contact_email' => 'johnemmanuelnalang@gmail.com',
-                'terms_document_url' => 'https://example.com/terms.pdf',
+                'terms_document_url' => '/uploads/accreditations/terms.pdf',
             ],
             [
                 'entity_type' => 'client',
@@ -71,7 +94,7 @@ class AccreditationSeeder extends Seeder
                 'status' => 'pending_renewal',
                 'contact_person' => 'Fleet Manager',
                 'contact_email' => 'johnemmanuelnalang@gmail.com',
-                'kyc_document_url' => 'https://example.com/bus-orcr.pdf',
+                'kyc_document_url' => '/uploads/accreditations/bus-orcr.pdf',
             ],
             [
                 'entity_type' => 'driver',
@@ -84,7 +107,7 @@ class AccreditationSeeder extends Seeder
                 'status' => 'active',
                 'contact_person' => 'Pedro Penduko',
                 'contact_email' => 'johnemmanuelnalang@gmail.com',
-                'kyc_document_url' => 'https://example.com/license-pedro.pdf',
+                'kyc_document_url' => '/uploads/accreditations/license-pedro.pdf',
             ],
         ];
 
