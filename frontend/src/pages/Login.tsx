@@ -244,7 +244,7 @@ export default function Login() {
       <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-transparent to-transparent pointer-events-none"></div>
 
       <div className="relative z-10 flex flex-col lg:flex-row w-full max-w-7xl mx-auto items-center justify-center lg:justify-between p-6 md:p-12 min-h-screen">
-        
+
         {/* Left Branding Section */}
         <div className="lg:w-1/2 flex flex-col items-center text-center mb-12 lg:mb-0 relative z-10">
           <div className="flex flex-col items-center">
@@ -479,7 +479,7 @@ export default function Login() {
 
       <div className="absolute bottom-8 left-0 right-0 z-10 px-6">
         <p className="text-center text-[10px] font-bold text-white/40 tracking-[0.3em] uppercase">
-          &copy; 2026 JVD Events and Travels Management Co. 
+          &copy; 2026 JVD Events and Travels Management Co.
         </p>
       </div>
 
