@@ -52,7 +52,7 @@ export const navigation: NavSection[] = [
   {
     title: 'Management Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'executive_vice_president', 'operations_manager'], module: 'dashboard', pageKey: 'dashboard' },
+      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'dashboard', pageKey: 'dashboard' },
     ],
   },
   {
