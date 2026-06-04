@@ -235,7 +235,7 @@ function printTripTicket(ticket: TripTicket) {
   <div class="dtt-wrap">
     <div class="dtt-header">
       <div class="dtt-logo-cell">
-        <div class="dtt-logo-box">JVD</div>
+        <img src="/JVDlogo-removebg-preview.png" style="width: 64px; height: 64px; object-fit: contain;" alt="JVD Logo" />
       </div>
       <div class="dtt-title-cell">
         <h1>DRIVER'S TRIP TICKET</h1>
