@@ -271,6 +271,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
                 <div
                   className={`grid transition-all duration-200 ease-in-out ${isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0 overflow-hidden'
+                    }`}
                 >
                   <ul className="min-h-0 space-y-1.5 overflow-hidden mt-1">
                     {section.items.map((item) => (
