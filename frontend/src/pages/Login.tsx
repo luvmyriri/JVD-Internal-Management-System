@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi } from '../api/settings';
+import { getLandingPageForUser, isPathAllowedForUser } from '../utils/navigation';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -35,14 +36,17 @@ const transitionVariants = {
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user, permissions } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+    if (isAuthenticated && user) {
+      const savedLandingPage = localStorage.getItem('jvd_landing_page');
+      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, user, permissions)
+        ? savedLandingPage
+        : getLandingPageForUser(user, permissions);
       navigate(defaultLandingPage, { replace: true });
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, user, permissions, navigate]);
 
   const [step, setStep] = useState<'credentials' | '2fa' | 'setup2fa'>('credentials');
   const [email, setEmail] = useState('');
@@ -141,8 +145,8 @@ export default function Login() {
       } else {
         login(data.token, data.user, data.permissions);
         let defaultLandingPage = localStorage.getItem('jvd_landing_page');
-        if (!defaultLandingPage) {
-          defaultLandingPage = data.user.role === 'driver' ? '/driver/schedule' : '/dashboard';
+        if (!defaultLandingPage || !isPathAllowedForUser(defaultLandingPage, data.user, data.permissions)) {
+          defaultLandingPage = getLandingPageForUser(data.user, data.permissions);
         }
         navigate(defaultLandingPage);
       }
@@ -173,7 +177,10 @@ export default function Login() {
       });
       const { data } = response.data;
       login(data.token, data.user, data.permissions);
-      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+      const savedLandingPage = localStorage.getItem('jvd_landing_page');
+      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
+        ? savedLandingPage
+        : getLandingPageForUser(data.user, data.permissions);
       navigate(defaultLandingPage);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -196,7 +203,10 @@ export default function Login() {
       });
       const { data } = response.data;
       login(data.token, data.user, data.permissions);
-      const defaultLandingPage = localStorage.getItem('jvd_landing_page') || '/dashboard';
+      const savedLandingPage = localStorage.getItem('jvd_landing_page');
+      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
+        ? savedLandingPage
+        : getLandingPageForUser(data.user, data.permissions);
       navigate(defaultLandingPage);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
