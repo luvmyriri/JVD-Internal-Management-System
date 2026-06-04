@@ -56,6 +56,13 @@ export const navigation: NavSection[] = [
     ],
   },
   {
+    title: 'Sales',
+    items: [
+      { label: 'Fixed Packages and Services', path: '/sales/fixed-packages', icon: <LuStore />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.fixed_packages' },
+      { label: 'Custom Client Transactions', path: '/sales/custom-transactions', icon: <LuShoppingCart />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.custom_transactions' },
+    ],
+  },
+  {
     title: 'Accounting',
     items: [
       { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.billing' },
@@ -97,13 +104,7 @@ export const navigation: NavSection[] = [
       { label: 'Supplies', path: '/inventory/supplies', icon: <LuPackage />, roles: ['super_admin', 'executive_vice_president', 'purchasing_manager'], module: 'inventory', pageKey: 'inventory.supplies' },
     ],
   },
-  {
-    title: 'Sales',
-    items: [
-      { label: 'Fixed Packages and Services', path: '/sales/fixed-packages', icon: <LuStore />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.fixed_packages' },
-      { label: 'Custom Client Transactions', path: '/sales/custom-transactions', icon: <LuShoppingCart />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.custom_transactions' },
-    ],
-  },
+
   {
     title: 'Human Resource',
     items: [

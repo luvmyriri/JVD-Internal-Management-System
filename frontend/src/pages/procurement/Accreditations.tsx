@@ -27,12 +27,32 @@ const STATUS_STYLE: Record<string, string> = {
 const formatDocUrl = (url: string | undefined | null): string => {
   if (!url) return '';
   let normalizedUrl = url;
+  
+  // 1. If it's an example domain placeholder, point it to our local mock directory
+  if (normalizedUrl.includes('example.com')) {
+    const filename = normalizedUrl.split('/').pop() || 'document.pdf';
+    normalizedUrl = `/uploads/accreditations/${filename}`;
+  }
+  
+  // 2. Replace /storage/accreditations/ with /uploads/accreditations/
   if (normalizedUrl.includes('/storage/accreditations/')) {
     normalizedUrl = normalizedUrl.replace('/storage/accreditations/', '/uploads/accreditations/');
   }
+  
+  // 3. If it's a full URL containing a local address, strip host/port to use proxy
   if (normalizedUrl.startsWith('http://') || normalizedUrl.startsWith('https://')) {
-    return normalizedUrl;
+    try {
+      const urlObj = new URL(normalizedUrl);
+      if (urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1') {
+        normalizedUrl = urlObj.pathname + urlObj.search;
+      } else {
+        return normalizedUrl;
+      }
+    } catch (e) {
+      // Fallback if URL parsing fails
+    }
   }
+  
   const apiBase = import.meta.env.VITE_API_URL;
   const baseUrl = apiBase && apiBase.startsWith('http')
     ? apiBase
