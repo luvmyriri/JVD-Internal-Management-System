@@ -11,7 +11,8 @@ import {
   LuX,
   LuTrash2,
   LuCamera,
-  LuCheck
+  LuCheck,
+  LuPrinter
 } from 'react-icons/lu';
 import { Pencil, Trash2 } from 'lucide-react';
 import { billingApi, type Service } from '../../api/billing';
@@ -156,6 +157,475 @@ export default function FixedPackages() {
       ? Number(selectedServiceForDetail.child_price)
       : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100)))
     : 0;
+
+  const handlePrintService = () => {
+    if (!selectedServiceForDetail) return;
+    
+    const service = selectedServiceForDetail;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to print the brochure.');
+      return;
+    }
+
+    // Determine current selections and compute total price
+    let pricingRowsHTML = '';
+    let totalPrice = 0;
+
+    if (service.is_tour) {
+      const basePrice = bookingTourVehicle === 'Bus' ? (service.bus_price || 0) : (service.coaster_price || 0);
+      const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
+      const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
+      totalPrice = basePrice + extraDaysPrice + extraHoursPrice;
+
+      pricingRowsHTML = `
+        <tr>
+          <td>Vehicle Rental (${bookingTourVehicle})</td>
+          <td class="text-right">₱${basePrice.toLocaleString()}</td>
+          <td class="text-center">1 Unit</td>
+          <td class="text-right">₱${basePrice.toLocaleString()}</td>
+        </tr>
+      `;
+      if (bookingTourExtraDays > 0) {
+        pricingRowsHTML += `
+          <tr>
+            <td>Extra Rental Days</td>
+            <td class="text-right">₱${(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()}</td>
+            <td class="text-center">${bookingTourExtraDays} Day(s)</td>
+            <td class="text-right">₱${extraDaysPrice.toLocaleString()}</td>
+          </tr>
+        `;
+      }
+      if (bookingTourExtraHours > 0) {
+        pricingRowsHTML += `
+          <tr>
+            <td>Extra Rental Hours</td>
+            <td class="text-right">₱${(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()}</td>
+            <td class="text-center">${bookingTourExtraHours} Hour(s)</td>
+            <td class="text-right">₱${extraHoursPrice.toLocaleString()}</td>
+          </tr>
+        `;
+      }
+    } else if (service.has_booking_fields) {
+      const adultTotal = bookingAdults * selectedDetailAdultPrice;
+      const childTotal = bookingChildren * selectedDetailChildPrice;
+      totalPrice = adultTotal + childTotal;
+
+      pricingRowsHTML = `
+        <tr>
+          <td>Adult Guest Tickets</td>
+          <td class="text-right">₱${selectedDetailAdultPrice.toLocaleString()}</td>
+          <td class="text-center">${bookingAdults} Pax</td>
+          <td class="text-right">₱${adultTotal.toLocaleString()}</td>
+        </tr>
+      `;
+      if (bookingChildren > 0) {
+        pricingRowsHTML += `
+          <tr>
+            <td>Child Guest Tickets (${selectedDetailChildDiscount}% Off)</td>
+            <td class="text-right">₱${selectedDetailChildPrice.toLocaleString()}</td>
+            <td class="text-center">${bookingChildren} Pax</td>
+            <td class="text-right">₱${childTotal.toLocaleString()}</td>
+          </tr>
+        `;
+      }
+    } else {
+      totalPrice = service.price || 0;
+      pricingRowsHTML = `
+        <tr>
+          <td>Standard Base Rate</td>
+          <td class="text-right">₱${totalPrice.toLocaleString()}</td>
+          <td class="text-center">1 Option</td>
+          <td class="text-right">₱${totalPrice.toLocaleString()}</td>
+        </tr>
+      `;
+    }
+
+    const firstImage = service.images && service.images.length > 0 
+      ? (service.images[0].startsWith('http') ? service.images[0] : `${window.location.origin}/storage/${service.images[0]}`) 
+      : `${window.location.origin}/JVD 3D.png`;
+
+    const currentDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const agentName = user ? `${user.first_name} ${user.last_name}` : 'JVD Events Agent';
+    const refNo = `JVD-QT-${Math.floor(100000 + Math.random() * 900000)}`;
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Quotation - ${service.name}</title>
+        <meta charset="utf-8">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+          
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+          
+          body {
+            font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+            color: #1e293b;
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+
+          .container {
+            max-width: 800px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            min-height: 95vh;
+            justify-content: space-between;
+          }
+
+          .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+
+          .logo {
+            height: 48px;
+            width: auto;
+          }
+
+          .brand-text h1 {
+            font-size: 18px;
+            font-weight: 800;
+            margin: 0;
+            color: #1e3a8a;
+            letter-spacing: -0.02em;
+          }
+
+          .brand-text p {
+            font-size: 10px;
+            color: #64748b;
+            margin: 2px 0 0 0;
+            font-weight: 600;
+            text-transform: uppercase;
+          }
+
+          .meta-info {
+            text-align: right;
+            font-size: 11px;
+            color: #475569;
+            line-height: 1.4;
+          }
+
+          .meta-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #3b82f6;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+          }
+
+          .service-section {
+            margin-bottom: 20px;
+          }
+
+          .service-category {
+            display: inline-block;
+            background: #eff6ff;
+            color: #2563eb;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+          }
+
+          .service-title {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 0 0 10px 0;
+            text-transform: uppercase;
+            letter-spacing: -0.02em;
+            line-height: 1.1;
+          }
+
+          .layout-grid {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+          }
+
+          .image-col {
+            flex: 1;
+            max-width: 45%;
+          }
+
+          .service-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+          }
+
+          .desc-col {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+          }
+
+          .desc-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 6px;
+          }
+
+          .desc-text {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #334155;
+            margin: 0;
+          }
+
+          .table-section {
+            margin-bottom: 30px;
+          }
+
+          .table-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 10px;
+            border-left: 3px solid #2563eb;
+            padding-left: 8px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+          }
+
+          th {
+            background: #f8fafc;
+            color: #475569;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 10px 12px;
+            border-bottom: 1.5px solid #cbd5e1;
+            font-size: 10px;
+          }
+
+          td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #334155;
+          }
+
+          .text-right {
+            text-align: right;
+          }
+
+          .text-center {
+            text-align: center;
+          }
+
+          .total-box {
+            background: #f8fafc;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 15px 20px;
+            margin-top: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          }
+
+          .total-label {
+            font-size: 11px;
+            font-weight: 800;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+          }
+
+          .total-amount {
+            font-size: 22px;
+            font-weight: 900;
+            color: #2563eb;
+            letter-spacing: -0.03em;
+          }
+
+          .disclaimer {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 6px;
+          }
+
+          .footer-section {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 25px;
+            margin-top: auto;
+          }
+
+          .sign-grid {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+          }
+
+          .sign-col {
+            width: 45%;
+          }
+
+          .sign-line {
+            border-bottom: 1px solid #cbd5e1;
+            margin-top: 40px;
+            margin-bottom: 5px;
+          }
+
+          .sign-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+          }
+
+          .sign-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+          }
+
+          .company-info {
+            text-align: center;
+            font-size: 9px;
+            color: #94a3b8;
+            line-height: 1.4;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div>
+            <!-- Header -->
+            <div class="header">
+              <div class="brand">
+                <img class="logo" src="${window.location.origin}/JVD 3D.png" alt="JVD Logo" onerror="this.style.display='none'">
+                <div class="brand-text">
+                  <h1>JVD Events & Travels</h1>
+                  <p>Management Co.</p>
+                </div>
+              </div>
+              <div class="meta-info">
+                <div class="meta-title">Quotation Brochure</div>
+                <div><strong>Ref No:</strong> ${refNo}</div>
+                <div><strong>Date:</strong> ${currentDate}</div>
+              </div>
+            </div>
+
+            <!-- Service Details -->
+            <div class="service-section">
+              <span class="service-category">${service.category}</span>
+              <h2 class="service-title">${service.name}</h2>
+              
+              <div class="layout-grid">
+                <div class="image-col">
+                  <img class="service-image" src="${firstImage}" alt="${service.name}">
+                </div>
+                <div class="desc-col">
+                  <div class="desc-label">Package description / Inclusions</div>
+                  <p class="desc-text">${service.description}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing Breakdown -->
+            <div class="table-section">
+              <div class="table-title">Pricing & Configuration Summary</div>
+              <table>
+                <thead>
+                  <tr>
+                    <th class="text-left">Details</th>
+                    <th class="text-right" style="width: 120px;">Unit Rate</th>
+                    <th class="text-center" style="width: 100px;">Quantity</th>
+                    <th class="text-right" style="width: 120px;">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${pricingRowsHTML}
+                </tbody>
+              </table>
+
+              <div class="total-box">
+                <span class="total-label">Total Investment</span>
+                <span class="total-amount">₱${totalPrice.toLocaleString()}</span>
+              </div>
+              <p class="disclaimer">* Pricing listed is VAT-inclusive and valid for 15 days from the date of quotation generation.</p>
+            </div>
+          </div>
+
+          <!-- Print Footer -->
+          <div class="footer-section">
+            <div class="sign-grid">
+              <div class="sign-col">
+                <div class="sign-title">Prepared By</div>
+                <div class="sign-line"></div>
+                <div class="sign-name">${agentName}</div>
+                <div style="font-size: 9px; color: #64748b;">Travel Agent / Coordinator</div>
+              </div>
+              <div class="sign-col">
+                <div class="sign-title">Customer Acceptance</div>
+                <div class="sign-line"></div>
+                <div class="sign-name">___________________________</div>
+                <div style="font-size: 9px; color: #64748b;">Signature Over Printed Name</div>
+              </div>
+            </div>
+            
+            <div class="company-info">
+              JVD Events & Travels Management Co. • Ground Floor, JVD Bldg • contact@jvdevents.com • +63 (2) 8123-4567
+            </div>
+          </div>
+        </div>
+        
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          }
+        </script>
+      </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+  };
 
   const filteredServices = useMemo(() => {
     return services.filter(service => {
@@ -1106,6 +1576,13 @@ export default function FixedPackages() {
                   className="w-full py-5 bg-blue-600 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <LuPlus className="w-5 h-5" /> Add to Current Order
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrintService}
+                  className="w-full py-5 bg-slate-800 dark:bg-gray-800 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-700 dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-3"
+                >
+                  <LuPrinter className="w-5 h-5" /> Print Brochure / Quotation
                 </button>
                 <button
                   onClick={() => setShowDetailModal(false)}
