@@ -168,6 +168,13 @@ export default function FixedPackages() {
       return;
     }
 
+    const formatPrice = (amount: number) => {
+      return '₱' + Number(amount).toLocaleString('en-US', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      });
+    };
+
     // Determine current selections and compute total price
     let pricingRowsHTML = '';
     let totalPrice = 0;
@@ -180,29 +187,29 @@ export default function FixedPackages() {
 
       pricingRowsHTML = `
         <tr>
-          <td>Vehicle Rental (${bookingTourVehicle})</td>
-          <td class="text-right">₱${basePrice.toLocaleString()}</td>
-          <td class="text-center">1 Unit</td>
-          <td class="text-right">₱${basePrice.toLocaleString()}</td>
+          <td style="font-weight: 600; color: #0f172a;">Vehicle Rental (${bookingTourVehicle})</td>
+          <td class="text-right">${formatPrice(basePrice)}</td>
+          <td class="text-center font-semibold">1 Unit</td>
+          <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(basePrice)}</td>
         </tr>
       `;
       if (bookingTourExtraDays > 0) {
         pricingRowsHTML += `
           <tr>
-            <td>Extra Rental Days</td>
-            <td class="text-right">₱${(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()}</td>
-            <td class="text-center">${bookingTourExtraDays} Day(s)</td>
-            <td class="text-right">₱${extraDaysPrice.toLocaleString()}</td>
+            <td style="font-weight: 600; color: #0f172a;">Extra Rental Days</td>
+            <td class="text-right">${formatPrice(bookingTourVehicle === 'Bus' ? 22010 : 16780)}</td>
+            <td class="text-center font-semibold">${bookingTourExtraDays} Day(s)</td>
+            <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(extraDaysPrice)}</td>
           </tr>
         `;
       }
       if (bookingTourExtraHours > 0) {
         pricingRowsHTML += `
           <tr>
-            <td>Extra Rental Hours</td>
-            <td class="text-right">₱${(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()}</td>
-            <td class="text-center">${bookingTourExtraHours} Hour(s)</td>
-            <td class="text-right">₱${extraHoursPrice.toLocaleString()}</td>
+            <td style="font-weight: 600; color: #0f172a;">Extra Rental Hours</td>
+            <td class="text-right">${formatPrice(bookingTourVehicle === 'Bus' ? 1950 : 1680)}</td>
+            <td class="text-center font-semibold">${bookingTourExtraHours} Hour(s)</td>
+            <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(extraHoursPrice)}</td>
           </tr>
         `;
       }
@@ -213,19 +220,19 @@ export default function FixedPackages() {
 
       pricingRowsHTML = `
         <tr>
-          <td>Adult Guest Tickets</td>
-          <td class="text-right">₱${selectedDetailAdultPrice.toLocaleString()}</td>
-          <td class="text-center">${bookingAdults} Pax</td>
-          <td class="text-right">₱${adultTotal.toLocaleString()}</td>
+          <td style="font-weight: 600; color: #0f172a;">Adult Guest Tickets</td>
+          <td class="text-right">${formatPrice(selectedDetailAdultPrice)}</td>
+          <td class="text-center font-semibold">${bookingAdults} Pax</td>
+          <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(adultTotal)}</td>
         </tr>
       `;
       if (bookingChildren > 0) {
         pricingRowsHTML += `
           <tr>
-            <td>Child Guest Tickets (${selectedDetailChildDiscount}% Off)</td>
-            <td class="text-right">₱${selectedDetailChildPrice.toLocaleString()}</td>
-            <td class="text-center">${bookingChildren} Pax</td>
-            <td class="text-right">₱${childTotal.toLocaleString()}</td>
+            <td style="font-weight: 600; color: #0f172a;">Child Guest Tickets (${selectedDetailChildDiscount}% Off)</td>
+            <td class="text-right">${formatPrice(selectedDetailChildPrice)}</td>
+            <td class="text-center font-semibold">${bookingChildren} Pax</td>
+            <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(childTotal)}</td>
           </tr>
         `;
       }
@@ -233,10 +240,10 @@ export default function FixedPackages() {
       totalPrice = service.price || 0;
       pricingRowsHTML = `
         <tr>
-          <td>Standard Base Rate</td>
-          <td class="text-right">₱${totalPrice.toLocaleString()}</td>
-          <td class="text-center">1 Option</td>
-          <td class="text-right">₱${totalPrice.toLocaleString()}</td>
+          <td style="font-weight: 600; color: #0f172a;">Standard Base Rate</td>
+          <td class="text-right">${formatPrice(totalPrice)}</td>
+          <td class="text-center font-semibold">1 Option</td>
+          <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(totalPrice)}</td>
         </tr>
       `;
     }
@@ -267,12 +274,12 @@ export default function FixedPackages() {
           
           @page {
             size: A4 portrait;
-            margin: 12mm;
+            margin: 15mm;
           }
           
           body {
             font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-            color: #1e293b;
+            color: #334155;
             margin: 0;
             padding: 0;
             background: #ffffff;
@@ -285,7 +292,7 @@ export default function FixedPackages() {
             margin: 0 auto;
             display: flex;
             flex-direction: column;
-            min-height: 95vh;
+            min-height: 94vh;
             justify-content: space-between;
           }
 
@@ -294,54 +301,60 @@ export default function FixedPackages() {
             justify-content: space-between;
             align-items: center;
             border-bottom: 2px solid #3b82f6;
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 18px;
+            margin-bottom: 22px;
           }
 
           .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
           }
 
           .logo {
-            height: 48px;
+            height: 52px;
             width: auto;
           }
 
           .brand-text h1 {
-            font-size: 18px;
+            font-size: 20px;
             font-weight: 800;
             margin: 0;
             color: #1e3a8a;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
           }
 
           .brand-text p {
             font-size: 10px;
-            color: #64748b;
-            margin: 2px 0 0 0;
-            font-weight: 600;
+            color: #3b82f6;
+            margin: 3px 0 0 0;
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 0.15em;
           }
 
           .meta-info {
             text-align: right;
             font-size: 11px;
             color: #475569;
-            line-height: 1.4;
+            line-height: 1.5;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 10px 14px;
+            border-radius: 12px;
           }
 
           .meta-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 800;
-            color: #3b82f6;
+            color: #1e3a8a;
             margin-bottom: 4px;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
           }
 
           .service-section {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
           }
 
           .service-category {
@@ -354,14 +367,14 @@ export default function FixedPackages() {
             letter-spacing: 0.1em;
             padding: 4px 10px;
             border-radius: 6px;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
           }
 
           .service-title {
-            font-size: 24px;
-            font-weight: 800;
+            font-size: 26px;
+            font-weight: 850;
             color: #0f172a;
-            margin: 0 0 10px 0;
+            margin: 0 0 12px 0;
             text-transform: uppercase;
             letter-spacing: -0.02em;
             line-height: 1.1;
@@ -369,7 +382,7 @@ export default function FixedPackages() {
 
           .layout-grid {
             display: flex;
-            gap: 20px;
+            gap: 24px;
             margin-bottom: 25px;
           }
 
@@ -380,10 +393,11 @@ export default function FixedPackages() {
 
           .service-image {
             width: 100%;
-            height: 180px;
+            height: 190px;
             object-fit: cover;
-            border-radius: 16px;
+            border-radius: 18px;
             border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
           }
 
           .desc-col {
@@ -395,39 +409,40 @@ export default function FixedPackages() {
 
           .desc-label {
             font-size: 10px;
-            font-weight: 700;
-            color: #94a3b8;
+            font-weight: 800;
+            color: #64748b;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 6px;
+            letter-spacing: 0.08em;
+            margin-bottom: 8px;
           }
 
           .desc-text {
-            font-size: 12px;
-            line-height: 1.5;
+            font-size: 13px;
+            line-height: 1.6;
             color: #334155;
             margin: 0;
           }
 
           .table-section {
-            margin-bottom: 30px;
+            margin-bottom: 25px;
           }
 
           .table-title {
             font-size: 11px;
             font-weight: 800;
-            color: #64748b;
+            color: #1e3a8a;
             text-transform: uppercase;
             letter-spacing: 0.08em;
-            margin-bottom: 10px;
-            border-left: 3px solid #2563eb;
-            padding-left: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #2563eb;
+            padding-left: 10px;
           }
 
           table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 11.5px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
           }
 
           th {
@@ -436,15 +451,19 @@ export default function FixedPackages() {
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            padding: 10px 12px;
-            border-bottom: 1.5px solid #cbd5e1;
+            padding: 12px 14px;
+            border-bottom: 2px solid #e2e8f0;
             font-size: 10px;
           }
 
           td {
-            padding: 12px;
+            padding: 12px 14px;
             border-bottom: 1px solid #e2e8f0;
-            color: #334155;
+            color: #475569;
+          }
+
+          tr:last-child td {
+            border-bottom: none;
           }
 
           .text-right {
@@ -457,34 +476,38 @@ export default function FixedPackages() {
 
           .total-box {
             background: #f8fafc;
-            border: 1.5px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 15px 20px;
-            margin-top: 15px;
+            border-left: 6px solid #2563eb;
+            border-top: 1px solid #e2e8f0;
+            border-right: 1px solid #e2e8f0;
+            border-bottom: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 18px 24px;
+            margin-top: 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
           }
 
           .total-label {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 800;
             color: #475569;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.08em;
           }
 
           .total-amount {
-            font-size: 22px;
+            font-size: 26px;
             font-weight: 900;
-            color: #2563eb;
-            letter-spacing: -0.03em;
+            color: #1e3a8a;
+            letter-spacing: -0.02em;
           }
 
           .disclaimer {
             font-size: 9px;
             color: #64748b;
-            margin-top: 6px;
+            margin-top: 8px;
+            line-height: 1.4;
           }
 
           .footer-section {
@@ -504,20 +527,21 @@ export default function FixedPackages() {
           }
 
           .sign-line {
-            border-bottom: 1px solid #cbd5e1;
-            margin-top: 40px;
-            margin-bottom: 5px;
+            border-bottom: 1.5px solid #cbd5e1;
+            margin-top: 45px;
+            margin-bottom: 6px;
           }
 
           .sign-title {
             font-size: 10px;
-            font-weight: 700;
-            color: #475569;
+            font-weight: 800;
+            color: #64748b;
             text-transform: uppercase;
+            letter-spacing: 0.05em;
           }
 
           .sign-name {
-            font-size: 11px;
+            font-size: 12px;
             font-weight: 700;
             color: #0f172a;
           }
@@ -527,6 +551,7 @@ export default function FixedPackages() {
             font-size: 9px;
             color: #94a3b8;
             line-height: 1.4;
+            letter-spacing: 0.02em;
           }
         </style>
       </head>
@@ -543,7 +568,7 @@ export default function FixedPackages() {
                 </div>
               </div>
               <div class="meta-info">
-                <div class="meta-title">Quotation Brochure</div>
+                <div class="meta-title">Official Quotation</div>
                 <div><strong>Ref No:</strong> ${refNo}</div>
                 <div><strong>Date:</strong> ${currentDate}</div>
               </div>
@@ -559,7 +584,7 @@ export default function FixedPackages() {
                   <img class="service-image" src="${firstImage}" alt="${service.name}">
                 </div>
                 <div class="desc-col">
-                  <div class="desc-label">Package description / Inclusions</div>
+                  <div class="desc-label">Package Inclusions & Description</div>
                   <p class="desc-text">${service.description}</p>
                 </div>
               </div>
@@ -572,9 +597,9 @@ export default function FixedPackages() {
                 <thead>
                   <tr>
                     <th class="text-left">Details</th>
-                    <th class="text-right" style="width: 120px;">Unit Rate</th>
+                    <th class="text-right" style="width: 130px;">Unit Rate</th>
                     <th class="text-center" style="width: 100px;">Quantity</th>
-                    <th class="text-right" style="width: 120px;">Subtotal</th>
+                    <th class="text-right" style="width: 130px;">Subtotal</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -584,7 +609,7 @@ export default function FixedPackages() {
 
               <div class="total-box">
                 <span class="total-label">Total Investment</span>
-                <span class="total-amount">₱${totalPrice.toLocaleString()}</span>
+                <span class="total-amount">${formatPrice(totalPrice)}</span>
               </div>
               <p class="disclaimer">* Pricing listed is VAT-inclusive and valid for 15 days from the date of quotation generation.</p>
             </div>
@@ -597,13 +622,13 @@ export default function FixedPackages() {
                 <div class="sign-title">Prepared By</div>
                 <div class="sign-line"></div>
                 <div class="sign-name">${agentName}</div>
-                <div style="font-size: 9px; color: #64748b;">Travel Agent / Coordinator</div>
+                <div style="font-size: 9px; color: #64748b; font-weight: 500;">Travel Agent / Coordinator</div>
               </div>
               <div class="sign-col">
                 <div class="sign-title">Customer Acceptance</div>
                 <div class="sign-line"></div>
                 <div class="sign-name">___________________________</div>
-                <div style="font-size: 9px; color: #64748b;">Signature Over Printed Name</div>
+                <div style="font-size: 9px; color: #64748b; font-weight: 500;">Signature Over Printed Name</div>
               </div>
             </div>
             
