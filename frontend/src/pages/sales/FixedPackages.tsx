@@ -719,45 +719,51 @@ export default function FixedPackages() {
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="relative flex-1">
-              <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[280px]">
+              <LuSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-405 w-5 h-5" />
               <input
                 type="text"
                 placeholder="Search services or categories..."
-                className="w-full pl-12 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white"
+                className="w-full pl-12 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-sm focus:ring-4 focus:ring-blue-600/5 transition-all font-medium dark:text-white outline-none"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <div className="flex overflow-x-auto hide-scrollbar w-full md:w-auto flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center">
-              {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
+
+            {/* Tabs & Action Buttons */}
+            <div className="flex flex-wrap items-center gap-3 flex-1 sm:flex-none">
+              <div className="flex overflow-x-auto hide-scrollbar flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center flex-1 sm:flex-none">
+                {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`shrink-0 whitespace-nowrap px-4 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
+                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-white/5'
+                        : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+              
+              {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`shrink-0 whitespace-nowrap px-6 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
-                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-blue-600/10'
-                      : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
-                    }`}
+                  onClick={() => {
+                    setEditingServiceId(null);
+                    setIsEditingService(false);
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
+                    setServiceImages([]);
+                    setShowAddService(true);
+                  }}
+                  className="px-6 h-12 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shrink-0 flex-1 sm:flex-none"
                 >
-                  {cat}
+                  <LuPlus className="w-4 h-4" /> Add Service
                 </button>
-              ))}
+              )}
             </div>
-            {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
-              <button
-                onClick={() => {
-                  setEditingServiceId(null);
-                  setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
-                  setServiceImages([]);
-                  setShowAddService(true);
-                }}
-                className="px-6 h-12 bg-blue-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:bg-blue-700 transition-all flex items-center justify-center gap-2 shrink-0"
-              >
-                <LuPlus className="w-4 h-4" /> Add Service
-              </button>
-            )}
           </div>
         </div>
 
