@@ -183,7 +183,7 @@ export default function FixedPackages() {
 
   const handlePrintService = () => {
     if (!selectedServiceForDetail) return;
-    
+
     const service = selectedServiceForDetail;
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -212,7 +212,7 @@ export default function FixedPackages() {
         <tr>
           <td style="font-weight: 600; color: #0f172a;">Vehicle Rental (${bookingTourVehicle})</td>
           <td class="text-right">${formatPrice(basePrice)}</td>
-          <td class="text-center font-semibold">1 Unit</td>
+          <td class="text-center font-semibold">1</td>
           <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(basePrice)}</td>
         </tr>
       `;
@@ -221,7 +221,7 @@ export default function FixedPackages() {
           <tr>
             <td style="font-weight: 600; color: #0f172a;">Extra Rental Days</td>
             <td class="text-right">${formatPrice(bookingTourVehicle === 'Bus' ? 22010 : 16780)}</td>
-            <td class="text-center font-semibold">${bookingTourExtraDays} Day(s)</td>
+            <td class="text-center font-semibold">${bookingTourExtraDays}</td>
             <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(extraDaysPrice)}</td>
           </tr>
         `;
@@ -231,7 +231,7 @@ export default function FixedPackages() {
           <tr>
             <td style="font-weight: 600; color: #0f172a;">Extra Rental Hours</td>
             <td class="text-right">${formatPrice(bookingTourVehicle === 'Bus' ? 1950 : 1680)}</td>
-            <td class="text-center font-semibold">${bookingTourExtraHours} Hour(s)</td>
+            <td class="text-center font-semibold">${bookingTourExtraHours}</td>
             <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(extraHoursPrice)}</td>
           </tr>
         `;
@@ -245,7 +245,7 @@ export default function FixedPackages() {
         <tr>
           <td style="font-weight: 600; color: #0f172a;">Adult Guest Tickets</td>
           <td class="text-right">${formatPrice(selectedDetailAdultPrice)}</td>
-          <td class="text-center font-semibold">${bookingAdults} Pax</td>
+          <td class="text-center font-semibold">${bookingAdults}</td>
           <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(adultTotal)}</td>
         </tr>
       `;
@@ -254,7 +254,7 @@ export default function FixedPackages() {
           <tr>
             <td style="font-weight: 600; color: #0f172a;">Child Guest Tickets (${selectedDetailChildDiscount}% Off)</td>
             <td class="text-right">${formatPrice(selectedDetailChildPrice)}</td>
-            <td class="text-center font-semibold">${bookingChildren} Pax</td>
+            <td class="text-center font-semibold">${bookingChildren}</td>
             <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(childTotal)}</td>
           </tr>
         `;
@@ -265,7 +265,7 @@ export default function FixedPackages() {
         <tr>
           <td style="font-weight: 600; color: #0f172a;">Standard Base Rate</td>
           <td class="text-right">${formatPrice(totalPrice)}</td>
-          <td class="text-center font-semibold">1 Option</td>
+          <td class="text-center font-semibold">1</td>
           <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(totalPrice)}</td>
         </tr>
       `;
@@ -305,8 +305,8 @@ export default function FixedPackages() {
       `;
     }
 
-    const firstImage = service.images && service.images.length > 0 
-      ? (service.images[0].startsWith('http') ? service.images[0] : `${window.location.origin}/storage/${service.images[0]}`) 
+    const firstImage = service.images && service.images.length > 0
+      ? (service.images[0].startsWith('http') ? service.images[0] : `${window.location.origin}/storage/${service.images[0]}`)
       : `${window.location.origin}/JVD 3D.png`;
 
     const currentDate = new Date().toLocaleDateString('en-US', {
@@ -693,7 +693,7 @@ export default function FixedPackages() {
             </div>
             
             <div class="company-info">
-              JVD Event & Travel Management Co. • Ground Floor, JVD Bldg • contact@jvdevents.com • +63 (2) 8123-4567
+              JVD Event & Travel Management Co. • jvdmarketing8@gmail.com • (02) 829-380068
             </div>
           </div>
         </div>
@@ -708,7 +708,7 @@ export default function FixedPackages() {
       </body>
       </html>
     `);
-    
+
     printWindow.document.close();
   };
 
@@ -802,15 +802,15 @@ export default function FixedPackages() {
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={`shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
-                        ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-white/5'
-                        : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                      ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-white/5'
+                      : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
                   >
                     {cat}
                   </button>
                 ))}
               </div>
-              
+
               {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
                 <button
                   onClick={() => {
@@ -1294,20 +1294,19 @@ export default function FixedPackages() {
                     value={newService.cost_breakdown}
                     onChange={e => setNewService({ ...newService, cost_breakdown: e.target.value })}
                   />
-                  
+
                   {/* Real-time Tally Status */}
                   {newService.cost_breakdown && (() => {
                     const breakdownSum = getBreakdownSum(newService.cost_breakdown);
                     const servicePrice = Number(newService.price || 0);
                     const isTallyMatch = Math.abs(breakdownSum - servicePrice) < 0.01;
                     const diff = breakdownSum - servicePrice;
-                    
+
                     return (
-                      <div className={`mt-2 p-4 rounded-2xl border transition-all duration-300 ${
-                        isTallyMatch 
-                          ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
-                          : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
-                      }`}>
+                      <div className={`mt-2 p-4 rounded-2xl border transition-all duration-300 ${isTallyMatch
+                        ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                        : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
+                        }`}>
                         <div className="flex items-center justify-between text-xs font-bold">
                           <div className="flex items-center gap-2">
                             {isTallyMatch ? (
@@ -1316,8 +1315,8 @@ export default function FixedPackages() {
                               <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
                             )}
                             <span>
-                              {isTallyMatch 
-                                ? 'Cost breakdown tallies with Base Price' 
+                              {isTallyMatch
+                                ? 'Cost breakdown tallies with Base Price'
                                 : 'Cost breakdown does not tally with Base Price'}
                             </span>
                           </div>
@@ -1481,8 +1480,8 @@ export default function FixedPackages() {
               <div className="mb-8">
                 <div className="flex items-center justify-between">
                   <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600' :
-                      selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
-                        'bg-violet-50 text-violet-600'
+                    selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
+                      'bg-violet-50 text-violet-600'
                     }`}>
                     {selectedServiceForDetail.category}
                   </span>
@@ -1560,20 +1559,19 @@ export default function FixedPackages() {
                     <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap mb-3">
                       {selectedServiceForDetail.cost_breakdown}
                     </p>
-                    
+
                     {/* Tally Indicator in Detail Modal */}
                     {(() => {
                       const breakdownSum = getBreakdownSum(selectedServiceForDetail.cost_breakdown || '');
                       const servicePrice = Number(selectedServiceForDetail.price || 0);
                       const isTallyMatch = Math.abs(breakdownSum - servicePrice) < 0.01;
                       const diff = breakdownSum - servicePrice;
-                      
+
                       return (
-                        <div className={`p-4 rounded-[1.5rem] border transition-all duration-300 ${
-                          isTallyMatch 
-                            ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
-                            : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
-                        }`}>
+                        <div className={`p-4 rounded-[1.5rem] border transition-all duration-300 ${isTallyMatch
+                          ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+                          : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
+                          }`}>
                           <div className="flex items-center justify-between text-xs font-bold">
                             <div className="flex items-center gap-2">
                               {isTallyMatch ? (
@@ -1582,8 +1580,8 @@ export default function FixedPackages() {
                                 <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
                               )}
                               <span>
-                                {isTallyMatch 
-                                  ? 'Breakdown tallies with Base Price' 
+                                {isTallyMatch
+                                  ? 'Breakdown tallies with Base Price'
                                   : 'Breakdown does not tally with Base Price'}
                               </span>
                             </div>
@@ -1739,8 +1737,8 @@ export default function FixedPackages() {
                   <h4 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
                     {selectedServiceForDetail.is_tour ? (
                       <>₱{((bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0)) +
-                          (bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780)) +
-                          (bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680))).toLocaleString()}</>
+                        (bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780)) +
+                        (bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680))).toLocaleString()}</>
                     ) : (
                       <>₱{((bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice)).toLocaleString()}</>
                     )}
