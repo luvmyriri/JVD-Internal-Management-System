@@ -309,7 +309,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="px-4 py-4 border-t border-gray-800 shrink-0">
-          <p className="text-[10px] text-gray-600 text-center">JVD Events & Travels</p>
+          <p className="text-[10px] text-gray-600 text-center">JVD Event & Travel</p>
           <p className="text-[10px] text-gray-700 text-center">Management Co.</p>
         </div>
       </aside>

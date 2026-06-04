@@ -27,6 +27,8 @@ class Service extends Model
         'tour_kms',
         'tour_hours',
         'cost_breakdown',
+        'inclusions',
+        'exclusions',
     ];
 
     protected $casts = [

@@ -21,6 +21,27 @@ import { useTheme } from '../../context/ThemeContext';
 import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 
+const getBreakdownSum = (breakdownText: string) => {
+  if (!breakdownText) return 0;
+  const lines = breakdownText.split(/[\n|;]+/);
+  let sum = 0;
+  for (let line of lines) {
+    line = line.trim();
+    if (!line) continue;
+    const numRegex = /(?:₱|PHP|Php)?\s*(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/gi;
+    const matches = Array.from(line.matchAll(numRegex));
+    if (matches.length > 0) {
+      const lastMatch = matches[matches.length - 1];
+      const numStr = lastMatch[1].replace(/,/g, '');
+      const amount = parseFloat(numStr);
+      if (!isNaN(amount)) {
+        sum += amount;
+      }
+    }
+  }
+  return sum;
+};
+
 export default function FixedPackages() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -54,6 +75,8 @@ export default function FixedPackages() {
     tour_kms: 0,
     tour_hours: 0,
     cost_breakdown: '',
+    inclusions: '',
+    exclusions: '',
   });
   const [detailImageIndex, setDetailImageIndex] = useState(0);
   const [cardImageIndices, setCardImageIndices] = useState<Record<number, number>>({});
@@ -245,6 +268,40 @@ export default function FixedPackages() {
           <td class="text-center font-semibold">1 Option</td>
           <td class="text-right font-bold" style="color: #0f172a;">${formatPrice(totalPrice)}</td>
         </tr>
+      `;
+    }
+
+    let inclusionsExclusionsHTML = '';
+    const formatListHTML = (text: string, isExclusion = false) => {
+      if (!text) return '';
+      const items = text.split('\n').map(i => i.trim()).filter(Boolean);
+      if (items.length === 0) return '';
+      const listItems = items.map(item => `
+        <li style="margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px;">
+          <span style="color: ${isExclusion ? '#e11d48' : '#16a34a'}; font-weight: bold; font-size: 12px; line-height: 1.2;">${isExclusion ? '✕' : '✓'}</span>
+          <span style="font-size: 12px;">${item}</span>
+        </li>
+      `).join('');
+      return `
+        <div style="flex: 1; min-width: 220px;">
+          <div style="font-size: 11px; font-weight: 800; color: ${isExclusion ? '#e11d48' : '#16a34a'}; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; border-bottom: 1.5px solid ${isExclusion ? '#ffe4e6' : '#dcfce7'}; padding-bottom: 6px;">
+            ${isExclusion ? 'Exclusions' : 'Inclusions'}
+          </div>
+          <ul style="list-style: none; padding: 0; margin: 0; color: #475569; line-height: 1.5;">
+            ${listItems}
+          </ul>
+        </div>
+      `;
+    };
+
+    const inclHTML = formatListHTML(service.inclusions || '');
+    const exclHTML = formatListHTML(service.exclusions || '', true);
+    if (inclHTML || exclHTML) {
+      inclusionsExclusionsHTML = `
+        <div style="display: flex; flex-wrap: wrap; gap: 32px; margin-bottom: 25px; margin-top: 15px;">
+          ${inclHTML}
+          ${exclHTML}
+        </div>
       `;
     }
 
@@ -563,7 +620,7 @@ export default function FixedPackages() {
               <div class="brand">
                 <img class="logo" src="${window.location.origin}/JVD 3D.png" alt="JVD Logo" onerror="this.style.display='none'">
                 <div class="brand-text">
-                  <h1>JVD Events & Travels</h1>
+                  <h1>JVD Event & Travel</h1>
                   <p>Management Co.</p>
                 </div>
               </div>
@@ -590,6 +647,9 @@ export default function FixedPackages() {
               </div>
             </div>
 
+            <!-- Inclusions & Exclusions -->
+            ${inclusionsExclusionsHTML}
+
             <!-- Pricing Breakdown -->
             <div class="table-section">
               <div class="table-title">Pricing & Configuration Summary</div>
@@ -608,7 +668,7 @@ export default function FixedPackages() {
               </table>
 
               <div class="total-box">
-                <span class="total-label">Total Investment</span>
+                <span class="total-label">Total Amount</span>
                 <span class="total-amount">${formatPrice(totalPrice)}</span>
               </div>
               <p class="disclaimer">* Pricing listed is VAT-inclusive and valid for 15 days from the date of quotation generation.</p>
@@ -633,7 +693,7 @@ export default function FixedPackages() {
             </div>
             
             <div class="company-info">
-              JVD Events & Travels Management Co. • Ground Floor, JVD Bldg • contact@jvdevents.com • +63 (2) 8123-4567
+              JVD Event & Travel Management Co. • Ground Floor, JVD Bldg • contact@jvdevents.com • +63 (2) 8123-4567
             </div>
           </div>
         </div>
@@ -695,6 +755,8 @@ export default function FixedPackages() {
       tour_kms: service.tour_kms !== undefined && service.tour_kms !== null ? Number(service.tour_kms) : 0,
       tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? Number(service.tour_hours) : 0,
       cost_breakdown: service.cost_breakdown || '',
+      inclusions: service.inclusions || '',
+      exclusions: service.exclusions || '',
     });
     const existingImages = service.images?.map(img =>
       img.startsWith('http') ? img : `/storage/${img}`
@@ -734,12 +796,12 @@ export default function FixedPackages() {
 
             {/* Tabs & Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 flex-1 sm:flex-none">
-              <div className="flex overflow-x-auto hide-scrollbar flex-nowrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 h-12 items-center flex-1 sm:flex-none">
+              <div className="flex flex-wrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 items-center gap-1 flex-1 sm:flex-none">
                 {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`shrink-0 whitespace-nowrap px-4 h-full rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
+                    className={`shrink-0 whitespace-nowrap px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center ${selectedCategory === cat
                         ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-lg shadow-white/5'
                         : 'text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
                       }`}
@@ -754,7 +816,7 @@ export default function FixedPackages() {
                   onClick={() => {
                     setEditingServiceId(null);
                     setIsEditingService(false);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
                     setServiceImages([]);
                     setShowAddService(true);
                   }}
@@ -781,7 +843,7 @@ export default function FixedPackages() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
+                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
@@ -792,7 +854,7 @@ export default function FixedPackages() {
             )}
           </div>
         ) : (
-          <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:flex-none md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
+          <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
             {filteredServices.map((service) => (
               <div
                 key={service.id}
@@ -1232,9 +1294,72 @@ export default function FixedPackages() {
                     value={newService.cost_breakdown}
                     onChange={e => setNewService({ ...newService, cost_breakdown: e.target.value })}
                   />
+                  
+                  {/* Real-time Tally Status */}
+                  {newService.cost_breakdown && (() => {
+                    const breakdownSum = getBreakdownSum(newService.cost_breakdown);
+                    const servicePrice = Number(newService.price || 0);
+                    const isTallyMatch = Math.abs(breakdownSum - servicePrice) < 0.01;
+                    const diff = breakdownSum - servicePrice;
+                    
+                    return (
+                      <div className={`mt-2 p-4 rounded-2xl border transition-all duration-300 ${
+                        isTallyMatch 
+                          ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
+                          : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
+                      }`}>
+                        <div className="flex items-center justify-between text-xs font-bold">
+                          <div className="flex items-center gap-2">
+                            {isTallyMatch ? (
+                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-extrabold">✓</span>
+                            ) : (
+                              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
+                            )}
+                            <span>
+                              {isTallyMatch 
+                                ? 'Cost breakdown tallies with Base Price' 
+                                : 'Cost breakdown does not tally with Base Price'}
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <div>Breakdown Sum: <span className="font-extrabold">₱{breakdownSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                            <div>Base Price: <span className="font-extrabold">₱{servicePrice.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                            {!isTallyMatch && (
+                              <div className="text-[10px] opacity-85 mt-0.5">
+                                Difference: <span className="font-extrabold">{diff > 0 ? '+' : ''}₱{diff.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <p className="text-[10px] text-amber-500 font-bold pl-1">This breakdown is visible to management and agent roles.</p>
                 </div>
               )}
+
+              {/* Inclusions & Exclusions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Inclusions (Optional)</label>
+                  <textarea
+                    placeholder="e.g. Roundtrip airfare, 3-star hotel accommodation, Daily breakfast, Tour guide..."
+                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-[2rem] py-5 px-6 text-sm font-medium dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none min-h-[100px]"
+                    value={newService.inclusions}
+                    onChange={e => setNewService({ ...newService, inclusions: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Exclusions (Optional)</label>
+                  <textarea
+                    placeholder="e.g. Personal expenses, Tips/gratuities, Travel insurance, Optional tours..."
+                    className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-[2rem] py-5 px-6 text-sm font-medium dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none min-h-[100px]"
+                    value={newService.exclusions}
+                    onChange={e => setNewService({ ...newService, exclusions: e.target.value })}
+                  />
+                </div>
+              </div>
+
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Image URL</label>
                 <div className="flex gap-2">
@@ -1272,7 +1397,7 @@ export default function FixedPackages() {
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button
-                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' }); }}
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
@@ -1289,7 +1414,7 @@ export default function FixedPackages() {
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '' });
+                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -1393,6 +1518,38 @@ export default function FixedPackages() {
                   </p>
                 </div>
 
+                {/* Inclusions & Exclusions */}
+                {(selectedServiceForDetail.inclusions || selectedServiceForDetail.exclusions) && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedServiceForDetail.inclusions && (
+                      <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30">
+                        <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Inclusions</p>
+                        <ul className="text-xs text-emerald-800 dark:text-emerald-300 font-medium space-y-1.5 list-none">
+                          {selectedServiceForDetail.inclusions.split('\n').map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-emerald-600 dark:text-emerald-400">✓</span>
+                              <span>{item.trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {selectedServiceForDetail.exclusions && (
+                      <div className="p-4 bg-rose-50/50 dark:bg-rose-950/10 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30">
+                        <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Exclusions</p>
+                        <ul className="text-xs text-rose-800 dark:text-rose-300 font-medium space-y-1.5 list-none">
+                          {selectedServiceForDetail.exclusions.split('\n').map((item, idx) => (
+                            <li key={idx} className="flex items-start gap-1.5">
+                              <span className="text-rose-600 dark:text-rose-400">✕</span>
+                              <span>{item.trim()}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Cost Breakdown — Visible to all Sales page viewers */}
                 {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'reservation_officer', 'office_staff'].includes(user?.role || '') && selectedServiceForDetail.cost_breakdown && (
                   <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/40">
@@ -1400,9 +1557,48 @@ export default function FixedPackages() {
                       <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cost Breakdown</p>
                       <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Internal Use Only</span>
                     </div>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap">
+                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap mb-3">
                       {selectedServiceForDetail.cost_breakdown}
                     </p>
+                    
+                    {/* Tally Indicator in Detail Modal */}
+                    {(() => {
+                      const breakdownSum = getBreakdownSum(selectedServiceForDetail.cost_breakdown || '');
+                      const servicePrice = Number(selectedServiceForDetail.price || 0);
+                      const isTallyMatch = Math.abs(breakdownSum - servicePrice) < 0.01;
+                      const diff = breakdownSum - servicePrice;
+                      
+                      return (
+                        <div className={`p-4 rounded-[1.5rem] border transition-all duration-300 ${
+                          isTallyMatch 
+                            ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300' 
+                            : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
+                        }`}>
+                          <div className="flex items-center justify-between text-xs font-bold">
+                            <div className="flex items-center gap-2">
+                              {isTallyMatch ? (
+                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-extrabold">✓</span>
+                              ) : (
+                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
+                              )}
+                              <span>
+                                {isTallyMatch 
+                                  ? 'Breakdown tallies with Base Price' 
+                                  : 'Breakdown does not tally with Base Price'}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <div>Sum: <span className="font-extrabold">₱{breakdownSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
+                              {!isTallyMatch && (
+                                <div className="text-[10px] opacity-85 mt-0.5">
+                                  Diff: <span className="font-extrabold">{diff > 0 ? '+' : ''}₱{diff.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
 

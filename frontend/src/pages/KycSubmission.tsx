@@ -1050,7 +1050,7 @@ export default function KycSubmission() {
             </div>
           </div>
           <p className="text-[10px] text-slate-550 text-center leading-relaxed">
-            &copy; {new Date().getFullYear()} JVD Events & Travels Management Co. All rights reserved.
+            &copy; {new Date().getFullYear()} JVD Event & Travel Management Co. All rights reserved.
           </p>
         </div>
       </div>

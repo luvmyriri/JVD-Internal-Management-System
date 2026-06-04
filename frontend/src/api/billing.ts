@@ -19,6 +19,8 @@ export interface Service {
   tour_kms?: number;
   tour_hours?: number;
   cost_breakdown?: string;
+  inclusions?: string;
+  exclusions?: string;
   creator?: {
     id: number;
     first_name: string;
@@ -95,6 +97,8 @@ export const billingApi = {
     tour_kms?: number;
     tour_hours?: number;
     cost_breakdown?: string;
+    inclusions?: string;
+    exclusions?: string;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -113,6 +117,8 @@ export const billingApi = {
     tour_kms?: number;
     tour_hours?: number;
     cost_breakdown?: string;
+    inclusions?: string;
+    exclusions?: string;
   }) => client.put(`/billing/services/${id}`, data),
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 
