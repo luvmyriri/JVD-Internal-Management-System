@@ -9,11 +9,11 @@
 
         /* ─── Header ─── */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
-        .header-left  { width: 55%; vertical-align: top; }
-        .header-right { width: 45%; text-align: right; vertical-align: top; }
-        .company-logo { font-size: 20px; font-weight: 900; color: #1e3a8a; letter-spacing: 1px; margin-bottom: 4px; }
-        .company-sub  { font-size: 9px; color: #64748b; line-height: 1.7; }
-
+        .header-left  { width: 60%; vertical-align: top; }
+        .header-right { width: 40%; text-align: right; vertical-align: top; }
+        .company-logo { font-size: 16px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px; margin-bottom: 4px; }
+        .company-sub  { font-size: 8.5px; color: #64748b; line-height: 1.6; }
+        
         /* ─── Document Title Bar ─── */
         .title-bar { background: #1e3a8a; color: #fff; text-align: center; padding: 10px; border-radius: 4px; font-size: 13px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 22px; }
 
@@ -98,7 +98,7 @@
                             <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="height: 48px; width: auto;" alt="JVD Logo">
                         </td>
                         <td style="vertical-align: middle;">
-                            <div class="company-logo" style="margin: 0; line-height: 1.1; font-size: 16px; font-weight: 950; color: #1e3a8a;">JVD Event & Travel</div>
+                            <div class="company-logo" style="margin: 0; line-height: 1.1; font-size: 16px; font-weight: 950; color: #1e3a8a;">JVD Event &amp; Travel</div>
                             <div style="font-size: 9px; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px;">Management Company</div>
                         </td>
                     </tr>

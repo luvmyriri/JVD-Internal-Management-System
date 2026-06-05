@@ -173,13 +173,14 @@ body:not(.dark) *:not(
   .bg-fuchsia-600, .bg-fuchsia-600 *,
   .bg-violet-600, .bg-violet-600 *,
   .bg-violet-500, .bg-violet-500 *,
-  .bg-violet-950, .bg-violet-950 *
+  .bg-violet-950, .bg-violet-950 *,
+  [class*="text-white"], [class*="text-white"] *
 ) {
   color: #000000 !important;
 }
 
 /* Make sure that inside the white login card, text is black in light mode */
-body:not(.dark) .bg-white *:not(svg, path, rect, circle, line, polyline, polygon, g) {
+body:not(.dark) .bg-white *:not(svg, path, rect, circle, line, polyline, polygon, g, [class*="text-white"], [class*="text-white"] *) {
   color: #000000 !important;
 }
 

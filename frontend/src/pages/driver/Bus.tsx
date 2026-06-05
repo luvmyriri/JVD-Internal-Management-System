@@ -176,7 +176,7 @@ export default function DriverBus() {
 
   if (!bus) {
     return (
-      <div className="space-y-6 p-1">
+      <div className="space-y-8">
         <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">My Bus</h1>
         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-24 text-center">
           <LuBus size={48} className="mx-auto mb-4 text-gray-200 dark:text-gray-700" strokeWidth={1.5} />
@@ -197,7 +197,7 @@ export default function DriverBus() {
     : null;
 
   return (
-    <div className="space-y-6 p-1">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>

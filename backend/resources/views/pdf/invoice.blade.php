@@ -6,9 +6,9 @@
     <style>
         body { font-family: 'DejaVu Sans', sans-serif; color: #333333; margin: 0; padding: 20px; font-size: 11px; line-height: 1.5; }
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        .header-left { width: 50%; vertical-align: top; }
-        .header-right { width: 50%; text-align: right; vertical-align: top; }
-        .company-logo { font-size: 24px; font-weight: 900; color: #1e3a8a; letter-spacing: 1px; margin-bottom: 5px; }
+        .header-left { width: 60%; vertical-align: top; }
+        .header-right { width: 40%; text-align: right; vertical-align: top; }
+        .company-logo { font-size: 16px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px; margin-bottom: 5px; }
         .document-title { text-align: center; font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #1e293b; margin: 30px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
         
         /* Items Table */
@@ -43,7 +43,7 @@
                             <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="height: 48px; width: auto;" alt="JVD Logo">
                         </td>
                         <td style="vertical-align: middle;">
-                            <div class="company-logo" style="margin: 0; line-height: 1.1; font-size: 16px; font-weight: 950; color: #1e3a8a;">JVD Event & Travel</div>
+                            <div class="company-logo" style="margin: 0; line-height: 1.1; font-size: 16px; font-weight: 950; color: #1e3a8a;">JVD Event &amp; Travel</div>
                             <div style="font-size: 9px; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px;">Management Company</div>
                         </td>
                     </tr>
@@ -172,7 +172,7 @@
                     <strong>Receipt Generated:</strong> {{ now()->format('Y-m-d H:i:s') }}
                 </td>
                 <td class="footer-right">
-                    <strong>Support & Contacts:</strong><br>
+                    <strong>Support &amp; Contacts:</strong><br>
                     Thank you for choosing JVD Event and Travel Management Company!<br>
                     <strong>Support Tel:</strong> 0976 471 1294<br>
                     <strong>Support Email:</strong> accounts@jvd-travel.com

@@ -613,7 +613,7 @@ export default function DriverTrips() {
   const inProgress = trips.filter(t => t.status === 'in_progress').length;
 
   return (
-    <div className="space-y-6 p-1">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">My Trips</h1>
@@ -623,13 +623,14 @@ export default function DriverTrips() {
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: 'Completed', value: completedCount, color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-500/10' },
-          { label: 'Upcoming', value: upcoming, color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-500/10' },
-          { label: 'In Progress', value: inProgress, color: 'text-amber-500', bg: 'bg-amber-50 dark:bg-amber-500/10' },
+          { label: 'Completed', value: completedCount, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/30 dark:shadow-emerald-900/30' },
+          { label: 'Upcoming', value: upcoming, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-300/30 dark:shadow-blue-900/30' },
+          { label: 'In Progress', value: inProgress, from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-amber-300/30 dark:shadow-amber-900/30' },
         ].map(s => (
-          <div key={s.label} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] p-5 flex flex-col justify-center shadow-sm">
-            <p className="text-2xl font-black text-gray-900 dark:text-white">{s.value}</p>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-1">{s.label}</p>
+          <div key={s.label} className={`relative overflow-hidden bg-gradient-to-br ${s.from} ${s.to} text-white rounded-[2rem] p-5 flex flex-col justify-center shadow-lg ${s.shadow} hover:scale-[1.02] transition-all`}>
+            <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+            <p className="text-2xl font-black text-white">{s.value}</p>
+            <p className="text-[10px] font-black text-white/70 uppercase tracking-widest mt-1">{s.label}</p>
           </div>
         ))}
       </div>

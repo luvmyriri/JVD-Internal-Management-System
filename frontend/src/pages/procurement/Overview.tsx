@@ -54,11 +54,11 @@ export default function ProcurementOverview() {
   const statsData = data?.data?.data;
 
   const stats = [
-    { label: 'Active POs', value: statsData?.stats.active_pos ?? 0, change: '+0', positive: true, icon: <LuShoppingCart />, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-900/30' },
-    { label: 'Total Suppliers', value: statsData?.stats.total_suppliers ?? 0, change: '+0', positive: true, icon: <LuTruck />, color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-50 dark:bg-indigo-900/30' },
-    { label: 'Pending POs', value: statsData?.stats.pending_pos ?? 0, change: '0', positive: true, icon: <LuClock />, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-900/30' },
-    { label: 'Pending KYC / Accreditations', value: statsData?.stats.pending_accreditations ?? 0, change: '+0', positive: false, icon: <LuShieldAlert />, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-900/30' },
-    { label: 'Active Accreditations', value: statsData?.stats.active_accreditations ?? 0, change: '+0', positive: true, icon: <LuShieldCheck />, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-900/30' },
+    { label: 'Active POs', value: statsData?.stats.active_pos ?? 0, change: '+0', positive: true, icon: <LuShoppingCart />, gradient: 'from-blue-500 to-blue-700', shadow: 'shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30' },
+    { label: 'Total Suppliers', value: statsData?.stats.total_suppliers ?? 0, change: '+0', positive: true, icon: <LuTruck />, gradient: 'from-indigo-500 to-indigo-700', shadow: 'shadow-lg shadow-indigo-300/30 dark:shadow-indigo-900/30' },
+    { label: 'Pending POs', value: statsData?.stats.pending_pos ?? 0, change: '0', positive: true, icon: <LuClock />, gradient: 'from-amber-400 to-orange-600', shadow: 'shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30' },
+    { label: 'Pending KYC / Accreditations', value: statsData?.stats.pending_accreditations ?? 0, change: '+0', positive: false, icon: <LuShieldAlert />, gradient: 'from-red-500 to-rose-600', shadow: 'shadow-lg shadow-red-300/30 dark:shadow-red-900/30' },
+    { label: 'Active Accreditations', value: statsData?.stats.active_accreditations ?? 0, change: '+0', positive: true, icon: <LuShieldCheck />, gradient: 'from-emerald-400 to-teal-600', shadow: 'shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30' },
   ];
 
   if (isLoading) {
@@ -74,19 +74,20 @@ export default function ProcurementOverview() {
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-6">
         {stats.map((stat) => (
-          <div key={stat.label} className="bg-white dark:bg-gray-900 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-xl transition-all group">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color} transition-transform group-hover:scale-110`}>
+          <div key={stat.label} className={`relative overflow-hidden bg-gradient-to-br ${stat.gradient} text-white p-6 rounded-[2rem] ${stat.shadow} hover:scale-[1.02] transition-all group cursor-default`}>
+            <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="p-3 rounded-2xl bg-white/20 text-white transition-transform group-hover:scale-110">
                 <span className="text-xl">{stat.icon}</span>
               </div>
-              <div className="px-2 py-1 bg-gray-50 dark:bg-gray-800/60 rounded-full text-[10px] font-bold text-gray-500 dark:text-gray-400 flex items-center gap-1">
+              <div className="px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full text-[10px] font-bold text-white flex items-center gap-1">
                 {stat.positive ? <LuArrowUpRight /> : <LuArrowDownRight />}
                 {stat.change}
               </div>
             </div>
-            <div>
-              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">{stat.label}</p>
-              <h3 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">{stat.value}</h3>
+            <div className="relative z-10">
+              <p className="text-[10px] font-black text-white/80 uppercase tracking-widest mb-1">{stat.label}</p>
+              <h3 className="text-2xl font-black text-white tracking-tight">{stat.value}</h3>
             </div>
           </div>
         ))}
