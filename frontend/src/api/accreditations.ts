@@ -19,6 +19,7 @@ export interface Accreditation {
   contact_email: string;
   created_at: string;
   updated_at: string;
+  custom_documents?: { name: string; key: string; url: string | null; status: string }[];
 }
 
 export const accreditationsApi = {

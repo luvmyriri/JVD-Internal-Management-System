@@ -79,7 +79,11 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
     contact_person: '', contact_email: '',
   });
 
+  const [customDocNames, setCustomDocNames] = useState<string[]>(['KYC Doc', 'NDA Doc', 'Terms Doc']);
+  const [newDocName, setNewDocName] = useState('');
   const [filesToUpload, setFilesToUpload] = useState<{ [key: string]: File }>({});
+
+  const getDocKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_+|_+$)/g, '');
 
   const uploadMutation = useMutation({
     mutationFn: ({ id, type, file }: { id: number, type: string, file: File }) => 
@@ -88,11 +92,15 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      // Create first without document urls
-      const { ...dataToSubmit } = form;
-      ['kyc_document_url', 'nda_document_url', 'terms_document_url'].forEach(k => delete dataToSubmit[k as keyof Accreditation]);
+      const dataToSubmit = {
+        ...form,
+        custom_documents: customDocNames
+      };
       
-      const res = await accreditationsApi.create(dataToSubmit);
+      // Exclude base document url fields from initial POST since we upload them separately next
+      ['kyc_document_url', 'nda_document_url', 'terms_document_url'].forEach(k => delete dataToSubmit[k as keyof typeof dataToSubmit]);
+      
+      const res = await accreditationsApi.create(dataToSubmit as any);
       const accId = res.data.data?.id || (res.data as any).id;
       
       // Upload pending files
@@ -174,35 +182,105 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
 
             <details className="group" open>
               <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
-                <span>Supporting Documents</span>
+                <span>Supporting Documents Requirements</span>
                 <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
               </summary>
-              <div className="pt-4 px-1">
-                <div className="grid grid-cols-3 gap-4">
-                  {['kyc', 'nda', 'terms'].map(doc => (
-                    <label key={doc} className="relative flex flex-col items-center justify-center w-full h-[60px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors px-2">
-                      {form[`${doc}_document_url` as keyof Accreditation] ? (
-                         <div className="flex flex-col items-center justify-center w-full" onClick={(e) => e.preventDefault()}>
-                           <span className="text-[10px] font-bold text-emerald-600 uppercase">Attached</span>
-                           <button type="button" onClick={(e) => { e.preventDefault(); setForm(p => ({ ...p, [`${doc}_document_url`]: '' })); }} className="text-gray-400 hover:text-red-500 mt-1"><LuX size={12} /></button>
-                         </div>
-                      ) : (
-                        <>
-                          <LuCloudUpload className="w-4 h-4 mb-1 text-gray-400" />
-                          <span className="text-[10px] font-bold text-gray-500 uppercase">{doc} Doc</span>
-                          <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              setFilesToUpload(p => ({ ...p, [doc]: file }));
-                              setForm(p => ({ ...p, [`${doc}_document_url`]: 'attached' }));
-                              toast.success(`${doc.toUpperCase()} document attached`);
-                            }
-                          }} />
-                        </>
-                      )}
-                    </label>
+              <div className="pt-4 px-1 space-y-4">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newDocName}
+                    onChange={e => setNewDocName(e.target.value)}
+                    placeholder="e.g. Mayor's Permit, DTI Certificate"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-gray-250 dark:border-gray-700 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (newDocName.trim()) {
+                        const trimmed = newDocName.trim();
+                        if (!customDocNames.includes(trimmed)) {
+                          setCustomDocNames(p => [...p, trimmed]);
+                        } else {
+                          toast.error('Document name already exists');
+                        }
+                        setNewDocName('');
+                      }
+                    }}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all"
+                  >
+                    Add Document
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pb-2">
+                  {customDocNames.map((name, idx) => (
+                    <span key={idx} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
+                      {name}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCustomDocNames(p => p.filter((_, i) => i !== idx));
+                          const key = getDocKey(name);
+                          setFilesToUpload(p => {
+                            const copy = { ...p };
+                            delete copy[key];
+                            return copy;
+                          });
+                          setForm(p => {
+                            const copy = { ...p };
+                            delete copy[`${key}_document_url` as keyof Accreditation];
+                            return copy;
+                          });
+                        }}
+                        className="text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <LuX size={14} />
+                      </button>
+                    </span>
                   ))}
                 </div>
+
+                {customDocNames.length > 0 && (
+                  <div className="grid grid-cols-3 gap-4 border-t border-gray-150 dark:border-gray-800 pt-4">
+                    {customDocNames.map(name => {
+                      const key = getDocKey(name);
+                      const isAttached = form[`${key}_document_url` as keyof Accreditation] === 'attached';
+                      return (
+                        <label key={key} className="relative flex flex-col items-center justify-center w-full h-[65px] border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:hover:bg-gray-800 dark:bg-gray-800 hover:bg-gray-100 transition-colors px-2 text-center">
+                          {isAttached ? (
+                             <div className="flex flex-col items-center justify-center w-full" onClick={(e) => e.preventDefault()}>
+                               <span className="text-[9px] font-bold text-emerald-600 uppercase truncate w-full">{name}</span>
+                               <span className="text-[8px] font-bold text-emerald-500/70 uppercase">Attached</span>
+                               <button type="button" onClick={(e) => {
+                                 e.preventDefault();
+                                 setForm(p => ({ ...p, [`${key}_document_url`]: '' }));
+                                 setFilesToUpload(p => {
+                                   const copy = { ...p };
+                                   delete copy[key];
+                                   return copy;
+                                 });
+                               }} className="text-gray-450 hover:text-red-500 mt-0.5"><LuX size={12} /></button>
+                             </div>
+                          ) : (
+                            <>
+                              <LuCloudUpload className="w-4 h-4 mb-0.5 text-gray-400" />
+                              <span className="text-[9px] font-bold text-gray-500 uppercase truncate w-full">{name}</span>
+                              <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setFilesToUpload(p => ({ ...p, [key]: file }));
+                                  setForm(p => ({ ...p, [`${key}_document_url`]: 'attached' }));
+                                  toast.success(`${name} attached`);
+                                }
+                              }} />
+                            </>
+                          )}
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </details>
 
@@ -337,11 +415,16 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
 
         {/* Compliance Portal Documents Section */}
         <div className="border-t border-gray-100 dark:border-gray-800 pt-6">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Compliance Portal Documents</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-3">Compliance Documents Status</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {['nda', 'terms', 'kyc'].map(docKey => {
-              const url = acc[`${docKey}_document_url` as keyof Accreditation] as string | undefined;
-              const docName = docKey.toUpperCase();
+            {(acc.custom_documents ?? [
+              { name: 'KYC Doc', key: 'kyc', url: acc.kyc_document_url, status: acc.kyc_document_url ? 'submitted' : 'pending' },
+              { name: 'NDA Doc', key: 'nda', url: acc.nda_document_url, status: acc.nda_document_url ? 'submitted' : 'pending' },
+              { name: 'Terms Doc', key: 'terms', url: acc.terms_document_url, status: acc.terms_document_url ? 'submitted' : 'pending' }
+            ]).map(doc => {
+              const url = doc.url;
+              const docName = doc.name;
+              const docKey = doc.key;
               
               if (url) {
                 return (
@@ -353,8 +436,8 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                     className="flex flex-col items-center justify-center p-4 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50 transition-colors"
                   >
                     <LuFileText size={20} className="mb-1" />
-                    <span className="text-[11px] font-black">{docName} Document</span>
-                    <span className="text-[9px] text-emerald-650 mt-0.5">Click to View</span>
+                    <span className="text-[11px] font-black text-center truncate w-full">{docName}</span>
+                    <span className="text-[9px] text-emerald-600 mt-0.5">Click to View</span>
                   </a>
                 );
               }
@@ -365,7 +448,7 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
                   className="flex flex-col items-center justify-center p-4 rounded-xl border border-gray-250 bg-gray-50 text-gray-400 dark:border-gray-800 dark:bg-gray-900/60"
                 >
                   <LuFileText size={20} className="mb-1 opacity-40" />
-                  <span className="text-[11px] font-bold">{docName}</span>
+                  <span className="text-[11px] font-bold text-center truncate w-full">{docName}</span>
                   <span className="text-[9px] text-gray-450 mt-0.5">Not Submitted</span>
                 </div>
               );
@@ -473,44 +556,79 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
         )}
       </div>
 
+      {/* KYC Compliance Progress Bar */}
+      {(() => {
+        const customDocs = acc.custom_documents ?? [
+          { name: 'KYC', key: 'kyc', url: acc.kyc_document_url },
+          { name: 'NDA', key: 'nda', url: acc.nda_document_url },
+          { name: 'Terms', key: 'terms', url: acc.terms_document_url }
+        ];
+        const totalDocs = customDocs.length;
+        const uploadedDocs = customDocs.filter((d: any) => d.url).length;
+        const progressPercent = totalDocs > 0 ? Math.round((uploadedDocs / totalDocs) * 100) : 0;
+
+        return (
+          <div className="space-y-1.5 pt-2">
+            <div className="flex justify-between items-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">
+              <span>KYC Progress</span>
+              <span>{uploadedDocs}/{totalDocs} ({progressPercent}%)</span>
+            </div>
+            <div className="w-full bg-gray-150 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all duration-300"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
+
       <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
         <div className="flex-1 grid grid-cols-3 gap-2" onClick={e => e.stopPropagation()}>
-          {['NDA', 'Terms', 'KYC'].map(doc => {
-            const hasDoc = acc[`${doc.toLowerCase()}_document_url` as keyof Accreditation];
+          {(() => {
+            const customDocs = acc.custom_documents ?? [
+              { name: 'KYC', key: 'kyc', url: acc.kyc_document_url },
+              { name: 'NDA', key: 'nda', url: acc.nda_document_url },
+              { name: 'Terms', key: 'terms', url: acc.terms_document_url }
+            ];
             
-            if (hasDoc) {
+            return customDocs.map(doc => {
+              const hasDoc = doc.url;
+              const docName = doc.name;
+              const docKey = doc.key;
+              
+              if (hasDoc) {
+                return (
+                  <button 
+                    type="button"
+                    key={docKey} 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(formatDocUrl(hasDoc), '_blank');
+                    }}
+                    className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-105 hover:text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 transition-all truncate px-1"
+                    title={`View submitted ${docName}`}
+                  >
+                    <LuFileText size={12} className="shrink-0" />
+                    <span className="truncate">{docName}</span>
+                  </button>
+                );
+              }
+              
               return (
-                <button 
-                  type="button"
-                  key={doc} 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (hasDoc) {
-                      window.open(formatDocUrl(hasDoc as string), '_blank');
-                    }
-                  }}
-                  className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-105 hover:text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 dark:hover:bg-emerald-900/50 dark:hover:text-emerald-300 transition-all"
-                  title={`View submitted ${doc} document`}
-                >
-                  <LuFileText size={12} />
-                  {doc}
-                </button>
+                <label key={docKey} className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-105 hover:text-gray-600 dark:bg-gray-800/50 dark:text-gray-500 dark:border-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition group relative truncate px-1" title={`Upload ${docName}`}>
+                  {uploadMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin text-blue-500 shrink-0" /> : <LuCloudUpload size={12} className="group-hover:text-blue-500 transition-colors shrink-0" />}
+                  <span className="group-hover:text-blue-600 truncate">{docName}</span>
+                  <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => handleFileUpload(e, docKey)} disabled={uploadMutation.isPending} />
+                </label>
               );
-            }
-            
-            return (
-              <label key={doc} className="cursor-pointer flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-[10px] font-bold border bg-gray-50 text-gray-400 border-gray-200 hover:bg-gray-100 hover:text-gray-600 dark:bg-gray-800/50 dark:text-gray-500 dark:border-gray-700 dark:hover:bg-gray-800 dark:hover:text-gray-300 transition group relative" title={`Upload ${doc}`}>
-                {uploadMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin text-blue-500" /> : <LuCloudUpload size={12} className="group-hover:text-blue-500 transition-colors" />}
-                <span className="group-hover:text-blue-600">{doc}</span>
-                <input type="file" className="hidden" accept=".pdf,.jpg,.png" onChange={(e) => handleFileUpload(e, doc)} disabled={uploadMutation.isPending} />
-              </label>
-            );
-          })}
+            });
+          })()}
         </div>
         <button 
           onClick={(e) => { e.stopPropagation(); setShowConfirm(true); }}
           disabled={kycMutation.isPending}
-          className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 disabled:opacity-50 transition tooltip-trigger"
+          className="p-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 disabled:opacity-50 transition tooltip-trigger shrink-0"
           title="Send KYC Link"
         >
           {kycMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuLink size={16} />}

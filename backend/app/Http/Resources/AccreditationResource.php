@@ -31,6 +31,7 @@ class AccreditationResource extends JsonResource
             'kyc_document_url'    => $this->kyc_document_url,
             'nda_document_url'    => $this->nda_document_url,
             'terms_document_url'  => $this->terms_document_url,
+            'custom_documents'    => $this->custom_documents,
             'created_at'          => $this->created_at->toISOString(),
             'updated_at'          => $this->updated_at->toISOString(),
         ];

@@ -14,7 +14,8 @@ class Accreditation extends Model
         'issuing_body', 'issue_date', 'expiry_date',
         'status', 'document_url',
         'nda_document_url', 'terms_document_url', 'kyc_document_url',
-        'entity_name', 'contact_person', 'contact_email', 'kyc_token'
+        'entity_name', 'contact_person', 'contact_email', 'kyc_token',
+        'custom_documents'
     ];
 
     protected function casts(): array
@@ -22,6 +23,7 @@ class Accreditation extends Model
         return [
             'issue_date' => 'date',
             'expiry_date' => 'date',
+            'custom_documents' => 'array',
         ];
     }
 

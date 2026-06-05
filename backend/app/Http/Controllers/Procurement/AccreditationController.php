@@ -58,6 +58,7 @@ class AccreditationController extends Controller
             'expiry_date' => 'nullable|date',
             'contact_person' => 'required|string',
             'contact_email' => 'required|email',
+            'custom_documents' => 'nullable|array',
         ]);
 
         $validated['status'] = 'pending_renewal'; // Initial state waiting for KYC
@@ -71,6 +72,27 @@ class AccreditationController extends Controller
         if (empty($validated['issuing_body'])) {
             $validated['issuing_body'] = 'JVD Management';
         }
+
+        $customDocs = [];
+        $customDocsInput = $request->input('custom_documents');
+        if (is_array($customDocsInput) && count($customDocsInput) > 0) {
+            foreach ($customDocsInput as $docName) {
+                if (empty($docName)) continue;
+                $customDocs[] = [
+                    'name' => $docName,
+                    'key' => Str::slug($docName, '_'),
+                    'url' => null,
+                    'status' => 'pending'
+                ];
+            }
+        } else {
+            $customDocs = [
+                ['name' => 'KYC Doc', 'key' => 'kyc', 'url' => null, 'status' => 'pending'],
+                ['name' => 'NDA Doc', 'key' => 'nda', 'url' => null, 'status' => 'pending'],
+                ['name' => 'Terms Doc', 'key' => 'terms', 'url' => null, 'status' => 'pending'],
+            ];
+        }
+        $validated['custom_documents'] = $customDocs;
 
         if ($validated['entity_type'] === 'supplier') {
             // Find existing supplier by name or email
@@ -255,6 +277,7 @@ class AccreditationController extends Controller
                 'entity_name' => $accreditation->entity_name,
                 'contact_person' => $accreditation->contact_person,
                 'contact_email' => $accreditation->contact_email,
+                'custom_documents' => $accreditation->custom_documents,
             ]
         ]);
     }
@@ -267,13 +290,23 @@ class AccreditationController extends Controller
         }
 
         $validated = $request->validate([
-            'nda_document_url'   => 'required|string',
-            'terms_document_url' => 'required|string',
-            'kyc_document_url'   => 'required|string',
+            'nda_document_url'   => 'nullable|string',
+            'terms_document_url' => 'nullable|string',
+            'kyc_document_url'   => 'nullable|string',
             'entity_name'        => 'nullable|string|max:255',
             'contact_person'     => 'nullable|string|max:255',
             'contact_email'      => 'nullable|string|email|max:255',
         ]);
+
+        // Validate that all custom documents are uploaded
+        $customDocs = $accreditation->custom_documents ?? [];
+        foreach ($customDocs as $doc) {
+            if (empty($doc['url'])) {
+                return response()->json([
+                    'message' => 'Validation failed: Please upload all required compliance documents: ' . $doc['name']
+                ], 422);
+            }
+        }
 
         $accreditation->update(array_merge($validated, [
             'status' => 'active', // Set active upon submission
@@ -311,7 +344,10 @@ class AccreditationController extends Controller
             'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
         ]);
 
-        $validTypes = ['kyc', 'nda', 'terms', 'main'];
+        $customDocs = $accreditation->custom_documents ?? [];
+        $customKeys = array_column($customDocs, 'key');
+        $validTypes = array_merge(['kyc', 'nda', 'terms', 'main'], $customKeys);
+
         if (!in_array($type, $validTypes)) {
             return response()->json(['success' => false, 'message' => 'Invalid document type'], 400);
         }
@@ -325,8 +361,29 @@ class AccreditationController extends Controller
             // Generate public URL using the public disk
             $url = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
             
-            $column = $type === 'main' ? 'document_url' : "{$type}_document_url";
-            $accreditation->update([$column => $url]);
+            if ($type === 'main') {
+                $accreditation->document_url = $url;
+            } else {
+                $foundInCustom = false;
+                foreach ($customDocs as &$doc) {
+                    if ($doc['key'] === $type) {
+                        $doc['url'] = $url;
+                        $doc['status'] = 'submitted';
+                        $foundInCustom = true;
+                        break;
+                    }
+                }
+                if ($foundInCustom) {
+                    $accreditation->custom_documents = $customDocs;
+                }
+                
+                if (in_array($type, ['kyc', 'nda', 'terms'])) {
+                    $column = "{$type}_document_url";
+                    $accreditation->{$column} = $url;
+                }
+            }
+            
+            $accreditation->save();
 
             return response()->json([
                 'success' => true,
