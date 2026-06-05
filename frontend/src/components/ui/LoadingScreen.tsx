@@ -72,7 +72,7 @@ export const LoadingScreen = () => {
       {/* Brand Name */}
       <div className="absolute bottom-12 text-center">
         <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-[0.3em]">
-          JVD Events & Travels
+          JVD Event & Travel
         </p>
         <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
           Management System

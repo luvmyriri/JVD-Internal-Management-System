@@ -102,6 +102,8 @@ class BillingController extends Controller
             'tour_kms' => 'nullable|integer|min:0',
             'tour_hours' => 'nullable|integer|min:0',
             'cost_breakdown' => 'nullable|string',
+            'inclusions' => 'nullable|string',
+            'exclusions' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -145,6 +147,8 @@ class BillingController extends Controller
             'tour_kms' => $request->tour_kms,
             'tour_hours' => $request->tour_hours,
             'cost_breakdown' => $request->cost_breakdown,
+            'inclusions' => $request->inclusions,
+            'exclusions' => $request->exclusions,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -179,6 +183,8 @@ class BillingController extends Controller
             'tour_kms' => 'nullable|integer|min:0',
             'tour_hours' => 'nullable|integer|min:0',
             'cost_breakdown' => 'nullable|string',
+            'inclusions' => 'nullable|string',
+            'exclusions' => 'nullable|string',
         ]);
 
         if ($validator->fails()) {
@@ -223,6 +229,8 @@ class BillingController extends Controller
             'tour_kms' => $request->tour_kms ?? $service->tour_kms,
             'tour_hours' => $request->tour_hours ?? $service->tour_hours,
             'cost_breakdown' => array_key_exists('cost_breakdown', $request->all()) ? $request->cost_breakdown : $service->cost_breakdown,
+            'inclusions' => array_key_exists('inclusions', $request->all()) ? $request->inclusions : $service->inclusions,
+            'exclusions' => array_key_exists('exclusions', $request->all()) ? $request->exclusions : $service->exclusions,
         ]);
 
         return response()->json([

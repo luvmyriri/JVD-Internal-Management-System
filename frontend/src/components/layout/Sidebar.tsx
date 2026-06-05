@@ -58,8 +58,8 @@ export const navigation: NavSection[] = [
   {
     title: 'Sales',
     items: [
-      { label: 'Fixed Packages and Services', path: '/sales/fixed-packages', icon: <LuStore />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.fixed_packages' },
-      { label: 'Custom Client Transactions', path: '/sales/custom-transactions', icon: <LuShoppingCart />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.custom_transactions' },
+      { label: 'Fixed Packages', path: '/sales/fixed-packages', icon: <LuStore />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.fixed_packages' },
+      { label: 'Custom Transactions', path: '/sales/custom-transactions', icon: <LuShoppingCart />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.custom_transactions' },
     ],
   },
   {
@@ -75,7 +75,7 @@ export const navigation: NavSection[] = [
   {
     title: 'Operations',
     items: [
-      { label: 'Customer Information Management', path: '/operations/customers', icon: <LuUsers />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'corporate_secretary'], module: 'operations', pageKey: 'operations.customers' },
+      { label: 'Customers', path: '/operations/customers', icon: <LuUsers />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'corporate_secretary'], module: 'operations', pageKey: 'operations.customers' },
       { label: 'Accreditations', path: '/operations/accreditations', icon: <LuShieldCheck />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'corporate_secretary'], module: 'operations', pageKey: 'operations.accreditations' },
       { label: 'Company Documents', path: '/operations/documents', icon: <LuFolderOpen />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'corporate_secretary'], module: 'operations', pageKey: 'operations.documents' },
     ],
@@ -86,7 +86,7 @@ export const navigation: NavSection[] = [
       { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.overview' },
       { label: 'Trip Ticket', path: '/logistics/trip-tickets', icon: <LuMap />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher'], module: 'logistics', pageKey: 'logistics.trip_tickets' },
       { label: 'Fleet', path: '/logistics/fleet', icon: <LuBus />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.fleet' },
-      { label: 'Predictive Maintenance System', path: '/logistics/pms', icon: <LuActivity />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic'], module: 'logistics', pageKey: 'logistics.pms' },
+      { label: 'PMS', path: '/logistics/pms', icon: <LuActivity />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic'], module: 'logistics', pageKey: 'logistics.pms' },
     ],
   },
   {
@@ -110,8 +110,15 @@ export const navigation: NavSection[] = [
     items: [
       { label: 'Employees', path: '/hr/employees', icon: <LuCircleUser />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'hr', pageKey: 'hr.employees' },
       { label: 'Job Applications', path: '/hr/applications', icon: <LuFileCheck />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'hr', pageKey: 'hr.applications' },
-      { label: 'Internship Management', path: '/hr/internships', icon: <LuGlobe />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'hr', pageKey: 'hr.internships' },
+      { label: 'Internship', path: '/hr/internships', icon: <LuGlobe />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'hr', pageKey: 'hr.internships' },
       { label: 'Payroll Management', path: '/hr/payroll', icon: <LuCreditCard />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'hr', pageKey: 'hr.payroll' },
+    ],
+  },
+  {
+    title: 'Travel Assistance',
+    items: [
+      { label: 'Passporting', path: '/travel/passporting', icon: <LuStamp />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'travel', pageKey: 'travel.passporting' },
+      { label: 'Visa Processing', path: '/travel/visa-processing', icon: <LuGlobe />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'travel', pageKey: 'travel.visa_processing' },
     ],
   },
   {
@@ -120,13 +127,6 @@ export const navigation: NavSection[] = [
       { label: 'Overview', path: '/driver/overview', icon: <LuMapPin />, roles: ['driver'], module: 'driver', pageKey: 'driver.overview' },
       { label: 'Scheduled Trips', path: '/driver/scheduled-trips', icon: <LuCalendarClock />, roles: ['driver'], module: 'driver', pageKey: 'driver.scheduled_trips' },
       { label: 'My Fleet', path: '/driver/my-fleet', icon: <LuBus />, roles: ['driver'], module: 'driver', pageKey: 'driver.my_fleet' },
-    ],
-  },
-  {
-    title: 'Travel Assistance',
-    items: [
-      { label: 'Passporting', path: '/travel/passporting', icon: <LuStamp />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'travel', pageKey: 'travel.passporting' },
-      { label: 'Visa Processing', path: '/travel/visa-processing', icon: <LuGlobe />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'travel', pageKey: 'travel.visa_processing' },
     ],
   },
   {
@@ -309,7 +309,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         {/* Footer */}
         <div className="px-4 py-4 border-t border-gray-800 shrink-0">
-          <p className="text-[10px] text-gray-600 text-center">JVD Events & Travels</p>
+          <p className="text-[10px] text-gray-600 text-center">JVD Event & Travel</p>
           <p className="text-[10px] text-gray-700 text-center">Management Co.</p>
         </div>
       </aside>

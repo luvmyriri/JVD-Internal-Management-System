@@ -384,7 +384,7 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
               {jo.customer && <p className="text-xs text-gray-500 dark:text-gray-400">{jo.customer.email || 'No email provided'}</p>}
             </div>
             <div className="space-y-1 text-right">
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Investment</p>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</p>
               <h3 className="text-2xl font-black text-gray-900 dark:text-white">
                 {new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}
               </h3>

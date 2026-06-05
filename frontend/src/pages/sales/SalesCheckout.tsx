@@ -569,7 +569,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 </div>
 
                 <div className="mt-16 pt-8 border-t border-gray-100 text-center">
-                  <p className="text-[10px] text-gray-450 font-bold uppercase tracking-widest mb-2">Thank you for choosing JVD Events & Travels!</p>
+                  <p className="text-[10px] text-gray-450 font-bold uppercase tracking-widest mb-2">Thank you for choosing JVD Event & Travel!</p>
                   <p className="text-[9px] text-gray-300 font-medium italic">This is an electronically generated invoice.</p>
                 </div>
               </div>

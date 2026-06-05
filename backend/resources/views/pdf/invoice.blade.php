@@ -4,11 +4,11 @@
     <meta charset="UTF-8">
     <title>Official Invoice</title>
     <style>
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333333; margin: 0; padding: 20px; font-size: 11px; line-height: 1.5; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #333333; margin: 0; padding: 20px; font-size: 10px; line-height: 1.5; }
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
-        .header-left { width: 50%; vertical-align: top; }
-        .header-right { width: 50%; text-align: right; vertical-align: top; }
-        .company-logo { font-size: 24px; font-weight: 900; color: #1e3a8a; letter-spacing: 1px; margin-bottom: 5px; }
+        .header-left { width: 60%; vertical-align: top; }
+        .header-right { width: 40%; text-align: right; vertical-align: top; }
+        .company-logo { font-size: 14px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px; margin-bottom: 5px; }
         .document-title { text-align: center; font-size: 16px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; color: #1e293b; margin: 30px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 8px; }
         
         /* Items Table */
@@ -37,10 +37,19 @@
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="company-logo">JVD Event and Travel Management Company</div>
-                <div>Reg No: 912-883-911-000</div>
-                <div>UNIT 6 -Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City</div>
-                <div>Phone: 0976 471 1294 | Tel: 02 8293 8068</div>
+                <table style="width: 100%; border-collapse: collapse; border: none; margin: 0; padding: 0;">
+                    <tr>
+                        <td style="width: 65px; vertical-align: top; padding-right: 12px; border: none;">
+                            <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="width: 55px; height: 55px; object-fit: contain;" alt="JVD Logo">
+                        </td>
+                        <td style="vertical-align: top; border: none; line-height: 1.5; color: #475569;">
+                            <div class="company-logo" style="margin-top: 0;">JVD Event and Travel Management Company</div>
+                            <div>Reg No: 912-883-911-000</div>
+                            <div>UNIT 6 -Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City</div>
+                            <div>Phone: 0976 471 1294 | Tel: 02 8293 8068</div>
+                        </td>
+                    </tr>
+                </table>
             </td>
             <td class="header-right">
                 <h3 style="margin: 0; color: #475569;">OFFICIAL INVOICE</h3>

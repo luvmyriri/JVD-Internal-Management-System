@@ -9,6 +9,7 @@ import {
 import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
 import client from '../../api/client';
+import { customerApi } from '../../api/customers';
 import type { Collection } from '../../types';
 import { Modal, Button } from '../../components/ui';
 
@@ -35,6 +36,36 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     rate: 0,
   });
 
+  // --- Autocomplete state ---
+  const [clientSearch, setClientSearch] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  const { data: customersData } = useQuery({
+    queryKey: ['customers-suggest', clientSearch],
+    queryFn: async () => {
+      if (!clientSearch.trim()) return [];
+      const res = await customerApi.list({ search: clientSearch, per_page: 8 });
+      return res.data?.data ?? [];
+    },
+    enabled: clientSearch.length > 0,
+    staleTime: 5000,
+  });
+
+  const suggestions: any[] = customersData ?? [];
+
+  const handleClientInput = (value: string) => {
+    setClientSearch(value);
+    setForm(p => ({ ...p, client_name: value }));
+    setShowSuggestions(true);
+  };
+
+  const handleSelectCustomer = (customer: any) => {
+    const fullName = `${customer.first_name} ${customer.last_name}`.trim();
+    setForm(p => ({ ...p, client_name: fullName }));
+    setClientSearch(fullName);
+    setShowSuggestions(false);
+  };
+
   const mutation = useMutation({
     mutationFn: (data: any) => collectionApi.create(data),
     onSuccess: () => {
@@ -57,15 +88,53 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal isOpen={true} onClose={onClose} title="New Collection" size="md">
       <form onSubmit={handleSubmit} className="space-y-6 p-2">
+        {/* Client Name with Autocomplete */}
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Client Name</label>
-          <input
-            type="text"
-            required
-            value={form.client_name}
-            onChange={e => setForm(p => ({ ...p, client_name: e.target.value }))}
-            className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-teal-500"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              required
+              autoComplete="off"
+              value={form.client_name}
+              onChange={e => handleClientInput(e.target.value)}
+              onFocus={() => clientSearch.length > 0 && setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              placeholder="Type to search customers..."
+              className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:outline-none"
+            />
+
+            {/* Suggestions dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute z-50 top-full left-0 right-0 mt-1.5 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl overflow-hidden">
+                <p className="px-4 pt-3 pb-1 text-[9px] font-black text-gray-400 uppercase tracking-widest">
+                  Matching Customers
+                </p>
+                <ul className="pb-2 max-h-48 overflow-y-auto">
+                  {suggestions.map((customer: any) => {
+                    const fullName = `${customer.first_name} ${customer.last_name}`.trim();
+                    return (
+                      <li
+                        key={customer.id}
+                        onMouseDown={() => handleSelectCustomer(customer)}
+                        className="flex items-center gap-3 px-4 py-2.5 hover:bg-teal-50 dark:hover:bg-teal-900/20 cursor-pointer transition-colors group"
+                      >
+                        <div className="w-8 h-8 rounded-xl bg-teal-100 dark:bg-teal-900/40 text-teal-600 dark:text-teal-400 flex items-center justify-center text-xs font-black shrink-0 group-hover:bg-teal-500 group-hover:text-white transition-colors">
+                          {customer.first_name?.[0]?.toUpperCase()}{customer.last_name?.[0]?.toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-gray-900 dark:text-white truncate">{fullName}</p>
+                          {customer.email && (
+                            <p className="text-[10px] text-gray-400 truncate">{customer.email}</p>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-2">
