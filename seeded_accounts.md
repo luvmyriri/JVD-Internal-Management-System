@@ -5,6 +5,7 @@ This document contains all accessible login accounts seeded in the local develop
 ---
 
 ## 1. Super Admin Accounts
+
 These accounts have full administrative privileges across the entire platform.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -16,6 +17,7 @@ These accounts have full administrative privileges across the entire platform.
 ---
 
 ## 2. Executive Vice President Account
+
 An executive role with widespread operational and administrative visibility.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -25,6 +27,7 @@ An executive role with widespread operational and administrative visibility.
 ---
 
 ## 3. Logistics & Maintenance Accounts
+
 These roles manage dispatching, purchasing, and fleet maintenance.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -38,6 +41,7 @@ These roles manage dispatching, purchasing, and fleet maintenance.
 ---
 
 ## 4. Operations & Travel Accounts
+
 These accounts handle passenger reservations, tour packaging, and daily branch/office operations.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -50,6 +54,7 @@ These accounts handle passenger reservations, tour packaging, and daily branch/o
 ---
 
 ## 5. Accounting Accounts
+
 These roles process budgets, cash requests, liquidations, and financial tracking.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -60,6 +65,7 @@ These roles process budgets, cash requests, liquidations, and financial tracking
 ---
 
 ## 6. Human Resources Accounts
+
 These accounts supervise employee management and corporate documentation.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |
@@ -69,6 +75,7 @@ These accounts supervise employee management and corporate documentation.
 ---
 
 ## 7. Driver Accounts
+
 Standard driver accounts managing assigned vehicles, trip tickets, and travel routes.
 
 | Employee ID | Name | Email | Password | Department | Specific Role |

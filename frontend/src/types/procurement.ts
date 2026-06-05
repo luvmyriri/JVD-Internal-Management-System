@@ -227,6 +227,7 @@ export interface Bus {
   id: number;
   plate_number: string;
   model: string;
+  bus_category?: 'LUXURY' | 'VIP' | 'ECONOMY';
   seating_capacity: number;
   status: BusStatus;
   total_mileage: number;

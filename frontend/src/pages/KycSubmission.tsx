@@ -73,29 +73,33 @@ export default function KycSubmission() {
   const [contactPerson, setContactPerson] = useState('');
   const [contactEmail, setContactEmail] = useState('');
 
-  // Uploaded file path states
-  const [ndaUrl, setNdaUrl] = useState('');
-  const [termsUrl, setTermsUrl] = useState('');
-  const [kycUrl, setKycUrl] = useState('');
+  interface CustomDocument {
+    name: string;
+    key: string;
+    url: string | null;
+    status: string;
+    fileName?: string;
+  }
+  const [customDocuments, setCustomDocuments] = useState<CustomDocument[]>([]);
 
-  // Local file name references for UI
-  const [ndaFileName, setNdaFileName] = useState('');
-  const [termsFileName, setTermsFileName] = useState('');
-  const [kycFileName, setKycFileName] = useState('');
+  const ndaDoc = customDocuments.find(d => d.key === 'nda' || d.key.includes('nda'));
+  const termsDoc = customDocuments.find(d => d.key === 'terms' || d.key.includes('terms'));
+  const kycDoc = customDocuments.find(d => d.key === 'kyc' || d.key.includes('kyc'));
+
+  const ndaUrl = ndaDoc?.url || '';
+  const termsUrl = termsDoc?.url || '';
+  const kycUrl = kycDoc?.url || '';
+
+  const uploadedCount = customDocuments.filter(d => !!d.url).length;
+  const totalCount = customDocuments.length;
+  const overallProgressPercent = totalCount > 0 ? Math.round((uploadedCount / totalCount) * 100) : 0;
+  const showSigningWorkshop = !!(ndaDoc || termsDoc || kycDoc);
 
   // Drag over state per document slot
-  const [dragOverState, setDragOverState] = useState<Record<string, boolean>>({
-    nda: false,
-    terms: false,
-    kyc: false,
-  });
+  const [dragOverState, setDragOverState] = useState<Record<string, boolean>>({});
 
   // Real-time upload percentage tracking per slot
-  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({
-    nda: 0,
-    terms: 0,
-    kyc: 0,
-  });
+  const [uploadProgress, setUploadProgress] = useState<Record<string, number>>({});
 
   // Lightbox preview states
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -179,6 +183,20 @@ export default function KycSubmission() {
             setKycEmail(email);
             setKycRepName(rep);
             setKycRepEmail(email);
+
+            // Initialize custom documents
+            if (response.data.data.custom_documents) {
+              setCustomDocuments(response.data.data.custom_documents.map((doc: any) => ({
+                ...doc,
+                fileName: doc.url ? doc.url.split('/').pop() : ''
+              })));
+            } else {
+              setCustomDocuments([
+                { name: 'KYC Doc', key: 'kyc', url: '', status: 'pending' },
+                { name: 'NDA Doc', key: 'nda', url: '', status: 'pending' },
+                { name: 'Terms Doc', key: 'terms', url: '', status: 'pending' }
+              ]);
+            }
           }
         }
       } catch (err) {
@@ -193,7 +211,7 @@ export default function KycSubmission() {
   }, [token, ref]);
 
   // Reusable core file uploader function
-  const uploadFile = async (file: File, type: 'nda' | 'terms' | 'kyc') => {
+  const uploadFile = async (file: File, type: string) => {
     if (!ref || !token) return;
 
     // Validate size (10MB max)
@@ -236,16 +254,17 @@ export default function KycSubmission() {
 
       if (response.data.success) {
         const fileUrl = response.data.url;
-        if (type === 'nda') {
-          setNdaUrl(fileUrl);
-          setNdaFileName(file.name);
-        } else if (type === 'terms') {
-          setTermsUrl(fileUrl);
-          setTermsFileName(file.name);
-        } else if (type === 'kyc') {
-          setKycUrl(fileUrl);
-          setKycFileName(file.name);
-        }
+        setCustomDocuments(prev => prev.map(doc => {
+          if (doc.key === type) {
+            return {
+              ...doc,
+              url: fileUrl,
+              fileName: file.name,
+              status: 'submitted'
+            };
+          }
+          return doc;
+        }));
       }
     } catch (err: any) {
       console.error(`Failed to upload ${type} file:`, err);
@@ -764,14 +783,19 @@ export default function KycSubmission() {
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `${type}_signed_online.png`, { type: 'image/png' });
-        uploadFile(file, type);
+        let targetKey = type as string;
+        if (type === 'nda' && ndaDoc) targetKey = ndaDoc.key;
+        if (type === 'terms' && termsDoc) targetKey = termsDoc.key;
+        if (type === 'kyc' && kycDoc) targetKey = kycDoc.key;
+
+        uploadFile(file, targetKey);
         setActiveDocSignType(null); // Close modal
       }
     }, 'image/png');
   };
 
   // 2. Handle file inputs onChange event
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'nda' | 'terms' | 'kyc') => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
     const file = e.target.files?.[0];
     if (file) {
       uploadFile(file, type);
@@ -779,17 +803,17 @@ export default function KycSubmission() {
   };
 
   // 3. Handle drag and drop handlers
-  const handleDragOver = (e: React.DragEvent, type: 'nda' | 'terms' | 'kyc') => {
+  const handleDragOver = (e: React.DragEvent, type: string) => {
     e.preventDefault();
     setDragOverState(prev => ({ ...prev, [type]: true }));
   };
 
-  const handleDragLeave = (e: React.DragEvent, type: 'nda' | 'terms' | 'kyc') => {
+  const handleDragLeave = (e: React.DragEvent, type: string) => {
     e.preventDefault();
     setDragOverState(prev => ({ ...prev, [type]: false }));
   };
 
-  const handleDrop = (e: React.DragEvent, type: 'nda' | 'terms' | 'kyc') => {
+  const handleDrop = (e: React.DragEvent, type: string) => {
     e.preventDefault();
     setDragOverState(prev => ({ ...prev, [type]: false }));
     const file = e.dataTransfer.files?.[0];
@@ -803,8 +827,9 @@ export default function KycSubmission() {
     e.preventDefault();
     if (!ref || !token) return;
 
-    if (!ndaUrl || !termsUrl || !kycUrl) {
-      setErrorMsg('Please upload all three required compliance documents before submitting.');
+    const unuploadedDocs = customDocuments.filter(d => !d.url);
+    if (unuploadedDocs.length > 0) {
+      setErrorMsg(`Please upload all required compliance documents before submitting: ${unuploadedDocs.map(d => d.name).join(', ')}`);
       return;
     }
 
@@ -815,9 +840,9 @@ export default function KycSubmission() {
       const apiUrl = getApiUrl();
       await axios.post(`${apiUrl}/api/accreditations/${ref}/submit-kyc`, {
         token: token,
-        nda_document_url: ndaUrl,
-        terms_document_url: termsUrl,
-        kyc_document_url: kycUrl,
+        nda_document_url: ndaUrl || undefined,
+        terms_document_url: termsUrl || undefined,
+        kyc_document_url: kycUrl || undefined,
         entity_name: entityName || undefined,
         contact_person: contactPerson || undefined,
         contact_email: contactEmail || undefined,
@@ -948,6 +973,22 @@ export default function KycSubmission() {
             </p>
           </div>
 
+          {/* Overall Progress Tracker */}
+          {totalCount > 0 && (
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-inner">
+              <div className="flex items-center justify-between text-xs font-bold text-slate-350">
+                <span>KYC DOCUMENT PROGRESS</span>
+                <span className="text-blue-400 font-mono">{uploadedCount} / {totalCount} ({overallProgressPercent}%)</span>
+              </div>
+              <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden border border-slate-850">
+                <div 
+                  className="bg-gradient-to-r from-blue-600 to-indigo-500 h-full rounded-full transition-all duration-500"
+                  style={{ width: `${overallProgressPercent}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Step checklist - Interactive progression access point */}
           <div className="space-y-6 pt-4">
             <div className="flex items-start gap-4">
@@ -963,80 +1004,39 @@ export default function KycSubmission() {
               </div>
             </div>
 
-            {/* NDA Sidebar item (Clickable if uploaded) */}
-            <div
-              onClick={() => {
-                if (ndaUrl) {
-                  setPreviewUrl(ndaUrl);
-                  setPreviewTitle('Signed NDA Agreement');
-                }
-              }}
-              className={`flex items-start gap-4 ${ndaUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${ndaUrl
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-500'
-                }`}>
-                {ndaUrl ? <LuEye size={14} /> : <LuFileText size={16} />}
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-                  2. NDA Signature
-                  {ndaUrl && <span className="text-[9px] text-emerald-400 uppercase tracking-widest font-black">Uploaded</span>}
-                </h3>
-                <p className="text-[11px] text-slate-500">{ndaUrl ? 'Click to view NDA preview.' : 'Upload signed Non-Disclosure Agreement document.'}</p>
-              </div>
-            </div>
-
-            {/* Terms Sidebar item (Clickable if uploaded) */}
-            <div
-              onClick={() => {
-                if (termsUrl) {
-                  setPreviewUrl(termsUrl);
-                  setPreviewTitle('Signed Terms & Conditions');
-                }
-              }}
-              className={`flex items-start gap-4 ${termsUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${termsUrl
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-500'
-                }`}>
-                {termsUrl ? <LuEye size={14} /> : <LuFileCheck size={16} />}
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-                  3. Terms Signature
-                  {termsUrl && <span className="text-[9px] text-emerald-400 uppercase tracking-widest font-black">Uploaded</span>}
-                </h3>
-                <p className="text-[11px] text-slate-500">{termsUrl ? 'Click to view terms preview.' : 'Agree and upload signed terms and conditions.'}</p>
-              </div>
-            </div>
-
-            {/* KYC Sidebar item (Clickable if uploaded) */}
-            <div
-              onClick={() => {
-                if (kycUrl) {
-                  setPreviewUrl(kycUrl);
-                  setPreviewTitle('KYC Packet / Business License');
-                }
-              }}
-              className={`flex items-start gap-4 ${kycUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${kycUrl
-                  ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
-                  : 'bg-slate-950/60 border-slate-800 text-slate-500'
-                }`}>
-                {kycUrl ? <LuEye size={14} /> : <LuShieldCheck size={16} />}
-              </div>
-              <div className="space-y-0.5">
-                <h3 className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
-                  4. Business KYC Packet
-                  {kycUrl && <span className="text-[9px] text-emerald-400 uppercase tracking-widest font-black">Uploaded</span>}
-                </h3>
-                <p className="text-[11px] text-slate-500">{kycUrl ? 'Click to view KYC packet.' : 'Upload official business registration documents.'}</p>
-              </div>
-            </div>
+            {customDocuments.map((doc, idx) => {
+              const docUrl = doc.url;
+              const docName = doc.name;
+              const docKey = doc.key;
+              return (
+                <div
+                  key={docKey}
+                  onClick={() => {
+                    if (docUrl) {
+                      setPreviewUrl(docUrl);
+                      setPreviewTitle(docName);
+                    }
+                  }}
+                  className={`flex items-start gap-4 ${docUrl ? 'cursor-pointer hover:bg-slate-800/40 p-1.5 -m-1.5 rounded-xl transition-all' : ''}`}
+                >
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${docUrl
+                      ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400'
+                      : 'bg-slate-950/60 border-slate-800 text-slate-500'
+                    }`}>
+                    {docUrl ? <LuEye size={14} /> : <LuFileText size={16} />}
+                  </div>
+                  <div className="space-y-0.5">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-slate-200 flex items-center gap-1.5">
+                      {idx + 2}. {docName}
+                      {docUrl && <span className="text-[9px] text-emerald-400 uppercase tracking-widest font-black">Uploaded</span>}
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      {docUrl ? `Click to view ${docName} preview.` : `Upload signed ${docName} document.`}
+                    </p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1050,7 +1050,7 @@ export default function KycSubmission() {
             </div>
           </div>
           <p className="text-[10px] text-slate-550 text-center leading-relaxed">
-            &copy; {new Date().getFullYear()} JVD Event & Travel Management Co. All rights reserved.
+            &copy; {new Date().getFullYear()} JVD Events & Travels Management Co. All rights reserved.
           </p>
         </div>
       </div>
@@ -1134,131 +1134,137 @@ export default function KycSubmission() {
             </div>
 
             {/* Section 2: Document Workshop & Interactive Signing */}
-            <div className="space-y-6">
-              <div className="border-b border-slate-800/85 pb-3">
-                <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
-                  <span className="w-1.5 h-6 bg-blue-500 rounded-full" />
-                  2. Document Workshop & Interactive Signing
-                </h3>
+            {showSigningWorkshop && (
+              <div className="space-y-6">
+                <div className="border-b border-slate-800/85 pb-3">
+                  <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
+                    <span className="w-1.5 h-6 bg-blue-500 rounded-full" />
+                    2. Document Workshop & Interactive Signing
+                  </h3>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  You can download blank forms to print and manually fill up, or edit and sign online electronically using our premium interactive workshop below.
+                </p>
+
+                <div className="grid grid-cols-1 gap-6">
+                  
+                  {/* NDA Card */}
+                  {ndaDoc && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
+                          <LuFileText size={24} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
+                            {ndaDoc.name}
+                            {ndaUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
+                          </h4>
+                          <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                            Personalized mutual NDA protecting organizational databases, travel schemes, and logistics routing parameters. Ready for signing.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDocSignType('nda');
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <LuFileText size={14} /> {ndaUrl ? 'Re-sign Online' : 'Sign Online'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printBlankForm('nda')}
+                          className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
+                        >
+                          <LuPrinter size={14} /> Print Blank
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Terms Card */}
+                  {termsDoc && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
+                          <LuFileCheck size={24} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
+                            {termsDoc.name}
+                            {termsUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
+                          </h4>
+                          <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                            Acceptance of JVD's standard policies, emphasizing VIP travel privileges, the platform standard 20% commission structure, and bi-weekly UnionBank/GCash payment schemes.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDocSignType('terms');
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <LuFileText size={14} /> {termsUrl ? 'Re-sign Online' : 'Sign Online'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printBlankForm('terms')}
+                          className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
+                        >
+                          <LuPrinter size={14} /> Print Blank
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* KYC Form Card */}
+                  {kycDoc && (
+                    <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
+                          <LuShieldCheck size={24} />
+                        </div>
+                        <div className="space-y-1">
+                          <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
+                            {kycDoc.name}
+                            {kycUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
+                          </h4>
+                          <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
+                            Official Partner Profile. Contains detailed company profile information, office addresses, Tax Identification Number (TIN#), and validated bank account details for operational clearance.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActiveDocSignType('kyc');
+                          }}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
+                        >
+                          <LuFileText size={14} /> {kycUrl ? 'Re-fill & Sign' : 'Fill & Sign Online'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => printBlankForm('kyc')}
+                          className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
+                        >
+                          <LuPrinter size={14} /> Print Blank
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                </div>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                You can download blank forms to print and manually fill up, or edit and sign online electronically using our premium interactive workshop below.
-              </p>
-
-              <div className="grid grid-cols-1 gap-6">
-                
-                {/* NDA Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
-                      <LuFileText size={24} />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
-                        Mutual Non-Disclosure Agreement (NDA)
-                        {ndaUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
-                      </h4>
-                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                        Personalized mutual NDA protecting organizational databases, travel schemes, and logistics routing parameters. Ready for signing.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveDocSignType('nda');
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <LuFileText size={14} /> {ndaUrl ? 'Re-sign Online' : 'Sign Online'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printBlankForm('nda')}
-                      className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                    >
-                      <LuPrinter size={14} /> Print Blank
-                    </button>
-                  </div>
-                </div>
-
-                {/* Terms Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
-                      <LuFileCheck size={24} />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
-                        Platform Service Terms & Policies
-                        {termsUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
-                      </h4>
-                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                        Acceptance of JVD's standard policies, emphasizing VIP travel privileges, the platform standard 20% commission structure, and bi-weekly UnionBank/GCash payment schemes.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveDocSignType('terms');
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <LuFileText size={14} /> {termsUrl ? 'Re-sign Online' : 'Sign Online'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printBlankForm('terms')}
-                      className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                    >
-                      <LuPrinter size={14} /> Print Blank
-                    </button>
-                  </div>
-                </div>
-
-                {/* KYC Form Card */}
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-slate-750 shadow-lg">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-blue-950/40 text-blue-400 rounded-xl flex items-center justify-center shrink-0 border border-blue-900/30">
-                      <LuShieldCheck size={24} />
-                    </div>
-                    <div className="space-y-1">
-                      <h4 className="text-sm font-black text-slate-200 flex items-center gap-2">
-                        Partner KYC & Bank Registration Form
-                        {kycUrl && <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1"><LuCheck size={10} /> Signed</span>}
-                      </h4>
-                      <p className="text-xs text-slate-400 leading-relaxed max-w-xl">
-                        Official Partner Profile. Contains detailed company profile information, office addresses, Tax Identification Number (TIN#), and validated bank account details for operational clearance.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveDocSignType('kyc');
-                      }}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-sm"
-                    >
-                      <LuFileText size={14} /> {kycUrl ? 'Re-fill & Sign' : 'Fill & Sign Online'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => printBlankForm('kyc')}
-                      className="bg-slate-800 hover:bg-slate-750 text-slate-300 px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                    >
-                      <LuPrinter size={14} /> Print Blank
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-
-            {/* Section 3: Upload / Attached Verification Documents */}
+            )}            {/* Section 3: Upload / Attached Verification Documents */}
             <div className="space-y-6">
               <div className="border-b border-slate-800/85 pb-3">
                 <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
@@ -1268,265 +1274,103 @@ export default function KycSubmission() {
               </div>
 
               <div className="space-y-6">
+                {customDocuments.map(doc => {
+                  const docUrl = doc.url;
+                  const docKey = doc.key;
+                  const docName = doc.name;
+                  const progress = uploadProgress[docKey] || 0;
+                  const isDragOver = dragOverState[docKey] || false;
+                  
+                  return (
+                    <div key={docKey} className="relative w-full">
+                      <input
+                        type="file"
+                        id={`${docKey}-upload-input`}
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        onChange={(e) => handleFileChange(e, docKey)}
+                        className="hidden"
+                        disabled={progress > 0}
+                      />
 
-                {/* Doc 1: NDA */}
-                <div className="relative w-full">
-                  <input
-                    type="file"
-                    id="nda-upload-input"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleFileChange(e, 'nda')}
-                    className="hidden"
-                    disabled={uploadProgress.nda > 0}
-                  />
-
-                  {ndaUrl ? (
-                    /* STATE: UPLOADED */
-                    <div className="bg-slate-900 border border-emerald-900/40 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-emerald-800">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-emerald-950/40 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-900/30 shadow-inner">
-                          <LuFileText size={24} />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-slate-200">Signed NDA Agreement</h4>
-                            <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full"><LuShieldCheck size={10} /> Valid Uploaded</span>
+                      {docUrl ? (
+                        /* STATE: UPLOADED */
+                        <div className="bg-slate-900 border border-emerald-900/40 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-emerald-800">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 bg-emerald-950/40 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-900/30 shadow-inner">
+                              <LuFileText size={24} />
+                            </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <h4 className="text-sm font-black text-slate-200">{docName}</h4>
+                                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                  <LuShieldCheck size={10} /> Valid Uploaded
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-400 truncate max-w-[280px] sm:max-w-[340px] font-mono">
+                                {doc.fileName || `${docKey}_signed_document.pdf`}
+                              </p>
+                            </div>
                           </div>
-                          <p className="text-xs text-slate-400 truncate max-w-[280px] sm:max-w-[340px] font-mono">{ndaFileName || 'nda_signed_document.pdf'}</p>
-                        </div>
-                      </div>
 
-                      <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { setPreviewUrl(ndaUrl); setPreviewTitle('Signed NDA Agreement'); }}
-                          className="bg-blue-600/15 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                        >
-                          <LuEye size={14} /> View File
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => triggerFileInput('nda-upload-input')}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all"
-                        >
-                          Change File
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div
-                      onClick={() => triggerFileInput('nda-upload-input')}
-                      onDragOver={(e) => handleDragOver(e, 'nda')}
-                      onDragLeave={(e) => handleDragLeave(e, 'nda')}
-                      onDrop={(e) => handleDrop(e, 'nda')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.nda
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
-                          : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                        }`}
-                    >
-                      {uploadProgress.nda > 0 ? (
-                        <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
-                          <LuLoaderCircle className="animate-spin text-blue-500 w-8 h-8 mx-auto" />
-                          <div className="space-y-1.5 text-center">
-                            <p className="text-xs font-bold text-slate-300 tracking-wide uppercase">Uploading NDA File...</p>
-                            <p className="text-[10px] text-slate-500 font-bold">{uploadProgress.nda}% completed</p>
-                          </div>
-                          {/* Premium Progress Bar Track */}
-                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
-                              style={{ width: `${uploadProgress.nda}%` }}
-                            />
+                          <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => { setPreviewUrl(docUrl); setPreviewTitle(docName); }}
+                              className="bg-blue-600/15 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
+                            >
+                              <LuEye size={14} /> View File
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => triggerFileInput(`${docKey}-upload-input`)}
+                              className="bg-slate-800 hover:bg-slate-750 text-slate-350 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all"
+                            >
+                              Change File
+                            </button>
                           </div>
                         </div>
                       ) : (
-                        <>
-                          <div className="w-12 h-12 bg-slate-950/60 text-slate-450 border border-slate-800 rounded-2xl flex items-center justify-center shadow-inner">
-                            <LuUpload size={22} />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-black text-slate-200">Upload Signed NDA Agreement <span className="text-red-500">*</span></h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto">Drag & drop your signed NDA document here, or click to browse files. PDF, JPG, and PNG files up to 10MB are permitted.</p>
-                          </div>
-                        </>
+                        /* STATE: UNUPLOADED */
+                        <div
+                          onClick={() => triggerFileInput(`${docKey}-upload-input`)}
+                          onDragOver={(e) => handleDragOver(e, docKey)}
+                          onDragLeave={(e) => handleDragLeave(e, docKey)}
+                          onDrop={(e) => handleDrop(e, docKey)}
+                          className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${isDragOver
+                              ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
+                              : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
+                            }`}
+                        >
+                          {progress > 0 ? (
+                            <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
+                              <LuLoaderCircle className="animate-spin text-blue-500 w-8 h-8 mx-auto" />
+                              <div className="space-y-1.5 text-center">
+                                <p className="text-xs font-bold text-slate-300 tracking-wide uppercase">Uploading {docName}...</p>
+                                <p className="text-[10px] text-slate-500 font-bold">{progress}% completed</p>
+                              </div>
+                              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
+                                <div
+                                  className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-12 h-12 bg-slate-950/60 text-slate-450 border border-slate-800 rounded-2xl flex items-center justify-center shadow-inner">
+                                <LuUpload size={22} />
+                              </div>
+                              <div className="space-y-1">
+                                <h4 className="text-sm font-black text-slate-200">Upload {docName} <span className="text-red-500">*</span></h4>
+                                <p className="text-xs text-slate-500 max-w-sm mx-auto">Drag & drop your signed {docName} here, or click to browse files. PDF, JPG, and PNG files up to 10MB are permitted.</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Doc 2: Terms */}
-                <div className="relative w-full">
-                  <input
-                    type="file"
-                    id="terms-upload-input"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleFileChange(e, 'terms')}
-                    className="hidden"
-                    disabled={uploadProgress.terms > 0}
-                  />
-
-                  {termsUrl ? (
-                    /* STATE: UPLOADED */
-                    <div className="bg-slate-900 border border-emerald-900/40 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-emerald-800">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-emerald-950/40 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-900/30 shadow-inner">
-                          <LuFileCheck size={24} />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-slate-200">Signed Terms & Conditions</h4>
-                            <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full"><LuShieldCheck size={10} /> Valid Uploaded</span>
-                          </div>
-                          <p className="text-xs text-slate-400 truncate max-w-[280px] sm:max-w-[340px] font-mono">{termsFileName || 'terms_signed_document.pdf'}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { setPreviewUrl(termsUrl); setPreviewTitle('Signed Terms & Conditions'); }}
-                          className="bg-blue-600/15 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                        >
-                          <LuEye size={14} /> View File
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => triggerFileInput('terms-upload-input')}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all"
-                        >
-                          Change File
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div
-                      onClick={() => triggerFileInput('terms-upload-input')}
-                      onDragOver={(e) => handleDragOver(e, 'terms')}
-                      onDragLeave={(e) => handleDragLeave(e, 'terms')}
-                      onDrop={(e) => handleDrop(e, 'terms')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.terms
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
-                          : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                        }`}
-                    >
-                      {uploadProgress.terms > 0 ? (
-                        <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
-                          <LuLoaderCircle className="animate-spin text-blue-500 w-8 h-8 mx-auto" />
-                          <div className="space-y-1.5 text-center">
-                            <p className="text-xs font-bold text-slate-300 tracking-wide uppercase">Uploading Terms File...</p>
-                            <p className="text-[10px] text-slate-550 font-bold">{uploadProgress.terms}% completed</p>
-                          </div>
-                          {/* Premium Progress Bar Track */}
-                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
-                              style={{ width: `${uploadProgress.terms}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 bg-slate-950/60 text-slate-450 border border-slate-800 rounded-2xl flex items-center justify-center shadow-inner">
-                            <LuUpload size={22} />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-black text-slate-200">Upload Signed Terms & Conditions <span className="text-red-500">*</span></h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto">Drag & drop your signed terms and conditions document here, or click to browse files. PDF, JPG, and PNG files up to 10MB are permitted.</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Doc 3: KYC Packet */}
-                <div className="relative w-full">
-                  <input
-                    type="file"
-                    id="kyc-upload-input"
-                    accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={(e) => handleFileChange(e, 'kyc')}
-                    className="hidden"
-                    disabled={uploadProgress.kyc > 0}
-                  />
-
-                  {kycUrl ? (
-                    /* STATE: UPLOADED */
-                    <div className="bg-slate-900 border border-emerald-900/40 p-6 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition hover:border-emerald-800">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 bg-emerald-950/40 text-emerald-400 rounded-xl flex items-center justify-center shrink-0 border border-emerald-900/30 shadow-inner">
-                          <LuShieldCheck size={24} />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-sm font-black text-slate-200">KYC Packet / Business License</h4>
-                            <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full"><LuShieldCheck size={10} /> Valid Uploaded</span>
-                          </div>
-                          <p className="text-xs text-slate-400 truncate max-w-[280px] sm:max-w-[340px] font-mono">{kycFileName || 'kyc_accreditation_documents.pdf'}</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 self-end sm:self-auto shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => { setPreviewUrl(kycUrl); setPreviewTitle('KYC Packet / Business License'); }}
-                          className="bg-blue-600/15 text-blue-400 border border-blue-500/20 hover:bg-blue-600 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5"
-                        >
-                          <LuEye size={14} /> View File
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => triggerFileInput('kyc-upload-input')}
-                          className="bg-slate-800 hover:bg-slate-700 text-slate-350 hover:text-white px-4 py-2.5 rounded-xl text-xs font-black transition-all"
-                        >
-                          Change File
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    /* STATE: UNUPLOADED - Drag & Drop Enabled + Axios real-time progress bar */
-                    <div
-                      onClick={() => triggerFileInput('kyc-upload-input')}
-                      onDragOver={(e) => handleDragOver(e, 'kyc')}
-                      onDragLeave={(e) => handleDragLeave(e, 'kyc')}
-                      onDrop={(e) => handleDrop(e, 'kyc')}
-                      className={`border-2 border-dashed p-8 rounded-2xl text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-3 relative overflow-hidden ${dragOverState.kyc
-                          ? 'border-blue-500 bg-blue-950/20 scale-[1.01]'
-                          : 'border-slate-800 bg-slate-900/35 hover:bg-slate-900/60 hover:border-blue-500/50'
-                        }`}
-                    >
-                      {uploadProgress.kyc > 0 ? (
-                        <div className="py-4 space-y-4 w-full max-w-xs mx-auto">
-                          <LuLoaderCircle className="animate-spin text-blue-500 w-8 h-8 mx-auto" />
-                          <div className="space-y-1.5 text-center">
-                            <p className="text-xs font-bold text-slate-300 tracking-wide uppercase">Uploading KYC File...</p>
-                            <p className="text-[10px] text-slate-500 font-bold">{uploadProgress.kyc}% completed</p>
-                          </div>
-                          {/* Premium Progress Bar Track */}
-                          <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-850">
-                            <div
-                              className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all duration-300"
-                              style={{ width: `${uploadProgress.kyc}%` }}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="w-12 h-12 bg-slate-950/60 text-slate-455 border border-slate-800 rounded-2xl flex items-center justify-center shadow-inner">
-                            <LuUpload size={22} />
-                          </div>
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-black text-slate-200">Upload KYC Packet / Business License <span className="text-red-500">*</span></h4>
-                            <p className="text-xs text-slate-500 max-w-sm mx-auto">Drag & drop your certified license and accreditation packet here, or click to browse files. PDF, JPG, and PNG files up to 10MB are permitted.</p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-
+                  );
+                })}
               </div>
             </div>
 

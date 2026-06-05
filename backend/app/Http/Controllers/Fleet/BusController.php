@@ -95,6 +95,7 @@ class BusController extends Controller
     {
         $validated = $request->validate([
             'model'             => ['sometimes', 'string', 'max:150'],
+            'bus_category'      => ['sometimes', 'in:LUXURY,VIP,ECONOMY'],
             'seating_capacity'  => ['sometimes', 'integer', 'min:1', 'max:120'],
             'status'            => ['sometimes', 'in:available,in_service,under_maintenance,decommissioned'],
             'total_mileage'     => ['sometimes', 'numeric', 'min:0'],

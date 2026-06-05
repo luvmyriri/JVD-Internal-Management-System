@@ -13,6 +13,7 @@ class BusResource extends JsonResource
             'id'                => $this->id,
             'plate_number'      => $this->plate_number,
             'model'             => $this->model,
+            'bus_category'      => $this->bus_category,
             'seating_capacity'  => $this->seating_capacity,
             'status'            => $this->status,
             'total_mileage'     => (float) $this->total_mileage,
