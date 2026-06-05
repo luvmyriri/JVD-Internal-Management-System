@@ -5,7 +5,7 @@
     <title>Statement of Account</title>
     <style>
         * { box-sizing: border-box; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b; margin: 0; padding: 24px 28px; font-size: 11px; line-height: 1.6; background: #fff; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 24px 28px; font-size: 11px; line-height: 1.6; background: #fff; }
 
         /* ─── Header ─── */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
@@ -92,8 +92,18 @@
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="company-logo">JVD Event and Travel Management Company</div>
-                <div class="company-sub">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="width: 55px; vertical-align: middle; padding-right: 10px;">
+                            <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="height: 48px; width: auto;" alt="JVD Logo">
+                        </td>
+                        <td style="vertical-align: middle;">
+                            <div class="company-logo" style="margin: 0; line-height: 1.1; font-size: 16px; font-weight: 950; color: #1e3a8a;">JVD Event & Travel</div>
+                            <div style="font-size: 9px; font-weight: 700; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px; margin-top: 1px;">Management Company</div>
+                        </td>
+                    </tr>
+                </table>
+                <div class="company-sub" style="margin-top: 8px;">
                     Reg No: 912-883-911-000<br>
                     UNIT 6 - Aryanna Village Center Brgy 175 Susano Road,<br>
                     Camarin, Caloocan City<br>
@@ -138,7 +148,7 @@
                     <div class="info-sub">Service / Travel Date: {{ \Carbon\Carbon::parse($travelDate)->format('M d, Y') }}</div>
                 @endif
                 @if(!$isPaid)
-                    <div class="info-sub" style="color: #dc2626; font-weight: 700; margin-top: 4px;">BALANCE DUE: ₱{{ number_format($invoice->balance, 2) }}</div>
+                    <div class="info-sub" style="color: #dc2626; font-weight: 700; margin-top: 4px;">BALANCE DUE: &#8369;{{ number_format($invoice->balance, 2) }}</div>
                 @endif
             </td>
         </tr>
@@ -169,7 +179,7 @@
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $statusLabel }}">{{ strtoupper($statusLabel) }}</span>
                     </td>
-                    <td class="num" style="font-weight: 700;">₱{{ number_format($item->total_price, 2) }}</td>
+                    <td class="num" style="font-weight: 700;">&#8369;{{ number_format($item->total_price, 2) }}</td>
                 </tr>
                 @endforeach
             @else
@@ -186,7 +196,7 @@
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $statusLabel }}">{{ strtoupper($statusLabel) }}</span>
                     </td>
-                    <td class="num" style="font-weight: 700;">₱{{ number_format($invoice->total_amount, 2) }}</td>
+                    <td class="num" style="font-weight: 700;">&#8369;{{ number_format($invoice->total_amount, 2) }}</td>
                 </tr>
             @endif
         </tbody>
@@ -210,7 +220,7 @@
                 <td>{{ $i + 1 }}</td>
                 <td>{{ \Carbon\Carbon::parse($payment->payment_date)->format('M d, Y') }}</td>
                 <td>{{ $payment->payment_method }}</td>
-                <td class="amount-cell">₱{{ number_format($payment->amount, 2) }}</td>
+                <td class="amount-cell">&#8369;{{ number_format($payment->amount, 2) }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -221,23 +231,23 @@
     <div class="summary-wrapper">
         <div class="summary-row">
             <div class="summary-label">Invoice Total:</div>
-            <div class="summary-value">₱{{ number_format($invoice->total_amount, 2) }}</div>
+            <div class="summary-value">&#8369;{{ number_format($invoice->total_amount, 2) }}</div>
         </div>
         @if(isset($invoice->tax_amount) && $invoice->tax_amount > 0)
         <div class="summary-row">
             <div class="summary-label">VAT (12%) Included:</div>
-            <div class="summary-value">₱{{ number_format($invoice->tax_amount, 2) }}</div>
+            <div class="summary-value">&#8369;{{ number_format($invoice->tax_amount, 2) }}</div>
         </div>
         @endif
         <hr class="summary-divider">
         <div class="summary-paid-row">
             <div class="summary-paid-label">Total Amount Paid:</div>
-            <div class="summary-paid-value">₱{{ number_format($invoice->amount_received, 2) }}</div>
+            <div class="summary-paid-value">&#8369;{{ number_format($invoice->amount_received, 2) }}</div>
         </div>
         @if(!$isPaid)
         <div class="summary-balance-row" style="margin-top: 8px;">
             <div class="summary-balance-label">Outstanding Balance:</div>
-            <div class="summary-balance-value">₱{{ number_format($invoice->balance, 2) }}</div>
+            <div class="summary-balance-value">&#8369;{{ number_format($invoice->balance, 2) }}</div>
         </div>
         @else
         <div style="text-align: center; margin-top: 10px; color: #166534; font-weight: 900; font-size: 12px;">✔ ACCOUNT FULLY SETTLED</div>
@@ -247,8 +257,8 @@
     {{-- ── NOTICE (unpaid only) ── --}}
     @if(!$isPaid)
     <div class="notice">
-        <strong>⚠ Outstanding Balance Notice</strong>
-        <p>Please settle your remaining balance of <strong>₱{{ number_format($invoice->balance, 2) }}</strong> on or before the scheduled service date. Failure to settle may result in cancellation of services.</p>
+        <strong>Outstanding Balance Notice</strong>
+        <p>Please settle your remaining balance of <strong>&#8369;{{ number_format($invoice->balance, 2) }}</strong> on or before the scheduled service date. Failure to settle may result in cancellation of services.</p>
     </div>
     @endif
 

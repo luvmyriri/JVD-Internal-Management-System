@@ -207,20 +207,22 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 onChange={(e) => setCustomerName(formatName(e.target.value))}
               />
             </div>
-            <div className="relative group">
-              <LuPhone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerContact && !isContactValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
-              <input
-                type="text"
-                placeholder="Contact Number"
-                className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerContact && !isContactValid
-                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
-                    : 'border-gray-100 dark:border-gray-700'
-                  }`}
-                value={customerContact}
-                onChange={(e) => setCustomerContact(e.target.value)}
-              />
+            <div className="space-y-2">
+              <div className="relative group">
+                <LuPhone className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerContact && !isContactValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
+                <input
+                  type="text"
+                  placeholder="Contact Number"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerContact && !isContactValid
+                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                      : 'border-gray-100 dark:border-gray-700'
+                    }`}
+                  value={customerContact}
+                  onChange={(e) => setCustomerContact(e.target.value)}
+                />
+              </div>
               {customerContact && !isContactValid && (
-                <div className="flex items-center gap-1.5 mt-2 p-2 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center gap-1.5 p-2 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
                   <LuLoaderCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                   <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold leading-tight">
                     Please enter a valid PH mobile number (e.g., 09171234567)
@@ -228,20 +230,22 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 </div>
               )}
             </div>
-            <div className="relative group">
-              <LuMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerEmail && !isEmailValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
-              <input
-                type="email"
-                placeholder="Email Address"
-                className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerEmail && !isEmailValid
-                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
-                    : 'border-gray-100 dark:border-gray-700'
-                  }`}
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-              />
+            <div className="space-y-2">
+              <div className="relative group">
+                <LuMail className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${customerEmail && !isEmailValid ? 'text-rose-500' : 'text-gray-300 group-focus-within:text-blue-600'}`} />
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerEmail && !isEmailValid
+                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                      : 'border-gray-100 dark:border-gray-700'
+                    }`}
+                  value={customerEmail}
+                  onChange={(e) => setCustomerEmail(e.target.value)}
+                />
+              </div>
               {customerEmail && !isEmailValid && (
-                <div className="flex items-center gap-1.5 mt-2 p-2 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="flex items-center gap-1.5 p-2 bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 rounded-lg animate-in fade-in slide-in-from-top-1 duration-200">
                   <LuLoaderCircle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                   <p className="text-[10px] text-rose-600 dark:text-rose-400 font-bold leading-tight">
                     Please enter a valid email address format

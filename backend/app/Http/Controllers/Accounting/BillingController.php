@@ -469,6 +469,7 @@ class BillingController extends Controller
             // Dynamically dispatch Invoice / SOA Document to customer via automated email
             if ($invoice->customer_email) {
                 try {
+                    @set_time_limit(120);
                     Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
                 } catch (\Exception $mailEx) {
                     \Log::error("Failed to send POS transaction email to {$invoice->customer_email}: " . $mailEx->getMessage());
@@ -531,6 +532,15 @@ class BillingController extends Controller
         ]);
 
         app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+
+        if ($invoice->customer_email) {
+            try {
+                @set_time_limit(120);
+                Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+            } catch (\Exception $mailEx) {
+                \Log::error("Failed to send POS status update email to {$invoice->customer_email}: " . $mailEx->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,
@@ -615,6 +625,15 @@ class BillingController extends Controller
                     ]);
 
                     app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+
+                    if ($invoice->customer_email) {
+                        try {
+                            @set_time_limit(120);
+                            Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                        } catch (\Exception $mailEx) {
+                            \Log::error("Failed to send updated payment receipt email via webhook to {$invoice->customer_email}: " . $mailEx->getMessage());
+                        }
+                    }
 
                     // Send SystemAlert to admins/creator
                     if ($invoice->creator) {
