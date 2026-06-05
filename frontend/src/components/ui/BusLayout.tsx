@@ -8,12 +8,13 @@ import {
 import { GiSteeringWheel } from 'react-icons/gi';
 import { MdOutlineWc } from 'react-icons/md';
 
-export type SeatStatus = 'available' | 'occupied' | 'reserved' | 'selected';
+export type SeatStatus = 'available' | 'occupied' | 'reserved' | 'selected' | 'custom';
 
 export interface SeatInfo {
   id: string;
   number: string;
   status: SeatStatus;
+  active?: boolean;
 }
 
 export interface BusLayoutProps {
@@ -21,27 +22,55 @@ export interface BusLayoutProps {
   hasRestroom?: boolean;
   onSeatClick?: (seat: SeatInfo) => void;
   className?: string;
+  isCustomizing?: boolean;
 }
 
 const statusColors: Record<SeatStatus, { bg: string; border: string; text: string }> = {
   available: { bg: 'bg-white dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600' },
+  reserved:  { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/50' },
   selected:  { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
   occupied:  { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-400 dark:text-gray-500', border: 'border-gray-200 dark:border-gray-600' },
-  reserved:  { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/50' },
+  custom:    { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-300 dark:border-purple-700/50' },
 };
 
-const Seat = ({ seat, onClick }: { seat: SeatInfo; onClick?: (seat: SeatInfo) => void }) => {
+const Seat = ({ 
+  seat, 
+  onClick, 
+  isCustomizing = false 
+}: { 
+  seat: SeatInfo; 
+  onClick?: (seat: SeatInfo) => void;
+  isCustomizing?: boolean;
+}) => {
+  const isActive = seat.active !== false;
+
+  if (!isActive) {
+    if (isCustomizing) {
+      return (
+        <div
+          onClick={() => onClick?.(seat)}
+          title={`Click to configure Seat (originally ${seat.id.replace('seat-', '')})`}
+          className="w-10 h-[2.75rem] border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-t-[0.6rem] rounded-b-[0.3rem] flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/20 transition-all select-none"
+        >
+          <span className="text-[14px] font-black text-gray-400 dark:text-gray-600">+</span>
+        </div>
+      );
+    }
+    return <div className="w-10 h-[2.75rem]" />;
+  }
+
   const colors = statusColors[seat.status];
-  const isClickable = seat.status === 'available' || seat.status === 'selected';
+  const isClickable = isCustomizing || seat.status === 'available' || seat.status === 'selected' || seat.status === 'custom';
   return (
     <div
       onClick={() => isClickable && onClick?.(seat)}
-      title={`Seat ${seat.number} – ${seat.status}`}
+      title={`Seat ${seat.number} – ${seat.status}${isCustomizing ? ' (Click to edit)' : ''}`}
       className={[
         'relative w-10 h-[2.75rem] rounded-t-[0.6rem] rounded-b-[0.3rem] border-2',
         'flex flex-col items-center justify-center transition-all select-none',
         colors.bg, colors.border, colors.text,
         isClickable ? 'cursor-pointer hover:border-blue-400 hover:shadow-md hover:-translate-y-px' : 'cursor-not-allowed opacity-70',
+        isCustomizing ? 'border-dashed border-blue-400 ring-2 ring-blue-500/10' : '',
       ].join(' ')}
     >
       {/* headrest ridge */}
@@ -86,38 +115,41 @@ interface ColData {
 
 function buildColumns(hasRestroom: boolean): ColData[] {
   const totalCols = hasRestroom ? 12 : 11;
-  // offset where guide-side (TOP) seat numbers start
-  const topOffset = totalCols * 2 + 1; // 23 for standard, 25 for VIP
+  let currentNum = 1;
+  const cols: ColData[] = [];
 
-  return Array.from({ length: totalCols }, (_, i) => {
-    const botSeat1 = i * 2 + 1;
-    const botSeat2 = i * 2 + 2;
+  for (let i = 0; i < totalCols; i++) {
+    // botSeat2 is window side (odd / behind driver)
+    // botSeat1 is aisle side (even / next to aisle)
+    const botSeat2 = currentNum;
+    const botSeat1 = currentNum + 1;
+    currentNum += 2;
 
-    let topSeat1 = 0, topSeat2 = 0;
-    let isWC = false, isDoor2 = false;
+    let topSeat1 = 0;
+    let topSeat2 = 0;
+    let isWC = false;
+    let isDoor2 = false;
 
     if (hasRestroom) {
-      // VIP: 7 seat pairs → RESTROOM (col 7) → DOOR 2 (col 8) → 3 seat pairs (cols 9-11)
       if (i === 7) {
         isWC = true;
       } else if (i === 8) {
         isDoor2 = true;
-      } else if (i < 7) {
-        // cols 0-6: top seats 25-38
-        topSeat1 = i * 2 + topOffset;
-        topSeat2 = i * 2 + topOffset + 1;
-      } else {
-        // cols 9-11: skip 2 (WC + Door2) → top seats 39-44
-        topSeat1 = (i - 2) * 2 + topOffset;
-        topSeat2 = (i - 2) * 2 + topOffset + 1;
       }
-    } else {
-      topSeat1 = i * 2 + topOffset;
-      topSeat2 = i * 2 + topOffset + 1;
     }
 
-    return { botSeat1, botSeat2, topSeat1, topSeat2, isWC, isDoor2 };
-  });
+    if (!isWC && !isDoor2) {
+      // topSeat2 is aisle side (odd / directly behind guide)
+      // topSeat1 is window side (even / top row)
+      topSeat2 = currentNum;
+      topSeat1 = currentNum + 1;
+      currentNum += 2;
+    }
+
+    cols.push({ botSeat1, botSeat2, topSeat1, topSeat2, isWC, isDoor2 });
+  }
+
+  return cols;
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -126,18 +158,27 @@ export default function BusLayout({
   hasRestroom = false,
   onSeatClick,
   className = '',
+  isCustomizing = false,
 }: BusLayoutProps) {
 
   const defaultSeats: SeatInfo[] = Array.from({ length: 49 }, (_, i) => ({
     id: `seat-${i + 1}`,
     number: String(i + 1),
     status: 'available',
+    active: true,
   }));
 
   const activeSeats = seats.length > 0 ? seats : defaultSeats;
-  const getSeat = (n: number): SeatInfo =>
-    activeSeats.find(s => s.number === String(n)) ??
-    { id: `dummy-${n}`, number: String(n), status: 'available' };
+
+  const getSeat = (n: number): SeatInfo => {
+    // Try finding by stable ID first so renames don't break lookup
+    const foundById = activeSeats.find(s => s.id === `seat-${n}`);
+    if (foundById) return foundById;
+    // Fallback search by number
+    const foundByNum = activeSeats.find(s => s.number === String(n));
+    if (foundByNum) return foundByNum;
+    return { id: `seat-${n}`, number: String(n), status: 'available', active: true };
+  };
 
   const columns = buildColumns(hasRestroom);
 
@@ -148,6 +189,7 @@ export default function BusLayout({
       <div className="flex flex-wrap items-center justify-center gap-5 mb-6 bg-white dark:bg-gray-800 px-6 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
         {([
           { status: 'available', label: 'Available',  icon: null },
+          { status: 'custom',    label: 'Custom',     icon: null },
           { status: 'selected',  label: 'Selected',   icon: <LuCheck size={10} /> },
           { status: 'occupied',  label: 'Occupied',   icon: <LuUser  size={10} /> },
           { status: 'reserved',  label: 'Reserved',   icon: <LuBan   size={10} /> },
@@ -240,8 +282,8 @@ export default function BusLayout({
                       </div>
                     ) : (
                       <>
-                        <Seat seat={getSeat(col.topSeat1)} onClick={onSeatClick} />
-                        <Seat seat={getSeat(col.topSeat2)} onClick={onSeatClick} />
+                        <Seat seat={getSeat(col.topSeat1)} onClick={onSeatClick} isCustomizing={isCustomizing} />
+                        <Seat seat={getSeat(col.topSeat2)} onClick={onSeatClick} isCustomizing={isCustomizing} />
                       </>
                     )}
                   </div>
@@ -253,8 +295,8 @@ export default function BusLayout({
 
                   {/* BOTTOM PAIR (driver side) — always present for all 12 columns */}
                   <div className="flex flex-col gap-1">
-                    <Seat seat={getSeat(col.botSeat1)} onClick={onSeatClick} />
-                    <Seat seat={getSeat(col.botSeat2)} onClick={onSeatClick} />
+                    <Seat seat={getSeat(col.botSeat1)} onClick={onSeatClick} isCustomizing={isCustomizing} />
+                    <Seat seat={getSeat(col.botSeat2)} onClick={onSeatClick} isCustomizing={isCustomizing} />
                   </div>
 
                 </div>
@@ -263,8 +305,8 @@ export default function BusLayout({
 
             {/* ── BACK ROW (5 seats, vertical column on right) ── */}
             <div className="flex flex-col justify-center gap-1 pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700">
-              {[45, 46, 47, 48, 49].map(n => (
-                <Seat key={n} seat={getSeat(n)} onClick={onSeatClick} />
+              {[49, 48, 47, 46, 45].map(n => (
+                <Seat key={n} seat={getSeat(n)} onClick={onSeatClick} isCustomizing={isCustomizing} />
               ))}
             </div>
 
