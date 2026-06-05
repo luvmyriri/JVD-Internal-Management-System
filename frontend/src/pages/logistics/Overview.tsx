@@ -533,7 +533,7 @@ export default function LogisticsOverview() {
   const completedTrips = tripsList.filter(t => t.status === 'completed').length;
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-8 pb-12">
       {/* Header section */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
@@ -573,7 +573,7 @@ export default function LogisticsOverview() {
             <div className="absolute -top-6 -right-6 w-32 h-32 rounded-full bg-white/10 blur-md pointer-events-none" />
             <div className="absolute -bottom-6 -left-6 w-20 h-20 rounded-full bg-white/5 blur-md pointer-events-none" />
 
-            <div className="mt-4">
+            <div>
               <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">{stat.label}</p>
               <h3 className="text-3xl font-black tracking-tight">{stat.value}</h3>
               <p className="text-[10px] opacity-80 mt-1.5 font-medium">{stat.desc}</p>
