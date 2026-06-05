@@ -16,6 +16,7 @@ class StoreBusRequest extends FormRequest
         return [
             'plate_number'     => ['required', 'string', 'max:20', 'unique:buses,plate_number'],
             'model'            => ['required', 'string', 'max:150'],
+            'bus_category'     => ['sometimes', 'in:LUXURY,VIP,ECONOMY'],
             'seating_capacity' => ['required', 'integer', 'min:1', 'max:120'],
             'status'           => ['sometimes', 'in:available,in_service,under_maintenance,decommissioned'],
             'total_mileage'    => ['nullable', 'numeric', 'min:0'],

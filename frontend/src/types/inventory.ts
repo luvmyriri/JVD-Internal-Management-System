@@ -8,6 +8,7 @@ export interface Bus {
   id: number;
   plate_number: string;
   model: string;
+  bus_category?: 'LUXURY' | 'VIP' | 'ECONOMY';
   chassis_number?: string;
   engine_number?: string;
   year?: number;
@@ -78,6 +79,7 @@ export interface BusProfile {
 export interface BusFormData {
   plate_number: string;
   model: string;
+  bus_category?: 'LUXURY' | 'VIP' | 'ECONOMY';
   seating_capacity: number;
   status: 'available' | 'in_service' | 'under_maintenance' | 'decommissioned';
   total_mileage: number;

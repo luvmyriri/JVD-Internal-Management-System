@@ -168,7 +168,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
             <div className="space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Target Vehicle</p>
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{wo.bus?.model ?? 'Vehicle Model Details'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{wo.bus?.model ?? 'Vehicle Model Details'} {wo.bus?.bus_category ? `• ${wo.bus.bus_category}` : ''}</p>
             </div>
             <div className="space-y-1">
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Priority Level</p>
@@ -265,7 +265,7 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
                     <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
                     {buses.map((bus) => (
                       <option key={bus.id} value={bus.id}>
-                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                        {bus.plate_number} — {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''} {bus.year ? `(${bus.year})` : ''}
                       </option>
                     ))}
                   </select>
@@ -385,7 +385,7 @@ function EditWOModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
                     <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
                     {buses.map((bus) => (
                       <option key={bus.id} value={bus.id}>
-                        {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                        {bus.plate_number} — {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''} {bus.year ? `(${bus.year})` : ''}
                       </option>
                     ))}
                   </select>
@@ -484,7 +484,7 @@ function WORow({
       </td>
       <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
         <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'}</div>
+        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'} {wo.bus?.bus_category ? `• ${wo.bus.bus_category}` : ''}</div>
       </td>
       <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><PriorityBadge priority={wo.priority} /></td>
       <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><StatusBadge status={wo.status} /></td>

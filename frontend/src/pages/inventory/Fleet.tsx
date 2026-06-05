@@ -8,6 +8,7 @@ import {
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
+import BusLayout from '../../components/ui/BusLayout';
 import type { Bus, BusFormData } from '../../types/inventory';
 import { userApi } from '../../api/users';
 
@@ -35,6 +36,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
     bus ? {
       plate_number: bus.plate_number,
       model: bus.model,
+      bus_category: bus.bus_category,
       seating_capacity: bus.seating_capacity,
       status: bus.status,
       total_mileage: bus.total_mileage,
@@ -42,7 +44,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
       next_service_due: bus.next_service_due ?? '',
       assigned_driver: bus.driver?.id ?? null,
     } : {
-      status: 'available', seating_capacity: 45, total_mileage: 0
+      status: 'available', seating_capacity: 49, total_mileage: 0, bus_category: 'ECONOMY'
     }
   );
 
@@ -96,6 +98,21 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
                 {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
+                
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Category</label>
+                  <select value={form.bus_category || 'ECONOMY'} onChange={e => setForm(p => ({ ...p, bus_category: e.target.value as any }))}
+                    disabled={mode === 'view'}
+                    className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all appearance-none ${
+                      mode === 'view' 
+                        ? 'bg-gray-50 border-gray-100 text-gray-500 dark:bg-gray-800/50 dark:border-gray-800 dark:text-gray-400' 
+                        : 'border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900'
+                    }`}>
+                    <option value="LUXURY">LUXURY</option>
+                    <option value="VIP">VIP</option>
+                    <option value="ECONOMY">ECONOMY</option>
+                  </select>
+                </div>
                 
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
@@ -153,6 +170,19 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
                 {field('Last Service Date', 'last_service_date', 'date')}
                 {field('Next Service Due', 'next_service_due', 'date')}
               </div>
+            </div>
+          </details>
+
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+              <span>Seating Layout</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-6 px-1 flex justify-center overflow-x-auto pb-4">
+              <BusLayout 
+                hasRestroom={(bus?.bus_category ?? form.bus_category) === 'VIP'}
+                className="transform scale-90 sm:scale-100 origin-top"
+              />
             </div>
           </details>
 
@@ -501,7 +531,9 @@ export default function Fleet() {
                   <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50 last:border-0">
                     <td className="px-8 py-6">
                       <div className="font-bold text-gray-900 dark:text-white text-base leading-tight">{bus.plate_number}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{bus.model}</div>
+                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+                        {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''}
+                      </div>
                     </td>
                     <td className="px-8 py-6">
                       <span className="inline-block whitespace-nowrap px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
@@ -570,6 +602,7 @@ export default function Fleet() {
       </div>
 
       <BusModal 
+        key={editingBus ? editingBus.id : 'new'}
         bus={editingBus} 
         mode={modalMode}
         isOpen={showModal} 

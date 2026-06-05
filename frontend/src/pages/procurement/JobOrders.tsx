@@ -174,7 +174,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
                         <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus (Optional)...'}</option>
                         {buses.map((bus: any) => (
                           <option key={bus.id} value={bus.id}>
-                            {bus.plate_number} — {bus.model} {bus.year ? `(${bus.year})` : ''}
+                            {bus.plate_number} — {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''} {bus.year ? `(${bus.year})` : ''}
                           </option>
                         ))}
                       </select>
@@ -417,7 +417,7 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Assigned Vehicle</p>
               <div className="flex items-center gap-2 text-sm font-bold text-gray-700 dark:text-gray-200">
                 <LuArrowRight size={16} className="text-sky-500" />
-                {jo.bus?.plate_number ?? `Bus #${jo.bus_id}`}
+                {jo.bus?.plate_number ?? `Bus #${jo.bus_id}`} {jo.bus?.bus_category ? `• ${jo.bus.bus_category}` : ''}
               </div>
             </div>
           </div>

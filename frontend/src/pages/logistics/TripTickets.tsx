@@ -848,7 +848,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                   <option value="">Select a Fleet Bus (or type manual)</option>
                   {buses.map((bus: any) => (
                     <option key={bus.id} value={bus.id}>
-                      {bus.plate_number} ({bus.model || 'Bus'})
+                      {bus.plate_number} ({bus.model || 'Bus'}) {bus.bus_category ? `• ${bus.bus_category}` : ''}
                     </option>
                   ))}
                 </select>

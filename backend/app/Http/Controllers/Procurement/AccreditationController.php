@@ -359,7 +359,9 @@ class AccreditationController extends Controller
             $path = $file->storeAs("accreditations/{$accreditation->id}/{$type}", $filename, 'public');
             
             // Generate public URL using the public disk
-            $url = \Illuminate\Support\Facades\Storage::disk('public')->url($path);
+            /** @var \Illuminate\Filesystem\FilesystemAdapter $disk */
+            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            $url = $disk->url($path);
             
             if ($type === 'main') {
                 $accreditation->document_url = $url;
