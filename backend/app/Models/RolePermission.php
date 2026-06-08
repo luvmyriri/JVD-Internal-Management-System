@@ -58,6 +58,8 @@ class RolePermission extends Model
             'accounting.collections'  => 'Collections',
             'accounting.cash_budgets' => 'Cash Budgets',
             'accounting.commissions'  => 'Commissions',
+            'accounting.liquidations'  => 'Liquidations',
+            'accounting.employee_soa' => 'Employee SOA',
         ],
 
         'operations' => [

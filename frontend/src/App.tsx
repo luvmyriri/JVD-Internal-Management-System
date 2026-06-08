@@ -17,6 +17,8 @@ import FixedPackages from './pages/sales/FixedPackages';
 import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
+import Liquidations from './pages/accounting/Liquidations';
+import EmployeeSOA from './pages/accounting/EmployeeSOA';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
@@ -102,6 +104,8 @@ export default function App() {
                 <Route path="/accounting/collections" element={<Collections />} />
                 <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
                 <Route path="/accounting/commissions" element={<Commissions />} />
+                <Route path="/accounting/liquidations" element={<Liquidations />} />
+                <Route path="/accounting/employee-soa" element={<EmployeeSOA />} />
                 <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
 
                 {/* Operations */}

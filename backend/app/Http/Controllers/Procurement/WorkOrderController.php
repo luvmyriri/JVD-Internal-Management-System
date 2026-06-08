@@ -260,7 +260,7 @@ class WorkOrderController extends Controller
             return response()->json([
                 'success' => true,
                 'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-                'message' => 'Work Order filed and approved. Job Order generated automatically.',
+                'message' => 'Work Order filed and approved. Ready for maintenance work.',
             ]);
         }
 

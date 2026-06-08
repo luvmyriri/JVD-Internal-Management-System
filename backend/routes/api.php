@@ -259,6 +259,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
         Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
+        
+        // Ledger & Liquidations
+        Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
+        Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
+        Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');
+        Route::get('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'show'])->name('liquidations.show');
+        Route::post('/liquidations/{liquidation}/settle', [App\Http\Controllers\Accounting\LiquidationController::class, 'settle'])->name('liquidations.settle');
     });
 
     // ──────────────────────────────────────

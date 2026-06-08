@@ -1,0 +1,289 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\CashBudgetRequest;
+use App\Models\TripTicket;
+use App\Models\User;
+use App\Models\Liquidation;
+use App\Models\Account;
+use App\Models\JournalEntry;
+use App\Services\LedgerService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class AccountingTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+    private User $driver;
+    private TripTicket $tripTicket;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        
+        $this->admin = User::factory()->superAdmin()->create();
+        $this->driver = User::factory()->create(['role' => 'driver']);
+        
+        // Seed accounts
+        app(LedgerService::class)->seedDefaultAccounts();
+
+        // Create a trip ticket for driver
+        $this->tripTicket = TripTicket::create([
+            'control_no'     => 'TT-1001',
+            'driver_id'      => $this->driver->id,
+            'status'         => 'approved',
+            'pick_up'        => 'Manila',
+            'drop_off'       => 'Baguio',
+            'issue_date'     => '2026-06-08',
+            'date_of_travel' => '2026-06-08',
+        ]);
+    }
+
+    public function test_disbursing_cash_budget_triggers_pending_liquidation_and_ledger_entry()
+    {
+        // 1. Create a cash budget request linked to the trip ticket
+        $budget = CashBudgetRequest::create([
+            'date'                  => '2026-06-08',
+            'trip_ticket_id'        => $this->tripTicket->id,
+            'diesel'                => 5000,
+            'meal_allowance'        => 2000,
+            'sop'                   => 500,
+            'autosweep'             => 1000,
+            'easytrip'              => 1500,
+            'coach_captain_salary'  => 1000,
+            'status'                => 'approved',
+            'total_amount'          => 11000,
+            'prepared_by'           => $this->admin->id,
+        ]);
+
+        // 2. Disburse the cash budget request via controller / API
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 11000,
+             ])
+             ->assertOk();
+
+        // 3. Assert that a Liquidation was created
+        $this->assertDatabaseHas('liquidations', [
+            'trip_ticket_id' => $this->tripTicket->id,
+            'employee_id'    => $this->driver->id,
+            'status'         => 'pending',
+            'total_advanced' => 11000.00,
+        ]);
+
+        // 4. Assert that double-entry ledger lines exist
+        $employeeAdvancesAcc = Account::where('code', '1200')->first();
+        $cashInBankAcc = Account::where('code', '1000')->first();
+
+        // Check if journal entry is created with Employee Advances (debit) and Cash in Bank (credit)
+        $journalEntry = JournalEntry::where('reference_type', CashBudgetRequest::class)
+                                    ->where('reference_id', $budget->id)
+                                    ->first();
+
+        $this->assertNotNull($journalEntry);
+        $this->assertCount(2, $journalEntry->ledgerLines);
+        
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id'       => $employeeAdvancesAcc->id,
+            'debit'            => 11000.00,
+            'credit'           => 0.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $journalEntry->id,
+            'account_id'       => $cashInBankAcc->id,
+            'debit'            => 0.00,
+            'credit'           => 11000.00,
+        ]);
+    }
+
+    public function test_settling_liquidation_creates_correct_ledger_balances_and_shortages()
+    {
+        // 1. Create a cash budget request
+        $budget = CashBudgetRequest::create([
+            'date'                  => '2026-06-08',
+            'trip_ticket_id'        => $this->tripTicket->id,
+            'diesel'                => 5000,
+            'meal_allowance'        => 2000,
+            'status'                => 'approved',
+            'total_amount'          => 7000,
+            'prepared_by'           => $this->admin->id,
+        ]);
+
+        // Disburse
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 7000,
+             ])
+             ->assertOk();
+
+        $liquidation = Liquidation::where('trip_ticket_id', $this->tripTicket->id)->first();
+        $this->assertNotNull($liquidation);
+
+        // 2. Settle liquidation with receipts:
+        // Fuel spent: 4800 (Approved)
+        // Meals spent: 1800 (Approved)
+        // Cash returned: 400
+        // Total advanced was 7000. Approved Spent (6600) + Returned Cash (400) = 7000. Zero shortage!
+        $payload = [
+            'items' => [
+                [
+                    'expense_category' => 'Fuel',
+                    'amount'           => 4800,
+                    'receipt_number'   => 'REC-001',
+                    'status'           => 'approved',
+                ],
+                [
+                    'expense_category' => 'Meals',
+                    'amount'           => 1800,
+                    'receipt_number'   => 'REC-002',
+                    'status'           => 'approved',
+                ]
+            ],
+            'total_returned' => 400,
+            'notes' => 'Settled with zero discrepancies',
+        ];
+
+        $this->actingAs($this->admin)
+             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->assertOk()
+             ->assertJsonPath('data.status', 'settled')
+             ->assertJsonPath('data.shortage_amount', 0);
+
+        // Verify the double-entry accounting entries for settlement
+        $settlementJournal = JournalEntry::where('reference_type', Liquidation::class)
+                                         ->where('reference_id', $liquidation->id)
+                                         ->first();
+
+        $this->assertNotNull($settlementJournal);
+
+        $fuelAcc = Account::where('code', '5000')->first();
+        $mealsAcc = Account::where('code', '5200')->first();
+        $cashOnHandAcc = Account::where('code', '1100')->first();
+        $employeeAdvancesAcc = Account::where('code', '1200')->first();
+
+        // 4 ledger lines: Fuel Debit, Meals Debit, Cash returned Debit, Employee Advances Credit
+        $this->assertCount(4, $settlementJournal->ledgerLines);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $fuelAcc->id,
+            'debit'            => 4800.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $mealsAcc->id,
+            'debit'            => 1800.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $cashOnHandAcc->id,
+            'debit'            => 400.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $employeeAdvancesAcc->id,
+            'credit'           => 7000.00,
+        ]);
+    }
+
+    public function test_disputed_receipts_or_missing_cash_returned_creates_shortage_account_entry()
+    {
+        // 1. Create a cash budget request
+        $budget = CashBudgetRequest::create([
+            'date'                  => '2026-06-08',
+            'trip_ticket_id'        => $this->tripTicket->id,
+            'diesel'                => 10000,
+            'status'                => 'approved',
+            'total_amount'          => 10000,
+            'prepared_by'           => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 10000,
+             ])
+             ->assertOk();
+
+        $liquidation = Liquidation::where('trip_ticket_id', $this->tripTicket->id)->first();
+
+        // Settle with receipts:
+        // Fuel spent: 7500 (Approved)
+        // Fuel receipt rejected: 1500 (Disputed)
+        // Cash returned: 500
+        // Total advanced was 10000. Approved Spent (7500) + Returned (500) = 8000. Shortage: 2000!
+        $payload = [
+            'items' => [
+                [
+                    'expense_category' => 'Fuel',
+                    'amount'           => 7500,
+                    'receipt_number'   => 'REC-OK',
+                    'status'           => 'approved',
+                ],
+                [
+                    'expense_category' => 'Fuel',
+                    'amount'           => 1500,
+                    'receipt_number'   => 'REC-BAD',
+                    'status'           => 'disputed', // Accountant rejected it
+                ]
+            ],
+            'total_returned' => 500,
+            'notes' => '1500 receipt rejected, 500 missing cash returned',
+        ];
+
+        $this->actingAs($this->admin)
+             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->assertOk()
+             ->assertJsonPath('data.status', 'disputed')
+             ->assertJsonPath('data.shortage_amount', 2000);
+
+        // Verify the ledger entries
+        $settlementJournal = JournalEntry::where('reference_type', Liquidation::class)
+                                         ->where('reference_id', $liquidation->id)
+                                         ->first();
+
+        $this->assertNotNull($settlementJournal);
+
+        $fuelAcc = Account::where('code', '5000')->first();
+        $cashOnHandAcc = Account::where('code', '1100')->first();
+        $cashShortageAcc = Account::where('code', '5900')->first();
+        $employeeAdvancesAcc = Account::where('code', '1200')->first();
+
+        // Ledger lines: Approved Fuel (7500 debit), Cash returned (500 debit), Shortage (2000 debit), Employee Advances (10000 credit)
+        $this->assertCount(4, $settlementJournal->ledgerLines);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $fuelAcc->id,
+            'debit'            => 7500.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $cashOnHandAcc->id,
+            'debit'            => 500.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $cashShortageAcc->id,
+            'debit'            => 2000.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $employeeAdvancesAcc->id,
+            'credit'           => 10000.00,
+        ]);
+    }
+}

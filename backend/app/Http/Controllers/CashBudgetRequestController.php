@@ -142,6 +142,39 @@ class CashBudgetRequestController extends Controller
                 'disbursed_amount' => $disbursedAmount
             ]);
 
+            // Create pending liquidation
+            $liquidationService = app(\App\Services\LiquidationService::class);
+            if ($budget->tripTicket) {
+                $liquidationService->createForTripTicket($budget->tripTicket, $disbursedAmount);
+            }
+
+            // Create double-entry journal entry in Ledger
+            $ledgerService = app(\App\Services\LedgerService::class);
+            $employeeAdvancesAccount = \App\Models\Account::where('code', '1200')->first();
+            $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
+            
+            if ($employeeAdvancesAccount && $cashInBankAccount && $budget->tripTicket) {
+                $ledgerService->recordEntry(
+                    date('Y-m-d'),
+                    "Cash advance disbursed to driver for DTT: " . $budget->tripTicket->control_no,
+                    [
+                        [
+                            'account_id' => $employeeAdvancesAccount->id,
+                            'debit' => $disbursedAmount,
+                            'credit' => 0,
+                            'description' => 'Disbursement of Cash Advance'
+                        ],
+                        [
+                            'account_id' => $cashInBankAccount->id,
+                            'debit' => 0,
+                            'credit' => $disbursedAmount,
+                            'description' => 'Disbursement from Cash in Bank'
+                        ]
+                    ],
+                    $budget
+                );
+            }
+
             // Only create invoice if one doesn't already exist
             $existingInvoice = \App\Models\Invoice::where('cash_budget_request_id', $budget->id)->first();
             if (!$existingInvoice) {
