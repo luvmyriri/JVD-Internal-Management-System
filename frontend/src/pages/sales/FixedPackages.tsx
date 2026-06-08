@@ -16,6 +16,7 @@ import {
 } from 'react-icons/lu';
 import { Pencil, Trash2 } from 'lucide-react';
 import { billingApi, type Service } from '../../api/billing';
+import client from '../../api/client';
 import { fleetApi } from '../../api/fleet';
 import BusLayout from '../../components/ui/BusLayout';
 import { useAuth } from '../../context/AuthContext';
@@ -95,6 +96,8 @@ export default function FixedPackages() {
   // Bus rental/seat selection states
   const [bookingDate, setBookingDate] = useState<string>('');
   const [bookingBusId, setBookingBusId] = useState<number | null>(null);
+  const [bookingDriverId, setBookingDriverId] = useState<number | null>(null);
+  const [bookingDriverName, setBookingDriverName] = useState<string>('');
   const [bookingSeats, setBookingSeats] = useState<string[]>([]);
 
   // Load buses list for selection
@@ -103,6 +106,16 @@ export default function FixedPackages() {
     queryFn: () => fleetApi.list({ per_page: 100 }),
   });
   const buses = busesRes?.data?.data ?? [];
+
+  // Load active drivers
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['active-drivers'],
+    queryFn: async () => {
+      const res = await client.get('/chat/users');
+      const allUsers = res.data?.data ?? [];
+      return allUsers.filter((u: any) => u.role === 'driver' && u.is_active);
+    },
+  });
 
   // Load calendar for selected bus to check seat occupancy on travel date
   const { data: busCalendarRes } = useQuery({
@@ -171,23 +184,36 @@ export default function FixedPackages() {
   };
 
   // Cart operations
-  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number, vehicleType?: 'Bus' | 'Coaster', extraDays?: number, extraHours?: number, busId?: number, selectedSeats?: string[]) => {
+  const addToCart = (
+    service: Service,
+    adults?: number,
+    childrenCount?: number,
+    customPrice?: number,
+    vehicleType?: 'Bus' | 'Coaster',
+    extraDays?: number,
+    extraHours?: number,
+    busId?: number,
+    selectedSeats?: string[],
+    driverId?: number,
+    driverName?: string
+  ) => {
     setCart(prev => {
       const existing = prev.find(item =>
         item.service.id === service.id &&
         item.adults === adults &&
         item.childrenCount === childrenCount &&
         item.vehicleType === vehicleType &&
-        item.busId === busId
+        item.busId === busId &&
+        item.driverId === driverId
       );
       if (existing) {
         return prev.map(item =>
-          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId)
+          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId && item.driverId === driverId)
             ? { ...item, quantity: item.quantity + 1, extraDays, extraHours, customPrice, selectedSeats }
             : item
         );
       }
-      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours, busId, selectedSeats }];
+      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours, busId, selectedSeats, driverId, driverName }];
     });
   };
 
@@ -912,6 +938,8 @@ export default function FixedPackages() {
                   setBookingDate('');
                   setBookingBusId(null);
                   setBookingSeats([]);
+                  setBookingDriverId(null);
+                  setBookingDriverName('');
                   setShowDetailModal(true);
                 }}
                 className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col shrink-0 w-[85vw] md:w-auto snap-center relative"
@@ -1044,6 +1072,8 @@ export default function FixedPackages() {
                         setBookingDate('');
                         setBookingBusId(null);
                         setBookingSeats([]);
+                        setBookingDriverId(null);
+                        setBookingDriverName('');
                         setShowDetailModal(true);
                       } else {
                         addToCart(service);
@@ -1808,12 +1838,47 @@ export default function FixedPackages() {
                           const id = e.target.value ? Number(e.target.value) : null;
                           setBookingBusId(id);
                           setBookingSeats([]);
+                          
+                          const selectedBusObj = buses.find((b: any) => b.id === id);
+                          if (selectedBusObj && selectedBusObj.driver) {
+                            setBookingDriverId(selectedBusObj.driver.id);
+                            setBookingDriverName(`${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`);
+                          } else {
+                            setBookingDriverId(null);
+                            setBookingDriverName('');
+                          }
                         }}
                       >
                         <option value="">Select a Bus...</option>
                         {buses.filter((b: any) => b.status?.toLowerCase() === 'available').map((b: any) => (
                           <option key={b.id} value={b.id}>
                             {b.plate_number} - {b.model} ({b.seating_capacity} Seaters)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Assign Driver */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Driver</label>
+                      <select
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                        value={bookingDriverId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value ? Number(e.target.value) : null;
+                          setBookingDriverId(id);
+                          if (id) {
+                            const d = drivers.find((x: any) => x.id === id);
+                            setBookingDriverName(d ? `${d.first_name} ${d.last_name}` : '');
+                          } else {
+                            setBookingDriverName('');
+                          }
+                        }}
+                      >
+                        <option value="">Select a Driver...</option>
+                        {drivers.map((d: any) => (
+                          <option key={d.id} value={d.id}>
+                            {d.first_name} {d.last_name}
                           </option>
                         ))}
                       </select>
@@ -1900,7 +1965,7 @@ export default function FixedPackages() {
               <div className="space-y-3 font-black">
                 {(() => {
                   const isBusAssigned = selectedServiceForDetail.category === 'Bus Rental' || (selectedServiceForDetail.is_tour && bookingTourVehicle === 'Bus');
-                  const isBusSelectionInvalid = isBusAssigned && (!bookingDate || !bookingBusId || bookingSeats.length === 0);
+                  const isBusSelectionInvalid = isBusAssigned && (!bookingDate || !bookingBusId || !bookingDriverId || bookingSeats.length === 0);
 
                   return (
                     <button
@@ -1911,12 +1976,12 @@ export default function FixedPackages() {
                           const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
                           const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
                           const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                          addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                          addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined);
                         } else if (selectedServiceForDetail.has_booking_fields) {
                           const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                          addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                          addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined);
                         } else {
-                          addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                          addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined);
                         }
                         setShowDetailModal(false);
                       }}

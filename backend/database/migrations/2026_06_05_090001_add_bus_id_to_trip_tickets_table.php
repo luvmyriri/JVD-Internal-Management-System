@@ -19,14 +19,16 @@ return new class extends Migration
             }
 
             // Add FK constraint if not already present
-            $fks = DB::select("
-                SELECT constraint_name
-                FROM information_schema.table_constraints
-                WHERE table_name = 'trip_tickets'
-                  AND constraint_type = 'FOREIGN KEY'
-                  AND constraint_name = 'trip_tickets_bus_id_foreign'
-            ");
-            if (empty($fks)) {
+            $foreignKeys = Schema::getForeignKeys('trip_tickets');
+            $hasBusIdFk = false;
+            foreach ($foreignKeys as $fk) {
+                if (in_array('bus_id', $fk['columns'])) {
+                    $hasBusIdFk = true;
+                    break;
+                }
+            }
+
+            if (!$hasBusIdFk) {
                 $table->foreign('bus_id')->references('id')->on('buses')->nullOnDelete();
             }
         });

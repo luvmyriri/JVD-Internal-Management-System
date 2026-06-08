@@ -28,6 +28,8 @@ export interface CartItem {
   extraHours?: number;
   busId?: number;
   selectedSeats?: string[];
+  driverId?: number;
+  driverName?: string;
 }
 
 interface SalesCheckoutProps {
@@ -114,6 +116,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           children: item.childrenCount
         })),
         bus_id: cart.find(item => item.busId)?.busId || null,
+        driver_id: cart.find(item => item.driverId)?.driverId || null,
         seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
       });
 
@@ -181,6 +184,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                       {item.busId && (
                         <p className="text-[9px] text-blue-600 dark:text-blue-450 font-black mt-1 uppercase tracking-tight">
                           Bus Assigned (ID: {item.busId}) {item.selectedSeats && item.selectedSeats.length > 0 ? `| Seats: ${item.selectedSeats.join(', ')}` : ''}
+                        </p>
+                      )}
+                      {item.driverName && (
+                        <p className="text-[9px] text-emerald-600 dark:text-emerald-450 font-black mt-1 uppercase tracking-tight">
+                          Driver Assigned: {item.driverName}
                         </p>
                       )}
                       <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
@@ -548,6 +556,15 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                         Seats Booked: {lastInvoice.seat_map.join(', ')} ({lastInvoice.seat_map.length} seats)
                       </p>
                     )}
+                  </div>
+                )}
+
+                {lastInvoice?.driver && (
+                  <div className="my-6 p-5 bg-emerald-50/50 border border-emerald-100 rounded-3xl text-left">
+                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Driver Assignment</p>
+                    <p className="text-xs font-black text-gray-900 mt-1 uppercase">
+                      Driver: {lastInvoice.driver.first_name} {lastInvoice.driver.last_name} (ID #{lastInvoice.driver.id})
+                    </p>
                   </div>
                 )}
 

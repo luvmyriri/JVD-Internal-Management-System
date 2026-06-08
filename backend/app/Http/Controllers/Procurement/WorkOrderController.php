@@ -291,11 +291,17 @@ class WorkOrderController extends Controller
         $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
 
         $invoice = $workOrder->invoice;
-        $busId = $workOrder->bus_id;
+        $busId = $workOrder->bus_id ?: ($invoice?->bus_id ?? null);
         $driverId = null;
         $driverName = null;
 
-        if ($busId) {
+        if ($invoice && $invoice->driver_id) {
+            $driverId = $invoice->driver_id;
+            $driverUser = \App\Models\User::find($driverId);
+            if ($driverUser) {
+                $driverName = "{$driverUser->first_name} {$driverUser->last_name}";
+            }
+        } elseif ($busId) {
             $bus = \App\Models\Bus::find($busId);
             if ($bus) {
                 $driverId = $bus->assigned_driver;

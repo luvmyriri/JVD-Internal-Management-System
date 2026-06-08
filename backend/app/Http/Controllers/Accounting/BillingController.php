@@ -24,7 +24,7 @@ class BillingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection']);
+        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'driver']);
 
         // Search
         if ($request->has('search')) {
@@ -284,6 +284,7 @@ class BillingController extends Controller
             'items.*.children' => 'nullable|integer',
             'notes' => 'nullable|string',
             'bus_id' => 'nullable|integer|exists:buses,id',
+            'driver_id' => 'nullable|integer|exists:users,id',
             'seat_map' => 'nullable|array',
         ], [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
@@ -367,6 +368,7 @@ class BillingController extends Controller
                 'created_by'      => auth()->id() ?? 1,
                 'notes'           => $request->notes,
                 'bus_id'          => $request->bus_id,
+                'driver_id'       => $request->driver_id,
                 'seat_map'        => $request->seat_map,
             ]);
 
@@ -453,7 +455,7 @@ class BillingController extends Controller
                 $wo = \App\Models\WorkOrder::create([
                     'wo_number' => $woNumber,
                     'type' => 'trip',
-                    'bus_id' => null, // Bus assigned at JO stage
+                    'bus_id' => $invoice->bus_id, // Bus assigned from invoice
                     'invoice_id' => $invoice->id,
                     'created_by' => auth()->id() ?? 1,
                     'status' => 'pending_approval',
@@ -492,7 +494,7 @@ class BillingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => (new InvoiceResource($invoice->load('items.service')))->resolve()
+                'data' => (new InvoiceResource($invoice->load(['items.service', 'driver'])))->resolve()
             ], 201);
 
         } catch (\Exception $e) {
@@ -510,7 +512,7 @@ class BillingController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'creator', 'items.service'])->find($id);
+        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'driver'])->find($id);
 
         if (!$invoice) {
             return response()->json([

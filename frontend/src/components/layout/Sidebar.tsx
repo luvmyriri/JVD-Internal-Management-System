@@ -127,6 +127,7 @@ export const navigation: NavSection[] = [
       { label: 'Overview', path: '/driver/overview', icon: <LuMapPin />, roles: ['driver'], module: 'driver', pageKey: 'driver.overview' },
       { label: 'Scheduled Trips', path: '/driver/scheduled-trips', icon: <LuCalendarClock />, roles: ['driver'], module: 'driver', pageKey: 'driver.scheduled_trips' },
       { label: 'My Fleet', path: '/driver/my-fleet', icon: <LuBus />, roles: ['driver'], module: 'driver', pageKey: 'driver.my_fleet' },
+      { label: 'My Commissions', path: '/driver/commissions', icon: <LuSignature />, roles: ['driver'], module: 'driver', pageKey: 'operations.commissions' },
     ],
   },
   {

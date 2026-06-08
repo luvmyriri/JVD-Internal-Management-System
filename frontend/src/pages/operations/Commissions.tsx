@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { commissionApi } from '../../api/operations';
 import type { Commission } from '../../types';
 import { Modal, Button } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: any = {
@@ -115,10 +116,11 @@ interface NewCommissionItem {
 }
 
 function CreateCommissionModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
   const qc = useQueryClient();
   const [form, setForm] = useState({
-    commissioner_name: '',
-    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100000)).toString().padStart(5, '0')}`,
+    commissioner_name: user && user.role === 'driver' ? `${user.first_name} ${user.last_name}` : '',
+    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100005)).toString().padStart(5, '0')}`,
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -208,9 +210,15 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
                 <input
                   type="text"
                   required
+                  readOnly={user?.role === 'driver'}
+                  disabled={user?.role === 'driver'}
                   value={form.commissioner_name}
                   onChange={e => setForm(p => ({ ...p, commissioner_name: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className={`w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    user?.role === 'driver'
+                      ? 'bg-gray-50 dark:bg-gray-900 text-gray-500 cursor-not-allowed'
+                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200'
+                  }`}
                   placeholder="e.g. Jane Smith"
                 />
               </div>
