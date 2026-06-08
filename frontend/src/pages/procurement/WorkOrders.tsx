@@ -22,11 +22,13 @@ import { useAuth } from '../../context/AuthContext';
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 const statusStyles: Record<string, string> = {
-  pending_approval: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  open:             'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  in_progress:      'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
-  completed:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  cancelled:        'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
+  pending_validation: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
+  pending_approval:   'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+  verified:           'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400',
+  open:               'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  in_progress:        'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  completed:          'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+  cancelled:          'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400',
 };
 
 const priorityStyles: Record<string, string> = {
@@ -497,7 +499,7 @@ function WORow({
               icon: <Eye size={14} />, 
               onClick: () => onDetail(wo) 
             },
-            ...(wo.status === 'pending_approval' && canApproveOrEdit ? [{ 
+            ...((wo.status === 'pending_approval' || wo.status === 'verified') && canApproveOrEdit ? [{ 
               label: 'Review Order', 
               icon: <ShieldCheck size={14} />, 
               onClick: () => onReview(wo) 
@@ -576,7 +578,7 @@ export default function WorkOrders() {
 
   const wos = data?.data?.data ?? [];
   const meta = data?.data?.meta;
-  const pendingCount = wos.filter(w => w.status === 'pending_approval').length;
+  const pendingCount = wos.filter(w => w.status === 'pending_approval' || w.status === 'verified').length;
 
   return (
     <div className="space-y-10 pb-12">

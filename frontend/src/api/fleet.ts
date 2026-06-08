@@ -21,11 +21,9 @@ export const fleetApi = {
   delete: (id: number) =>
     client.delete(`/buses/${id}`),
 
-  getMaintenanceHistory: (id: number) =>
-    client.get(`/buses/${id}/maintenance-history`),
-
-  getPmsStatus: (id: number) =>
-    client.get(`/buses/${id}/pms-status`),
+  // NOTE: getMaintenanceHistory and getPmsStatus are intentionally removed.
+  // Those backend routes (/buses/{id}/maintenance-history, /buses/{id}/pms-status)
+  // do not exist in api.php or BusController. Implement backend routes before re-adding.
 
   getCalendar: (id: number, params?: { month?: number; year?: number }) =>
     client.get<{ success: boolean; data: any[]; bus: any }>(`/buses/${id}/calendar`, { params }),

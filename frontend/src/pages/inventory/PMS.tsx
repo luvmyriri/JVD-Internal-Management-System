@@ -2,6 +2,8 @@ import { useState } from 'react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { workOrderApi } from '../../api/workOrders';
+
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
@@ -223,15 +225,33 @@ function MileageBar({ bus }: { bus: Bus }) {
 interface RequestWoModalProps { bus: Bus; onClose: () => void; }
 
 function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
+  const qc = useQueryClient();
   const pmsInfo = getNextPmsInfo(bus.total_mileage);
   const [notes, setNotes] = useState(
     `Preventive maintenance due for ${bus.plate_number}. Total mileage: ${bus.total_mileage.toLocaleString()} km. Next service: ${pmsInfo.level.type}.`
   );
-  const [priority, setPriority] = useState<'low' | 'medium' | 'high'>(bus.is_service_overdue ? 'high' : 'medium');
+  const [priority, setPriority] = useState<'routine' | 'urgent' | 'critical'>(bus.is_service_overdue ? 'critical' : 'urgent');
   const [submitted, setSubmitted] = useState(false);
 
   const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
   const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
+
+  const mutation = useMutation({
+    mutationFn: () => workOrderApi.create({
+      bus_id: bus.id,
+      description: notes,
+      priority,
+      type: 'maintenance',
+    } as any),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      setSubmitted(true);
+      toast.success(`Work Order created for ${bus.plate_number}`);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to create Work Order. Please try again.');
+    },
+  });
 
   if (submitted) return (
     <Modal isOpen onClose={onClose} title="Work Order Submitted" size="md">
@@ -321,9 +341,9 @@ function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
                   <label className={lbl}>Priority Level</label>
                   <select value={priority} onChange={e => setPriority(e.target.value as any)}
                     className={inp.replace('bg-white dark:bg-gray-800', 'bg-white dark:bg-gray-900')}>
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High — Urgent</option>
+                    <option value="routine">Routine</option>
+                    <option value="urgent">Urgent</option>
+                    <option value="critical">Critical</option>
                   </select>
                 </div>
                 <div>
@@ -337,7 +357,7 @@ function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => setSubmitted(true)}>
+            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending}>
               <LuSend className="w-4 h-4 mr-1.5" /> Submit WO Request
             </Button>
           </div>
@@ -590,11 +610,17 @@ export default function PMS() {
               >
                 <LuFileDown className="w-4 h-4" /> Format
               </button>
-              <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+              <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                title="Bulk Import — coming soon"
+              >
                 <LuCloudUpload className="w-4 h-4" /> Bulk Import
-                <input type="file" multiple className="hidden" accept=".csv,.xlsx" />
+                <input type="file" multiple className="hidden" accept=".csv,.xlsx" disabled />
               </label>
-              <button className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm">
+              <button
+                onClick={() => toast('Export Data feature coming soon', { icon: '📋' })}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase tracking-widest transition-colors shadow-sm"
+                title="Export Data — coming soon"
+              >
                 <LuDownload className="w-4 h-4" /> Export Data
               </button>
             </div>

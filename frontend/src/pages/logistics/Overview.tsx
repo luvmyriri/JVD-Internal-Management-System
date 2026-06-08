@@ -690,9 +690,9 @@ export default function LogisticsOverview() {
   });
   const calendarData = calendarRes?.data?.data || [];
 
-  // Fetch all trip tickets
+  // Fetch all trip tickets — uses same queryKey as TripTickets.tsx for cross-page invalidation
   const { data: tripsData, isLoading: isTripsLoading } = useQuery<TripTicket[]>({
-    queryKey: ['trip-tickets-all'],
+    queryKey: ['trip-tickets'],
     queryFn: () => tripTicketApi.getAll(),
     placeholderData: keepPreviousData,
   });
