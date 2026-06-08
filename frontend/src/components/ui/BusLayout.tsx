@@ -68,7 +68,6 @@ function buildColumns(totalSeats: number, hasRestroom: boolean): ColData[] {
   if (hasRestroom) {
     // VIP: first 7 seat cols → WC → Door2 → remaining seat cols
     const firstCols = Math.min(7, seatColCount);
-    const lastCols  = Math.max(0, seatColCount - firstCols);
     const displayCols = seatColCount + 2; // +2 for WC and Door2 slots
 
     const cols: ColData[] = [];

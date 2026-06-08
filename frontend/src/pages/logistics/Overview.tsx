@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuCalendar, LuChevronLeft, LuChevronRight, LuBus } from 'react-icons/lu';
+import { LuChevronLeft, LuChevronRight, LuBus } from 'react-icons/lu';
 
 import { useUsers } from '../../hooks/useUsers';
 import { useBuses } from '../../hooks/useFleet';

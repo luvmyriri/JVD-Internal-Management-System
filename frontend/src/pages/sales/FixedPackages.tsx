@@ -130,30 +130,6 @@ export default function FixedPackages() {
     return seats;
   }, [busCalendarRes, bookingDate]);
 
-  const busSeats = useMemo(() => {
-    if (!bookingBusId) return [];
-    const selectedBus = buses.find(b => b.id === bookingBusId);
-    if (!selectedBus) return [];
-    const total = selectedBus.seating_capacity;
-    const backSeats = 5;
-    const mainSeats = Math.floor((total - backSeats) / 4) * 4;
-    const actualTotal = mainSeats + backSeats;
-    return Array.from({ length: actualTotal }, (_, i) => {
-      const seatNum = String(i + 1);
-      let status: 'available' | 'occupied' | 'selected' = 'available';
-      if (occupiedSeats.includes(seatNum)) {
-        status = 'occupied';
-      } else if (bookingSeats.includes(seatNum)) {
-        status = 'selected';
-      }
-      return {
-        id: `seat-${seatNum}`,
-        number: seatNum,
-        status,
-      };
-    });
-  }, [bookingBusId, buses, occupiedSeats, bookingSeats]);
-
   // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string; variant: 'success' | 'error' }>({ open: false, title: '', message: '', variant: 'success' });
