@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LuCalendar, LuChevronLeft, LuChevronRight, LuBus } from 'react-icons/lu';
 
 import { useUsers } from '../../hooks/useUsers';
 import { useBuses } from '../../hooks/useFleet';
 import { tripTicketApi } from '../../api/operations';
+import { fleetApi } from '../../api/fleet';
+import BusLayout from '../../components/ui/BusLayout';
 import type { TripTicket } from '../../types';
 import { cn, fullName } from '../../utils';
 
@@ -14,6 +17,11 @@ const statusStyles: Record<string, string> = {
   approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30',
   completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/30',
 };
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 function StatusBadge({ status }: { status: string }) {
   return (
@@ -484,10 +492,184 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClos
   );
 }
 
+function CalendarDayDetailModal({
+  day,
+  month,
+  year,
+  entries,
+  bus,
+  onClose,
+}: {
+  day: number;
+  month: number;
+  year: number;
+  entries: any[];
+  bus: any;
+  onClose: () => void;
+}) {
+  const monthName = MONTH_NAMES[month - 1];
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
+        
+        {/* Modal Header */}
+        <div className="p-8 border-b border-gray-105 dark:border-gray-800 flex items-center justify-between shrink-0 bg-white dark:bg-gray-900">
+          <div>
+            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">
+              Assignments for {monthName} {day}, {year}
+            </h2>
+            <p className="text-[10px] text-gray-450 uppercase font-black tracking-widest mt-0.5">
+              Bus: {bus?.plate_number} ({bus?.model})
+            </p>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="p-3 bg-gray-50 dark:bg-gray-850 rounded-2xl text-gray-450 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="p-8 overflow-y-auto flex-1 space-y-8 custom-scrollbar">
+          {entries.map((entry, idx) => (
+            <div 
+              key={idx} 
+              className="p-6 bg-gray-50/50 dark:bg-gray-800/30 rounded-[2rem] border border-gray-100 dark:border-gray-800 flex flex-col lg:flex-row gap-8"
+            >
+              <div className="flex-1 space-y-5">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block shadow-sm",
+                      entry.type === 'invoice' 
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-850/30"
+                    )}>
+                      {entry.type === 'invoice' ? 'POS Invoice' : 'Trip Ticket'}
+                    </span>
+                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase mt-2 font-mono">
+                      {entry.type === 'invoice' ? `INV-${entry.reference_no}` : `DTT-${entry.reference_no}`}
+                    </h3>
+                  </div>
+                  {entry.type === 'invoice' && (
+                    <div className="text-right">
+                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Total Amount</p>
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-450 mt-0.5">
+                        ₱{Number(entry.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  {entry.type === 'invoice' ? (
+                    <>
+                      <div>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Customer Name</span>
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{entry.customer_name || 'Walk-in'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Status</span>
+                        <span className="font-bold uppercase text-gray-700 dark:text-gray-300">{entry.status}</span>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Driver</span>
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{bus?.driver ? `${bus.driver.first_name} ${bus.driver.last_name}` : 'TBA'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Passengers</span>
+                        <span className="font-bold text-gray-800 dark:text-gray-200">{entry.pax} pax</span>
+                      </div>
+                      <div className="col-span-2 space-y-2">
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Route</span>
+                        <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+                            <span className="font-bold text-gray-600 dark:text-gray-350">{entry.pick_up}</span>
+                            <span className="text-gray-400">→</span>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                            <span className="font-black text-gray-800 dark:text-white">{entry.drop_off}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {entry.type === 'invoice' && entry.seat_map && entry.seat_map.length > 0 ? (
+                <div className="lg:w-[320px] shrink-0 space-y-3">
+                  <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Selected Seating Chart</span>
+                  <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 flex justify-center">
+                    <BusLayout
+                      totalSeats={bus?.seating_capacity || 49}
+                      hasRestroom={bus?.model?.toLowerCase().includes('vip') || bus?.bus_category === 'VIP'}
+                      selectedSeats={entry.seat_map || []}
+                      viewOnly={true}
+                      compact={true}
+                    />
+                  </div>
+                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider text-center">
+                    Booked Seats ({entry.seat_map.length}): {entry.seat_map.join(', ')}
+                  </p>
+                </div>
+              ) : entry.type === 'invoice' ? (
+                <div className="lg:w-[320px] shrink-0 flex items-center justify-center p-6 border-2 border-dashed border-gray-200 dark:border-gray-850 rounded-3xl text-gray-400 italic text-xs text-center font-bold">
+                  No seats assigned for this invoice.
+                </div>
+              ) : null}
+            </div>
+          ))}
+        </div>
+
+        {/* Modal Footer */}
+        <div className="p-8 border-t border-gray-105 dark:border-gray-850 bg-white dark:bg-gray-900 flex justify-end shrink-0">
+          <button 
+            onClick={onClose} 
+            className="px-8 py-3.5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all cursor-pointer"
+          >
+            Close Window
+          </button>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
 export default function LogisticsOverview() {
-  const [activeTab, setActiveTab] = useState<'drivers' | 'trips'>('drivers');
+  const [activeTab, setActiveTab] = useState<'drivers' | 'trips' | 'fleet'>('drivers');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
+
+  // Fleet & Calendar States
+  const [selectedBusId, setSelectedBusId] = useState<number | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState<number>(new Date().getMonth() + 1);
+  const [calendarYear, setCalendarYear] = useState<number>(new Date().getFullYear());
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState<{ day: number; entries: any[] } | null>(null);
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 1) {
+      setCalendarMonth(12);
+      setCalendarYear(prev => prev - 1);
+    } else {
+      setCalendarMonth(prev => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 12) {
+      setCalendarMonth(1);
+      setCalendarYear(prev => prev + 1);
+    } else {
+      setCalendarMonth(prev => prev + 1);
+    }
+  };
 
   // Fetch all users with driver role
   const { data: usersData, isLoading: isDriversLoading } = useUsers({
@@ -499,6 +681,14 @@ export default function LogisticsOverview() {
   // Fetch all fleet buses
   const { data: busesData } = useBuses({ per_page: 999 });
   const buses = busesData?.data || [];
+
+  // Fetch calendar data for selected bus
+  const { data: calendarRes } = useQuery({
+    queryKey: ['bus-calendar', selectedBusId, calendarMonth, calendarYear],
+    queryFn: () => fleetApi.getCalendar(selectedBusId!, { month: calendarMonth, year: calendarYear }),
+    enabled: !!selectedBusId,
+  });
+  const calendarData = calendarRes?.data?.data || [];
 
   // Fetch all trip tickets
   const { data: tripsData, isLoading: isTripsLoading } = useQuery<TripTicket[]>({
@@ -523,6 +713,15 @@ export default function LogisticsOverview() {
       trip.pick_up.toLowerCase().includes(search) ||
       trip.drop_off.toLowerCase().includes(search) ||
       (trip.driver?.name && trip.driver.name.toLowerCase().includes(search))
+    );
+  });
+
+  const filteredBuses = buses.filter((bus: any) => {
+    const search = searchQuery.toLowerCase();
+    return (
+      bus.plate_number.toLowerCase().includes(search) ||
+      bus.model.toLowerCase().includes(search) ||
+      (bus.driver ? `${bus.driver.first_name} ${bus.driver.last_name}`.toLowerCase().includes(search) : false)
     );
   });
 
@@ -588,7 +787,7 @@ export default function LogisticsOverview() {
           {/* Custom styled tab switcher */}
           <div className="flex bg-gray-100 dark:bg-gray-800 border border-gray-200/50 dark:border-gray-700 p-1.5 rounded-[1.6rem] shadow-sm select-none">
             <button
-              onClick={() => { setActiveTab('drivers'); setSearchQuery(''); }}
+              onClick={() => { setActiveTab('drivers'); setSearchQuery(''); setSelectedBusId(null); }}
               className={cn(
                 "flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all",
                 activeTab === 'drivers'
@@ -599,7 +798,7 @@ export default function LogisticsOverview() {
               Driver Directory
             </button>
             <button
-              onClick={() => { setActiveTab('trips'); setSearchQuery(''); }}
+              onClick={() => { setActiveTab('trips'); setSearchQuery(''); setSelectedBusId(null); }}
               className={cn(
                 "flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all",
                 activeTab === 'trips'
@@ -609,18 +808,64 @@ export default function LogisticsOverview() {
             >
               Scheduled Trips
             </button>
+            <button
+              onClick={() => { setActiveTab('fleet'); setSearchQuery(''); setSelectedBusId(null); }}
+              className={cn(
+                "flex items-center gap-2 px-6 py-3.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all",
+                activeTab === 'fleet'
+                  ? "bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-md shadow-gray-200/50 dark:shadow-black/20"
+                  : "text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              )}
+            >
+              Fleet Calendar
+            </button>
           </div>
 
-          {/* Search bar */}
-          <div className="flex items-center gap-4 bg-white dark:bg-gray-800/80 px-6 py-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-sm flex-1">
-            <input
-              type="text"
-              placeholder={activeTab === 'drivers' ? "Search driver name or ID..." : "Search trip, route, driver..."}
-              className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
+          {/* Search bar or Month navigation */}
+          {activeTab === 'fleet' && selectedBusId ? (
+            <div className="flex items-center gap-3 bg-white dark:bg-gray-800/80 px-4 py-2 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 select-none">
+              <button 
+                onClick={handlePrevMonth}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-750 rounded-xl text-gray-500 dark:text-gray-450 transition-all font-bold"
+              >
+                <LuChevronLeft className="w-4.5 h-4.5" />
+              </button>
+              <span className="text-xs font-black uppercase tracking-widest text-gray-800 dark:text-white px-2">
+                {MONTH_NAMES[calendarMonth - 1]} {calendarYear}
+              </span>
+              <button 
+                onClick={handleNextMonth}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-750 rounded-xl text-gray-500 dark:text-gray-450 transition-all font-bold"
+              >
+                <LuChevronRight className="w-4.5 h-4.5" />
+              </button>
+              <button
+                onClick={() => {
+                  setCalendarMonth(new Date().getMonth() + 1);
+                  setCalendarYear(new Date().getFullYear());
+                }}
+                className="px-3 py-1.5 bg-blue-50 dark:bg-blue-955/20 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 transition-all ml-2"
+              >
+                Today
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-4 bg-white dark:bg-gray-800/80 px-6 py-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-sm flex-1">
+              <input
+                type="text"
+                placeholder={
+                  activeTab === 'drivers' 
+                    ? "Search driver name or ID..." 
+                    : activeTab === 'trips' 
+                    ? "Search trip, route, driver..." 
+                    : "Search bus plate or model..."
+                }
+                className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          )}
         </div>
 
         {/* Tab display panels */}
@@ -726,7 +971,7 @@ export default function LogisticsOverview() {
                   </tbody>
                 </table>
               </motion.div>
-            ) : (
+            ) : activeTab === 'trips' ? (
               <motion.div
                 key="trips-panel"
                 initial={{ opacity: 0, x: 10 }}
@@ -829,6 +1074,203 @@ export default function LogisticsOverview() {
                   </tbody>
                 </table>
               </motion.div>
+            ) : (
+              <motion.div
+                key="fleet-panel"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.2 }}
+              >
+                {!selectedBusId ? (
+                  /* BUSES GRID */
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-8">
+                    {filteredBuses.length === 0 ? (
+                      <div className="col-span-full py-16 text-center text-gray-400">
+                        <p className="text-sm font-bold text-gray-500">No buses matched the search criteria.</p>
+                      </div>
+                    ) : (
+                      filteredBuses.map((bus: any) => (
+                        <div 
+                          key={bus.id} 
+                          onClick={() => {
+                            setSelectedBusId(bus.id);
+                            setCalendarMonth(new Date().getMonth() + 1);
+                            setCalendarYear(new Date().getFullYear());
+                          }}
+                          className="p-6 bg-gray-50/50 dark:bg-gray-800/25 border border-gray-100 dark:border-gray-800/80 rounded-[2.2rem] hover:border-blue-400/40 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="px-3.5 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-700 flex items-center gap-2 shadow-sm">
+                                <LuBus className="text-blue-600 dark:text-blue-400 w-4 h-4" />
+                                <span className="font-mono font-black text-gray-900 dark:text-white text-xs uppercase">{bus.plate_number}</span>
+                              </div>
+                              <span className={cn(
+                                "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block shadow-sm",
+                                bus.status === 'available' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20' :
+                                bus.status === 'in_service' ? 'bg-blue-100 text-blue-700 dark:bg-blue-955/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/20' :
+                                bus.status === 'under_maintenance' ? 'bg-amber-100 text-amber-700 dark:bg-amber-955/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-900/20' :
+                                'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
+                              )}>
+                                {bus.status.replace('_', ' ')}
+                              </span>
+                            </div>
+                            
+                            <h4 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight line-clamp-1">{bus.model}</h4>
+                            
+                            <div className="mt-4 space-y-2 text-xs font-bold text-gray-500 dark:text-gray-400">
+                              <div className="flex justify-between">
+                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Capacity</span>
+                                <span className="text-gray-850 dark:text-gray-200">{bus.seating_capacity} seats</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Class</span>
+                                <span className="text-gray-850 dark:text-gray-200">{bus.bus_category || 'ECONOMY'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Captain</span>
+                                <span className="text-gray-850 dark:text-gray-200 font-black text-blue-600 dark:text-blue-450">
+                                  {bus.driver ? `${bus.driver.first_name} ${bus.driver.last_name}` : 'TBA'}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800/80 flex justify-end">
+                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
+                              View Schedule Calendar →
+                            </span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  /* BUS CALENDAR VIEW */
+                  (() => {
+                    const selectedBus = buses.find((b: any) => b.id === selectedBusId);
+                    
+                    // Calendar grid computation
+                    const firstDayOfMonth = new Date(calendarYear, calendarMonth - 1, 1).getDay();
+                    const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
+                    
+                    const calendarCells = [];
+                    for (let i = 0; i < firstDayOfMonth; i++) {
+                      calendarCells.push(null);
+                    }
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      calendarCells.push(d);
+                    }
+                    
+                    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+                    return (
+                      <div className="p-8 space-y-6">
+                        {/* calendar header/info */}
+                        <div className="flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800/80">
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => setSelectedBusId(null)}
+                              className="px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 text-xs font-black text-gray-650 dark:text-gray-300 uppercase tracking-widest border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm transition-all"
+                            >
+                              ← Back to Fleet
+                            </button>
+                            <div>
+                              <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{selectedBus?.model}</h3>
+                              <p className="text-[10px] text-gray-450 font-black uppercase tracking-widest mt-0.5">
+                                Plate: {selectedBus?.plate_number} • Capacity: {selectedBus?.seating_capacity} Seats • {selectedBus?.bus_category || 'ECONOMY'}
+                              </p>
+                            </div>
+                          </div>
+                          {selectedBus?.driver && (
+                            <div className="text-right">
+                              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Assigned Captain</p>
+                              <p className="text-sm font-black text-blue-600 dark:text-blue-450 uppercase mt-0.5">
+                                {selectedBus.driver.first_name} {selectedBus.driver.last_name}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Calendar Grid */}
+                        <div className="border border-gray-100 dark:border-gray-800 rounded-[2.5rem] overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
+                          <div className="grid grid-cols-7 border-b border-gray-150 dark:border-gray-850 bg-gray-50/30 dark:bg-gray-800/10">
+                            {weekdays.map(d => (
+                              <div key={d} className="py-4 text-center text-[10px] font-black text-gray-450 dark:text-gray-500 uppercase tracking-widest border-r border-gray-100 dark:border-gray-850 last:border-r-0">
+                                {d}
+                              </div>
+                            ))}
+                          </div>
+                          
+                          <div className="grid grid-cols-7 border-collapse">
+                            {calendarCells.map((day, idx) => {
+                              if (day === null) {
+                                return (
+                                  <div key={`empty-${idx}`} className="min-h-[120px] border-b border-r border-gray-100 dark:border-gray-805 bg-gray-50/20 dark:bg-gray-900/10 last:border-r-0" />
+                                );
+                              }
+                              
+                              const dayStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                              const dayEntries = calendarData.filter((e: any) => e.date === dayStr);
+                              
+                              return (
+                                <div 
+                                  key={`day-${day}`}
+                                  onClick={() => {
+                                    if (dayEntries.length > 0) {
+                                      setSelectedCalendarDay({ day, entries: dayEntries });
+                                    }
+                                  }}
+                                  className={cn(
+                                    "min-h-[120px] p-3 border-b border-r border-gray-100 dark:border-gray-805 bg-white dark:bg-gray-900 flex flex-col justify-between last:border-r-0 transition-all select-none",
+                                    dayEntries.length > 0 
+                                      ? "cursor-pointer hover:bg-blue-50/20 dark:hover:bg-blue-950/10" 
+                                      : "cursor-default"
+                                  )}
+                                >
+                                  <span className={cn(
+                                    "text-xs font-black text-gray-400",
+                                    dayEntries.length > 0 && "text-blue-600 dark:text-blue-400 font-black"
+                                  )}>
+                                    {day}
+                                  </span>
+                                  
+                                  <div className="space-y-1 mt-2 flex-1 flex flex-col justify-end overflow-hidden">
+                                    {dayEntries.map((e: any, eIdx: number) => {
+                                      if (e.type === 'invoice') {
+                                        return (
+                                          <div 
+                                            key={`e-${eIdx}`} 
+                                            className="px-2 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 text-[9px] font-black rounded-lg border border-blue-100/30 dark:border-blue-900/20 truncate leading-tight shadow-sm text-left"
+                                            title={`Invoice #${e.reference_no} - ${e.customer_name}`}
+                                          >
+                                            🎫 INV-{e.reference_no}
+                                          </div>
+                                        );
+                                      } else {
+                                        return (
+                                          <div 
+                                            key={`e-${eIdx}`} 
+                                            className="px-2 py-1 bg-amber-50 dark:bg-amber-955/40 text-amber-700 dark:text-amber-450 text-[9px] font-black rounded-lg border border-amber-100/30 dark:border-amber-900/20 truncate leading-tight shadow-sm text-left"
+                                            title={`Trip Ticket #${e.reference_no} - ${e.drop_off}`}
+                                          >
+                                            🚌 DTT-{e.reference_no}
+                                          </div>
+                                        );
+                                      }
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -850,6 +1292,18 @@ export default function LogisticsOverview() {
         <TripTicketDetailModal
           ticket={selectedTicket}
           onClose={() => setSelectedTicket(null)}
+        />
+      )}
+
+      {/* Calendar Day Detail Modal */}
+      {selectedCalendarDay && (
+        <CalendarDayDetailModal
+          day={selectedCalendarDay.day}
+          month={calendarMonth}
+          year={calendarYear}
+          entries={selectedCalendarDay.entries}
+          bus={buses.find(b => b.id === selectedBusId)}
+          onClose={() => setSelectedCalendarDay(null)}
         />
       )}
     </div>

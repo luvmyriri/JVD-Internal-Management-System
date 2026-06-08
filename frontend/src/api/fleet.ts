@@ -26,4 +26,7 @@ export const fleetApi = {
 
   getPmsStatus: (id: number) =>
     client.get(`/buses/${id}/pms-status`),
+
+  getCalendar: (id: number, params?: { month?: number; year?: number }) =>
+    client.get<{ success: boolean; data: any[]; bus: any }>(`/buses/${id}/calendar`, { params }),
 };

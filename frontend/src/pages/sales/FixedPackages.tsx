@@ -16,6 +16,8 @@ import {
 } from 'react-icons/lu';
 import { Pencil, Trash2 } from 'lucide-react';
 import { billingApi, type Service } from '../../api/billing';
+import { fleetApi } from '../../api/fleet';
+import BusLayout from '../../components/ui/BusLayout';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
@@ -90,6 +92,68 @@ export default function FixedPackages() {
   const [bookingTourExtraDays, setBookingTourExtraDays] = useState<number>(0);
   const [bookingTourExtraHours, setBookingTourExtraHours] = useState<number>(0);
 
+  // Bus rental/seat selection states
+  const [bookingDate, setBookingDate] = useState<string>('');
+  const [bookingBusId, setBookingBusId] = useState<number | null>(null);
+  const [bookingSeats, setBookingSeats] = useState<string[]>([]);
+
+  // Load buses list for selection
+  const { data: busesRes } = useQuery({
+    queryKey: ['buses-list'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+  });
+  const buses = busesRes?.data?.data ?? [];
+
+  // Load calendar for selected bus to check seat occupancy on travel date
+  const { data: busCalendarRes } = useQuery({
+    queryKey: ['bus-calendar', bookingBusId, bookingDate ? bookingDate.substring(0, 7) : ''],
+    queryFn: async () => {
+      if (!bookingBusId || !bookingDate) return null;
+      const date = new Date(bookingDate);
+      const res = await fleetApi.getCalendar(bookingBusId, { month: date.getMonth() + 1, year: date.getFullYear() });
+      return res.data;
+    },
+    enabled: !!bookingBusId && !!bookingDate,
+  });
+
+  const occupiedSeats = useMemo(() => {
+    if (!busCalendarRes?.data || !bookingDate) return [];
+    const entries = busCalendarRes.data;
+    // Trip tickets or Invoices on this travel date make seats unavailable
+    const sameDayInvoices = entries.filter((e: any) => e.date === bookingDate && e.type === 'invoice');
+    const seats: string[] = [];
+    sameDayInvoices.forEach((inv: any) => {
+      if (Array.isArray(inv.seat_map)) {
+        seats.push(...inv.seat_map);
+      }
+    });
+    return seats;
+  }, [busCalendarRes, bookingDate]);
+
+  const busSeats = useMemo(() => {
+    if (!bookingBusId) return [];
+    const selectedBus = buses.find(b => b.id === bookingBusId);
+    if (!selectedBus) return [];
+    const total = selectedBus.seating_capacity;
+    const backSeats = 5;
+    const mainSeats = Math.floor((total - backSeats) / 4) * 4;
+    const actualTotal = mainSeats + backSeats;
+    return Array.from({ length: actualTotal }, (_, i) => {
+      const seatNum = String(i + 1);
+      let status: 'available' | 'occupied' | 'selected' = 'available';
+      if (occupiedSeats.includes(seatNum)) {
+        status = 'occupied';
+      } else if (bookingSeats.includes(seatNum)) {
+        status = 'selected';
+      }
+      return {
+        id: `seat-${seatNum}`,
+        number: seatNum,
+        status,
+      };
+    });
+  }, [bookingBusId, buses, occupiedSeats, bookingSeats]);
+
   // Confirm dialog state
   const [confirmDelete, setConfirmDelete] = useState<{ open: boolean; id: number | null }>({ open: false, id: null });
   const [alertDialog, setAlertDialog] = useState<{ open: boolean; title: string; message: string; variant: 'success' | 'error' }>({ open: false, title: '', message: '', variant: 'success' });
@@ -131,38 +195,39 @@ export default function FixedPackages() {
   };
 
   // Cart operations
-  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number, vehicleType?: 'Bus' | 'Coaster', extraDays?: number, extraHours?: number) => {
+  const addToCart = (service: Service, adults?: number, childrenCount?: number, customPrice?: number, vehicleType?: 'Bus' | 'Coaster', extraDays?: number, extraHours?: number, busId?: number, selectedSeats?: string[]) => {
     setCart(prev => {
       const existing = prev.find(item =>
         item.service.id === service.id &&
         item.adults === adults &&
         item.childrenCount === childrenCount &&
-        item.vehicleType === vehicleType
+        item.vehicleType === vehicleType &&
+        item.busId === busId
       );
       if (existing) {
         return prev.map(item =>
-          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType)
-            ? { ...item, quantity: item.quantity + 1, extraDays, extraHours, customPrice }
+          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId)
+            ? { ...item, quantity: item.quantity + 1, extraDays, extraHours, customPrice, selectedSeats }
             : item
         );
       }
-      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours }];
+      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours, busId, selectedSeats }];
     });
   };
 
-  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => {
+  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => {
     setCart(prev => prev.filter(item =>
-      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType)
+      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId)
     ));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => {
+  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => {
     if (newQty < 1) {
-      removeFromCart(serviceId, adults, childrenCount, vehicleType);
+      removeFromCart(serviceId, adults, childrenCount, vehicleType, busId);
       return;
     }
     setCart(prev => prev.map(item => {
-      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType) {
+      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId) {
         return { ...item, quantity: newQty };
       }
       return item;
@@ -868,6 +933,9 @@ export default function FixedPackages() {
                     setBookingTourExtraDays(0);
                     setBookingTourExtraHours(0);
                   }
+                  setBookingDate('');
+                  setBookingBusId(null);
+                  setBookingSeats([]);
                   setShowDetailModal(true);
                 }}
                 className="bg-white dark:bg-gray-900 rounded-[2rem] border border-gray-100 dark:border-gray-800 shadow-sm hover:shadow-2xl hover:border-blue-200 dark:hover:border-blue-800 transition-all group cursor-pointer overflow-hidden flex flex-col shrink-0 w-[85vw] md:w-auto snap-center relative"
@@ -987,7 +1055,7 @@ export default function FixedPackages() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (service.has_booking_fields || service.is_tour) {
+                      if (service.has_booking_fields || service.is_tour || service.category === 'Bus Rental') {
                         setSelectedServiceForDetail(service);
                         setDetailImageIndex(0);
                         setBookingAdults(1);
@@ -997,6 +1065,9 @@ export default function FixedPackages() {
                           setBookingTourExtraDays(0);
                           setBookingTourExtraHours(0);
                         }
+                        setBookingDate('');
+                        setBookingBusId(null);
+                        setBookingSeats([]);
                         setShowDetailModal(true);
                       } else {
                         addToCart(service);
@@ -1732,6 +1803,75 @@ export default function FixedPackages() {
                   </div>
                 )}
 
+                {/* Bus Rental & Seating Options (Conditional for Bus Rental or Tour with Bus) */}
+                {(selectedServiceForDetail.category === 'Bus Rental' || (selectedServiceForDetail.is_tour && bookingTourVehicle === 'Bus')) && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Rental & Seating Options</p>
+                    
+                    {/* Travel Date */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                      <input
+                        type="date"
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                        value={bookingDate}
+                        onChange={(e) => {
+                          setBookingDate(e.target.value);
+                          setBookingSeats([]);
+                        }}
+                      />
+                    </div>
+
+                    {/* Assign Bus */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Bus</label>
+                      <select
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                        value={bookingBusId || ''}
+                        onChange={(e) => {
+                          const id = e.target.value ? Number(e.target.value) : null;
+                          setBookingBusId(id);
+                          setBookingSeats([]);
+                        }}
+                      >
+                        <option value="">Select a Bus...</option>
+                        {buses.filter((b: any) => b.status?.toLowerCase() === 'available').map((b: any) => (
+                          <option key={b.id} value={b.id}>
+                            {b.plate_number} - {b.model} ({b.seating_capacity} Seaters)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Seat Selector Layout */}
+                    {bookingBusId && bookingDate && (
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                        <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+                          <BusLayout
+                            totalSeats={buses.find(b => b.id === bookingBusId)?.seating_capacity || 49}
+                            hasRestroom={buses.find(b => b.id === bookingBusId)?.model?.toLowerCase().includes('vip') || false}
+                            selectedSeats={bookingSeats}
+                            occupiedSeats={occupiedSeats}
+                            onSeatToggle={(seatNum) => {
+                              setBookingSeats(prev =>
+                                prev.includes(seatNum)
+                                  ? prev.filter(s => s !== seatNum)
+                                  : [...prev, seatNum]
+                              );
+                            }}
+                          />
+                        </div>
+                        {bookingSeats.length > 0 && (
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">
+                            Selected: {bookingSeats.join(', ')} ({bookingSeats.length} seats selected)
+                          </p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
                   <p className="text-[10px] font-black text-gray-450 uppercase tracking-widest mb-2">Package Investment</p>
                   <h4 className="text-4xl font-black text-gray-900 dark:text-white tracking-tighter">
@@ -1777,31 +1917,44 @@ export default function FixedPackages() {
                       )}
                     </div>
                   )}
-                  <p className="text-[10px] text-gray-450 mt-2">* VAT Inclusive Price</p>
+                  <p className="text-[10px] text-gray-455 mt-2">* VAT Inclusive Price</p>
                 </div>
               </div>
 
               <div className="space-y-3 font-black">
-                <button
-                  onClick={() => {
-                    if (selectedServiceForDetail.is_tour) {
-                      const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
-                      const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
-                      const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
-                      const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                      addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours);
-                    } else if (selectedServiceForDetail.has_booking_fields) {
-                      const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                      addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice);
-                    } else {
-                      addToCart(selectedServiceForDetail);
-                    }
-                    setShowDetailModal(false);
-                  }}
-                  className="w-full py-5 bg-blue-600 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl shadow-blue-600/20 hover:bg-blue-700 transition-all active:scale-95 flex items-center justify-center gap-3"
-                >
-                  <LuPlus className="w-5 h-5" /> Add to Current Order
-                </button>
+                {(() => {
+                  const isBusAssigned = selectedServiceForDetail.category === 'Bus Rental' || (selectedServiceForDetail.is_tour && bookingTourVehicle === 'Bus');
+                  const isBusSelectionInvalid = isBusAssigned && (!bookingDate || !bookingBusId || bookingSeats.length === 0);
+
+                  return (
+                    <button
+                      disabled={isBusSelectionInvalid}
+                      onClick={() => {
+                        if (selectedServiceForDetail.is_tour) {
+                          const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
+                          const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
+                          const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
+                          const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
+                          addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                        } else if (selectedServiceForDetail.has_booking_fields) {
+                          const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
+                          addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                        } else {
+                          addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined);
+                        }
+                        setShowDetailModal(false);
+                      }}
+                      className={`w-full py-5 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
+                        isBusSelectionInvalid
+                          ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-500'
+                          : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                      }`}
+                    >
+                      <LuPlus className="w-5 h-5" />
+                      {isBusSelectionInvalid ? 'Select Date, Bus & Seats' : 'Add to Current Order'}
+                    </button>
+                  );
+                })()}
                 <button
                   type="button"
                   onClick={handlePrintService}

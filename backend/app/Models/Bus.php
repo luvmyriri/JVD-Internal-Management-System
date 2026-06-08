@@ -43,4 +43,14 @@ class Bus extends Model
     {
         return $this->belongsTo(User::class, 'assigned_driver');
     }
+
+    public function tripTickets()
+    {
+        return $this->hasMany(\App\Models\TripTicket::class);
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(\App\Models\Invoice::class);
+    }
 }

@@ -131,4 +131,77 @@ class BusController extends Controller
             'message' => 'Bus updated successfully.',
         ]);
     }
+
+    /**
+     * Return calendar entries for a specific bus within a year-month window.
+     * Each entry = { date, type, reference_id, reference_no, seat_map? }
+     */
+    public function calendar(Request $request, Bus $bus): JsonResponse
+    {
+        $month = $request->get('month', now()->month);
+        $year  = $request->get('year',  now()->year);
+
+        $start = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
+        $end   = $start->copy()->endOfMonth()->endOfDay();
+
+        // Trip tickets for this bus (by bus_id FK or plate_no fallback)
+        $tripTickets = \App\Models\TripTicket::where(function ($q) use ($bus) {
+                $q->where('bus_id', $bus->id)
+                  ->orWhere('plate_no', $bus->plate_number);
+            })
+            ->whereBetween('date_of_travel', [$start->toDateString(), $end->toDateString()])
+            ->get(['id', 'control_no', 'date_of_travel', 'pick_up', 'drop_off', 'no_of_passengers', 'status']);
+
+        // POS invoices linked to this bus
+        $invoices = \App\Models\Invoice::where('bus_id', $bus->id)
+            ->whereBetween('created_at', [$start, $end])
+            ->get(['id', 'invoice_number', 'created_at', 'customer_name', 'seat_map', 'status', 'total_amount']);
+
+        $entries = [];
+
+        foreach ($tripTickets as $tt) {
+            $entries[] = [
+                'date'         => $tt->date_of_travel,
+                'type'         => 'trip_ticket',
+                'reference_id' => $tt->id,
+                'reference_no' => $tt->control_no,
+                'pick_up'      => $tt->pick_up,
+                'drop_off'     => $tt->drop_off,
+                'pax'          => $tt->no_of_passengers,
+                'status'       => $tt->status,
+                'seat_map'     => null,
+            ];
+        }
+
+        foreach ($invoices as $inv) {
+            $entries[] = [
+                'date'          => $inv->created_at->toDateString(),
+                'type'          => 'invoice',
+                'reference_id'  => $inv->id,
+                'reference_no'  => $inv->invoice_number,
+                'customer_name' => $inv->customer_name,
+                'status'        => $inv->status,
+                'seat_map'      => $inv->seat_map,
+                'total_amount'  => $inv->total_amount,
+            ];
+        }
+
+        // Sort by date
+        usort($entries, fn($a, $b) => strcmp($a['date'], $b['date']));
+
+        return response()->json([
+            'success' => true,
+            'data'    => $entries,
+            'bus'     => [
+                'id'               => $bus->id,
+                'plate_number'     => $bus->plate_number,
+                'model'            => $bus->model,
+                'seating_capacity' => $bus->seating_capacity,
+                'bus_category'     => $bus->bus_category,
+            ],
+            'month'   => (int) $month,
+            'year'    => (int) $year,
+        ]);
+    }
 }
+

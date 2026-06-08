@@ -33,7 +33,16 @@ class Invoice extends Model
         'created_by',
         'notes',
         'cash_budget_request_id',
+        'bus_id',
+        'seat_map',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'seat_map' => 'array',
+        ];
+    }
 
     public function customer(): BelongsTo
     {
@@ -58,5 +67,10 @@ class Invoice extends Model
     public function cashBudgetRequest(): BelongsTo
     {
         return $this->belongsTo(CashBudgetRequest::class);
+    }
+
+    public function bus(): BelongsTo
+    {
+        return $this->belongsTo(Bus::class);
     }
 }

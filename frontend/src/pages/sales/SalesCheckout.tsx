@@ -26,12 +26,14 @@ export interface CartItem {
   vehicleType?: 'Bus' | 'Coaster';
   extraDays?: number;
   extraHours?: number;
+  busId?: number;
+  selectedSeats?: string[];
 }
 
 interface SalesCheckoutProps {
   cart: CartItem[];
-  removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => void;
-  updateQuantity: (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster') => void;
+  removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => void;
+  updateQuantity: (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => void;
   clearCart: () => void;
 }
 
@@ -110,7 +112,9 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           unit_price: item.customPrice ?? item.service.price,
           adults: item.adults,
           children: item.childrenCount
-        }))
+        })),
+        bus_id: cart.find(item => item.busId)?.busId || null,
+        seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
       });
 
       setLastInvoice(response.data.data);
@@ -160,7 +164,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           ) : (
             <div className="space-y-3">
               {cart.map((item) => (
-                <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}-${item.vehicleType ?? ''}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}-${item.vehicleType ?? ''}-${item.busId ?? 0}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 pr-4">
                       <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>
@@ -174,17 +178,22 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                           Vehicle: {item.vehicleType} {item.extraDays ? `| +${item.extraDays} Days` : ''} {item.extraHours ? `| +${item.extraHours} Hrs` : ''}
                         </p>
                       )}
+                      {item.busId && (
+                        <p className="text-[9px] text-blue-600 dark:text-blue-450 font-black mt-1 uppercase tracking-tight">
+                          Bus Assigned (ID: {item.busId}) {item.selectedSeats && item.selectedSeats.length > 0 ? `| Seats: ${item.selectedSeats.join(', ')}` : ''}
+                        </p>
+                      )}
                       <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                     </div>
-                    <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                    <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="text-gray-300 hover:text-rose-500 transition-colors">
                       <LuTrash2 className="w-4 h-4" />
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                      <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
                       <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                      <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                     </div>
                     <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
@@ -525,6 +534,18 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     ))}
                   </tbody>
                 </table>
+
+                {lastInvoice?.bus_id && (
+                  <div className="my-6 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl text-left">
+                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Bus Rental Assignment</p>
+                    <p className="text-xs font-black text-gray-900 mt-1 uppercase">Bus Registered: ID #{lastInvoice.bus_id}</p>
+                    {lastInvoice.seat_map && lastInvoice.seat_map.length > 0 && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Seats Booked: {lastInvoice.seat_map.join(', ')} ({lastInvoice.seat_map.length} seats)
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 <div className="flex justify-end">
                   <div className="w-64 space-y-3">

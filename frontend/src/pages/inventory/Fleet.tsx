@@ -22,6 +22,14 @@ const getStatusVariant = (status: string): 'success' | 'info' | 'warning' | 'dan
   }
 };
 
+const HIGER_PRESETS = [
+  { name: 'Custom Seating', model: '', capacity: 49, category: 'ECONOMY', hasRestroom: false },
+  { name: 'Higer H92 (49 seats)', model: 'Higer H92', capacity: 49, category: 'ECONOMY', hasRestroom: false },
+  { name: 'Higer H93 VIP (49 seats, restroom)', model: 'Higer H93 VIP', capacity: 49, category: 'VIP', hasRestroom: true },
+  { name: 'Higer A87 (41 seats)', model: 'Higer A87', capacity: 41, category: 'ECONOMY', hasRestroom: false },
+  { name: 'Higer KLQ6122GQ3 (55 seats)', model: 'Higer KLQ6122GQ3', capacity: 55, category: 'ECONOMY', hasRestroom: false },
+];
+
 // ── Add/Edit Bus Modal ────────────────────────────────────────────────────────
 interface BusModalProps {
   bus?: Bus;
@@ -96,6 +104,31 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
             </summary>
             <div className="pt-4 px-1 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {mode !== 'view' && (
+                  <div className="space-y-2 col-span-2">
+                    <label className="block text-[10px] font-black text-blue-500 dark:text-blue-400 uppercase tracking-[0.2em] ml-1">Quick Select Higer Model Preset</label>
+                    <select 
+                      onChange={e => {
+                        const idx = parseInt(e.target.value);
+                        if (!isNaN(idx) && idx > 0) {
+                          const preset = HIGER_PRESETS[idx];
+                          setForm(p => ({
+                            ...p,
+                            model: preset.model,
+                            seating_capacity: preset.capacity,
+                            bus_category: preset.category as any,
+                          }));
+                        }
+                      }}
+                      className="w-full px-4 py-3 rounded-2xl border border-blue-200 dark:border-blue-800 text-sm font-semibold transition-all appearance-none text-blue-700 bg-blue-50/50 dark:bg-blue-900/10 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {HIGER_PRESETS.map((p, i) => (
+                        <option key={i} value={i}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 {field('Plate Number *', 'plate_number', 'text', 'ABC-1234', val => setForm(p => ({ ...p, plate_number: formatPlateNumber(val) })))}
                 {field('Bus Model *', 'model', 'text', 'e.g. Yutong ZK6122H')}
                 
@@ -180,7 +213,9 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
             </summary>
             <div className="pt-6 px-1 flex justify-center overflow-x-auto pb-4">
               <BusLayout 
-                hasRestroom={(bus?.bus_category ?? form.bus_category) === 'VIP'}
+                totalSeats={form.seating_capacity}
+                hasRestroom={form.bus_category === 'VIP'}
+                viewOnly={true}
                 className="transform scale-90 sm:scale-100 origin-top"
               />
             </div>

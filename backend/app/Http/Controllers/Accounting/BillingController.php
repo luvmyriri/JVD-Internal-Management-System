@@ -283,6 +283,8 @@ class BillingController extends Controller
             'items.*.adults' => 'nullable|integer',
             'items.*.children' => 'nullable|integer',
             'notes' => 'nullable|string',
+            'bus_id' => 'nullable|integer|exists:buses,id',
+            'seat_map' => 'nullable|array',
         ], [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
             'customer_email.email' => 'The email address must be a valid email format.',
@@ -361,9 +363,11 @@ class BillingController extends Controller
                 'payment_type' => $paymentType,
                 'balance' => max(0, $balance),
                 'due_date' => $request->due_date,
-                'status' => $status,
-                'created_by' => auth()->id() ?? 1,
-                'notes' => $request->notes,
+                'status'          => $status,
+                'created_by'      => auth()->id() ?? 1,
+                'notes'           => $request->notes,
+                'bus_id'          => $request->bus_id,
+                'seat_map'        => $request->seat_map,
             ]);
 
             // Create Invoice Items

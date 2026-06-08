@@ -212,8 +212,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // Drivers can read buses (for My Fleet page)
     Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge,dispatcher,purchasing_manager,head_mechanic,service_adviser,driver,logistics:view')->group(function () {
-        Route::get('buses',       [BusController::class, 'index'])->name('buses.index');
-        Route::get('buses/{bus}', [BusController::class, 'show'])->name('buses.show');
+        Route::get('buses',               [BusController::class, 'index'])->name('buses.index');
+        Route::get('buses/{bus}',          [BusController::class, 'show'])->name('buses.show');
+        Route::get('buses/{bus}/calendar', [BusController::class, 'calendar'])->name('buses.calendar');
     });
     Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge')->group(function () {
         Route::post('buses',           [BusController::class, 'store'])->name('buses.store');
