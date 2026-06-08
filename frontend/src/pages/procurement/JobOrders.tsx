@@ -231,8 +231,8 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
   const [items, setItems] = useState<POLineItem[]>([{ item_name: '', quantity: 1, unit_price: 0 }]);
 
   const { data: suppliersData, isLoading: suppliersLoading } = useQuery({
-    queryKey: ['suppliers-dropdown'],
-    queryFn: () => supplierApi.list({ per_page: 100 }),
+    queryKey: ['suppliers-dropdown', 'accredited'],
+    queryFn: () => supplierApi.list({ accreditation_status: 'accredited', per_page: 200 }),
     staleTime: 60_000,
   });
   const suppliers = suppliersData?.data?.data ?? [];
@@ -279,11 +279,16 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
             <div className="relative">
               <select value={supplierId || ''} onChange={e => setSupplierId(Number(e.target.value))}
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500">
-                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select a supplier...'}</option>
+                <option value="">{suppliersLoading ? 'Loading suppliers...' : 'Select an accredited supplier...'}</option>
                 {suppliers.map((s: any) => <option key={s.id} value={s.id}>{s.company_name}</option>)}
               </select>
               <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+            {!suppliersLoading && suppliers.length === 0 && (
+              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100">
+                No accredited suppliers yet. Go to Suppliers page and verify a supplier first.
+              </p>
+            )}
           </div>
 
           {/* Line Items */}

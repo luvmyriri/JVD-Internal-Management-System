@@ -69,7 +69,9 @@ export const JO_STATUS_LABELS: Record<string, string> = {
 };
 
 export const WO_STATUS = {
+  PENDING_VALIDATION: 'pending_validation',
   PENDING_APPROVAL: 'pending_approval',
+  VERIFIED: 'verified',
   OPEN: 'open',
   IN_PROGRESS: 'in_progress',
   COMPLETED: 'completed',
@@ -77,7 +79,9 @@ export const WO_STATUS = {
 } as const;
 
 export const WO_STATUS_LABELS: Record<string, string> = {
+  pending_validation: 'Pending Validation',
   pending_approval: 'Pending Approval',
+  verified: 'Verified',
   open: 'Open',
   in_progress: 'In Progress',
   completed: 'Completed',
