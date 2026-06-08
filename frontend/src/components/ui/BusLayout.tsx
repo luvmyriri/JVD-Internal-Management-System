@@ -8,12 +8,13 @@ import {
 import { GiSteeringWheel } from 'react-icons/gi';
 import { MdOutlineWc } from 'react-icons/md';
 
-export type SeatStatus = 'available' | 'occupied' | 'reserved' | 'selected';
+export type SeatStatus = 'available' | 'occupied' | 'reserved' | 'selected' | 'custom';
 
 export interface SeatInfo {
   id: string;
   number: string;
   status: SeatStatus;
+  active?: boolean;
 }
 
 export interface BusLayoutProps {
@@ -28,13 +29,15 @@ export interface BusLayoutProps {
   selectedSeats?: string[];    // seat numbers currently selected
   occupiedSeats?: string[];    // seat numbers already booked
   onSeatToggle?: (seatNumber: string) => void; // toggle a seat selection
+  isCustomizing?: boolean;     // from remote branch
 }
 
 export const statusColors: Record<SeatStatus, { bg: string; border: string; text: string }> = {
   available: { bg: 'bg-white dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600' },
+  reserved:  { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/50' },
   selected:  { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },
   occupied:  { bg: 'bg-gray-100 dark:bg-gray-700', text: 'text-gray-400 dark:text-gray-500', border: 'border-gray-200 dark:border-gray-600' },
-  reserved:  { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/50' },
+  custom:    { bg: 'bg-purple-100 dark:bg-purple-900/40', text: 'text-purple-600 dark:text-purple-400', border: 'border-purple-300 dark:border-purple-700/50' },
 };
 
 // ── Seat numbering convention ─────────────────────────────────────────────────
@@ -97,23 +100,41 @@ const Seat = ({
   onClick,
   viewOnly = false,
   compact = false,
+  isCustomizing = false,
 }: {
   seat: SeatInfo;
   onClick?: (seat: SeatInfo) => void;
   viewOnly?: boolean;
   compact?: boolean;
+  isCustomizing?: boolean;
 }) => {
-  const colors = statusColors[seat.status];
-  const isClickable = !viewOnly && (seat.status === 'available' || seat.status === 'selected');
-
+  const isActive = seat.active !== false;
   const sizeClass = compact
     ? 'w-7 h-9 rounded-t-[0.4rem] rounded-b-[0.2rem]'
     : 'w-10 h-[2.75rem] rounded-t-[0.6rem] rounded-b-[0.3rem]';
 
+  if (!isActive) {
+    if (isCustomizing) {
+      return (
+        <div
+          onClick={() => onClick?.(seat)}
+          title={`Click to configure Seat (originally ${seat.id.replace('seat-', '')})`}
+          className={`${sizeClass} border-2 border-dashed border-gray-300 dark:border-gray-700 flex items-center justify-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/20 transition-all select-none`}
+        >
+          <span className={`${compact ? 'text-[10px]' : 'text-[14px]'} font-black text-gray-400 dark:text-gray-600`}>+</span>
+        </div>
+      );
+    }
+    return <div className={sizeClass} />;
+  }
+
+  const colors = statusColors[seat.status];
+  const isClickable = !viewOnly && (isCustomizing || seat.status === 'available' || seat.status === 'selected' || seat.status === 'custom');
+
   return (
     <div
       onClick={() => isClickable && onClick?.(seat)}
-      title={`Seat ${seat.number} – ${seat.status}`}
+      title={`Seat ${seat.number} – ${seat.status}${isCustomizing ? ' (Click to edit)' : ''}`}
       className={[
         'relative border-2 flex flex-col items-center justify-center transition-all select-none',
         sizeClass,
@@ -123,6 +144,7 @@ const Seat = ({
           : viewOnly
           ? 'cursor-default'
           : 'cursor-not-allowed opacity-70',
+        isCustomizing ? 'border-dashed border-blue-400 ring-2 ring-blue-500/10' : '',
       ].join(' ')}
     >
       {/* headrest ridge */}
@@ -153,6 +175,7 @@ export default function BusLayout({
   selectedSeats = [],
   occupiedSeats = [],
   onSeatToggle,
+  isCustomizing = false,
 }: BusLayoutProps) {
 
   const effectiveTotal = seats.length > 0 
@@ -179,12 +202,20 @@ export default function BusLayout({
     id: `seat-${i + 1}`,
     number: String(i + 1),
     status: 'available',
+    active: true,
   }));
 
   const activeSeats = posSeats.length > 0 ? posSeats : (seats.length > 0 ? seats : defaultSeats);
-  const getSeat = (n: number): SeatInfo =>
-    activeSeats.find(s => s.number === String(n)) ??
-    { id: `dummy-${n}`, number: String(n), status: 'available' };
+
+  const getSeat = (n: number): SeatInfo => {
+    // Try finding by stable ID first so renames don't break lookup
+    const foundById = activeSeats.find(s => s.id === `seat-${n}`);
+    if (foundById) return foundById;
+    // Fallback search by number
+    const foundByNum = activeSeats.find(s => s.number === String(n));
+    if (foundByNum) return foundByNum;
+    return { id: `seat-${n}`, number: String(n), status: 'available', active: true };
+  };
 
   // Wrap onSeatToggle into onSeatClick interface
   const handleSeatClick = onSeatToggle
@@ -209,6 +240,7 @@ export default function BusLayout({
         <div className="flex flex-wrap items-center justify-center gap-5 mb-5 bg-white dark:bg-gray-800 px-6 py-3 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 w-full">
           {([
             { status: 'available', label: 'Available',  icon: null },
+            { status: 'custom',    label: 'Custom',     icon: null },
             { status: 'selected',  label: 'Selected',   icon: <LuCheck size={10} /> },
             { status: 'occupied',  label: 'Occupied',   icon: <LuUser  size={10} /> },
             { status: 'reserved',  label: 'Reserved',   icon: <LuBan   size={10} /> },
@@ -304,8 +336,8 @@ export default function BusLayout({
                       </div>
                     ) : (
                       <>
-                        <Seat seat={getSeat(col.topSeat2)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} />
-                        <Seat seat={getSeat(col.topSeat1)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} />
+                        <Seat seat={getSeat(col.topSeat2)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
+                        <Seat seat={getSeat(col.topSeat1)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
                       </>
                     )}
                   </div>
@@ -317,8 +349,8 @@ export default function BusLayout({
 
                   {/* BOTTOM PAIR (driver side) */}
                   <div className="flex flex-col gap-1">
-                    <Seat seat={getSeat(col.botSeat2)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} />
-                    <Seat seat={getSeat(col.botSeat1)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} />
+                    <Seat seat={getSeat(col.botSeat2)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
+                    <Seat seat={getSeat(col.botSeat1)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
                   </div>
 
                 </div>
@@ -328,7 +360,7 @@ export default function BusLayout({
             {/* ── BACK ROW (5 seats, vertical column on right) ── */}
             <div className={`flex flex-col justify-center ${colGap} pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700`}>
               {backRowSeats.map(n => (
-                <Seat key={n} seat={getSeat(n)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} />
+                <Seat key={n} seat={getSeat(n)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
               ))}
             </div>
 

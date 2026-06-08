@@ -12,6 +12,7 @@ class Bus extends Model
     protected $fillable = [
         'plate_number', 'model', 'bus_category', 'seating_capacity', 'status',
         'total_mileage', 'last_service_date', 'next_service_due', 'assigned_driver',
+        'custom_seats',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class Bus extends Model
             'total_mileage' => 'float',
             'last_service_date' => 'date',
             'next_service_due' => 'date',
+            'custom_seats' => 'array',
         ];
     }
 

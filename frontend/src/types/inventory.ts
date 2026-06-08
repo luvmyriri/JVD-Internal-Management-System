@@ -22,6 +22,7 @@ export interface Bus {
   next_service_due: string | null;
   is_service_overdue: boolean;
   driver?: Driver | null;
+  custom_seats?: any[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +87,7 @@ export interface BusFormData {
   last_service_date?: string;
   next_service_due?: string;
   assigned_driver?: number | null;
+  custom_seats?: any[] | null;
 }
 
 export interface InventoryItem {

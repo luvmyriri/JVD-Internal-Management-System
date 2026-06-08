@@ -1,10 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuBus, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuLoaderCircle, LuUser,
-  LuFileDown, LuFileUp, LuEye, LuChevronRight
+  LuFileDown, LuFileUp, LuEye, LuChevronRight, LuLayoutGrid
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -51,10 +51,22 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
       last_service_date: bus.last_service_date ?? '',
       next_service_due: bus.next_service_due ?? '',
       assigned_driver: bus.driver?.id ?? null,
+      custom_seats: bus.custom_seats ?? null,
     } : {
-      status: 'available', seating_capacity: 49, total_mileage: 0, bus_category: 'ECONOMY'
+      status: 'available', seating_capacity: 49, total_mileage: 0, bus_category: 'ECONOMY', custom_seats: null
     }
   );
+
+  const [isCustomizing, setIsCustomizing] = useState(false);
+  const [selectedSeatToEdit, setSelectedSeatToEdit] = useState<any | null>(null);
+
+  const default49Seats = Array.from({ length: 49 }, (_, idx) => ({
+    id: `seat-${idx + 1}`,
+    number: String(idx + 1),
+    status: 'available' as const,
+    active: true,
+  }));
+  const currentSeats = form.custom_seats || bus?.custom_seats || default49Seats;
 
   const { data: usersRes } = useQuery({ queryKey: ['users'], queryFn: () => userApi.list() });
   const drivers = usersRes?.data?.data?.filter((u: any) => u.role === 'driver' || u.department === 'fleet') ?? [];
@@ -211,13 +223,142 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
               <span>Seating Layout</span>
               <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
             </summary>
-            <div className="pt-6 px-1 flex justify-center overflow-x-auto pb-4">
-              <BusLayout 
-                totalSeats={form.seating_capacity}
-                hasRestroom={form.bus_category === 'VIP'}
-                viewOnly={true}
-                className="transform scale-90 sm:scale-100 origin-top"
-              />
+            <div className="pt-6 px-1 flex flex-col items-center justify-center pb-4 space-y-4">
+              
+              {mode !== 'view' && (
+                <div className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  <div className="space-y-1">
+                    <p className="text-xs font-bold text-gray-700 dark:text-gray-200">
+                      {isCustomizing ? '🔧 Click any seat in the layout to edit its label or presence.' : 'Configure custom seat names, types, or gaps for this bus.'}
+                    </p>
+                    <p className="text-[10px] text-gray-400 font-medium">
+                      {isCustomizing ? 'Your edits will be saved locally. Apply them to save.' : 'Standard layout uses 1 to 49 seats.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {form.custom_seats && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setForm(p => ({ ...p, custom_seats: null }));
+                          setIsCustomizing(false);
+                          setSelectedSeatToEdit(null);
+                          toast.success('Reset to standard layout.');
+                        }}
+                        className="px-3 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900 text-[10px] font-black uppercase tracking-wider transition-all"
+                      >
+                        Reset Default
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsCustomizing(!isCustomizing);
+                        setSelectedSeatToEdit(null);
+                      }}
+                      className={`px-4 py-2 text-[10px] font-black uppercase tracking-wider rounded-xl border transition-all ${
+                        isCustomizing
+                          ? 'bg-green-50 border-green-200 text-green-600 hover:bg-green-100 dark:bg-green-950/20 dark:border-green-900 dark:text-green-400'
+                          : 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100 dark:bg-blue-950/20 dark:border-blue-900 dark:text-blue-400'
+                      }`}
+                    >
+                      {isCustomizing ? 'Done Customizing' : 'Customize Seats'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="w-full flex justify-center overflow-x-auto">
+                <BusLayout 
+                  seats={currentSeats}
+                  totalSeats={form.seating_capacity}
+                  isCustomizing={isCustomizing}
+                  onSeatClick={(seat) => {
+                    if (mode !== 'view' && isCustomizing) {
+                      setSelectedSeatToEdit(seat);
+                    }
+                  }}
+                  hasRestroom={(bus?.bus_category ?? form.bus_category) === 'VIP'}
+                  className="transform scale-90 sm:scale-100 origin-top"
+                />
+              </div>
+
+              {/* Edit seat card */}
+              {selectedSeatToEdit && isCustomizing && (
+                <div className="w-full max-w-xl p-5 bg-blue-50/40 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-950 rounded-3xl space-y-4 shadow-sm">
+                  <div className="flex items-center justify-between border-b border-blue-100/50 dark:border-blue-950/50 pb-2.5">
+                    <span className="text-[10px] font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">
+                      Edit Seat Configuration (ID: {selectedSeatToEdit.id})
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSeatToEdit(null)}
+                      className="text-[10px] font-black text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 uppercase tracking-wider"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Seat Number / Label</label>
+                      <input
+                        type="text"
+                        value={selectedSeatToEdit.number}
+                        onChange={(e) => setSelectedSeatToEdit((p: any) => ({ ...p, number: e.target.value.toUpperCase().slice(0, 8) }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800"
+                        placeholder="e.g. 1, A1, VIP"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
+                      <select
+                        value={selectedSeatToEdit.status}
+                        onChange={(e) => setSelectedSeatToEdit((p: any) => ({ ...p, status: e.target.value as any }))}
+                        className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800"
+                      >
+                        <option value="available">Available</option>
+                        <option value="reserved">Reserved</option>
+                        <option value="occupied">Occupied</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-600 dark:text-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={selectedSeatToEdit.active !== false}
+                        onChange={(e) => setSelectedSeatToEdit((p: any) => ({ ...p, active: e.target.checked }))}
+                        className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span>Seat is present on this vehicle</span>
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSeatToEdit(null)}
+                        className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const updated = currentSeats.map((s: any) =>
+                            s.id === selectedSeatToEdit.id ? selectedSeatToEdit : s
+                          );
+                          setForm(p => ({ ...p, custom_seats: updated }));
+                          setSelectedSeatToEdit(null);
+                          toast.success(`Seat layout updated locally!`);
+                        }}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all"
+                      >
+                        Apply Config
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </details>
 
@@ -268,6 +409,8 @@ export default function Fleet() {
   const [page, setPage] = useState(1);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [isLayoutModalOpen, setIsLayoutModalOpen] = useState(false);
+  const [layoutEditingBus, setLayoutEditingBus] = useState<Bus | undefined>();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const qc = useQueryClient();
 
@@ -620,6 +763,18 @@ export default function Fleet() {
                         <Button 
                           variant="ghost" 
                           size="sm"
+                          onClick={() => {
+                            setLayoutEditingBus(bus);
+                            setIsLayoutModalOpen(true);
+                          }}
+                          className="p-2 text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          title="Custom Seat Layout"
+                        >
+                          <LuLayoutGrid size={18} />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
                           onClick={() => handleEdit(bus)}
                           className="p-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
                           title="Edit Fleet"
@@ -642,6 +797,15 @@ export default function Fleet() {
         mode={modalMode}
         isOpen={showModal} 
         onClose={() => setShowModal(false)} 
+      />
+
+      <LayoutModal
+        isOpen={isLayoutModalOpen}
+        bus={layoutEditingBus}
+        onClose={() => {
+          setIsLayoutModalOpen(false);
+          setLayoutEditingBus(undefined);
+        }}
       />
 
       {/* Preview Modal for Bulk Upload */}
@@ -690,5 +854,179 @@ export default function Fleet() {
         />
       )}
     </div>
+  );
+}
+
+// ── Custom Seating Layout Modal ──────────────────────────────────────────────
+interface LayoutModalProps {
+  bus?: Bus;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+function LayoutModal({ bus, isOpen, onClose }: LayoutModalProps) {
+  const qc = useQueryClient();
+  const [customSeats, setCustomSeats] = useState<any[] | null>(null);
+  const [selectedSeat, setSelectedSeat] = useState<any | null>(null);
+
+  // Sync state when bus changes or modal opens
+  useEffect(() => {
+    if (bus) {
+      setCustomSeats(bus.custom_seats || null);
+    } else {
+      setCustomSeats(null);
+    }
+    setSelectedSeat(null);
+  }, [bus, isOpen]);
+
+  const mutation = useMutation({
+    mutationFn: (seatsData: any[] | null) => 
+      fleetApi.update(bus!.id, { custom_seats: seatsData }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['buses'] });
+      toast.success('Seating layout saved successfully!');
+      onClose();
+    },
+  });
+
+  if (!bus) return null;
+
+  const default49Seats = Array.from({ length: 49 }, (_, idx) => ({
+    id: `seat-${idx + 1}`,
+    number: String(idx + 1),
+    status: 'available' as const,
+    active: true,
+  }));
+
+  const currentSeats = customSeats || default49Seats;
+
+  return (
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={`Custom Seating Layout – ${bus.plate_number}`}
+      size="lg"
+    >
+      <div className="space-y-6 p-2 overflow-y-auto custom-scrollbar max-h-[75vh]">
+        <div className="bg-blue-50 dark:bg-blue-950/20 p-4 rounded-2xl border border-blue-100 dark:border-blue-900/40 text-xs text-blue-700 dark:text-blue-300 space-y-1">
+          <p className="font-bold">🔧 Custom Seat Editor Mode</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400">
+            Click on any seat below to change its label/number, default status, or remove it from the layout.
+          </p>
+        </div>
+
+        <div className="flex justify-center overflow-x-auto py-2">
+          <BusLayout
+            seats={currentSeats}
+            isCustomizing={true}
+            onSeatClick={(seat) => setSelectedSeat(seat)}
+            hasRestroom={bus.bus_category === 'VIP'}
+            className="transform scale-90 sm:scale-100 origin-top"
+          />
+        </div>
+
+        {selectedSeat && (
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-150 dark:border-gray-700 pb-2">
+              <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
+                Configure Seat (ID: {selectedSeat.id})
+              </span>
+              <button
+                type="button"
+                onClick={() => setSelectedSeat(null)}
+                className="text-[10px] font-bold text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+              >
+                Close
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Seat Number / Label</label>
+                <input
+                  type="text"
+                  value={selectedSeat.number}
+                  onChange={(e) => setSelectedSeat((p: any) => ({ ...p, number: e.target.value.toUpperCase().slice(0, 8) }))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800"
+                  placeholder="e.g. 1, A1, VIP"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest ml-1">Status</label>
+                <select
+                  value={selectedSeat.status}
+                  onChange={(e) => setSelectedSeat((p: any) => ({ ...p, status: e.target.value as any }))}
+                  className="w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs font-semibold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800"
+                >
+                  <option value="available">Available</option>
+                  <option value="reserved">Reserved</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="custom">Custom</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex items-center justify-between pt-2">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-gray-600 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={selectedSeat.active !== false}
+                  onChange={(e) => setSelectedSeat((p: any) => ({ ...p, active: e.target.checked }))}
+                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span>Seat is present on this vehicle</span>
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedSeat(null)}
+                  className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = currentSeats.map((s: any) =>
+                      s.id === selectedSeat.id ? selectedSeat : s
+                    );
+                    setCustomSeats(updated);
+                    setSelectedSeat(null);
+                    toast.success(`Seat ${selectedSeat.number} updated locally!`);
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-black uppercase tracking-wider shadow-sm transition-all"
+                >
+                  Apply Config
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center pt-6 border-t border-gray-150 dark:border-gray-800">
+          <button
+            type="button"
+            onClick={() => {
+              setCustomSeats(null);
+              setSelectedSeat(null);
+              toast.success('Reset to standard 49-seat layout.');
+            }}
+            className="px-4 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/40 text-red-600 dark:text-red-400 rounded-xl border border-red-200 dark:border-red-900 text-xs font-black uppercase tracking-wider transition-all"
+          >
+            Reset to Standard
+          </button>
+          <div className="flex gap-3">
+            <Button variant="secondary" onClick={onClose} className="px-8">
+              Cancel
+            </Button>
+            <Button
+              onClick={() => mutation.mutate(customSeats)}
+              isLoading={mutation.isPending}
+              className="px-8"
+            >
+              Commit Layout
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }

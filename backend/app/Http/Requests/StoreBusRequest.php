@@ -21,6 +21,7 @@ class StoreBusRequest extends FormRequest
             'status'           => ['sometimes', 'in:available,in_service,under_maintenance,decommissioned'],
             'total_mileage'    => ['nullable', 'numeric', 'min:0'],
             'assigned_driver'  => ['nullable', 'integer', 'exists:users,id'],
+            'custom_seats'     => ['nullable', 'array'],
         ];
     }
 

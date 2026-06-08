@@ -103,6 +103,7 @@ class BusController extends Controller
             'next_service_due'  => ['nullable', 'date'],
             'assigned_driver'   => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
             'plate_number'      => ['sometimes', 'string', 'max:20', 'unique:buses,plate_number,' . $bus->id],
+            'custom_seats'      => ['nullable', 'array'],
         ]);
 
         $oldValues = $bus->getOriginal();

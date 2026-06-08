@@ -9,9 +9,10 @@ class BusSeeder extends Seeder
 {
     public function run(): void
     {
-        \DB::statement('SET session_replication_role = replica;');
-        \DB::table('buses')->truncate();
-        \DB::statement('SET session_replication_role = DEFAULT;');
+        // SQLite-compatible truncate with FK constraints disabled
+        \DB::statement('PRAGMA foreign_keys = OFF;');
+        \DB::table('buses')->delete();
+        \DB::statement('PRAGMA foreign_keys = ON;');
 
         $buses = [
             // Standard Economy

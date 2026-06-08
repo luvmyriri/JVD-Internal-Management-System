@@ -22,6 +22,7 @@ class BusResource extends JsonResource
             'is_service_overdue'=> $this->next_service_due
                                     ? now()->toDateString() > $this->next_service_due->toDateString()
                                     : false,
+            'custom_seats'      => $this->custom_seats,
             'driver'            => $this->whenLoaded('driver', fn() => [
                 'id'         => $this->driver->id,
                 'first_name' => $this->driver->first_name,

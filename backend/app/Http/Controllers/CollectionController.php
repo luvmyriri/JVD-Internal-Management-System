@@ -129,6 +129,21 @@ class CollectionController extends Controller
                 }
             }
 
+            $collection->recalculate();
+
+            // Send updated invoice email if linked to an invoice and has customer email
+            if ($collection->invoice_id) {
+                $invoice = $collection->invoice;
+                if ($invoice && $invoice->customer_email) {
+                    try {
+                        @set_time_limit(120);
+                        Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                    } catch (\Exception $mailEx) {
+                        \Log::error("Failed to send updated payment receipt email on update to {$invoice->customer_email}: " . $mailEx->getMessage());
+                    }
+                }
+            }
+
             return $collection->load('payments');
         });
     }
@@ -158,6 +173,15 @@ class CollectionController extends Controller
                     'balance'         => 0,
                     'amount_received' => $invoice->total_amount,
                 ]);
+
+                if ($invoice->customer_email) {
+                    try {
+                        @set_time_limit(120);
+                        Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                    } catch (\Exception $mailEx) {
+                        \Log::error("Failed to send fully paid invoice email to {$invoice->customer_email}: " . $mailEx->getMessage());
+                    }
+                }
             }
         }
 
@@ -180,6 +204,18 @@ class CollectionController extends Controller
         $collection->payments()->create($validated);
         
         $collection->recalculate();
+
+        if ($collection->invoice_id) {
+            $invoice = $collection->invoice;
+            if ($invoice && $invoice->customer_email) {
+                try {
+                    @set_time_limit(120);
+                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                } catch (\Exception $mailEx) {
+                    \Log::error("Failed to send updated payment receipt email on addPayment to {$invoice->customer_email}: " . $mailEx->getMessage());
+                }
+            }
+        }
 
         return response()->json([
             'message' => 'Payment added successfully.',
@@ -225,6 +261,7 @@ class CollectionController extends Controller
         $invoice = $pdfData['invoice'];
 
         try {
+            @set_time_limit(120);
             Mail::to($email)->send(new TransactionNotificationMail($invoice));
             return response()->json([
                 'success' => true,
