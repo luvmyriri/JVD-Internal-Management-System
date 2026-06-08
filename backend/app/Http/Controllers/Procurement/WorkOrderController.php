@@ -198,13 +198,10 @@ class WorkOrderController extends Controller
                 'approved_at'  => now(),
             ]);
 
-            // Auto-generate J.O.
-            $this->generateJobOrderInternal($request, $workOrder);
-
             return response()->json([
                 'success' => true,
                 'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-                'message' => 'Trip Work Order approved. Job Order generated automatically.',
+                'message' => 'Trip Work Order approved.',
             ]);
         }
 
@@ -257,8 +254,8 @@ class WorkOrderController extends Controller
                 'priority'     => $validated['priority'] ?? $workOrder->priority,
             ]);
 
-            // Auto-generate J.O. for maintenance once approved
-            $this->generateJobOrderInternal($request, $workOrder);
+            // Do not auto-generate J.O. as JO is the start of the flow
+            
 
             return response()->json([
                 'success' => true,
@@ -272,67 +269,6 @@ class WorkOrderController extends Controller
             'message' => "This Work Order is in status '{$workOrder->status}' and cannot be approved/verified.",
         ], 422);
     }
-
-    private function generateJobOrderInternal(Request $request, WorkOrder $workOrder, bool $requiresPo = false): \App\Models\JobOrder
-    {
-        // Avoid duplicate JOs
-        $existing = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
-        if ($existing) {
-            return $existing;
-        }
-
-        $year = now()->year;
-        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
-        $sequence = 1;
-        if ($latest) {
-            $parts = explode('-', $latest->jo_number);
-            $sequence = (int) end($parts) + 1;
-        }
-        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
-
-        $invoice = $workOrder->invoice;
-        $busId = $workOrder->bus_id;
-        $driverId = null;
-        $driverName = null;
-
-        if ($busId) {
-            $bus = \App\Models\Bus::find($busId);
-            if ($bus) {
-                $driverId = $bus->assigned_driver;
-                if ($bus->driver) {
-                    $driverName = "{$bus->driver->first_name} {$bus->driver->last_name}";
-                }
-            }
-        }
-
-        $serviceType = $workOrder->isTrip() ? 'bus_rental' : 'maintenance';
-        $destination = $workOrder->isTrip() ? ($invoice?->customer_address ?? 'TBD') : 'Internal Maintenance';
-        $notes = $workOrder->isTrip() 
-            ? 'Generated from Trip Work Order ' . $workOrder->wo_number 
-            : 'Generated from Maintenance Work Order ' . $workOrder->wo_number;
-
-        $jo = \App\Models\JobOrder::create([
-            'jo_number' => $joNumber,
-            'customer_id' => $invoice?->customer_id,
-            'bus_id' => $busId,
-            'driver_id' => $driverId,
-            'driver_name' => $driverName,
-            'work_order_id' => $workOrder->id,
-            'invoice_id' => $workOrder->invoice_id,
-            'created_by' => auth()->id() ?? 1,
-            'requested_by' => $workOrder->assigned_to ?? $workOrder->created_by ?? auth()->id() ?? 1,
-            'service_type' => $serviceType,
-            'status' => 'created',
-            'service_date' => $invoice?->due_date ?? now()->toDateString(),
-            'destination' => $destination,
-            'total_cost' => $workOrder->cost ?? 0,
-            'notes' => $notes,
-            'requires_po' => $requiresPo,
-        ]);
-
-        return $jo;
-    }
-
 
     /**
      * Designated employee rejects a requested WO.
@@ -363,34 +299,6 @@ class WorkOrderController extends Controller
             'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
             'message' => 'Work Order rejected and cancelled.',
         ]);
-    }
-    /**
-     * Generate a Job Order from an approved Work Order.
-     * Transitions: WorkOrder status doesn't change here, but creates a JobOrder.
-     */
-    public function generateJobOrder(Request $request, WorkOrder $workOrder): JsonResponse
-    {
-        if ($workOrder->status !== 'open') {
-            return response()->json([
-                'success' => false,
-                'message' => "Only approved (open) Work Orders can generate a Job Order.",
-            ], 422);
-        }
-
-        if (\App\Models\JobOrder::where('work_order_id', $workOrder->id)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => "A Job Order has already been generated for this Work Order.",
-            ], 422);
-        }
-
-        $jobOrder = $this->generateJobOrderInternal($request, $workOrder, $request->boolean('requires_po', false));
-
-        return response()->json([
-            'success' => true,
-            'data'    => $jobOrder,
-            'message' => 'Job Order generated successfully.',
-        ], 201);
     }
 }
 

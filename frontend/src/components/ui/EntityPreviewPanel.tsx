@@ -5,6 +5,7 @@ import { useEntityPreview } from '../../context/EntityPreviewContext';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
+import { customerApi } from '../../api/customers';
 
 export default function EntityPreviewPanel() {
   const { isOpen, entityType, entityId, searchQuery, showPreview, closePreview } = useEntityPreview();
@@ -31,6 +32,7 @@ export default function EntityPreviewPanel() {
       if (entityType === 'supplier') return supplierApi.get(entityId).then(res => res.data.data);
       if (entityType === 'inventory') return inventoryApi.get(entityId).then(res => res.data.data);
       if (entityType === 'driver') return userApi.get(entityId).then(res => res.data.data);
+      if (entityType === 'customer') return customerApi.get(entityId).then(res => res.data.data);
       return null;
     },
     enabled: isOpen && (!!entityId || (entityType === 'search' && !!searchQuery)),
@@ -185,6 +187,47 @@ export default function EntityPreviewPanel() {
               </div>
             </div>
           </div>
+        </div>
+      );
+    }
+
+    if (entityType === 'customer') {
+      const customer = data as any;
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+              <LuUser size={32} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.first_name} {customer.last_name}</h2>
+              <span className="inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-blue-50 text-blue-700">
+                Customer Profile
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Contact Information</h3>
+            <div className="grid gap-3">
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuMail className="text-gray-400 shrink-0" /> <span>{customer.email || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuPhone className="text-gray-400 shrink-0" /> <span>{customer.phone || 'N/A'}</span>
+              </div>
+              <div className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuMapPin className="text-gray-400 shrink-0 mt-0.5" /> <span>{customer.address || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {customer.notes && (
+            <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Internal Notes</h3>
+              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p>
+            </div>
+          )}
         </div>
       );
     }

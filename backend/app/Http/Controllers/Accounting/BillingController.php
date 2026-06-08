@@ -282,6 +282,8 @@ class BillingController extends Controller
             'items.*.unit_price' => 'nullable|numeric',
             'items.*.adults' => 'nullable|integer',
             'items.*.children' => 'nullable|integer',
+            'items.*.service_date' => 'nullable|date',
+            'items.*.destination' => 'nullable|string',
             'notes' => 'nullable|string',
             'bus_id' => 'nullable|integer|exists:buses,id',
             'seat_map' => 'nullable|array',
@@ -320,6 +322,8 @@ class BillingController extends Controller
                     'total_price' => $itemTotal,
                     'adults' => $item['adults'] ?? null,
                     'children' => $item['children'] ?? null,
+                    'service_date' => $item['service_date'] ?? null,
+                    'destination' => $item['destination'] ?? null,
                 ];
             }
 
@@ -383,6 +387,20 @@ class BillingController extends Controller
                 ]);
             }
 
+            // Auto-create Collection for unpaid invoices
+            if ($invoice->balance > 0) {
+                \App\Models\Collection::create([
+                    'invoice_id' => $invoice->id,
+                    'customer_id' => $invoice->customer_id,
+                    'rate' => $invoice->total_amount, // legacy fallback
+                    'billing_amount' => $invoice->total_amount,
+                    'paid_amount' => $invoice->amount_received,
+                    'remaining_balance' => $invoice->balance,
+                    'due_date' => $invoice->due_date,
+                    'collection_status' => $invoice->status === 'partial' ? 'partial' : 'pending',
+                ]);
+            }
+
             // PayMongo Logic "Abang"
             if (in_array($request->payment_method, ['GCash', 'Card'])) {
                 $paymongo = new \App\Services\PayMongoService();
@@ -417,9 +435,12 @@ class BillingController extends Controller
                     ]);
                 }
             }
-            // Auto-generate Work Order for trips if it involves buses
+            // Auto-generate Job Order for trips if it involves buses
             $hasBusService = false;
             $busServiceDescription = '';
+            $busServiceDate = null;
+            $busDestination = null;
+
             foreach ($processedItems as $pItem) {
                 $service = Service::find($pItem['service_id']);
                 if ($service) {
@@ -433,36 +454,23 @@ class BillingController extends Controller
                     ) {
                         $hasBusService = true;
                         $busServiceDescription .= "- {$service->name} (Qty: {$pItem['quantity']})\n";
+                        if (!empty($pItem['service_date'])) $busServiceDate = $pItem['service_date'];
+                        if (!empty($pItem['destination'])) $busDestination = $pItem['destination'];
                     }
                 }
             }
 
             if ($hasBusService) {
-                $year = now()->year;
-                $latest = \App\Models\WorkOrder::where('wo_number', 'like', "WO-{$year}-%")
-                    ->orderByDesc('id')
-                    ->first();
-
-                $sequence = 1;
-                if ($latest) {
-                    $parts = explode('-', $latest->wo_number);
-                    $sequence = (int) end($parts) + 1;
-                }
-                $woNumber = sprintf('WO-%d-%04d', $year, $sequence);
-
-                $wo = \App\Models\WorkOrder::create([
-                    'wo_number' => $woNumber,
-                    'type' => 'trip',
-                    'bus_id' => null, // Bus assigned at JO stage
-                    'invoice_id' => $invoice->id,
-                    'created_by' => auth()->id() ?? 1,
-                    'status' => 'pending_approval',
-                    'priority' => 'routine',
-                    'description' => "Trip Work Order auto-generated for Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
-                    'auto_generated' => true,
+                $jobOrderService = app(\App\Http\Services\JobOrderService::class);
+                $jo = $jobOrderService->create([
+                    'customer_id' => $request->customer_id ?? 1, // Fallback to 1 if walk-in
+                    'bus_id' => $request->bus_id,
+                    'service_type' => 'Bus Rental', // Mapped generically for now
+                    'service_date' => $busServiceDate ?? date('Y-m-d', strtotime('+1 day')),
+                    'destination' => $busDestination ?? 'Not Specified',
+                    'total_cost' => $totalAmount,
+                    'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
                 ]);
-
-                \App\Http\Services\NotificationService::notifyWorkOrderRequest($wo);
             }
 
             DB::commit();

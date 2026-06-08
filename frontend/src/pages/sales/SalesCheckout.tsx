@@ -28,6 +28,8 @@ export interface CartItem {
   extraHours?: number;
   busId?: number;
   selectedSeats?: string[];
+  serviceDate?: string;
+  destination?: string;
 }
 
 interface SalesCheckoutProps {
@@ -111,7 +113,9 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           quantity: item.quantity,
           unit_price: item.customPrice ?? item.service.price,
           adults: item.adults,
-          children: item.childrenCount
+          children: item.childrenCount,
+          service_date: item.serviceDate,
+          destination: item.destination
         })),
         bus_id: cart.find(item => item.busId)?.busId || null,
         seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,

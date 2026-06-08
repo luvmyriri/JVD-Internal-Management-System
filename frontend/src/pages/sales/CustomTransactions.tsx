@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
   LuLoaderCircle,
@@ -8,12 +8,19 @@ import {
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
+import { fleetApi } from '../../api/fleet';
 import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
+
+  const { data: busesRes } = useQuery({
+    queryKey: ['fleet-buses'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+  });
+  const buses = busesRes?.data?.data || [];
 
   // State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -32,8 +39,9 @@ export default function CustomTransactions() {
   const [busRental, setBusRental] = useState({
     vehicleType: 'Bus',
     route: '',
+    serviceDate: '',
     days: 1,
-    plateNumber: '',
+    busId: '',
     inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>
   });
 
@@ -43,6 +51,8 @@ export default function CustomTransactions() {
     gradeLevel: '',
     expectedPax: 50,
     stops: '',
+    serviceDate: '',
+    busId: '',
     inclusions: { meals: true, coordinator: true, insurance: true, tshirt: false } as Record<string, boolean>
   });
 
@@ -84,8 +94,9 @@ export default function CustomTransactions() {
     setBusRental({
       vehicleType: 'Bus',
       route: '',
+      serviceDate: '',
       days: 1,
-      plateNumber: '',
+      busId: '',
       inclusions: { driver: true, fuel: true, toll: false, insurance: true }
     });
     setEduTour({
@@ -93,6 +104,8 @@ export default function CustomTransactions() {
       gradeLevel: '',
       expectedPax: 50,
       stops: '',
+      serviceDate: '',
+      busId: '',
       inclusions: { meals: true, coordinator: true, insurance: true, tshirt: false }
     });
     setTourPackage({
@@ -134,8 +147,9 @@ export default function CustomTransactions() {
         return `[Bus Rental Specifications]
 Vehicle Type: ${busRental.vehicleType}
 Route/Destination: ${busRental.route || 'Not Specified'}
+Service Date: ${busRental.serviceDate || 'Not Specified'}
 Duration: ${busRental.days} Day(s)
-Plate No. / Assigned Unit: ${busRental.plateNumber || 'To Be Determined'}
+Assigned Bus ID: ${busRental.busId || 'To Be Determined'}
 Included in Rate: ${incs.join(', ') || 'Base Rental Only'}`;
       }
       case 'Educational Tour': {
@@ -147,8 +161,10 @@ Included in Rate: ${incs.join(', ') || 'Base Rental Only'}`;
         return `[Educational Tour Specifications]
 School/Institution: ${eduTour.schoolName || 'Not Specified'}
 Grade/Year Level: ${eduTour.gradeLevel || 'Not Specified'}
+Service Date: ${eduTour.serviceDate || 'Not Specified'}
 Expected Count: ${eduTour.expectedPax} Pax
 Itinerary Stops: ${eduTour.stops || 'Not Specified'}
+Assigned Bus ID: ${eduTour.busId || 'To Be Determined'}
 Included Package Items: ${incs.join(', ') || 'Transport Only'}`;
       }
       case 'Tour Package': {
@@ -192,17 +208,17 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
   };
 
   // Cart operations
-  const addToCart = (service: any, quantity: number) => {
+  const addToCart = (service: any, quantity: number, extraData?: any) => {
     setCart(prev => {
       const existing = prev.find(item => item.service.id === service.id);
       if (existing) {
         return prev.map(item =>
           item.service.id === service.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? { ...item, quantity: item.quantity + quantity, ...extraData }
             : item
         );
       }
-      return [...prev, { service, quantity }];
+      return [...prev, { service, quantity, ...extraData }];
     });
   };
 
@@ -235,8 +251,19 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       if (res?.data?.success || res?.data?.data) {
         const createdService = res.data.data;
         
+        let extraData: any = {};
+        if (customForm.category === 'Bus Rental') {
+           extraData = { serviceDate: busRental.serviceDate, destination: busRental.route, busId: busRental.busId ? Number(busRental.busId) : undefined };
+        } else if (customForm.category === 'Educational Tour') {
+           extraData = { serviceDate: eduTour.serviceDate, destination: eduTour.stops, busId: eduTour.busId ? Number(eduTour.busId) : undefined };
+        } else if (customForm.category === 'Tour Package') {
+           extraData = { serviceDate: tourPackage.travelDates, destination: tourPackage.destination };
+        } else if (customForm.category === 'Joiners') {
+           extraData = { serviceDate: joiners.travelDate, destination: joiners.tourCode };
+        }
+
         // Add to order
-        addToCart(createdService, 1);
+        addToCart(createdService, 1, extraData);
 
         toast.success('Customized transaction registered & added to order!');
         
@@ -324,14 +351,28 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                 />
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assigned Plate / Unit</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Date</label>
                 <input
-                  type="text"
-                  placeholder="e.g. ABC 1234 (Optional)"
+                  type="date"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.plateNumber}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, plateNumber: e.target.value }))}
+                  value={busRental.serviceDate}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, serviceDate: e.target.value }))}
                 />
+              </div>
+              <div className="space-y-2 col-span-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assigned Bus Unit (Optional)</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={busRental.busId}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, busId: e.target.value }))}
+                >
+                  <option value="">-- Let Dispatch Assign Later --</option>
+                  {buses.map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      {b.bus_number} - {b.plate_number} ({b.type})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -398,6 +439,33 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   value={eduTour.expectedPax}
                   onChange={(e) => setEduTour(prev => ({ ...prev, expectedPax: Math.max(1, Number(e.target.value)) }))}
                 />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Date</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={eduTour.serviceDate}
+                  onChange={(e) => setEduTour(prev => ({ ...prev, serviceDate: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assigned Bus Unit (Optional)</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={eduTour.busId}
+                  onChange={(e) => setEduTour(prev => ({ ...prev, busId: e.target.value }))}
+                >
+                  <option value="">-- Let Dispatch Assign Later --</option>
+                  {buses.map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      {b.bus_number} - {b.plate_number} ({b.type})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 

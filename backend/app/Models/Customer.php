@@ -48,4 +48,9 @@ class Customer extends Model
     {
         return $this->hasMany(AgentTask::class);
     }
+
+    public function companyDocuments()
+    {
+        return $this->hasMany(ProcurementDocument::class, 'customer_id');
+    }
 }

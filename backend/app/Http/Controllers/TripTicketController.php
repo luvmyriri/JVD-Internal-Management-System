@@ -21,7 +21,7 @@ class TripTicketController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'control_no' => 'required|string|unique:trip_tickets,control_no',
+            'control_no' => 'nullable|string|unique:trip_tickets,control_no',
             'issue_date' => 'required|date',
             'date_of_travel' => 'required|date',
             'duration' => 'nullable|string',
@@ -50,6 +50,17 @@ class TripTicketController extends Controller
 
         $validated['requested_by'] = auth()->id();
         $validated['trip_type'] = $validated['trip_type'] ?? 'domestic';
+        
+        if (empty($validated['control_no'])) {
+            $year = now()->year;
+            $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")->orderByDesc('id')->first();
+            $sequence = 1;
+            if ($latest) {
+                $parts = explode('-', $latest->control_no);
+                $sequence = (int) end($parts) + 1;
+            }
+            $validated['control_no'] = sprintf('DTT-%d-%04d', $year, $sequence);
+        }
         
         $ticket = TripTicket::create($validated);
 

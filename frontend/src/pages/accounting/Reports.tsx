@@ -78,6 +78,15 @@ export default function Reports() {
     staleTime: 10_000,
   });
 
+  const { data: summaryData } = useQuery({
+    queryKey: ['billing-reports-summary', range],
+    queryFn: async () => {
+      const res = await billingApi.getReportsSummary(range);
+      return res.data;
+    },
+    staleTime: 10_000,
+  });
+
   // Click outside listener for Export Dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -114,8 +123,21 @@ export default function Reports() {
 
   // Dynamic KPI Calculations
   const kpis = useMemo(() => {
+    if (summaryData) {
+      // Backend returns: { success, data: { kpis: { revenue, expenses, profit_margin, ... } } }
+      const kpiData = summaryData.data?.kpis || summaryData.kpis || summaryData;
+      return {
+        totalSales: kpiData.revenue || 0,
+        totalTransactions: kpiData.transactions || 0,
+        avgDealSize: kpiData.avg_ticket || 0,
+        expenses: kpiData.expenses || 0,
+        // Backend returns 0-1 decimal ratio; multiply by 100 for percentage display
+        profitMargin: (kpiData.profit_margin || 0) * 100
+      };
+    }
+
     if (filteredTransactions.length === 0) {
-      return { totalSales: 0, totalTransactions: 0, avgDealSize: 0 };
+      return { totalSales: 0, totalTransactions: 0, avgDealSize: 0, expenses: 0, profitMargin: 0 };
     }
     
     // Sum only PAID and PENDING transactions to represent revenue streams accurately
@@ -124,8 +146,8 @@ export default function Reports() {
     const totalTransactions = filteredTransactions.length;
     const avgDealSize = paidPending.length > 0 ? totalSales / paidPending.length : 0;
 
-    return { totalSales, totalTransactions, avgDealSize };
-  }, [filteredTransactions]);
+    return { totalSales, totalTransactions, avgDealSize, expenses: 0, profitMargin: 0 };
+  }, [filteredTransactions, summaryData]);
 
   // Dynamic Leaderboard & Agent Performance Data
   const agentLeaderboard = useMemo(() => {
@@ -400,7 +422,7 @@ export default function Reports() {
       </div>
 
       {/* ── Top Aligned KPI Row (Matches Overview styling perfectly) ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 shrink-0 relative z-20">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-2 shrink-0 relative z-20">
         
         {/* KPI 1: Total Agent Sales */}
         <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
@@ -415,8 +437,43 @@ export default function Reports() {
           </div>
           <div className="flex items-end justify-between mt-1">
             <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Agent Sales</p>
-              <p className="text-2xl font-black leading-none">₱{kpis.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Revenue</p>
+              <p className="text-2xl font-black leading-none">₱{kpis.totalSales.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI: Total Expenses */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-red-500 to-rose-700 text-white shadow-lg shadow-red-300/30 dark:shadow-red-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuDollarSign className="w-3.5 h-3.5 text-white" />
+            </div>
+          </div>
+          <div className="flex items-end justify-between mt-1">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Expenses</p>
+              <p className="text-2xl font-black leading-none">₱{kpis.expenses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* KPI: Profit Margin */}
+        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-emerald-500 to-green-700 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
+          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
+          <div className="flex items-start justify-between">
+            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <LuTrendingUp className="w-3.5 h-3.5 text-white" />
+            </div>
+            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm">
+              Profit
+            </div>
+          </div>
+          <div className="flex items-end justify-between mt-1">
+            <div>
+              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Profit Margin</p>
+              <p className="text-2xl font-black leading-none">{kpis.profitMargin.toFixed(1)}%</p>
             </div>
           </div>
         </div>
@@ -428,33 +485,11 @@ export default function Reports() {
             <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuActivity className="w-3.5 h-3.5 text-white" />
             </div>
-            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm">
-              <LuArrowUpRight className="w-2.5 h-2.5" /> +8.5%
-            </div>
           </div>
           <div className="flex items-end justify-between mt-1">
             <div>
               <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Total Transactions</p>
               <p className="text-2xl font-black leading-none">{kpis.totalTransactions.toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* KPI 3: Avg Transaction Size */}
-        <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
-          <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
-          <div className="flex items-start justify-between">
-            <div className="w-6 h-6 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-              <LuTrendingUp className="w-3.5 h-3.5 text-white" />
-            </div>
-            <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white flex items-center gap-0.5 shadow-sm">
-              <LuCalendar className="w-2.5 h-2.5" /> Target Met
-            </div>
-          </div>
-          <div className="flex items-end justify-between mt-1">
-            <div>
-              <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Avg Transaction Size</p>
-              <p className="text-2xl font-black leading-none">₱{Math.round(kpis.avgDealSize).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
             </div>
           </div>
         </div>

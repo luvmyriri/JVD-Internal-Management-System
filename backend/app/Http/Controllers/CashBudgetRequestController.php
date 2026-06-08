@@ -11,7 +11,7 @@ class CashBudgetRequestController extends Controller
 {
     public function index()
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice'])->latest()->get();
+        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->latest()->get();
     }
 
     public function store(Request $request)
@@ -29,6 +29,8 @@ class CashBudgetRequestController extends Controller
             'coach_captain_salary'  => 'nullable|numeric',
             'spare_driver_salary'   => 'nullable|numeric',
             'purchase_order_id'     => 'nullable|exists:purchase_orders,id',
+            'trip_ticket_id'        => 'nullable|exists:trip_tickets,id',
+            'work_order_id'         => 'nullable|exists:work_orders,id',
         ]);
 
         $validated['prepared_by'] = auth()->id();
@@ -38,17 +40,17 @@ class CashBudgetRequestController extends Controller
 
         $budget = CashBudgetRequest::create($validated);
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     public function show($id)
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice'])->findOrFail($id);
+        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->findOrFail($id);
     }
 
     public function update(Request $request, $id)
     {
-        $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier'])->findOrFail($id);
+        $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier', 'workOrder'])->findOrFail($id);
 
         $validated = $request->validate([
             'status'               => 'sometimes|in:draft,pending_accounting,approved,disbursed',
@@ -60,6 +62,8 @@ class CashBudgetRequestController extends Controller
             'coach_captain_salary' => 'sometimes|numeric',
             'spare_driver_salary'  => 'sometimes|numeric',
             'purchase_order_id'    => 'sometimes|nullable|exists:purchase_orders,id',
+            'trip_ticket_id'       => 'sometimes|nullable|exists:trip_tickets,id',
+            'work_order_id'        => 'sometimes|nullable|exists:work_orders,id',
             'disbursed_amount'     => 'sometimes|numeric|nullable',
         ]);
 
@@ -226,7 +230,7 @@ class CashBudgetRequestController extends Controller
             }
         }
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     public function destroy($id)

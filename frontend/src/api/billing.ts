@@ -80,7 +80,7 @@ export const billingApi = {
     payment_type?: string;
     amount_received?: number;
     change?: number;
-    items: { service_id: number; quantity: number }[];
+    items: { service_id: number; quantity: number; unit_price?: number; adults?: number; children?: number; service_date?: string; destination?: string; }[];
     notes?: string;
     bus_id?: number | null;
     seat_map?: any;

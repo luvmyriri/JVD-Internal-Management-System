@@ -43,6 +43,22 @@ class ReportController extends Controller
         $transactionCount = $kpiQuery->count();
         $averageTicketSize = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
         
+        // Expenses Calculation
+        $expenseQuery = Invoice::where('status', 'disbursed_budget');
+        if ($startDate) {
+            $expenseQuery->where('created_at', '>=', $startDate);
+        }
+        $totalExpenses = (float) $expenseQuery->sum('total_amount');
+        
+        $poQuery = \App\Models\PurchaseOrder::whereIn('status', ['approved', 'completed', 'delivered']);
+        if ($startDate) {
+            $poQuery->where('created_at', '>=', $startDate);
+        }
+        $totalPoExpenses = (float) $poQuery->sum('total_amount');
+
+        $overallExpenses = $totalExpenses + $totalPoExpenses;
+        $profitMargin = $totalRevenue > 0 ? ($totalRevenue - $overallExpenses) / $totalRevenue : 0;
+        
         // Revenue Trend (Dynamic grouping and filtering based on range)
         $trendQuery = Invoice::select(
                 DB::raw("{$trendFormat} as date"),
@@ -84,9 +100,10 @@ class ReportController extends Controller
             'data' => [
                 'kpis' => [
                     'revenue' => $totalRevenue,
+                    'expenses' => $overallExpenses,
                     'transactions' => $transactionCount,
                     'avg_ticket' => $averageTicketSize,
-                    'profit_margin' => 0.15, // Mock margin
+                    'profit_margin' => $profitMargin,
                 ],
                 'trend' => $trend,
                 'categories' => $categories

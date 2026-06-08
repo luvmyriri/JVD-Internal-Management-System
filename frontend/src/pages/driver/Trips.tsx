@@ -563,9 +563,8 @@ export default function DriverTrips() {
 
   const requestDttMutation = useMutation({
     mutationFn: async (trip: any) => {
-      const control_no = `DTT-${trip.jo_number || Math.floor(100000 + Math.random() * 900000)}`;
       const payload = {
-        control_no,
+        control_no: '',
         issue_date: new Date().toISOString().split('T')[0],
         date_of_travel: trip.service_date?.split('T')[0],
         pick_up: 'TBA',
