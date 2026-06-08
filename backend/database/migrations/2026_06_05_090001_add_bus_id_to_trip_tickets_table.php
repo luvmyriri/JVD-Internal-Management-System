@@ -19,17 +19,30 @@ return new class extends Migration
             }
 
             // Add FK constraint if not already present
-            $foreignKeys = Schema::getForeignKeys('trip_tickets');
-            $hasBusIdFk = false;
-            foreach ($foreignKeys as $fk) {
-                if (in_array('bus_id', $fk['columns'])) {
-                    $hasBusIdFk = true;
-                    break;
+            if (DB::getDriverName() === 'sqlite') {
+                $fks = DB::select("PRAGMA foreign_key_list('trip_tickets')");
+                $hasFk = false;
+                foreach ($fks as $fk) {
+                    $tbl = is_object($fk) ? ($fk->table ?? '') : ($fk['table'] ?? '');
+                    if ($tbl === 'buses') {
+                        $hasFk = true;
+                        break;
+                    }
                 }
-            }
-
-            if (!$hasBusIdFk) {
-                $table->foreign('bus_id')->references('id')->on('buses')->nullOnDelete();
+                if (!$hasFk) {
+                    $table->foreign('bus_id')->references('id')->on('buses')->nullOnDelete();
+                }
+            } else {
+                $fks = DB::select("
+                    SELECT constraint_name
+                    FROM information_schema.table_constraints
+                    WHERE table_name = 'trip_tickets'
+                      AND constraint_type = 'FOREIGN KEY'
+                      AND constraint_name = 'trip_tickets_bus_id_foreign'
+                ");
+                if (empty($fks)) {
+                    $table->foreign('bus_id')->references('id')->on('buses')->nullOnDelete();
+                }
             }
         });
     }

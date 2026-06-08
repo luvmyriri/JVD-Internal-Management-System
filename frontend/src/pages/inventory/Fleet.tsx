@@ -68,8 +68,8 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
   }));
   const currentSeats = form.custom_seats || bus?.custom_seats || default49Seats;
 
-  const { data: usersRes } = useQuery({ queryKey: ['users'], queryFn: () => userApi.list() });
-  const drivers = usersRes?.data?.data?.filter((u: any) => u.role === 'driver' || u.department === 'fleet') ?? [];
+  const { data: usersRes } = useQuery({ queryKey: ['users', 'drivers'], queryFn: () => userApi.list({ role: 'driver', per_page: 999 }) });
+  const drivers = usersRes?.data?.data ?? [];
 
   const mutation = useMutation({
     mutationFn: () => bus ? fleetApi.update(bus.id, form) : fleetApi.create(form as BusFormData),

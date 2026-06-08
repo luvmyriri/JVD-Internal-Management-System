@@ -137,7 +137,9 @@ export interface JobOrderFormData {
 }
 
 export type WOStatus =
+  | 'pending_validation'
   | 'pending_approval'
+  | 'verified'
   | 'open'
   | 'in_progress'
   | 'completed'
