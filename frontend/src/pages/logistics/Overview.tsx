@@ -520,7 +520,7 @@ function CalendarDayDetailModal({
               Assignments for {monthName} {day}, {year}
             </h2>
             <p className="text-[10px] text-gray-450 uppercase font-black tracking-widest mt-0.5">
-              Bus: {bus?.plate_number} ({bus?.model})
+              Bus: {bus ? `${bus.plate_number} (${bus.model})` : 'TBA'}
             </p>
           </div>
           <button 

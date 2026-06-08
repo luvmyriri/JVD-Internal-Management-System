@@ -11,8 +11,8 @@ export const purchaseOrderApi = {
   create: (data: PurchaseOrderFormData) =>
     client.post<{ success: boolean; data: PurchaseOrder }>('/purchase-orders', data),
 
-  update: (id: number, data: Partial<PurchaseOrderFormData>) =>
-    client.put<{ success: boolean; data: PurchaseOrder }>(`/purchase-orders/${id}`, data),
+  // update: (id: number, data: Partial<PurchaseOrderFormData>) =>
+  //   client.put<{ success: boolean; data: PurchaseOrder }>(`/purchase-orders/${id}`, data),
 
   submit: (id: number) =>
     client.post(`/purchase-orders/${id}/submit`),

@@ -15,8 +15,8 @@ export const inventoryApi = {
   update: (id: number, data: Partial<InventoryItemFormData>) =>
     client.put<{ success: boolean; data: InventoryItem }>(`/inventory/${id}`, data),
 
-  delete: (id: number) =>
-    client.delete(`/inventory/${id}`),
+  // delete: (id: number) =>
+  //   client.delete(`/inventory/${id}`),
 
   getLowStock: () =>
     client.get<PaginatedResponse<InventoryItem>>('/inventory', { params: { low_stock: true } }),
