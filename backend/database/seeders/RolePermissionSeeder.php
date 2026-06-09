@@ -223,6 +223,15 @@ class RolePermissionSeeder extends Seeder
         ],
         'accounting.commissions' => [
             'operations_manager' => [true,  true,  true,  false],
+            'reservation_officer'=> [true,  true,  true,  false],
+            'office_staff'       => [true,  true,  true,  false],
+            'corporate_secretary'=> [true,  true,  true,  false],
+            'logistics_in_charge'=> [true,  true,  true,  false],
+            'dispatcher'         => [true,  true,  true,  false],
+            'purchasing_manager' => [true,  true,  true,  false],
+            'head_mechanic'      => [true,  true,  true,  false],
+            'service_adviser'    => [true,  true,  true,  false],
+            'driver'             => [true,  true,  true,  false],
         ],
 
         // Logistics page-level overrides

@@ -300,5 +300,55 @@ class WorkOrderController extends Controller
             'message' => 'Work Order rejected and cancelled.',
         ]);
     }
+
+    /**
+     * Generate a maintenance Job Order from a Work Order.
+     */
+    public function generateJobOrder(Request $request, WorkOrder $workOrder): JsonResponse
+    {
+        // Check if a Job Order is already linked to this Work Order
+        $existingJo = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
+        if ($existingJo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'A Job Order has already been generated for this Work Order.',
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        // Create the Job Order in created state
+        $year = now()->year;
+        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id5')->first();
+        // Fallback search since it might be order by id
+        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
+        $sequence = 1;
+        if ($latest) {
+            $parts = explode('-', $latest->jo_number);
+            $sequence = (int) end($parts) + 1;
+        }
+        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
+
+        $jo = \App\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'customer_id' => 1, // Walk-in / Internal Maintenance default customer
+            'bus_id' => $workOrder->bus_id,
+            'driver_id' => $workOrder->assigned_to,
+            'created_by' => $user->id,
+            'service_type' => 'maintenance',
+            'status' => 'created',
+            'service_date' => now()->toDateString(),
+            'destination' => 'Internal Shop',
+            'total_cost' => $workOrder->cost ?? 0,
+            'notes' => "Auto-generated from Work Order {$workOrder->wo_number}. Description: {$workOrder->description}",
+            'work_order_id' => $workOrder->id,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'data' => $jo,
+            'message' => 'Job Order generated successfully.',
+        ], 201);
+    }
 }
 

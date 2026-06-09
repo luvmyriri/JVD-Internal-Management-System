@@ -163,7 +163,7 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Customer</label>
                   <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.customer_id || ''} onChange={e => setForm({ ...form, customer_id: e.target.value ? Number(e.target.value) : null })}>
                     <option value="">-- None --</option>
-                    {customersRes?.data.data.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
+                    {customersRes?.data.data.map((c: any) => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -294,18 +294,8 @@ export default function CompanyDocuments() {
     }
   };
 
-  const getRowIndicatorStyle = (type?: string) => {
-    switch (type) {
-      case 'receipt': return 'border-l-4 border-emerald-500';
-      case 'invoice': return 'border-l-4 border-blue-500';
-      case 'delivery_note': return 'border-l-4 border-amber-500';
-      case 'agreement': return 'border-l-4 border-purple-500';
-      case 'kyc': return 'border-l-4 border-rose-500';
-      case 'passport': return 'border-l-4 border-teal-500';
-      case 'visa': return 'border-l-4 border-indigo-500';
-      case 'accreditation': return 'border-l-4 border-violet-500';
-      default: return 'border-l-4 border-transparent';
-    }
+  const getRowIndicatorStyle = (_type?: string) => {
+    return '';
   };
 
   return (
@@ -466,7 +456,7 @@ export default function CompanyDocuments() {
                           </button>
                         )}
                         {doc.linkages?.customer && (
-                          <button onClick={() => showPreview('customer', doc.linkages.customer.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
+                          <button onClick={() => showPreview('customer', doc.linkages!.customer.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
                             Customer: {doc.linkages.customer.first_name} {doc.linkages.customer.last_name}
                           </button>
                         )}

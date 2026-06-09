@@ -15,6 +15,7 @@ export interface Commission {
   serial_no: string;
   date: string;
   status: 'draft' | 'approved' | 'released';
+  employee_id?: number;
   received_by?: number;
   released_by?: number;
   approved_by?: number;
@@ -80,6 +81,8 @@ export interface TripTicket {
   }>;
 }
 
+import type { WorkOrder } from './procurement';
+
 export interface CashBudgetRequest {
   id: number;
   date: string;
@@ -88,6 +91,8 @@ export interface CashBudgetRequest {
   destination?: string;
   purchase_order_id?: number;
   trip_ticket_id?: number;
+  work_order_id?: number;
+  workOrder?: WorkOrder;
   
   diesel?: number;
   meal_allowance?: number;

@@ -2,7 +2,6 @@ import { useState } from 'react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { workOrderApi } from '../../api/workOrders';
 import { jobOrderApi } from '../../api/jobOrders';
 
 import {
@@ -232,6 +231,7 @@ function RequestJoModal({ bus, onClose }: RequestJoModalProps) {
     `Preventive maintenance due for ${bus.plate_number}. Total mileage: ${bus.total_mileage.toLocaleString()} km. Next service: ${pmsInfo.level.type}.`
   );
   const [submitted, setSubmitted] = useState(false);
+  const [priority, setPriority] = useState<'routine' | 'urgent' | 'critical'>('routine');
 
   const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
   const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';

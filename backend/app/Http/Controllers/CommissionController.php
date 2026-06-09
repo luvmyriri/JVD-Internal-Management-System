@@ -18,6 +18,7 @@ class CommissionController extends Controller
     {
         $validated = $request->validate([
             'commissioner_name' => 'required|string|max:255',
+            'employee_id' => 'nullable|exists:users,id',
             'serial_no' => 'required|string|unique:commissions,serial_no',
             'date' => 'required|date',
             'items' => 'required|array|min:1',
@@ -27,9 +28,10 @@ class CommissionController extends Controller
             'items.*.amount' => 'required|numeric|min:0',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $request) {
             $commission = Commission::create([
                 'commissioner_name' => $validated['commissioner_name'],
+                'employee_id' => $validated['employee_id'] ?? $request->input('employee_id') ?? auth()->id(),
                 'serial_no' => $validated['serial_no'],
                 'date' => $validated['date'],
                 'status' => 'draft',
@@ -45,7 +47,7 @@ class CommissionController extends Controller
 
     public function show($id)
     {
-        return Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy'])->findOrFail($id);
+        return Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee'])->findOrFail($id);
     }
 
     public function update(Request $request, $id)
@@ -54,6 +56,7 @@ class CommissionController extends Controller
         
         $validated = $request->validate([
             'commissioner_name' => 'sometimes|string|max:255',
+            'employee_id' => 'sometimes|nullable|exists:users,id',
             'date' => 'sometimes|date',
             'status' => 'sometimes|in:draft,approved,released',
         ]);
@@ -63,12 +66,27 @@ class CommissionController extends Controller
         if ($request->has('status')) {
             if ($request->status === 'approved') {
                 $commission->update(['approved_by' => auth()->id()]);
+
+                // Calculate total commission amount
+                $totalAmt = $commission->items()->sum(DB::raw('amount * quantity'));
+
+                // Automatically create CashBudgetRequest for the commission payout
+                \App\Models\CashBudgetRequest::create([
+                    'date' => date('Y-m-d'),
+                    'travel_date' => date('Y-m-d'),
+                    'destination' => "Commission Payout - " . $commission->serial_no,
+                    'coach_captain_salary' => $totalAmt,
+                    'total_amount' => $totalAmt,
+                    'status' => 'pending_accounting',
+                    'prepared_by' => auth()->id() ?? $commission->employee_id,
+                    'commission_id' => $commission->id,
+                ]);
             } elseif ($request->status === 'released') {
                 $commission->update(['released_by' => auth()->id()]);
             }
         }
 
-        return $commission->load(['items', 'receivedBy', 'releasedBy', 'approvedBy']);
+        return $commission->load(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee']);
     }
 
     public function destroy($id)

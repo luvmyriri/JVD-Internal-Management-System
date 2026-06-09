@@ -303,7 +303,6 @@ export default function Settings() {
                 <option value="/dashboard">Dashboard</option>
                 <option value="/accounting/billing">Accounting / Billing</option>
                 <option value="/accounting/liquidations">Accounting / Liquidations</option>
-                <option value="/accounting/employee-soa">Accounting / Employee SOA</option>
                 <option value="/procurement/overview">Procurement / Overview</option>
                 <option value="/inventory/supplies">Inventory / Supplies</option>
                 <option value="/travel/passporting">Travel / Passporting</option>

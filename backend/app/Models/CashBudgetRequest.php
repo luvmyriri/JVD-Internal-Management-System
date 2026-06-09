@@ -29,6 +29,8 @@ class CashBudgetRequest extends Model
         'purchase_order_id',
         'trip_ticket_id',
         'work_order_id',
+        'commission_id',
+        'liquidation_id',
     ];
 
     protected function casts(): array
@@ -73,5 +75,15 @@ class CashBudgetRequest extends Model
     public function invoice(): HasOne
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function commission(): BelongsTo
+    {
+        return $this->belongsTo(Commission::class, 'commission_id');
+    }
+
+    public function liquidation(): BelongsTo
+    {
+        return $this->belongsTo(Liquidation::class, 'liquidation_id');
     }
 }

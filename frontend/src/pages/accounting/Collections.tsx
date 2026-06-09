@@ -12,6 +12,7 @@ import client from '../../api/client';
 import { customerApi } from '../../api/customers';
 import type { Collection } from '../../types';
 import { Modal, Button } from '../../components/ui';
+import { useAuth } from '../../context/AuthContext';
 
 const SERVICE_TYPES = [
   'Bus Rental',
@@ -208,6 +209,9 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Collections() {
+  const { user } = useAuth();
+  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:collections:general'));
+
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -235,11 +239,10 @@ export default function Collections() {
     return () => clearTimeout(t);
   }, [searchTerm]);
 
-
-
   const { data: responseData, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['collections', { search: debouncedSearch, status: statusFilter }],
     queryFn: async () => {
+      if (!hasGeneralAccess) return { data: [], stats: null };
       const response = await collectionApi.getAll({
         search: debouncedSearch,
         status: statusFilter
@@ -386,25 +389,22 @@ export default function Collections() {
     );
   };
 
-  const getRowIndicatorStyle = (status?: string) => {
-    switch (status) {
-      case 'overdue': return 'border-l-4 border-rose-500';
-      case 'pending': return 'border-l-4 border-amber-400';
-      case 'partial': return 'border-l-4 border-blue-500';
-      default: return 'border-l-4 border-transparent hover:border-gray-200';
-    }
+  const getRowIndicatorStyle = (_status?: string) => {
+    return '';
   };
 
   return (
     <div className="space-y-8 pb-12">
       <div className="flex justify-between items-center no-print">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Collections</h1>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
-        >
-          <LuPlus className="w-4 h-4" /> New Collection
-        </button>
+        {hasGeneralAccess && (
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
+          >
+            <LuPlus className="w-4 h-4" /> New Collection
+          </button>
+        )}
       </div>
 
       {/* Top Metric Cards */}
@@ -531,7 +531,7 @@ export default function Collections() {
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
+            <tbody>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
@@ -556,6 +556,10 @@ export default function Collections() {
                             <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
                               From: {coll.invoice.invoice_number}
                             </span>
+                          ) : coll.liquidation_id ? (
+                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
+                              From: Liquidation #{coll.liquidation_id}
+                            </span>
                           ) : (
                             <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">
                               Manual Entry
@@ -565,17 +569,25 @@ export default function Collections() {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                        {(() => {
-                          const st = coll.service_type;
-                          if (st && st !== 'Other') return st;
-                          if (coll.other_service_type) return coll.other_service_type;
-                          // Fallback: derive from the linked invoice's first item
-                          const invoiceService = coll.invoice?.items?.[0]?.service?.name;
-                          if (invoiceService) return invoiceService;
-                          return 'N/A';
-                        })()}
-                      </p>
+                      {(() => {
+                        const st = coll.service_type;
+                        const serviceName = st === 'Other' && coll.other_service_type
+                          ? coll.other_service_type
+                          : (st || coll.invoice?.items?.[0]?.service?.name || 'N/A');
+
+                        if (serviceName === 'Driver Shortage') {
+                          return (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
+                              Driver Shortage
+                            </span>
+                          );
+                        }
+                        return (
+                          <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+                            {serviceName}
+                          </p>
+                        );
+                      })()}
                     </td>
                     <td className="px-6 py-5">
                       <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">Total: ₱{Number(coll.billing_amount || coll.rate || 0).toLocaleString()}</p>
@@ -620,6 +632,9 @@ export default function Collections() {
                 </p>
                 {selectedCollection.auto_generated && selectedCollection.invoice && (
                   <p className="text-xs font-bold text-blue-600 mt-2">Linked to Invoice: {selectedCollection.invoice.invoice_number}</p>
+                )}
+                {selectedCollection.liquidation_id && (
+                  <p className="text-xs font-bold text-amber-600 mt-2">Linked to Driver Liquidation #{selectedCollection.liquidation_id}</p>
                 )}
               </div>
               <div className="text-right">
@@ -682,7 +697,7 @@ export default function Collections() {
                   >
                     <LuDownload className="w-4 h-4 mr-1" /> Download SOA
                   </Button>
-                  {selectedCollection.collection_status !== 'completed' && (
+                  {selectedCollection.collection_status !== 'completed' && hasGeneralAccess && (
                     <>
                       <Button
                         size="sm"

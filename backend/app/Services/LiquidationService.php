@@ -54,6 +54,37 @@ class LiquidationService
             if ($shortage > 0) {
                 // If they didn't return enough cash, the remaining is a shortage
                 $hasDisputes = true;
+
+                // Create a Collection record for the driver shortage
+                \App\Models\Collection::create([
+                    'liquidation_id'     => $liquidation->id,
+                    'employee_id'        => $liquidation->employee_id,
+                    'client_name'        => "Driver Shortage - " . ($liquidation->employee ? "{$liquidation->employee->first_name} {$liquidation->employee->last_name}" : "Employee #{$liquidation->employee_id}"),
+                    'date'               => date('Y-m-d'),
+                    'travel_date'        => date('Y-m-d'),
+                    'rate'               => $shortage,
+                    'billing_amount'     => $shortage,
+                    'remaining_balance'  => $shortage,
+                    'collection_status'  => 'pending',
+                    'service_type'       => 'Other',
+                    'other_service_type' => 'Driver Shortage',
+                    'auto_generated'     => true,
+                ]);
+            }
+
+            if ($shortage < 0) {
+                // If they spent out of pocket, automatically create a CashBudgetRequest for reimbursement
+                $reimbursementAmount = abs($shortage);
+                \App\Models\CashBudgetRequest::create([
+                    'date'                 => date('Y-m-d'),
+                    'travel_date'          => date('Y-m-d'),
+                    'destination'          => "Liquidation Reimbursement - " . ($liquidation->tripTicket?->control_no ?? "Liquidation #{$liquidation->id}"),
+                    'meal_allowance'       => $reimbursementAmount,
+                    'total_amount'         => $reimbursementAmount,
+                    'status'               => 'pending_accounting',
+                    'prepared_by'          => auth()->id() ?? $liquidation->employee_id,
+                    'liquidation_id'       => $liquidation->id,
+                ]);
             }
 
             $liquidation->update([
@@ -115,6 +146,19 @@ class LiquidationService
                     'credit' => 0,
                     'description' => 'Unreturned cash shortage'
                 ];
+            }
+
+            // 3b. Credit Due to Employees for over-liquidation (if shortage < 0)
+            if ($shortage < 0) {
+                $dueToEmployeesAccount = \App\Models\Account::where('code', '2100')->first();
+                if ($dueToEmployeesAccount) {
+                    $ledgerEntries[] = [
+                        'account_id' => $dueToEmployeesAccount->id,
+                        'debit' => 0,
+                        'credit' => abs($shortage),
+                        'description' => 'Reimbursement due to employee for extra trip expense'
+                    ];
+                }
             }
             
             // 4. Credit Employee Advances for the entire advanced amount

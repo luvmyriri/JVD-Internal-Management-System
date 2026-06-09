@@ -31,6 +31,37 @@ export function isPathAllowedForUser(path: string, user?: User | null, permissio
 
   // Helper to check view permission
   const hasViewPerm = (module: string) => {
+    const moduleKey = module.replace(/\./g, '_');
+    
+    // 1. Check explicit module tags first (e.g. access:accounting_commissions:general)
+    if (user.tags) {
+      if (user.tags.includes(`access:${moduleKey}:general`) || user.tags.includes(`access:${moduleKey}:personal`)) {
+        return true;
+      }
+    }
+
+    // 2. Check global access:general override
+    if (user.tags?.includes('access:general')) {
+      if (!module.startsWith('admin.')) {
+        return true;
+      }
+    }
+
+    // 3. Check access:personalized tag (only allows view/create on personalized modules)
+    if (user.tags?.includes('access:personalized')) {
+      const personalizedModules = [
+        'accounting.commissions',
+        'accounting.cash_budgets',
+        'accounting.liquidations',
+        'driver.overview',
+        'driver.scheduled_trips',
+        'driver.my_fleet'
+      ];
+      if (personalizedModules.includes(module)) {
+        return true;
+      }
+    }
+
     if (user.custom_permissions && user.custom_permissions[module]) {
       return user.custom_permissions[module]['can_view'] === true;
     }
@@ -87,6 +118,37 @@ export function getLandingPageForUser(user?: User | null, permissions?: RolePerm
 
   // Helper to check view permission
   const hasViewPerm = (module: string) => {
+    const moduleKey = module.replace(/\./g, '_');
+    
+    // 1. Check explicit module tags first (e.g. access:accounting_commissions:general)
+    if (user.tags) {
+      if (user.tags.includes(`access:${moduleKey}:general`) || user.tags.includes(`access:${moduleKey}:personal`)) {
+        return true;
+      }
+    }
+
+    // 2. Check global access:general override
+    if (user.tags?.includes('access:general')) {
+      if (!module.startsWith('admin.')) {
+        return true;
+      }
+    }
+
+    // 3. Check access:personalized tag (only allows view/create on personalized modules)
+    if (user.tags?.includes('access:personalized')) {
+      const personalizedModules = [
+        'accounting.commissions',
+        'accounting.cash_budgets',
+        'accounting.liquidations',
+        'driver.overview',
+        'driver.scheduled_trips',
+        'driver.my_fleet'
+      ];
+      if (personalizedModules.includes(module)) {
+        return true;
+      }
+    }
+
     // Check for custom overrides first
     if (user.custom_permissions && user.custom_permissions[module]) {
       return user.custom_permissions[module]['can_view'] === true;

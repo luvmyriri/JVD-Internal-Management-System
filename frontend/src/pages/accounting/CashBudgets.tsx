@@ -46,8 +46,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  const isAccountingOrAdmin = ['accounting_executive', 'super_admin', 'executive_vice_president'].includes(user?.role ?? '');
-  const isOperationsOrAdmin = ['super_admin', 'executive_vice_president', 'operations_manager', 'logistics_in_charge'].includes(user?.role ?? '');
+  const isAccountingOrAdmin = !!(user?.tags?.includes('process:approve_cash_budget') || user?.tags?.includes('access:general'));
+  const isOperationsOrAdmin = !!(user?.tags?.includes('process:disburse_cash_budget') || user?.tags?.includes('access:general'));
 
   const [form, setForm] = useState({
     diesel: Number(budget.diesel) || 0,
@@ -819,6 +819,7 @@ const STATUS_FILTERS = ['all', 'draft', 'approved', 'disbursed'] as const;
 type StatusFilter = typeof STATUS_FILTERS[number];
 
 export default function CashBudgets() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [selectedBudget, setSelectedBudget] = useState<CashBudgetRequest | null>(null);
@@ -833,7 +834,12 @@ export default function CashBudgets() {
 
   const budgets: CashBudgetRequest[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
+  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:cash_budgets:general'));
+
   const filtered = budgets.filter((b) => {
+    if (!hasGeneralAccess && b.prepared_by !== user?.id) {
+      return false;
+    }
     const q = searchTerm.toLowerCase();
     const matchSearch = !q ||
       b.destination?.toLowerCase().includes(q) ||
@@ -853,13 +859,8 @@ export default function CashBudgets() {
     disbursed: budgets.filter(b => b.status === 'disbursed').length,
   };
 
-  const getRowIndicatorStyle = (status?: string) => {
-    switch (status) {
-      case 'draft': return 'border-l-4 border-amber-400';
-      case 'approved': return 'border-l-4 border-blue-500';
-      case 'disbursed': return 'border-l-4 border-emerald-500';
-      default: return 'border-l-4 border-transparent';
-    }
+  const getRowIndicatorStyle = (_status?: string) => {
+    return '';
   };
 
   return (
@@ -996,7 +997,7 @@ export default function CashBudgets() {
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
               </tr>
             </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800/50 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+            <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">

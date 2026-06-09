@@ -33,6 +33,7 @@ export interface Collection {
   remarks?: string;
   auto_generated?: boolean;
   invoice?: any;
+  liquidation_id?: number;
 
   created_at?: string;
   updated_at?: string;

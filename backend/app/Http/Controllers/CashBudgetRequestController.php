@@ -150,29 +150,47 @@ class CashBudgetRequestController extends Controller
 
             // Create double-entry journal entry in Ledger
             $ledgerService = app(\App\Services\LedgerService::class);
-            $employeeAdvancesAccount = \App\Models\Account::where('code', '1200')->first();
             $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
             
-            if ($employeeAdvancesAccount && $cashInBankAccount && $budget->tripTicket) {
-                $ledgerService->recordEntry(
-                    date('Y-m-d'),
-                    "Cash advance disbursed to driver for DTT: " . $budget->tripTicket->control_no,
-                    [
+            if ($cashInBankAccount) {
+                $debitAccount = null;
+                $description = "";
+                
+                if ($budget->commission_id) {
+                    $debitAccount = \App\Models\Account::where('code', '5400')->first(); // Commission Expense
+                    $description = "Commission disbursement for " . ($budget->commission?->serial_no ?? "Commission #{$budget->commission_id}");
+                } elseif ($budget->liquidation_id) {
+                    $debitAccount = \App\Models\Account::where('code', '2100')->first(); // Due to Employees (clearing liability)
+                    $description = "Liquidation reimbursement payout for DTT: " . ($budget->liquidation?->tripTicket?->control_no ?? "Liquidation #{$budget->liquidation_id}");
+                } elseif ($budget->purchase_order_id || $budget->work_order_id) {
+                    $debitAccount = \App\Models\Account::where('code', '5300')->first(); // Maintenance Expense
+                    $description = "Maintenance budget disbursement for PO #" . ($budget->purchase_order_id ?? $budget->work_order_id);
+                } elseif ($budget->tripTicket) {
+                    $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
+                    $description = "Cash advance disbursed to driver for DTT: " . $budget->tripTicket->control_no;
+                }
+                
+                if ($debitAccount) {
+                    $ledgerService->recordEntry(
+                        date('Y-m-d'),
+                        $description,
                         [
-                            'account_id' => $employeeAdvancesAccount->id,
-                            'debit' => $disbursedAmount,
-                            'credit' => 0,
-                            'description' => 'Disbursement of Cash Advance'
+                            [
+                                'account_id' => $debitAccount->id,
+                                'debit' => $disbursedAmount,
+                                'credit' => 0,
+                                'description' => $description
+                            ],
+                            [
+                                'account_id' => $cashInBankAccount->id,
+                                'debit' => 0,
+                                'credit' => $disbursedAmount,
+                                'description' => 'Disbursement from Cash in Bank'
+                            ]
                         ],
-                        [
-                            'account_id' => $cashInBankAccount->id,
-                            'debit' => 0,
-                            'credit' => $disbursedAmount,
-                            'description' => 'Disbursement from Cash in Bank'
-                        ]
-                    ],
-                    $budget
-                );
+                        $budget
+                    );
+                }
             }
 
             // Only create invoice if one doesn't already exist
