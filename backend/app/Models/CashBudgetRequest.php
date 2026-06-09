@@ -28,6 +28,7 @@ class CashBudgetRequest extends Model
         'disbursed_by',
         'purchase_order_id',
         'trip_ticket_id',
+        'work_order_id',
     ];
 
     protected function casts(): array
@@ -62,6 +63,11 @@ class CashBudgetRequest extends Model
     public function tripTicket(): BelongsTo
     {
         return $this->belongsTo(TripTicket::class, 'trip_ticket_id');
+    }
+
+    public function workOrder(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrder::class, 'work_order_id');
     }
 
     public function invoice(): HasOne

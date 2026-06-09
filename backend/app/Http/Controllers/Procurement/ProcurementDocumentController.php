@@ -4,6 +4,10 @@ namespace App\Http\Controllers\Procurement;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProcurementDocument;
+use App\Models\CustomerKyc;
+use App\Models\CustomerPassport;
+use App\Models\CustomerVisa;
+use App\Models\Accreditation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
@@ -16,35 +20,295 @@ class ProcurementDocumentController extends Controller
      */
     public function index(Request $request)
     {
-        $query = ProcurementDocument::with(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email', 'uploader:id,first_name,last_name,email']);
+        // 1. Fetch Procurement Documents
+        $procurementDocs = ProcurementDocument::with([
+            'supplier', 
+            'inventoryItem', 
+            'driver:id,first_name,last_name,email', 
+            'uploader:id,first_name,last_name,email',
+            'customer:id,first_name,last_name,email',
+            'jobOrder',
+            'workOrder',
+            'tripTicket'
+        ])->get()->map(function ($doc) {
+            return [
+                'id' => 'doc_procurement_' . $doc->id,
+                'real_id' => $doc->id,
+                'source_type' => 'procurement',
+                'title' => $doc->title,
+                'document_type' => $doc->document_type,
+                'file_path' => $doc->file_path,
+                'amount' => $doc->amount,
+                'custom_metadata' => $doc->custom_metadata ?? [],
+                'uploaded_by' => $doc->uploader ? [
+                    'id' => $doc->uploader->id,
+                    'first_name' => $doc->uploader->first_name,
+                    'last_name' => $doc->uploader->last_name,
+                    'email' => $doc->uploader->email,
+                ] : null,
+                'created_at' => $doc->created_at ? $doc->created_at->toIso8601String() : null,
+                'updated_at' => $doc->updated_at ? $doc->updated_at->toIso8601String() : null,
+                'supplier_id' => $doc->supplier_id,
+                'inventory_item_id' => $doc->inventory_item_id,
+                'driver_id' => $doc->driver_id,
+                'customer_id' => $doc->customer_id,
+                'job_order_id' => $doc->job_order_id,
+                'work_order_id' => $doc->work_order_id,
+                'trip_ticket_id' => $doc->trip_ticket_id,
+                'transaction_type' => $doc->transaction_type,
+                'transaction_id' => $doc->transaction_id,
+                'supplier' => $doc->supplier,
+                'inventory_item' => $doc->inventoryItem,
+                'driver' => $doc->driver,
+                'customer' => $doc->customer,
+                'job_order' => $doc->jobOrder,
+                'work_order' => $doc->workOrder,
+                'trip_ticket' => $doc->tripTicket,
+                'linkages' => [
+                    'supplier' => $doc->supplier,
+                    'inventory_item' => $doc->inventoryItem,
+                    'driver' => $doc->driver,
+                    'customer' => $doc->customer,
+                    'job_order' => $doc->jobOrder,
+                    'work_order' => $doc->workOrder,
+                    'trip_ticket' => $doc->tripTicket,
+                    'connected_to' => $doc->customer ? ('Customer: ' . $doc->customer->first_name . ' ' . $doc->customer->last_name) : 
+                                     ($doc->jobOrder ? ('Job Order #' . $doc->jobOrder->jo_number) : 
+                                     ($doc->tripTicket ? ('Trip Ticket #' . $doc->tripTicket->control_no) : 
+                                     ($doc->workOrder ? ('Work Order #' . $doc->workOrder->wo_number) :
+                                     ($doc->supplier ? ('Supplier: ' . $doc->supplier->company_name) : 
+                                     ($doc->inventoryItem ? ('Inventory: ' . $doc->inventoryItem->item_name) : 
+                                     ($doc->driver ? ('Driver: ' . $doc->driver->first_name . ' ' . $doc->driver->last_name) : 'Unlinked')))))),
+                ]
+            ];
+        });
 
-        // Smart Interconnection Filtering
+        // 2. Fetch Customer KYCs
+        $kycDocs = CustomerKyc::with(['customer'])->get()->map(function ($kyc) {
+            return [
+                'id' => 'doc_kyc_' . $kyc->id,
+                'real_id' => $kyc->id,
+                'source_type' => 'kyc',
+                'title' => 'KYC - ' . $kyc->document_type . ($kyc->customer ? (' (' . $kyc->customer->first_name . ' ' . $kyc->customer->last_name . ')') : ''),
+                'document_type' => 'kyc',
+                'file_path' => $kyc->file_path,
+                'amount' => null,
+                'custom_metadata' => [
+                    'document_number' => $kyc->document_number,
+                    'notes' => $kyc->notes,
+                ],
+                'uploaded_by' => null,
+                'created_at' => $kyc->created_at ? $kyc->created_at->toIso8601String() : null,
+                'updated_at' => $kyc->updated_at ? $kyc->updated_at->toIso8601String() : null,
+                'customer_id' => $kyc->customer_id,
+                'customer' => $kyc->customer,
+                'linkages' => [
+                    'customer' => $kyc->customer,
+                    'connected_to' => $kyc->customer ? ('Customer: ' . $kyc->customer->first_name . ' ' . $kyc->customer->last_name) : 'Unlinked',
+                ]
+            ];
+        });
+
+        // 3. Fetch Customer Passports
+        $passportDocs = CustomerPassport::with(['customer'])->get()->map(function ($passport) {
+            return [
+                'id' => 'doc_passport_' . $passport->id,
+                'real_id' => $passport->id,
+                'source_type' => 'passport',
+                'title' => 'Passport - ' . $passport->passport_number . ($passport->customer ? (' (' . $passport->customer->first_name . ' ' . $passport->customer->last_name . ')') : ''),
+                'document_type' => 'passport',
+                'file_path' => $passport->file_path,
+                'amount' => null,
+                'custom_metadata' => [
+                    'passport_number' => $passport->passport_number,
+                    'issue_country' => $passport->issue_country,
+                    'issue_date' => $passport->issue_date ? $passport->issue_date->toDateString() : null,
+                    'expiry_date' => $passport->expiry_date ? $passport->expiry_date->toDateString() : null,
+                    'notes' => $passport->notes,
+                ],
+                'uploaded_by' => null,
+                'created_at' => $passport->created_at ? $passport->created_at->toIso8601String() : null,
+                'updated_at' => $passport->updated_at ? $passport->updated_at->toIso8601String() : null,
+                'customer_id' => $passport->customer_id,
+                'customer' => $passport->customer,
+                'linkages' => [
+                    'customer' => $passport->customer,
+                    'connected_to' => $passport->customer ? ('Customer: ' . $passport->customer->first_name . ' ' . $passport->customer->last_name) : 'Unlinked',
+                ]
+            ];
+        });
+
+        // 4. Fetch Customer Visas
+        $visaDocs = CustomerVisa::with(['customer'])->get()->map(function ($visa) {
+            return [
+                'id' => 'doc_visa_' . $visa->id,
+                'real_id' => $visa->id,
+                'source_type' => 'visa',
+                'title' => 'Visa - ' . $visa->visa_type . ' to ' . $visa->country . ($visa->customer ? (' (' . $visa->customer->first_name . ' ' . $visa->customer->last_name . ')') : ''),
+                'document_type' => 'visa',
+                'file_path' => $visa->file_path,
+                'amount' => null,
+                'custom_metadata' => [
+                    'visa_number' => $visa->visa_number,
+                    'visa_type' => $visa->visa_type,
+                    'country' => $visa->country,
+                    'issue_date' => $visa->issue_date ? $visa->issue_date->toDateString() : null,
+                    'expiry_date' => $visa->expiry_date ? $visa->expiry_date->toDateString() : null,
+                    'notes' => $visa->notes,
+                ],
+                'uploaded_by' => null,
+                'created_at' => $visa->created_at ? $visa->created_at->toIso8601String() : null,
+                'updated_at' => $visa->updated_at ? $visa->updated_at->toIso8601String() : null,
+                'customer_id' => $visa->customer_id,
+                'customer' => $visa->customer,
+                'linkages' => [
+                    'customer' => $visa->customer,
+                    'connected_to' => $visa->customer ? ('Customer: ' . $visa->customer->first_name . ' ' . $visa->customer->last_name) : 'Unlinked',
+                ]
+            ];
+        });
+
+        // 5. Fetch Accreditations Documents
+        $accreditationDocs = collect();
+        Accreditation::all()->each(function ($acc) use ($accreditationDocs) {
+            $linkages = [
+                'accreditation' => [
+                    'id' => $acc->id,
+                    'entity_type' => $acc->entity_type,
+                    'entity_id' => $acc->entity_id,
+                    'entity_name' => $acc->entity_name,
+                    'accreditation_type' => $acc->accreditation_type,
+                ],
+                'connected_to' => 'Accreditation: ' . $acc->entity_name . ' (' . ucfirst($acc->entity_type) . ' - ' . $acc->accreditation_type . ')',
+            ];
+
+            $metadata = [
+                'accreditation_id' => $acc->id,
+                'accreditation_type' => $acc->accreditation_type,
+                'issuing_body' => $acc->issuing_body,
+                'status' => $acc->status,
+                'expiry_date' => $acc->expiry_date ? $acc->expiry_date->toDateString() : null,
+            ];
+
+            if ($acc->document_url) {
+                $accreditationDocs->push([
+                    'id' => 'doc_accreditation_' . $acc->id . '_main',
+                    'real_id' => $acc->id,
+                    'source_type' => 'accreditation',
+                    'title' => 'Accreditation Certificate - ' . $acc->entity_name,
+                    'document_type' => 'accreditation',
+                    'file_path' => $acc->document_url,
+                    'amount' => null,
+                    'custom_metadata' => array_merge($metadata, ['doc_type' => 'Certificate']),
+                    'uploaded_by' => null,
+                    'created_at' => $acc->created_at ? $acc->created_at->toIso8601String() : null,
+                    'updated_at' => $acc->updated_at ? $acc->updated_at->toIso8601String() : null,
+                    'linkages' => $linkages,
+                ]);
+            }
+
+            if ($acc->nda_document_url) {
+                $accreditationDocs->push([
+                    'id' => 'doc_accreditation_' . $acc->id . '_nda',
+                    'real_id' => $acc->id,
+                    'source_type' => 'accreditation',
+                    'title' => 'NDA - ' . $acc->entity_name,
+                    'document_type' => 'agreement',
+                    'file_path' => $acc->nda_document_url,
+                    'amount' => null,
+                    'custom_metadata' => array_merge($metadata, ['doc_type' => 'NDA']),
+                    'uploaded_by' => null,
+                    'created_at' => $acc->created_at ? $acc->created_at->toIso8601String() : null,
+                    'updated_at' => $acc->updated_at ? $acc->updated_at->toIso8601String() : null,
+                    'linkages' => $linkages,
+                ]);
+            }
+
+            if ($acc->terms_document_url) {
+                $accreditationDocs->push([
+                    'id' => 'doc_accreditation_' . $acc->id . '_terms',
+                    'real_id' => $acc->id,
+                    'source_type' => 'accreditation',
+                    'title' => 'Terms & Conditions - ' . $acc->entity_name,
+                    'document_type' => 'agreement',
+                    'file_path' => $acc->terms_document_url,
+                    'amount' => null,
+                    'custom_metadata' => array_merge($metadata, ['doc_type' => 'Terms']),
+                    'uploaded_by' => null,
+                    'created_at' => $acc->created_at ? $acc->created_at->toIso8601String() : null,
+                    'updated_at' => $acc->updated_at ? $acc->updated_at->toIso8601String() : null,
+                    'linkages' => $linkages,
+                ]);
+            }
+
+            if ($acc->kyc_document_url) {
+                $accreditationDocs->push([
+                    'id' => 'doc_accreditation_' . $acc->id . '_kyc',
+                    'real_id' => $acc->id,
+                    'source_type' => 'accreditation',
+                    'title' => 'Compliance KYC - ' . $acc->entity_name,
+                    'document_type' => 'kyc',
+                    'file_path' => $acc->kyc_document_url,
+                    'amount' => null,
+                    'custom_metadata' => array_merge($metadata, ['doc_type' => 'KYC']),
+                    'uploaded_by' => null,
+                    'created_at' => $acc->created_at ? $acc->created_at->toIso8601String() : null,
+                    'updated_at' => $acc->updated_at ? $acc->updated_at->toIso8601String() : null,
+                    'linkages' => $linkages,
+                ]);
+            }
+
+            $customDocs = $acc->custom_documents ?? [];
+            if (is_array($customDocs)) {
+                foreach ($customDocs as $idx => $cDoc) {
+                    if (empty($cDoc['url'])) continue;
+                    $accreditationDocs->push([
+                        'id' => 'doc_accreditation_' . $acc->id . '_custom_' . ($cDoc['key'] ?? $idx),
+                        'real_id' => $acc->id,
+                        'source_type' => 'accreditation',
+                        'title' => ($cDoc['name'] ?? 'Custom Doc') . ' - ' . $acc->entity_name,
+                        'document_type' => 'other',
+                        'file_path' => $cDoc['url'],
+                        'amount' => null,
+                        'custom_metadata' => array_merge($metadata, ['doc_type' => $cDoc['name'] ?? 'Custom']),
+                        'uploaded_by' => null,
+                        'created_at' => $acc->created_at ? $acc->created_at->toIso8601String() : null,
+                        'updated_at' => $acc->updated_at ? $acc->updated_at->toIso8601String() : null,
+                        'linkages' => $linkages,
+                    ]);
+                }
+            }
+        });
+
+        // 6. Consolidate Collections
+        $allDocs = collect()
+            ->concat($procurementDocs)
+            ->concat($kycDocs)
+            ->concat($passportDocs)
+            ->concat($visaDocs)
+            ->concat($accreditationDocs);
+
+        // 7. Filtering & Search
         if ($request->has('supplier_id')) {
-            $query->where('supplier_id', $request->supplier_id);
+            $supplierId = (int) $request->supplier_id;
+            $allDocs = $allDocs->filter(function ($doc) use ($supplierId) {
+                return isset($doc['supplier_id']) && $doc['supplier_id'] === $supplierId;
+            });
         }
         if ($request->has('inventory_item_id')) {
-            $query->where('inventory_item_id', $request->inventory_item_id);
+            $itemId = (int) $request->inventory_item_id;
+            $allDocs = $allDocs->filter(function ($doc) use ($itemId) {
+                return isset($doc['inventory_item_id']) && $doc['inventory_item_id'] === $itemId;
+            });
         }
         if ($request->has('driver_id')) {
-            $query->where('driver_id', $request->driver_id);
-        }
-        if ($request->has('transaction_type')) {
-            $query->where('transaction_type', $request->transaction_type);
-        }
-        if ($request->has('transaction_id')) {
-            $query->where('transaction_id', $request->transaction_id);
-        }
-
-        // Search in title or custom metadata
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('document_type', 'like', "%{$search}%")
-                  ->orWhere('custom_metadata', 'like', "%{$search}%");
+            $driverId = (int) $request->driver_id;
+            $allDocs = $allDocs->filter(function ($doc) use ($driverId) {
+                return isset($doc['driver_id']) && $doc['driver_id'] === $driverId;
             });
         }
 
+<<<<<<< HEAD
         // Role-based document category filtering
         $user = auth()->user();
         if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
@@ -60,10 +324,24 @@ class ProcurementDocumentController extends Controller
         }
 
         $documents = $query->orderBy('created_at', 'desc')->get();
+=======
+        if ($request->filled('search')) {
+            $search = strtolower($request->search);
+            $allDocs = $allDocs->filter(function ($doc) use ($search) {
+                if (str_contains(strtolower($doc['title']), $search)) return true;
+                if (str_contains(strtolower($doc['document_type']), $search)) return true;
+                if (str_contains(strtolower($doc['linkages']['connected_to'] ?? ''), $search)) return true;
+                return false;
+            });
+        }
+
+        // Sort chronologically (descending)
+        $allDocs = $allDocs->sortByDesc('created_at')->values();
+>>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
 
         return response()->json([
             'success' => true,
-            'data' => $documents
+            'data' => $allDocs
         ]);
     }
 
@@ -81,6 +359,10 @@ class ProcurementDocumentController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'inventory_item_id' => 'nullable|exists:inventory_items,id',
             'driver_id' => 'nullable|exists:users,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
+            'work_order_id' => 'nullable|exists:work_orders,id',
+            'trip_ticket_id' => 'nullable|exists:trip_tickets,id',
             'transaction_type' => 'nullable|string|max:255',
             'transaction_id' => 'nullable|integer',
             'custom_metadata' => 'nullable|array', // Dynamic user metadata
@@ -163,6 +445,10 @@ class ProcurementDocumentController extends Controller
             'supplier_id' => $request->supplier_id,
             'inventory_item_id' => $request->inventory_item_id,
             'driver_id' => $request->driver_id,
+            'customer_id' => $request->customer_id,
+            'job_order_id' => $request->job_order_id,
+            'work_order_id' => $request->work_order_id,
+            'trip_ticket_id' => $request->trip_ticket_id,
             'transaction_type' => $request->transaction_type,
             'transaction_id' => $request->transaction_id,
             'custom_metadata' => $request->custom_metadata ?? [],
@@ -172,7 +458,7 @@ class ProcurementDocumentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Procurement document uploaded and linked successfully',
-            'data' => $document->load(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email'])
+            'data' => $document->load(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email', 'customer:id,first_name,last_name,email', 'jobOrder', 'workOrder', 'tripTicket'])
         ], 201);
     }
 
@@ -181,7 +467,7 @@ class ProcurementDocumentController extends Controller
      */
     public function show($id)
     {
-        $document = ProcurementDocument::with(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email', 'uploader:id,first_name,last_name,email'])->find($id);
+        $document = ProcurementDocument::with(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email', 'uploader:id,first_name,last_name,email', 'customer:id,first_name,last_name,email', 'jobOrder', 'workOrder', 'tripTicket'])->find($id);
 
         if (!$document) {
             return response()->json([
@@ -251,6 +537,10 @@ class ProcurementDocumentController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'inventory_item_id' => 'nullable|exists:inventory_items,id',
             'driver_id' => 'nullable|exists:users,id',
+            'customer_id' => 'nullable|exists:customers,id',
+            'job_order_id' => 'nullable|exists:job_orders,id',
+            'work_order_id' => 'nullable|exists:work_orders,id',
+            'trip_ticket_id' => 'nullable|exists:trip_tickets,id',
             'transaction_type' => 'nullable|string|max:255',
             'transaction_id' => 'nullable|integer',
             'custom_metadata' => 'nullable|array',
@@ -270,6 +560,10 @@ class ProcurementDocumentController extends Controller
             'supplier_id' => $request->supplier_id,
             'inventory_item_id' => $request->inventory_item_id,
             'driver_id' => $request->driver_id,
+            'customer_id' => $request->customer_id,
+            'job_order_id' => $request->job_order_id,
+            'work_order_id' => $request->work_order_id,
+            'trip_ticket_id' => $request->trip_ticket_id,
             'transaction_type' => $request->transaction_type,
             'transaction_id' => $request->transaction_id,
             'custom_metadata' => $request->custom_metadata ?? [],
@@ -278,7 +572,7 @@ class ProcurementDocumentController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Procurement document references updated successfully',
-            'data' => $document->load(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email'])
+            'data' => $document->load(['supplier', 'inventoryItem', 'driver:id,first_name,last_name,email', 'customer:id,first_name,last_name,email', 'jobOrder', 'workOrder', 'tripTicket'])
         ]);
     }
 
@@ -287,6 +581,7 @@ class ProcurementDocumentController extends Controller
      */
     public function destroy($id)
     {
+<<<<<<< HEAD
         $document = ProcurementDocument::findOrFail($id);
 
         $user = auth()->user();
@@ -302,13 +597,111 @@ class ProcurementDocumentController extends Controller
         // Delete physical file from storage disk
         if (Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
+=======
+        if (is_string($id) && str_starts_with($id, 'doc_')) {
+            if (str_starts_with($id, 'doc_procurement_')) {
+                $realId = (int) str_replace('doc_procurement_', '', $id);
+                $document = ProcurementDocument::findOrFail($realId);
+                if (Storage::disk('public')->exists($document->file_path)) {
+                    Storage::disk('public')->delete($document->file_path);
+                }
+                $document->delete();
+            } 
+            elseif (str_starts_with($id, 'doc_kyc_')) {
+                $realId = (int) str_replace('doc_kyc_', '', $id);
+                $kyc = CustomerKyc::findOrFail($realId);
+                if ($kyc->file_path && Storage::disk('public')->exists($kyc->file_path)) {
+                    Storage::disk('public')->delete($kyc->file_path);
+                }
+                $kyc->delete();
+            } 
+            elseif (str_starts_with($id, 'doc_passport_')) {
+                $realId = (int) str_replace('doc_passport_', '', $id);
+                $passport = CustomerPassport::findOrFail($realId);
+                if ($passport->file_path && Storage::disk('public')->exists($passport->file_path)) {
+                    Storage::disk('public')->delete($passport->file_path);
+                }
+                $passport->delete();
+            } 
+            elseif (str_starts_with($id, 'doc_visa_')) {
+                $realId = (int) str_replace('doc_visa_', '', $id);
+                $visa = CustomerVisa::findOrFail($realId);
+                if ($visa->file_path && Storage::disk('public')->exists($visa->file_path)) {
+                    Storage::disk('public')->delete($visa->file_path);
+                }
+                $visa->delete();
+            } 
+            elseif (str_starts_with($id, 'doc_accreditation_')) {
+                $parts = explode('_', $id);
+                $realId = (int) $parts[2];
+                $type = $parts[3];
+                
+                $acc = Accreditation::findOrFail($realId);
+                
+                if ($type === 'main') {
+                    $filePath = $this->getRelativePathFromUrl($acc->document_url);
+                    if ($filePath && Storage::disk('public')->exists($filePath)) {
+                        Storage::disk('public')->delete($filePath);
+                    }
+                    $acc->document_url = null;
+                } elseif (in_array($type, ['kyc', 'nda', 'terms'])) {
+                    $column = $type . '_document_url';
+                    $filePath = $this->getRelativePathFromUrl($acc->{$column});
+                    if ($filePath && Storage::disk('public')->exists($filePath)) {
+                        Storage::disk('public')->delete($filePath);
+                    }
+                    $acc->{$column} = null;
+                } elseif ($type === 'custom') {
+                    $customKey = implode('_', array_slice($parts, 4));
+                    $customDocs = $acc->custom_documents ?? [];
+                    if (is_array($customDocs)) {
+                        foreach ($customDocs as &$cDoc) {
+                            if (($cDoc['key'] ?? '') === $customKey) {
+                                $filePath = $this->getRelativePathFromUrl($cDoc['url']);
+                                if ($filePath && Storage::disk('public')->exists($filePath)) {
+                                    Storage::disk('public')->delete($filePath);
+                                }
+                                $cDoc['url'] = null;
+                                $cDoc['status'] = 'pending';
+                                break;
+                            }
+                        }
+                        $acc->custom_documents = $customDocs;
+                    }
+                }
+                $acc->save();
+            }
+        } else {
+            // Fallback for raw numeric ID
+            $document = ProcurementDocument::findOrFail($id);
+            if (Storage::disk('public')->exists($document->file_path)) {
+                Storage::disk('public')->delete($document->file_path);
+            }
+            $document->delete();
+>>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
         }
-
-        $document->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Procurement document and storage file deleted successfully'
+            'message' => 'Document and storage file deleted successfully'
         ]);
+    }
+
+    /**
+     * Helper to get relative path from a full URL.
+     */
+    private function getRelativePathFromUrl($url)
+    {
+        if (!$url) return null;
+        $storagePrefix = '/storage/';
+        $pos = strpos($url, $storagePrefix);
+        if ($pos !== false) {
+            return substr($url, $pos + strlen($storagePrefix));
+        }
+        $pos2 = strpos($url, 'storage/');
+        if ($pos2 !== false) {
+            return substr($url, $pos2 + strlen('storage/'));
+        }
+        return $url;
     }
 }

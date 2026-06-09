@@ -81,37 +81,66 @@ class JobOrderService
 
         $jo->update(['status' => $newStatus]);
 
-        // Auto-generate Trip Ticket for travel JOs when confirmed
-        if ($newStatus === 'confirmed' && $jo->service_type !== 'maintenance') {
-            $existingTicket = \App\Models\TripTicket::where('job_order_id', $jo->id)->first();
-            if (!$existingTicket) {
-                $year = now()->year;
-                $latest = \App\Models\TripTicket::where('control_no', 'like', "TT-{$year}-%")->orderByDesc('id')->first();
-                $sequence = 1;
-                if ($latest) {
-                    $parts = explode('-', $latest->control_no);
-                    $sequence = (int) end($parts) + 1;
+        // Auto-generate WorkOrder or TripTicket depending on JO type when confirmed
+        if ($newStatus === 'confirmed') {
+            if ($jo->service_type === 'maintenance') {
+                // Maintenance Track: Auto-generate Work Order from Job Order
+                if (!$jo->work_order_id) {
+                    $year = now()->year;
+                    $latestWo = \App\Models\WorkOrder::where('wo_number', 'like', "WO-{$year}-%")->orderByDesc('id')->first();
+                    $sequence = 1;
+                    if ($latestWo) {
+                        $parts = explode('-', $latestWo->wo_number);
+                        $sequence = (int) end($parts) + 1;
+                    }
+                    $woNumber = sprintf('WO-%d-%04d', $year, $sequence);
+
+                    $wo = \App\Models\WorkOrder::create([
+                        'wo_number'      => $woNumber,
+                        'bus_id'         => $jo->bus_id,
+                        'assigned_to'    => $jo->driver_id, // e.g. assigned mechanic if we mapped driver_id
+                        'created_by'     => auth()->id() ?? $jo->created_by ?? 1,
+                        'status'         => 'open', // Auto-open because the Job Order authorization was already confirmed
+                        'priority'       => 'routine',
+                        'description'    => "Execution task for authorized Maintenance Job Order {$jo->jo_number}. " . $jo->notes,
+                        'auto_generated' => true,
+                    ]);
+
+                    $jo->update(['work_order_id' => $wo->id]);
+                    \App\Http\Services\NotificationService::notifyWorkOrderRequest($wo);
                 }
-                $controlNo = sprintf('TT-%d-%04d', $year, $sequence);
+            } else {
+                // Travel Track: Auto-generate Trip Ticket
+                $existingTicket = \App\Models\TripTicket::where('job_order_id', $jo->id)->first();
+                if (!$existingTicket) {
+                    $year = now()->year;
+                    $latest = \App\Models\TripTicket::where('control_no', 'like', "TT-{$year}-%")->orderByDesc('id')->first();
+                    $sequence = 1;
+                    if ($latest) {
+                        $parts = explode('-', $latest->control_no);
+                        $sequence = (int) end($parts) + 1;
+                    }
+                    $controlNo = sprintf('TT-%d-%04d', $year, $sequence);
 
-                $ticket = \App\Models\TripTicket::create([
-                    'control_no' => $controlNo,
-                    'issue_date' => now()->toDateString(),
-                    'date_of_travel' => $jo->service_date ?? now()->toDateString(),
-                    'duration' => '1 Day',
-                    'pick_up' => 'Terminal / Branch',
-                    'drop_off' => $jo->destination ?? 'TBD',
-                    'bus_id' => $jo->bus_id,
-                    'plate_no' => $jo->bus?->plate_number,
-                    'no_of_passengers' => $jo->passengers()->count() ?: 1,
-                    'driver_id' => $jo->driver_id,
-                    'requested_by' => $jo->created_by ?? auth()->id() ?? 1,
-                    'status' => 'draft',
-                    'job_order_id' => $jo->id,
-                ]);
+                    $ticket = \App\Models\TripTicket::create([
+                        'control_no' => $controlNo,
+                        'issue_date' => now()->toDateString(),
+                        'date_of_travel' => $jo->service_date ?? now()->toDateString(),
+                        'duration' => '1 Day',
+                        'pick_up' => 'Terminal / Branch',
+                        'drop_off' => $jo->destination ?? 'TBD',
+                        'bus_id' => $jo->bus_id,
+                        'plate_no' => $jo->bus?->plate_number,
+                        'no_of_passengers' => $jo->passengers()->count() ?: 1,
+                        'driver_id' => $jo->driver_id,
+                        'requested_by' => $jo->created_by ?? auth()->id() ?? 1,
+                        'status' => 'draft',
+                        'job_order_id' => $jo->id,
+                    ]);
 
-                if ($ticket->bus_id) {
-                    app(\App\Http\Controllers\TripTicketController::class)->autoGeneratePreTripWorkOrder($ticket);
+                    if ($ticket->bus_id) {
+                        app(\App\Http\Controllers\TripTicketController::class)->autoGeneratePreTripWorkOrder($ticket);
+                    }
                 }
             }
         }

@@ -14,11 +14,11 @@ class StoreJobOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'customer_id'   => ['required', 'integer', 'exists:customers,id'],
+            'customer_id'   => ['required_unless:service_type,maintenance', 'nullable', 'integer', 'exists:customers,id'],
             'bus_id'        => ['required', 'integer', 'exists:buses,id'],
             'service_type'  => ['required', 'in:bus_rental,field_trip,corporate_transport,travel_package,event,maintenance'],
             'service_date'  => ['required', 'date', 'after_or_equal:today'],
-            'destination'   => ['required', 'string', 'max:255'],
+            'destination'   => ['required_unless:service_type,maintenance', 'nullable', 'string', 'max:255'],
             'total_cost'    => ['required', 'numeric', 'min:0'],
             'notes'         => ['nullable', 'string', 'max:1000'],
             'passenger_ids' => ['nullable', 'array'],

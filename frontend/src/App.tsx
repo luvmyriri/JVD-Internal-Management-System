@@ -17,23 +17,25 @@ import FixedPackages from './pages/sales/FixedPackages';
 import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
+import Liquidations from './pages/accounting/Liquidations';
+import EmployeeSOA from './pages/accounting/EmployeeSOA';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
 import Commissions from './pages/operations/Commissions';
 import TripTickets from './pages/logistics/TripTickets';
-import CashBudgets from './pages/operations/CashBudgets';
+import CashBudgets from './pages/accounting/CashBudgets';
 import Collections from './pages/accounting/Collections';
-import Accreditations from './pages/procurement/Accreditations';
+import Accreditations from './pages/operations/Accreditations';
 import Suppliers from './pages/procurement/Suppliers';
-import ProcurementDocuments from './pages/procurement/ProcurementDocuments';
+import CompanyDocuments from './pages/operations/CompanyDocuments';
 import Supplies from './pages/inventory/Supplies';
 import Fleet from './pages/inventory/Fleet';
 import PMS from './pages/inventory/PMS';
 import Passporting from './pages/travel/Passporting';
 import VisaProcessing from './pages/travel/VisaProcessing';
-import Customers from './pages/travel/Customers';
-import CustomerProfile from './pages/travel/CustomerProfile';
+import Customers from './pages/operations/Customers';
+import CustomerProfile from './pages/operations/CustomerProfile';
 import Employees from './pages/hr/Employees';
 import Applications from './pages/hr/Applications';
 import Internships from './pages/hr/Internships';
@@ -102,6 +104,8 @@ export default function App() {
                 <Route path="/accounting/collections" element={<Collections />} />
                 <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
                 <Route path="/accounting/commissions" element={<Commissions />} />
+                <Route path="/accounting/liquidations" element={<Liquidations />} />
+                <Route path="/accounting/employee-soa" element={<EmployeeSOA />} />
                 <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
 
                 {/* Operations */}
@@ -109,7 +113,7 @@ export default function App() {
                 <Route path="/operations/customers" element={<Customers />} />
                 <Route path="/operations/customers/:id" element={<CustomerProfile />} />
                 <Route path="/operations/accreditations" element={<Accreditations />} />
-                <Route path="/operations/documents" element={<ProcurementDocuments />} />
+                <Route path="/operations/documents" element={<CompanyDocuments />} />
                 <Route path="/operations/commissions" element={<Navigate to="/accounting/commissions" replace />} />
                 <Route path="/operations/cash-budgets" element={<Navigate to="/accounting/cash-budgets" replace />} />
 

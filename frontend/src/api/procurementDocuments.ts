@@ -9,6 +9,10 @@ export interface ProcurementDocument {
   supplier_id: number | null;
   inventory_item_id: number | null;
   driver_id: number | null;
+  customer_id: number | null;
+  job_order_id: number | null;
+  work_order_id: number | null;
+  trip_ticket_id: number | null;
   transaction_type: string | null;
   transaction_id: number | null;
   custom_metadata: Record<string, unknown>;
@@ -39,6 +43,15 @@ export interface ProcurementDocument {
     last_name: string;
     email: string;
   };
+  customer?: {
+    id: number;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  job_order?: any;
+  work_order?: any;
+  trip_ticket?: any;
 }
 
 export interface ProcurementDocumentFormData {
@@ -49,6 +62,10 @@ export interface ProcurementDocumentFormData {
   supplier_id?: number | null;
   inventory_item_id?: number | null;
   driver_id?: number | null;
+  customer_id?: number | null;
+  job_order_id?: number | null;
+  work_order_id?: number | null;
+  trip_ticket_id?: number | null;
   transaction_type?: string | null;
   transaction_id?: number | null;
   custom_metadata?: Record<string, unknown>;
@@ -58,16 +75,16 @@ export const procurementDocumentApi = {
   list: (params?: Record<string, unknown>) =>
     client.get<{ success: boolean; data: ProcurementDocument[] }>('/procurement-documents', { params }),
 
-  get: (id: number) =>
+  get: (id: number | string) =>
     client.get<{ success: boolean; data: ProcurementDocument }>(`/procurement-documents/${id}`),
 
   create: (data: ProcurementDocumentFormData) =>
     client.post<{ success: boolean; data: ProcurementDocument; message: string }>('/procurement-documents', data),
 
-  update: (id: number, data: Partial<ProcurementDocumentFormData>) =>
+  update: (id: number | string, data: Partial<ProcurementDocumentFormData>) =>
     client.put<{ success: boolean; data: ProcurementDocument; message: string }>(`/procurement-documents/${id}`, data),
 
-  delete: (id: number) =>
+  delete: (id: number | string) =>
     client.delete<{ success: boolean; message: string }>(`/procurement-documents/${id}`),
 };
 

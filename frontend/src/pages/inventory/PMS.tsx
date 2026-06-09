@@ -3,6 +3,7 @@ import * as ExcelJS from 'exceljs';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { workOrderApi } from '../../api/workOrders';
+import { jobOrderApi } from '../../api/jobOrders';
 
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
@@ -221,51 +222,53 @@ function MileageBar({ bus }: { bus: Bus }) {
   );
 }
 
-// ── Request WO Modal ─────────────────────────────────────────────────────────
-interface RequestWoModalProps { bus: Bus; onClose: () => void; }
+// ── Request JO Modal ─────────────────────────────────────────────────────────
+interface RequestJoModalProps { bus: Bus; onClose: () => void; }
 
-function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
+function RequestJoModal({ bus, onClose }: RequestJoModalProps) {
   const qc = useQueryClient();
   const pmsInfo = getNextPmsInfo(bus.total_mileage);
   const [notes, setNotes] = useState(
     `Preventive maintenance due for ${bus.plate_number}. Total mileage: ${bus.total_mileage.toLocaleString()} km. Next service: ${pmsInfo.level.type}.`
   );
-  const [priority, setPriority] = useState<'routine' | 'urgent' | 'critical'>(bus.is_service_overdue ? 'critical' : 'urgent');
   const [submitted, setSubmitted] = useState(false);
 
   const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
   const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
 
   const mutation = useMutation({
-    mutationFn: () => workOrderApi.create({
+    mutationFn: () => jobOrderApi.create({
       bus_id: bus.id,
-      description: notes,
-      priority,
-      type: 'maintenance',
-    } as any),
+      customer_id: null as any,
+      service_type: 'maintenance',
+      service_date: new Date().toISOString().split('T')[0],
+      destination: null as any,
+      total_cost: 0,
+      notes,
+    }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['work-orders'] });
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
       setSubmitted(true);
-      toast.success(`Work Order created for ${bus.plate_number}`);
+      toast.success(`Job Order created for ${bus.plate_number}`);
     },
     onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to create Work Order. Please try again.');
+      toast.error(err?.response?.data?.message || 'Failed to create Job Order. Please try again.');
     },
   });
 
   if (submitted) return (
-    <Modal isOpen onClose={onClose} title="Work Order Submitted" size="md">
+    <Modal isOpen onClose={onClose} title="Job Order Submitted" size="md">
       <div className="p-6 text-center space-y-4">
         <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto">
           <LuCheckCheck className="w-8 h-8 text-emerald-500" />
         </div>
         <div>
-          <p className="text-lg font-black text-gray-900 dark:text-white">WO Request Sent</p>
-          <p className="text-sm text-gray-400 mt-1">The Work Order for <span className="font-bold text-gray-700 dark:text-gray-300">{bus.plate_number}</span> is now pending approval.</p>
+          <p className="text-lg font-black text-gray-900 dark:text-white">JO Request Sent</p>
+          <p className="text-sm text-gray-400 mt-1">The Job Order for <span className="font-bold text-gray-700 dark:text-gray-300">{bus.plate_number}</span> is now pending approval.</p>
         </div>
         <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-left">
           <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">⚠ Awaiting Approval</p>
-          <p className="text-xs text-amber-600 dark:text-amber-300">No maintenance work may begin until a designated approver reviews and approves this Work Order.</p>
+          <p className="text-xs text-amber-600 dark:text-amber-300">A Work Order will be automatically generated for the mechanics once management confirms this Job Order.</p>
         </div>
         <Button onClick={onClose} className="w-full">Done</Button>
       </div>
@@ -273,7 +276,7 @@ function RequestWoModal({ bus, onClose }: RequestWoModalProps) {
   );
 
   return (
-    <Modal isOpen onClose={onClose} title="Request Work Order" size="lg">
+    <Modal isOpen onClose={onClose} title="Request Maintenance Job Order" size="lg">
       <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
         <div className="space-y-5">
           <details className="group" open>
@@ -406,7 +409,7 @@ export default function PMS() {
   const [tab, setTab] = useState<'priority' | 'all'>('priority');
   const [page, setPage] = useState(1);
   const [logBus, setLogBus] = useState<Bus | null>(null);
-  const [woBus, setWoBus] = useState<Bus | null>(null);
+  const [joBus, setJoBus] = useState<Bus | null>(null);
   const [profileBus, setProfileBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
@@ -744,10 +747,10 @@ export default function PMS() {
                       <td className="px-8 py-5 text-center">
                         <div className="flex flex-col items-center gap-2">
                           <button
-                            onClick={() => setWoBus(bus)}
+                            onClick={() => setJoBus(bus)}
                             className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
                           >
-                            <LuFileText className="w-3.5 h-3.5" /> Request WO
+                            <LuFileText className="w-3.5 h-3.5" /> Request JO
                           </button>
                           <button
                             onClick={() => setLogBus(bus)}
@@ -771,7 +774,7 @@ export default function PMS() {
       )}
 
       {logBus     && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
-      {woBus      && <RequestWoModal bus={woBus} onClose={() => setWoBus(null)} />}
+      {joBus      && <RequestJoModal bus={joBus} onClose={() => setJoBus(null)} />}
       {profileBus && <BusProfilePanel bus={profileBus} onClose={() => setProfileBus(null)} />}
     </div>
   );

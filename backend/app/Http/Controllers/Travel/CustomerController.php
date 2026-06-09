@@ -66,7 +66,7 @@ class CustomerController extends Controller
     {
         return response()->json([
             'success' => true,
-            'data'    => new CustomerResource($customer->load(['passengers', 'invoices', 'passports', 'visas', 'kycs', 'tasks'])),
+            'data'    => new CustomerResource($customer->load(['passengers', 'invoices', 'passports', 'visas', 'kycs', 'tasks', 'jobOrders.tripTickets', 'companyDocuments'])),
         ]);
     }
 

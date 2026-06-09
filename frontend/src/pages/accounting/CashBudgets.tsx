@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import {
   LuSearch, LuEye, LuClock,
   LuActivity, LuPlus,
-  LuFileCheck, LuWallet
+  LuFileCheck, LuWallet, LuLink
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
-import { cashBudgetApi } from '../../api/operations';
+import { cashBudgetApi, tripTicketApi } from '../../api/operations';
 import type { CashBudgetRequest } from '../../types';
 import { Modal, Button, PipelineVisualizer } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
@@ -181,6 +181,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
               driver_name: budget.tripTicket?.driver?.name,
               ticket_no: budget.tripTicket?.control_no,
               po_no: budget.purchaseOrder?.po_number,
+              wo_no: budget.workOrder?.wo_number,
             }}
           />
         </div>
@@ -198,6 +199,9 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                   <div>
                     <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Linked Trip Ticket</p>
                     <h3 className="text-lg font-black text-blue-900 dark:text-white mt-1">DTT #{budget.tripTicket?.control_no || budget.trip_ticket_id}</h3>
+                    {budget.work_order_id && (
+                      <p className="text-xs font-bold text-gray-500 mt-1">Work Order: {budget.workOrder?.wo_number || budget.work_order_id}</p>
+                    )}
                   </div>
                   {budget.tripTicket?.status && (
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
@@ -541,7 +545,17 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
     easytrip: 0,
     coach_captain_salary: 0,
     spare_driver_salary: 0,
+    trip_ticket_id: '',
+    work_order_id: '',
   });
+
+  // Fetch trip tickets for linking
+  const { data: tripTicketsRaw } = useQuery({
+    queryKey: ['trip-tickets-for-budget'],
+    queryFn: () => tripTicketApi.getAll(),
+    staleTime: 30_000,
+  });
+  const tripTickets = Array.isArray(tripTicketsRaw) ? tripTicketsRaw : (tripTicketsRaw as any)?.data || [];
 
   const mutation = useMutation({
     mutationFn: (data: any) => cashBudgetApi.create(data),
@@ -559,7 +573,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
     e.preventDefault();
 
     // Prepare payload, casting optional and required numeric values
-    const payload = {
+    const payload: any = {
       ...form,
       diesel: Number(form.diesel),
       meal_allowance: Number(form.meal_allowance),
@@ -570,8 +584,15 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
       spare_driver_salary: Number(form.spare_driver_salary),
     };
 
+    // Only include IDs if selected
+    if (form.trip_ticket_id) payload.trip_ticket_id = Number(form.trip_ticket_id);
+    else delete payload.trip_ticket_id;
+    if (form.work_order_id) payload.work_order_id = Number(form.work_order_id);
+    else delete payload.work_order_id;
+
     mutation.mutate(payload);
   };
+
 
   // Compute live sum reactively
   const liveTotal =
@@ -586,6 +607,46 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal isOpen={true} onClose={onClose} title="New Cash Budget Request" size="lg">
       <form onSubmit={handleSubmit} className="space-y-6 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {/* Section 0: Link to Operations Flow (Optional) */}
+        {tripTickets.length > 0 && (
+          <details className="group border border-blue-100 dark:border-blue-900/50 rounded-2xl bg-blue-50/30 dark:bg-blue-950/20" open>
+            <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+              <span className="flex items-center gap-2"><LuLink className="w-3.5 h-3.5" /> Link to Operations Flow (Optional)</span>
+            </summary>
+            <div className="p-4 pt-0 space-y-4">
+              <p className="text-[10px] text-blue-500 dark:text-blue-400 font-medium italic">
+                Link this budget to an existing Driver Trip Ticket to connect it to the JO → DTT → WO → Cash Budget flow.
+              </p>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Driver Trip Ticket (DTT)</label>
+                <select
+                  value={form.trip_ticket_id}
+                  onChange={e => {
+                    const selectedId = e.target.value;
+                    const selectedTicket = tripTickets.find((t: any) => String(t.id) === selectedId);
+                    setForm(p => ({
+                      ...p,
+                      trip_ticket_id: selectedId,
+                      // Auto-fill plate and destination from the selected trip ticket
+                      plate_number: selectedTicket?.bus?.plate_number || selectedTicket?.plate_no || p.plate_number,
+                      destination: selectedTicket?.drop_off || p.destination,
+                      travel_date: selectedTicket?.trip_date || p.travel_date,
+                    }));
+                  }}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">— No Trip Ticket linked (manual entry) —</option>
+                  {tripTickets.map((ticket: any) => (
+                    <option key={ticket.id} value={ticket.id}>
+                      DTT #{ticket.control_no || ticket.id} — {ticket.drop_off || 'N/A'} ({ticket.trip_date || 'N/A'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </details>
+        )}
+
         {/* Section 1: Travel Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
           <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
@@ -639,6 +700,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </details>
+
 
         {/* Section 2: Budget Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">

@@ -198,13 +198,10 @@ class WorkOrderController extends Controller
                 'approved_at'  => now(),
             ]);
 
-            // Auto-generate J.O.
-            $this->generateJobOrderInternal($request, $workOrder);
-
             return response()->json([
                 'success' => true,
                 'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-                'message' => 'Trip Work Order approved. Job Order generated automatically.',
+                'message' => 'Trip Work Order approved.',
             ]);
         }
 
@@ -257,13 +254,13 @@ class WorkOrderController extends Controller
                 'priority'     => $validated['priority'] ?? $workOrder->priority,
             ]);
 
-            // Auto-generate J.O. for maintenance once approved
-            $this->generateJobOrderInternal($request, $workOrder);
+            // Do not auto-generate J.O. as JO is the start of the flow
+            
 
             return response()->json([
                 'success' => true,
                 'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee', 'approver'])),
-                'message' => 'Work Order filed and approved. Job Order generated automatically.',
+                'message' => 'Work Order filed and approved. Ready for maintenance work.',
             ]);
         }
 
@@ -273,6 +270,7 @@ class WorkOrderController extends Controller
         ], 422);
     }
 
+<<<<<<< HEAD
     private function generateJobOrderInternal(Request $request, WorkOrder $workOrder, bool $requiresPo = false): \App\Models\JobOrder
     {
         // Avoid duplicate JOs
@@ -340,6 +338,8 @@ class WorkOrderController extends Controller
     }
 
 
+=======
+>>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
     /**
      * Designated employee rejects a requested WO.
      * Transitions: pending_approval | verified → cancelled
@@ -369,34 +369,6 @@ class WorkOrderController extends Controller
             'data'    => new WorkOrderResource($workOrder->fresh(['bus', 'assignee'])),
             'message' => 'Work Order rejected and cancelled.',
         ]);
-    }
-    /**
-     * Generate a Job Order from an approved Work Order.
-     * Transitions: WorkOrder status doesn't change here, but creates a JobOrder.
-     */
-    public function generateJobOrder(Request $request, WorkOrder $workOrder): JsonResponse
-    {
-        if ($workOrder->status !== 'open') {
-            return response()->json([
-                'success' => false,
-                'message' => "Only approved (open) Work Orders can generate a Job Order.",
-            ], 422);
-        }
-
-        if (\App\Models\JobOrder::where('work_order_id', $workOrder->id)->exists()) {
-            return response()->json([
-                'success' => false,
-                'message' => "A Job Order has already been generated for this Work Order.",
-            ], 422);
-        }
-
-        $jobOrder = $this->generateJobOrderInternal($request, $workOrder, $request->boolean('requires_po', false));
-
-        return response()->json([
-            'success' => true,
-            'data'    => $jobOrder,
-            'message' => 'Job Order generated successfully.',
-        ], 201);
     }
 }
 

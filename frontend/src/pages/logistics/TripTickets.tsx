@@ -697,11 +697,10 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Control Number</label>
                 <input
                   type="text"
-                  required
-                  value={form.control_no}
-                  onChange={e => setForm(p => ({ ...p, control_no: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g. DTT-2024-001"
+                  readOnly
+                  value={form.control_no || 'Auto-generated'}
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                  placeholder="Auto-generated"
                 />
               </div>
               <div className="space-y-2">

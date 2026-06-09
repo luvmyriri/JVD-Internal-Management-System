@@ -5,6 +5,7 @@ import {
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
   LuActivity, LuPhone, LuMail, LuMapPin, LuBanknote
 } from 'react-icons/lu';
+import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 import { Dropdown } from '../../components/ui';
@@ -61,8 +62,9 @@ export default function Billing() {
       if (selectedInvoice?.id === id) {
         setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
       }
+      toast.success('Invoice marked as paid');
     } catch (err) {
-      alert('Failed to update status');
+      toast.error('Failed to update status');
     }
   };
 

@@ -18,6 +18,10 @@ class ProcurementDocument extends Model
         'supplier_id',
         'inventory_item_id',
         'driver_id',
+        'customer_id',
+        'job_order_id',
+        'work_order_id',
+        'trip_ticket_id',
         'transaction_type',
         'transaction_id',
         'custom_metadata',
@@ -59,5 +63,25 @@ class ProcurementDocument extends Model
     public function uploader(): BelongsTo
     {
         return $this->belongsTo(User::class, 'uploaded_by');
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function jobOrder(): BelongsTo
+    {
+        return $this->belongsTo(JobOrder::class);
+    }
+
+    public function workOrder(): BelongsTo
+    {
+        return $this->belongsTo(WorkOrder::class);
+    }
+
+    public function tripTicket(): BelongsTo
+    {
+        return $this->belongsTo(TripTicket::class);
     }
 }

@@ -11,7 +11,7 @@ class CashBudgetRequestController extends Controller
 {
     public function index()
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice'])->latest()->get();
+        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->latest()->get();
     }
 
     public function store(Request $request)
@@ -29,6 +29,8 @@ class CashBudgetRequestController extends Controller
             'coach_captain_salary'  => 'nullable|numeric',
             'spare_driver_salary'   => 'nullable|numeric',
             'purchase_order_id'     => 'nullable|exists:purchase_orders,id',
+            'trip_ticket_id'        => 'nullable|exists:trip_tickets,id',
+            'work_order_id'         => 'nullable|exists:work_orders,id',
         ]);
 
         $validated['prepared_by'] = auth()->id();
@@ -38,17 +40,17 @@ class CashBudgetRequestController extends Controller
 
         $budget = CashBudgetRequest::create($validated);
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     public function show($id)
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice'])->findOrFail($id);
+        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->findOrFail($id);
     }
 
     public function update(Request $request, $id)
     {
-        $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier'])->findOrFail($id);
+        $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier', 'workOrder'])->findOrFail($id);
 
         $validated = $request->validate([
             'status'               => 'sometimes|in:draft,pending_accounting,approved,disbursed',
@@ -60,6 +62,8 @@ class CashBudgetRequestController extends Controller
             'coach_captain_salary' => 'sometimes|numeric',
             'spare_driver_salary'  => 'sometimes|numeric',
             'purchase_order_id'    => 'sometimes|nullable|exists:purchase_orders,id',
+            'trip_ticket_id'       => 'sometimes|nullable|exists:trip_tickets,id',
+            'work_order_id'        => 'sometimes|nullable|exists:work_orders,id',
             'disbursed_amount'     => 'sometimes|numeric|nullable',
         ]);
 
@@ -137,6 +141,39 @@ class CashBudgetRequestController extends Controller
                 'disbursed_by' => auth()->id(),
                 'disbursed_amount' => $disbursedAmount
             ]);
+
+            // Create pending liquidation
+            $liquidationService = app(\App\Services\LiquidationService::class);
+            if ($budget->tripTicket) {
+                $liquidationService->createForTripTicket($budget->tripTicket, $disbursedAmount);
+            }
+
+            // Create double-entry journal entry in Ledger
+            $ledgerService = app(\App\Services\LedgerService::class);
+            $employeeAdvancesAccount = \App\Models\Account::where('code', '1200')->first();
+            $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
+            
+            if ($employeeAdvancesAccount && $cashInBankAccount && $budget->tripTicket) {
+                $ledgerService->recordEntry(
+                    date('Y-m-d'),
+                    "Cash advance disbursed to driver for DTT: " . $budget->tripTicket->control_no,
+                    [
+                        [
+                            'account_id' => $employeeAdvancesAccount->id,
+                            'debit' => $disbursedAmount,
+                            'credit' => 0,
+                            'description' => 'Disbursement of Cash Advance'
+                        ],
+                        [
+                            'account_id' => $cashInBankAccount->id,
+                            'debit' => 0,
+                            'credit' => $disbursedAmount,
+                            'description' => 'Disbursement from Cash in Bank'
+                        ]
+                    ],
+                    $budget
+                );
+            }
 
             // Only create invoice if one doesn't already exist
             $existingInvoice = \App\Models\Invoice::where('cash_budget_request_id', $budget->id)->first();
@@ -226,7 +263,7 @@ class CashBudgetRequestController extends Controller
             }
         }
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     public function destroy($id)
