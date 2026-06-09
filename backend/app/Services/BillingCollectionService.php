@@ -32,7 +32,7 @@ class BillingCollectionService
                 'client_name'        => $invoice->customer_name ?? 'Walk-in Customer',
                 'customer_id'        => $invoice->customer_id,
                 'date'               => $invoice->created_at->format('Y-m-d'),
-                'travel_date'        => $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
+                'travel_date'        => $invoice->travel_date ?? $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
                 'rate'               => $invoice->total_amount,
                 'service_type'       => $serviceType,
                 'other_service_type' => $otherServiceType,

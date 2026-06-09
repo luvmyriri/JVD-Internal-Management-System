@@ -70,3 +70,23 @@ export const procurementDocumentApi = {
   delete: (id: number) =>
     client.delete<{ success: boolean; message: string }>(`/procurement-documents/${id}`),
 };
+
+export interface DocumentCategory {
+  id: number;
+  name: string;
+  slug: string;
+  allowed_roles: string[] | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export const documentCategoryApi = {
+  list: () =>
+    client.get<{ success: boolean; data: DocumentCategory[] }>('/document-categories'),
+  create: (data: { name: string; allowed_roles: string[] | null }) =>
+    client.post<{ success: boolean; data: DocumentCategory; message: string }>('/document-categories', data),
+  update: (id: number, data: { name: string; allowed_roles: string[] | null }) =>
+    client.put<{ success: boolean; data: DocumentCategory; message: string }>(`/document-categories/${id}`, data),
+  delete: (id: number) =>
+    client.delete<{ success: boolean; message: string }>(`/document-categories/${id}`),
+};

@@ -5,6 +5,7 @@ import { useEntityPreview } from '../../context/EntityPreviewContext';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
+import { customerApi } from '../../api/customers';
 
 export default function EntityPreviewPanel() {
   const { isOpen, entityType, entityId, searchQuery, showPreview, closePreview } = useEntityPreview();
@@ -31,6 +32,7 @@ export default function EntityPreviewPanel() {
       if (entityType === 'supplier') return supplierApi.get(entityId).then(res => res.data.data);
       if (entityType === 'inventory') return inventoryApi.get(entityId).then(res => res.data.data);
       if (entityType === 'driver') return userApi.get(entityId).then(res => res.data.data);
+      if (entityType === 'customer') return customerApi.get(entityId).then(res => res.data.data);
       return null;
     },
     enabled: isOpen && (!!entityId || (entityType === 'search' && !!searchQuery)),
@@ -184,6 +186,75 @@ export default function EntityPreviewPanel() {
                 <span className="font-medium text-gray-900 dark:text-white">{driver.email}</span>
               </div>
             </div>
+          </div>
+        </div>
+      );
+    }
+
+    if (entityType === 'customer') {
+      const customer = data as any;
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+            <div className="w-16 h-16 bg-blue-50 dark:bg-blue-900/30 rounded-2xl flex items-center justify-center text-blue-600 shrink-0">
+              <LuUser size={32} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.full_name}</h2>
+              <p className="text-xs text-gray-500 mt-1">Customer Profile</p>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Contact Information</h3>
+            <div className="grid gap-3">
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuPhone className="text-gray-400 shrink-0" /> <span>{customer.phone || 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuMail className="text-gray-400 shrink-0" /> <span>{customer.email || 'N/A'}</span>
+              </div>
+              <div className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
+                <LuMapPin className="text-gray-400 shrink-0 mt-0.5" /> <span>{customer.address || 'N/A'}</span>
+              </div>
+            </div>
+          </div>
+
+          {customer.notes && (
+            <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Internal Notes</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 bg-gray-55 dark:bg-gray-850 p-3 rounded-lg border border-gray-105 dark:border-gray-800">{customer.notes}</p>
+            </div>
+          )}
+
+          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Transaction & Billing History</h3>
+            {!customer.invoices || customer.invoices.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">No invoice transactions found.</p>
+            ) : (
+              <div className="space-y-3">
+                {customer.invoices.map((inv: any) => (
+                  <div key={inv.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2 border border-gray-105 dark:border-gray-800/50">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{inv.invoice_number}</span>
+                        <p className="text-[11px] text-gray-500">{new Date(inv.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                        inv.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                        inv.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+                      }`}>
+                        {inv.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-1 border-t border-dashed border-gray-200 dark:border-gray-700">
+                      <span className="text-gray-500">Amount due</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">₱{Number(inv.total_amount).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       );

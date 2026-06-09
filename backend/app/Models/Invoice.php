@@ -36,6 +36,10 @@ class Invoice extends Model
         'bus_id',
         'driver_id',
         'seat_map',
+        'travel_date',
+        'pickup_location',
+        'tour_code',
+        'pax_count',
     ];
 
     protected function casts(): array

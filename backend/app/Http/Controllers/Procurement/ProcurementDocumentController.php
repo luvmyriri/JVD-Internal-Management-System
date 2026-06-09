@@ -45,6 +45,20 @@ class ProcurementDocumentController extends Controller
             });
         }
 
+        // Role-based document category filtering
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+            // Find all categories that this user's role is allowed to access
+            $allowedSlugs = \App\Models\DocumentCategory::all()
+                ->filter(function ($cat) use ($user) {
+                    return is_null($cat->allowed_roles) || in_array($user->role, $cat->allowed_roles);
+                })
+                ->pluck('slug')
+                ->toArray();
+            
+            $query->whereIn('document_type', $allowedSlugs);
+        }
+
         $documents = $query->orderBy('created_at', 'desc')->get();
 
         return response()->json([
@@ -77,6 +91,25 @@ class ProcurementDocumentController extends Controller
                 'success' => false,
                 'errors' => $validator->errors()
             ], 422);
+        }
+
+        // Validate document_type matches a valid category slug and user's role is allowed to upload/access it.
+        $category = \App\Models\DocumentCategory::where('slug', $request->document_type)->first();
+        if (!$category) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The selected document category is invalid.'
+            ], 422);
+        }
+
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+            if (!is_null($category->allowed_roles) && !in_array($user->role, $category->allowed_roles)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. You do not have permission to upload/access files in this folder.'
+                ], 403);
+            }
         }
 
         $filePath = null;
@@ -157,6 +190,18 @@ class ProcurementDocumentController extends Controller
             ], 404);
         }
 
+        // Access check
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+            $category = \App\Models\DocumentCategory::where('slug', $document->document_type)->first();
+            if ($category && !is_null($category->allowed_roles) && !in_array($user->role, $category->allowed_roles)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access to this document category.'
+                ], 403);
+            }
+        }
+
         return response()->json([
             'success' => true,
             'data' => $document
@@ -169,6 +214,35 @@ class ProcurementDocumentController extends Controller
     public function update(Request $request, $id)
     {
         $document = ProcurementDocument::findOrFail($id);
+
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+            if ($document->uploaded_by !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. You can only update documents that you uploaded.'
+                ], 403);
+            }
+        }
+
+        if ($request->has('document_type')) {
+            $category = \App\Models\DocumentCategory::where('slug', $request->document_type)->first();
+            if (!$category) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'The selected document category is invalid.'
+                ], 422);
+            }
+
+            if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+                if (!is_null($category->allowed_roles) && !in_array($user->role, $category->allowed_roles)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized. You do not have permission to upload/access files in this folder.'
+                    ], 403);
+                }
+            }
+        }
 
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
@@ -214,6 +288,16 @@ class ProcurementDocumentController extends Controller
     public function destroy($id)
     {
         $document = ProcurementDocument::findOrFail($id);
+
+        $user = auth()->user();
+        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+            if ($document->uploaded_by !== $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized. You can only delete documents that you uploaded.'
+                ], 403);
+            }
+        }
 
         // Delete physical file from storage disk
         if (Storage::disk('public')->exists($document->file_path)) {

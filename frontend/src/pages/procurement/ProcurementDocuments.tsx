@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight, LuFolderOpen } from 'react-icons/lu';
-import { procurementDocumentApi, type ProcurementDocumentFormData } from '../../api/procurementDocuments';
+import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight, LuFolderOpen, LuFolderPlus, LuLoaderCircle, LuSettings } from 'react-icons/lu';
+import { procurementDocumentApi, documentCategoryApi, type ProcurementDocumentFormData, type DocumentCategory } from '../../api/procurementDocuments';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
 import { Modal, Button, ConfirmDialog } from '../../components/ui';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
+import { useAuth } from '../../context/AuthContext';
 
 interface AddDocumentModalProps { onClose: () => void; }
 
@@ -185,11 +186,22 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
 
 export default function ProcurementDocuments() {
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [docTypeFilter, setDocTypeFilter] = useState<'all' | 'receipt' | 'invoice' | 'delivery_note' | 'agreement' | 'other'>('all');
+  const [docTypeFilter, setDocTypeFilter] = useState<string>('all');
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
+  const [deleteCatId, setDeleteCatId] = useState<number | null>(null);
   const qc = useQueryClient();
   const { showPreview } = useEntityPreview();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === 'super_admin';
+
+  const { data: catData } = useQuery({
+    queryKey: ['document-categories'],
+    queryFn: () => documentCategoryApi.list(),
+    staleTime: 30_000,
+  });
+  const categories: DocumentCategory[] = catData?.data?.data ?? [];
 
   const { data, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['procurement-documents', searchTerm],
@@ -215,17 +227,13 @@ export default function ProcurementDocuments() {
 
   const docs = data?.data.data || [];
   const filteredDocs = docs.filter((doc: any) => {
-    return docTypeFilter === 'all' || doc.document_type === docTypeFilter;
+    const typeMatch = docTypeFilter === 'all' || doc.document_type === docTypeFilter;
+    return typeMatch;
   });
 
-  const counts = {
-    all: docs.length,
-    receipt: docs.filter((d: any) => d.document_type === 'receipt').length,
-    invoice: docs.filter((d: any) => d.document_type === 'invoice').length,
-    delivery_note: docs.filter((d: any) => d.document_type === 'delivery_note').length,
-    agreement: docs.filter((d: any) => d.document_type === 'agreement').length,
-    other: docs.filter((d: any) => d.document_type === 'other').length,
-  };
+  // Build counts from categories + fallback static ones
+  const countFor = (slug: string) =>
+    slug === 'all' ? docs.length : docs.filter((d: any) => d.document_type === slug).length;
 
   const getDocumentTypeStyles = (type: string) => {
     switch (type) {
@@ -262,49 +270,80 @@ export default function ProcurementDocuments() {
         </button>
       </div>
 
-      {/* Quick Access Document Types */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 shrink-0 relative z-20 no-print">
-        {[
-          { value: 'all', label: 'All Folders', icon: LuFolderOpen, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50' },
-          { value: 'receipt', label: 'Receipts', icon: LuFileText, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/50' },
-          { value: 'invoice', label: 'Invoices', icon: LuFileText, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50' },
-          { value: 'delivery_note', label: 'Delivery Notes', icon: LuFileText, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50' },
-          { value: 'agreement', label: 'Agreements', icon: LuFileText, color: 'text-purple-500 bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/50' },
-          { value: 'other', label: 'Others', icon: LuFile, color: 'text-gray-500 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700' },
-        ].map((item) => {
-          const Icon = item.icon;
-          const isActive = docTypeFilter === item.value;
-          const count = counts[item.value as keyof typeof counts] || 0;
-          return (
+      {/* Dynamic Category Folders */}
+      <div className="flex flex-col gap-4 shrink-0 relative z-20 no-print">
+        <div className="flex items-center justify-between">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Company Document Folders</p>
+          {isSuperAdmin && (
             <button
-              key={item.value}
-              onClick={() => setDocTypeFilter(item.value as any)}
-              className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group ${
-                isActive
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
-                  : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-700 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
-              }`}
+              onClick={() => setIsFolderModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-100 dark:border-indigo-900/40"
             >
-              <div className={`p-2 rounded-xl shrink-0 border transition-all ${
-                isActive 
-                  ? 'bg-white/20 text-white border-white/20' 
-                  : `${item.color}`
-              }`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 font-medium">
-                <p className="text-[10px] font-black uppercase tracking-wider truncate">
-                  {item.label}
-                </p>
-                <p className={`text-xs font-bold leading-none mt-0.5 ${
-                  isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {count} {count === 1 ? 'file' : 'files'}
-                </p>
-              </div>
+              <LuFolderPlus size={12} /> Manage Folders
             </button>
-          );
-        })}
+          )}
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3">
+          {/* All Folders */}
+          <button
+            onClick={() => setDocTypeFilter('all')}
+            className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group ${
+              docTypeFilter === 'all'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
+                : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-700 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
+            }`}
+          >
+            <div className={`p-2 rounded-xl shrink-0 border transition-all ${
+              docTypeFilter === 'all'
+                ? 'bg-white/20 text-white border-white/20'
+                : 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50'
+            }`}>
+              <LuFolderOpen className="w-4 h-4" />
+            </div>
+            <div className="min-w-0 font-medium">
+              <p className="text-[10px] font-black uppercase tracking-wider truncate">All Folders</p>
+              <p className={`text-xs font-bold leading-none mt-0.5 ${docTypeFilter === 'all' ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'}`}>
+                {countFor('all')} files
+              </p>
+            </div>
+          </button>
+
+          {/* Dynamic Categories */}
+          {categories.map((cat) => {
+            const isActive = docTypeFilter === cat.slug;
+            const count = countFor(cat.slug);
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setDocTypeFilter(cat.slug)}
+                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group ${
+                  isActive
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
+                    : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-700 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
+                }`}
+              >
+                <div className={`p-2 rounded-xl shrink-0 border transition-all ${
+                  isActive
+                    ? 'bg-white/20 text-white border-white/20'
+                    : 'text-gray-500 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700'
+                }`}>
+                  <LuFileText className="w-4 h-4" />
+                </div>
+                <div className="min-w-0 font-medium">
+                  <p className="text-[10px] font-black uppercase tracking-wider truncate">{cat.name}</p>
+                  <p className={`text-xs font-bold leading-none mt-0.5 ${isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'}`}>
+                    {count} {count === 1 ? 'file' : 'files'}
+                  </p>
+                  {cat.allowed_roles && cat.allowed_roles.length > 0 && (
+                    <p className="text-[9px] text-gray-400 dark:text-gray-600 truncate mt-0.5 uppercase tracking-wider">
+                      {cat.allowed_roles.join(', ')}
+                    </p>
+                  )}
+                </div>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Main Panel */}
@@ -459,6 +498,193 @@ export default function ProcurementDocuments() {
           variant="error"
         />
       )}
+
+      {/* Manage Folders Modal (Superadmin only) */}
+      {isFolderModalOpen && (
+        <ManageFoldersModal
+          categories={categories}
+          onClose={() => setIsFolderModalOpen(false)}
+        />
+      )}
+
+      {deleteCatId !== null && (
+        <ConfirmDialog
+          isOpen={true}
+          onClose={() => setDeleteCatId(null)}
+          onConfirm={() => {
+            documentCategoryApi.delete(deleteCatId).then(() => {
+              qc.invalidateQueries({ queryKey: ['document-categories'] });
+              toast.success('Folder deleted');
+              setDeleteCatId(null);
+            }).catch(() => toast.error('Failed to delete folder'));
+          }}
+          title="Delete Folder"
+          message="Are you sure you want to delete this folder? Documents in this folder won't be deleted — only the category definition will be removed."
+          confirmText="Delete Folder"
+          variant="error"
+        />
+      )}
     </div>
+  );
+}
+
+// ── Manage Folders Modal (Superadmin) ────────────────────────────────────────
+
+const ALL_ROLES = ['super_admin', 'admin', 'accounting', 'hr', 'sales', 'procurement', 'logistics', 'operations', 'agent', 'driver'];
+
+function ManageFoldersModal({ categories, onClose }: { categories: DocumentCategory[]; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState('');
+  const [newRoles, setNewRoles] = useState<string[]>([]);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editRoles, setEditRoles] = useState<string[]>([]);
+
+  const createMutation = useMutation({
+    mutationFn: () => documentCategoryApi.create({ name: newName.trim(), allowed_roles: newRoles.length > 0 ? newRoles : null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['document-categories'] });
+      toast.success('Folder created!');
+      setNewName('');
+      setNewRoles([]);
+    },
+    onError: () => toast.error('Failed to create folder'),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: () => documentCategoryApi.update(editId!, { name: editName.trim(), allowed_roles: editRoles.length > 0 ? editRoles : null }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['document-categories'] });
+      toast.success('Folder updated!');
+      setEditId(null);
+    },
+    onError: () => toast.error('Failed to update folder'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => documentCategoryApi.delete(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['document-categories'] });
+      toast.success('Folder deleted');
+    },
+    onError: () => toast.error('Failed to delete folder'),
+  });
+
+  const toggleRole = (role: string, roles: string[], setRoles: (r: string[]) => void) => {
+    setRoles(roles.includes(role) ? roles.filter(r => r !== role) : [...roles, role]);
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Manage Document Folders" size="lg">
+      <div className="p-6 space-y-6 overflow-y-auto max-h-[75vh]">
+        {/* Create New Folder */}
+        <div className="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/40 rounded-2xl p-5 space-y-4">
+          <p className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Create New Folder</p>
+          <input
+            type="text"
+            placeholder="Folder name (e.g. Canva Files, Package Designs)"
+            className="w-full px-4 py-3 rounded-xl border border-indigo-200 dark:border-indigo-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-gray-900 dark:text-white"
+            value={newName}
+            onChange={e => setNewName(e.target.value)}
+          />
+          <div>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Restrict Access To Roles (leave empty for all)</p>
+            <div className="flex flex-wrap gap-2">
+              {ALL_ROLES.map(role => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => toggleRole(role, newRoles, setNewRoles)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
+                    newRoles.includes(role)
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-indigo-300'
+                  }`}
+                >
+                  {role}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Button
+            onClick={() => createMutation.mutate()}
+            disabled={!newName.trim() || createMutation.isPending}
+          >
+            {createMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuFolderPlus size={14} />}
+            Create Folder
+          </Button>
+        </div>
+
+        {/* Existing Folders */}
+        <div className="space-y-3">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Existing Folders ({categories.length})</p>
+          {categories.length === 0 && (
+            <p className="text-sm text-gray-400 text-center py-6">No folders yet. Create one above.</p>
+          )}
+          {categories.map(cat => (
+            <div key={cat.id} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl p-4 space-y-3">
+              {editId === cat.id ? (
+                <>
+                  <input
+                    type="text"
+                    className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 dark:text-white"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    {ALL_ROLES.map(role => (
+                      <button
+                        key={role}
+                        type="button"
+                        onClick={() => toggleRole(role, editRoles, setEditRoles)}
+                        className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
+                          editRoles.includes(role)
+                            ? 'bg-blue-600 text-white border-blue-600'
+                            : 'bg-white dark:bg-gray-800 text-gray-500 border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                        }`}
+                      >
+                        {role}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button onClick={() => updateMutation.mutate()} disabled={!editName.trim() || updateMutation.isPending}>
+                      {updateMutation.isPending ? <LuLoaderCircle size={12} className="animate-spin" /> : null} Save
+                    </Button>
+                    <Button variant="secondary" onClick={() => setEditId(null)}>Cancel</Button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-gray-900 dark:text-white">{cat.name}</p>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider mt-0.5">
+                      {cat.allowed_roles && cat.allowed_roles.length > 0 ? `Roles: ${cat.allowed_roles.join(', ')}` : 'All roles'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => { setEditId(cat.id); setEditName(cat.name); setEditRoles(cat.allowed_roles ?? []); }}
+                      className="p-2 rounded-xl border border-gray-200 dark:border-gray-700 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      title="Edit folder"
+                    >
+                      <LuSettings size={14} />
+                    </button>
+                    <button
+                      onClick={() => deleteMutation.mutate(cat.id)}
+                      disabled={deleteMutation.isPending}
+                      className="p-2 rounded-xl border border-red-100 dark:border-red-900/40 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-60"
+                      title="Delete folder"
+                    >
+                      {deleteMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuTrash size={14} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </Modal>
   );
 }

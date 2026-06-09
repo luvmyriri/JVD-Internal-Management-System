@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useState, useMemo } from 'react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
   LuLoaderCircle,
@@ -10,10 +10,30 @@ import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
+import BusLayout from '../../components/ui/BusLayout';
+import { fleetApi } from '../../api/fleet';
+import client from '../../api/client';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
+
+  // Load buses list for selection
+  const { data: busesRes } = useQuery({
+    queryKey: ['buses-list'],
+    queryFn: () => fleetApi.list({ per_page: 100 }),
+  });
+  const buses = busesRes?.data?.data ?? [];
+
+  // Load active drivers
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['active-drivers'],
+    queryFn: async () => {
+      const res = await client.get('/chat/users');
+      const allUsers = res.data?.data ?? [];
+      return allUsers.filter((u: any) => u.role === 'driver' && u.is_active);
+    },
+  });
 
   // State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -34,8 +54,38 @@ export default function CustomTransactions() {
     route: '',
     days: 1,
     plateNumber: '',
-    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>
+    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
+    travelDate: '',
+    busId: null as number | null,
+    driverId: null as number | null,
+    driverName: '',
+    selectedSeats: [] as string[]
   });
+
+  // Load calendar for selected bus to check seat occupancy on travel date
+  const { data: busCalendarRes } = useQuery({
+    queryKey: ['bus-calendar', busRental.busId, busRental.travelDate ? busRental.travelDate.substring(0, 7) : ''],
+    queryFn: async () => {
+      if (!busRental.busId || !busRental.travelDate) return null;
+      const date = new Date(busRental.travelDate);
+      const res = await fleetApi.getCalendar(busRental.busId, { month: date.getMonth() + 1, year: date.getFullYear() });
+      return res.data;
+    },
+    enabled: !!busRental.busId && !!busRental.travelDate,
+  });
+
+  const occupiedSeats = useMemo(() => {
+    if (!busCalendarRes?.data || !busRental.travelDate) return [];
+    const entries = busCalendarRes.data;
+    const sameDayInvoices = entries.filter((e: any) => e.date === busRental.travelDate && e.type === 'invoice');
+    const seats: string[] = [];
+    sameDayInvoices.forEach((inv: any) => {
+      if (Array.isArray(inv.seat_map)) {
+        seats.push(...inv.seat_map);
+      }
+    });
+    return seats;
+  }, [busCalendarRes, busRental.travelDate]);
 
   // 2. Educational Tour Custom Data
   const [eduTour, setEduTour] = useState({
@@ -86,7 +136,12 @@ export default function CustomTransactions() {
       route: '',
       days: 1,
       plateNumber: '',
-      inclusions: { driver: true, fuel: true, toll: false, insurance: true }
+      inclusions: { driver: true, fuel: true, toll: false, insurance: true },
+      travelDate: '',
+      busId: null,
+      driverId: null,
+      driverName: '',
+      selectedSeats: []
     });
     setEduTour({
       schoolName: '',
@@ -192,17 +247,53 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
   };
 
   // Cart operations
-  const addToCart = (service: any, quantity: number) => {
+  const addToCart = (
+    service: any,
+    quantity: number,
+    busId?: number,
+    selectedSeats?: string[],
+    driverId?: number,
+    driverName?: string,
+    travelDate?: string,
+    tourCode?: string,
+    pickupLocation?: string,
+    paxCount?: number
+  ) => {
     setCart(prev => {
       const existing = prev.find(item => item.service.id === service.id);
       if (existing) {
         return prev.map(item =>
           item.service.id === service.id
-            ? { ...item, quantity: item.quantity + quantity }
+            ? {
+                ...item,
+                quantity: item.quantity + quantity,
+                busId,
+                selectedSeats,
+                driverId,
+                driverName,
+                travelDate,
+                tourCode,
+                pickupLocation,
+                paxCount
+              }
             : item
         );
       }
-      return [...prev, { service, quantity }];
+      return [
+        ...prev,
+        {
+          service,
+          quantity,
+          busId,
+          selectedSeats,
+          driverId,
+          driverName,
+          travelDate,
+          tourCode,
+          pickupLocation,
+          paxCount
+        }
+      ];
     });
   };
 
@@ -235,8 +326,48 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       if (res?.data?.success || res?.data?.data) {
         const createdService = res.data.data;
         
+        let busIdParam = undefined;
+        let driverIdParam = undefined;
+        let selectedSeatsParam = undefined;
+        let driverNameParam = undefined;
+        let travelDateParam = undefined;
+        let tourCodeParam = undefined;
+        let pickupLocationParam = undefined;
+        let paxCountParam = undefined;
+
+        if (customForm.category === 'Bus Rental') {
+          busIdParam = busRental.busId || undefined;
+          driverIdParam = busRental.driverId || undefined;
+          selectedSeatsParam = busRental.selectedSeats.length > 0 ? busRental.selectedSeats : undefined;
+          driverNameParam = busRental.driverName || undefined;
+          travelDateParam = busRental.travelDate || undefined;
+        } else if (customForm.category === 'Joiners') {
+          travelDateParam = joiners.travelDate || undefined;
+          tourCodeParam = joiners.tourCode || undefined;
+          pickupLocationParam = joiners.pickupLocation || undefined;
+          paxCountParam = joiners.paxCount || undefined;
+        } else if (customForm.category === 'Tour Package') {
+          travelDateParam = tourPackage.travelDates || undefined;
+          tourCodeParam = tourPackage.destination || undefined;
+          paxCountParam = (tourPackage.adults + tourPackage.children) || undefined;
+        } else if (customForm.category === 'Educational Tour') {
+          tourCodeParam = eduTour.schoolName || undefined;
+          paxCountParam = eduTour.expectedPax || undefined;
+        }
+
         // Add to order
-        addToCart(createdService, 1);
+        addToCart(
+          createdService,
+          1,
+          busIdParam,
+          selectedSeatsParam,
+          driverIdParam,
+          driverNameParam,
+          travelDateParam,
+          tourCodeParam,
+          pickupLocationParam,
+          paxCountParam
+        );
 
         toast.success('Customized transaction registered & added to order!');
         
@@ -264,11 +395,11 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
     }
   };
 
-  const removeFromCart = (serviceId: number) => {
+  const removeFromCart = (serviceId: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
     setCart(prev => prev.filter(item => item.service.id !== serviceId));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number) => {
+  const updateQuantity = (serviceId: number, newQty: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
     if (newQty < 1) {
       removeFromCart(serviceId);
       return;
@@ -311,6 +442,103 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                 />
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                  value={busRental.travelDate}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, travelDate: e.target.value, selectedSeats: [] }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Bus</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                  value={busRental.busId || ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const selectedBusObj = buses.find((b: any) => b.id === id);
+                    let driverIdVal = null;
+                    let driverNameVal = '';
+                    if (selectedBusObj && selectedBusObj.driver) {
+                      driverIdVal = selectedBusObj.driver.id;
+                      driverNameVal = `${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`;
+                    }
+                    setBusRental(prev => ({
+                      ...prev,
+                      busId: id,
+                      selectedSeats: [],
+                      driverId: driverIdVal,
+                      driverName: driverNameVal
+                    }));
+                  }}
+                >
+                  <option value="">Select a Bus...</option>
+                  {buses.filter((b: any) => b.status?.toLowerCase() === 'available').map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      {b.plate_number} - {b.model} ({b.seating_capacity} Seaters)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Driver</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                  value={busRental.driverId || ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const d = drivers.find((x: any) => x.id === id);
+                    const name = d ? `${d.first_name} ${d.last_name}` : '';
+                    setBusRental(prev => ({ ...prev, driverId: id, driverName: name }));
+                  }}
+                >
+                  <option value="">Select a Driver...</option>
+                  {drivers.map((d: any) => (
+                    <option key={d.id} value={d.id}>
+                      {d.first_name} {d.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                {/* Space holder */}
+              </div>
+            </div>
+
+            {/* Seat Selector Layout */}
+            {busRental.busId && busRental.travelDate && (
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+                  <BusLayout
+                    totalSeats={buses.find(b => b.id === busRental.busId)?.seating_capacity || 49}
+                    hasRestroom={buses.find(b => b.id === busRental.busId)?.model?.toLowerCase().includes('vip') || false}
+                    selectedSeats={busRental.selectedSeats}
+                    occupiedSeats={occupiedSeats}
+                    onSeatToggle={(seatNum) => {
+                      setBusRental(prev => ({
+                        ...prev,
+                        selectedSeats: prev.selectedSeats.includes(seatNum)
+                          ? prev.selectedSeats.filter(s => s !== seatNum)
+                          : [...prev.selectedSeats, seatNum]
+                      }));
+                    }}
+                  />
+                </div>
+                {busRental.selectedSeats.length > 0 && (
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">
+                    Selected: {busRental.selectedSeats.join(', ')} ({busRental.selectedSeats.length} seats selected)
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2 md:col-span-1">

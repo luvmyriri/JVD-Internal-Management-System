@@ -16,6 +16,7 @@ import {
   LuLoaderCircle
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
+import { customerApi } from '../../api/customers';
 
 export interface CartItem {
   service: Service;
@@ -30,6 +31,10 @@ export interface CartItem {
   selectedSeats?: string[];
   driverId?: number;
   driverName?: string;
+  travelDate?: string;
+  tourCode?: string;
+  pickupLocation?: string;
+  paxCount?: number;
 }
 
 interface SalesCheckoutProps {
@@ -55,6 +60,64 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [receiptChange, setReceiptChange] = useState<number>(0);
   const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
 
+  const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  // Auto-search customers as user types
+  useEffect(() => {
+    if (selectedCustomerId) return;
+    if (!customerName || customerName.trim().length < 2) {
+      setSearchResults([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    const delayDebounce = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const res = await customerApi.list({ search: customerName });
+        if (res.data.success) {
+          setSearchResults(res.data.data || []);
+          setShowDropdown((res.data.data || []).length > 0);
+        }
+      } catch (err) {
+        console.error('Error fetching customers', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [customerName, selectedCustomerId]);
+
+  // Click outside to close autocomplete dropdown
+  useEffect(() => {
+    const clickOutside = () => setShowDropdown(false);
+    window.addEventListener('click', clickOutside);
+    return () => window.removeEventListener('click', clickOutside);
+  }, []);
+
+  const handleSelectCustomer = (customer: any) => {
+    setSelectedCustomerId(customer.id);
+    setCustomerName(customer.full_name);
+    setCustomerEmail(customer.email || '');
+    setCustomerContact(customer.phone || '');
+    setCustomerAddress(customer.address || '');
+    setShowDropdown(false);
+  };
+
+  const handleClearSelectedCustomer = () => {
+    setSelectedCustomerId(null);
+    setCustomerName('');
+    setCustomerEmail('');
+    setCustomerContact('');
+    setCustomerAddress('');
+    setSearchResults([]);
+    setShowDropdown(false);
+  };
+
   const TAX_RATE = 0.12;
 
   // Calculations
@@ -62,8 +125,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
-  const change = amountReceived !== '' && !isNaN(Number(amountReceived)) 
-    ? (paymentType === 'full' ? Math.max(0, Number(amountReceived) - total) : 0) 
+  const change = amountReceived !== '' && !isNaN(Number(amountReceived))
+    ? (paymentType === 'full' ? Math.max(0, Number(amountReceived) - total) : 0)
     : 0;
 
   const balance = (paymentType === 'downpayment' || paymentType === 'half') && amountReceived !== '' && !isNaN(Number(amountReceived))
@@ -100,6 +163,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setIsProcessing(true);
     try {
       const response = await billingApi.createInvoice({
+        customer_id: selectedCustomerId || undefined,
         customer_name: customerName || undefined,
         customer_address: customerAddress || undefined,
         customer_email: customerEmail || undefined,
@@ -118,6 +182,10 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         bus_id: cart.find(item => item.busId)?.busId || null,
         driver_id: cart.find(item => item.driverId)?.driverId || null,
         seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
+        travel_date: cart.find(item => item.travelDate)?.travelDate || null,
+        pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation || null,
+        tour_code: cart.find(item => item.tourCode)?.tourCode || null,
+        pax_count: cart.find(item => item.paxCount)?.paxCount || null,
       });
 
       setLastInvoice(response.data.data);
@@ -137,6 +205,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       setAmountReceived('');
       setPaymentMethod('Cash');
       setPaymentType('full');
+      setSelectedCustomerId(null);
+      setSearchResults([]);
     } catch (err) {
       alert('Checkout failed. Please try again.');
       console.error(err);
@@ -191,6 +261,26 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                           Driver Assigned: {item.driverName}
                         </p>
                       )}
+                      {item.travelDate && (
+                        <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-black mt-1 uppercase tracking-tight">
+                          Travel Date: {item.travelDate}
+                        </p>
+                      )}
+                      {item.tourCode && (
+                        <p className="text-[9px] text-purple-600 dark:text-purple-400 font-black mt-1 uppercase tracking-tight">
+                          Tour Code: {item.tourCode}
+                        </p>
+                      )}
+                      {item.pickupLocation && (
+                        <p className="text-[9px] text-amber-600 dark:text-amber-400 font-black mt-1 uppercase tracking-tight">
+                          Pickup: {item.pickupLocation}
+                        </p>
+                      )}
+                      {item.paxCount && (
+                        <p className="text-[9px] text-cyan-600 dark:text-cyan-400 font-black mt-1 uppercase tracking-tight">
+                          Pax Count: {item.paxCount} Pax
+                        </p>
+                      )}
                       <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                     </div>
                     <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="text-gray-300 hover:text-rose-500 transition-colors">
@@ -214,15 +304,59 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Customer Details</p>
           <div className="space-y-3">
-            <div className="relative group">
-              <LuUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors" />
+            <div className="relative group" onClick={(e) => e.stopPropagation()}>
+              <LuUser className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-blue-600 transition-colors z-10" />
               <input
                 type="text"
-                placeholder="Customer Name"
-                className="w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                placeholder="Customer Name (type to search existing...)"
+                className={`w-full pl-11 pr-10 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${selectedCustomerId ? 'border-blue-300 dark:border-blue-700 bg-blue-50/50 dark:bg-blue-900/10' : 'border-gray-100 dark:border-gray-700'}`}
                 value={customerName}
-                onChange={(e) => setCustomerName(formatName(e.target.value))}
+                onChange={(e) => {
+                  if (selectedCustomerId) handleClearSelectedCustomer();
+                  setCustomerName(formatName(e.target.value));
+                }}
+                onFocus={() => { if (searchResults.length > 0 && !selectedCustomerId) setShowDropdown(true); }}
               />
+              {selectedCustomerId && (
+                <button
+                  onClick={handleClearSelectedCustomer}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 hover:bg-blue-200 transition-colors"
+                  title="Clear selected customer"
+                >
+                  <LuX size={12} />
+                </button>
+              )}
+              {isSearching && !selectedCustomerId && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <LuLoaderCircle className="w-4 h-4 text-blue-500 animate-spin" />
+                </div>
+              )}
+              {showDropdown && searchResults.length > 0 && !selectedCustomerId && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl shadow-xl z-50 overflow-hidden">
+                  <div className="p-2 border-b border-gray-50 dark:border-gray-800">
+                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2">Existing Customers</p>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto">
+                    {searchResults.map((cust: any) => (
+                      <button
+                        key={cust.id}
+                        onClick={() => handleSelectCustomer(cust)}
+                        className="w-full text-left px-4 py-3 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors border-b border-gray-50 dark:border-gray-800 last:border-0"
+                      >
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">{cust.full_name}</p>
+                        <p className="text-[10px] text-gray-500 mt-0.5">{cust.phone || cust.email || 'No contact info'}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {selectedCustomerId && (
+                <div className="mt-2 flex items-center gap-2 px-1">
+                  <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-[10px] font-black uppercase tracking-widest rounded-full">
+                    ✓ Linked — ID #{selectedCustomerId}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <div className="relative group">
@@ -231,8 +365,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   type="text"
                   placeholder="Contact Number"
                   className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerContact && !isContactValid
-                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
-                      : 'border-gray-100 dark:border-gray-700'
+                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                    : 'border-gray-100 dark:border-gray-700'
                     }`}
                   value={customerContact}
                   onChange={(e) => setCustomerContact(e.target.value)}
@@ -254,8 +388,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   type="email"
                   placeholder="Email Address"
                   className={`w-full pl-11 pr-4 py-3.5 bg-gray-50 dark:bg-gray-800/50 border rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white ${customerEmail && !isEmailValid
-                      ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
-                      : 'border-gray-100 dark:border-gray-700'
+                    ? 'border-rose-300 dark:border-rose-900/50 focus:border-rose-500 focus:ring-rose-500/5'
+                    : 'border-gray-100 dark:border-gray-700'
                     }`}
                   value={customerEmail}
                   onChange={(e) => setCustomerEmail(e.target.value)}
@@ -288,8 +422,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             <button
               onClick={() => setPaymentMethod('Cash')}
               className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'Cash'
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
-                  : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                 }`}
             >
               <LuWallet className="w-5 h-5" />
@@ -298,8 +432,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             <button
               onClick={() => setPaymentMethod('GCash')}
               className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'GCash'
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
-                  : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                 }`}
             >
               <LuCreditCard className="w-5 h-5" />
@@ -317,8 +451,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     setAmountReceived('');
                   }}
                   className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'full'
-                      ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                    ? 'bg-emerald-600 border-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                     }`}
                 >
                   Full Payment
@@ -330,8 +464,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     setAmountReceived((total / 2).toFixed(2));
                   }}
                   className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'half'
-                      ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                    ? 'bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                     }`}
                 >
                   Half (50%)
@@ -343,8 +477,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     setAmountReceived('');
                   }}
                   className={`py-3 px-1 rounded-2xl border transition-all text-[9px] font-black uppercase tracking-wider text-center ${paymentType === 'downpayment'
-                      ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20'
-                      : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                    ? 'bg-amber-500 border-amber-500 text-white shadow-md shadow-amber-500/20'
+                    : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                     }`}
                 >
                   Downpayment
@@ -565,6 +699,32 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     <p className="text-xs font-black text-gray-900 mt-1 uppercase">
                       Driver: {lastInvoice.driver.first_name} {lastInvoice.driver.last_name} (ID #{lastInvoice.driver.id})
                     </p>
+                  </div>
+                )}
+
+                {(lastInvoice?.travel_date || lastInvoice?.tour_code || lastInvoice?.pickup_location || lastInvoice?.pax_count) && (
+                  <div className="my-6 p-5 bg-indigo-50/50 border border-indigo-105 rounded-3xl text-left">
+                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Travel &amp; Joiner Specifications</p>
+                    {lastInvoice.travel_date && (
+                      <p className="text-xs font-black text-gray-900 mt-1 uppercase">
+                        Travel Date: {new Date(lastInvoice.travel_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    )}
+                    {lastInvoice.tour_code && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Tour Code/Destination: {lastInvoice.tour_code}
+                      </p>
+                    )}
+                    {lastInvoice.pax_count && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Pax Count: {lastInvoice.pax_count} Pax
+                      </p>
+                    )}
+                    {lastInvoice.pickup_location && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Pickup Location: {lastInvoice.pickup_location}
+                      </p>
+                    )}
                   </div>
                 )}
 
