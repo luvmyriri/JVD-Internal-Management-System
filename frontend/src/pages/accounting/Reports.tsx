@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { 
-  LuFileSpreadsheet, LuFileText, LuCalendar,
+  LuFileSpreadsheet, LuFileText,
   LuTrendingUp, LuDollarSign, LuActivity, LuSearch, 
   LuUser, LuMapPin, LuEye, LuX, LuTrophy, LuDownload, LuArrowUpRight, LuTriangleAlert, LuChevronRight
 } from 'react-icons/lu';

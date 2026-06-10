@@ -308,23 +308,21 @@ class ProcurementDocumentController extends Controller
             });
         }
 
-<<<<<<< HEAD
         // Role-based document category filtering
         $user = auth()->user();
         if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
-            // Find all categories that this user's role is allowed to access
-            $allowedSlugs = \App\Models\DocumentCategory::all()
+            $disallowedSlugs = \App\Models\DocumentCategory::all()
                 ->filter(function ($cat) use ($user) {
-                    return is_null($cat->allowed_roles) || in_array($user->role, $cat->allowed_roles);
+                    return !is_null($cat->allowed_roles) && !in_array($user->role, $cat->allowed_roles);
                 })
                 ->pluck('slug')
                 ->toArray();
             
-            $query->whereIn('document_type', $allowedSlugs);
+            $allDocs = $allDocs->filter(function ($doc) use ($disallowedSlugs) {
+                return !in_array($doc['document_type'], $disallowedSlugs);
+            });
         }
 
-        $documents = $query->orderBy('created_at', 'desc')->get();
-=======
         if ($request->filled('search')) {
             $search = strtolower($request->search);
             $allDocs = $allDocs->filter(function ($doc) use ($search) {
@@ -337,7 +335,6 @@ class ProcurementDocumentController extends Controller
 
         // Sort chronologically (descending)
         $allDocs = $allDocs->sortByDesc('created_at')->values();
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
 
         return response()->json([
             'success' => true,
@@ -581,27 +578,19 @@ class ProcurementDocumentController extends Controller
      */
     public function destroy($id)
     {
-<<<<<<< HEAD
-        $document = ProcurementDocument::findOrFail($id);
-
-        $user = auth()->user();
-        if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
-            if ($document->uploaded_by !== $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized. You can only delete documents that you uploaded.'
-                ], 403);
-            }
-        }
-
-        // Delete physical file from storage disk
-        if (Storage::disk('public')->exists($document->file_path)) {
-            Storage::disk('public')->delete($document->file_path);
-=======
         if (is_string($id) && str_starts_with($id, 'doc_')) {
             if (str_starts_with($id, 'doc_procurement_')) {
                 $realId = (int) str_replace('doc_procurement_', '', $id);
                 $document = ProcurementDocument::findOrFail($realId);
+                $user = auth()->user();
+                if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+                    if ($document->uploaded_by !== $user->id) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Unauthorized. You can only delete documents that you uploaded.'
+                        ], 403);
+                    }
+                }
                 if (Storage::disk('public')->exists($document->file_path)) {
                     Storage::disk('public')->delete($document->file_path);
                 }
@@ -674,11 +663,20 @@ class ProcurementDocumentController extends Controller
         } else {
             // Fallback for raw numeric ID
             $document = ProcurementDocument::findOrFail($id);
+            $user = auth()->user();
+            if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+                if ($document->uploaded_by !== $user->id) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Unauthorized. You can only delete documents that you uploaded.'
+                    ], 403);
+                }
+            }
             if (Storage::disk('public')->exists($document->file_path)) {
                 Storage::disk('public')->delete($document->file_path);
             }
             $document->delete();
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
+        }
         }
 
         return response()->json([

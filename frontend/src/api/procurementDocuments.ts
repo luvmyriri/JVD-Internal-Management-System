@@ -51,11 +51,16 @@ export interface ProcurementDocument {
   };
   job_order?: any;
   work_order?: any;
-  trip_ticket?: any;
-  accreditation?: {
-    id: number;
-    entity_name: string;
-    accreditation_type: string;
+  linkages?: {
+    supplier?: any;
+    inventory_item?: any;
+    driver?: any;
+    customer?: any;
+    job_order?: any;
+    work_order?: any;
+    trip_ticket?: any;
+    accreditation?: any;
+    connected_to?: string;
   };
 }
 

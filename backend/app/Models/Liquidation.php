@@ -15,4 +15,14 @@ class Liquidation extends Model
     {
         return $this->hasMany(LiquidationItem::class);
     }
+
+    public function tripTicket()
+    {
+        return $this->belongsTo(TripTicket::class, 'trip_ticket_id');
+    }
+
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
 }

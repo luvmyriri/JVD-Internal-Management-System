@@ -75,6 +75,7 @@ class LedgerService
             ['code' => '5100', 'name' => 'Toll Expense', 'type' => 'expense'],
             ['code' => '5200', 'name' => 'Meals Expense', 'type' => 'expense'],
             ['code' => '5300', 'name' => 'Maintenance Expense', 'type' => 'expense'],
+            ['code' => '5400', 'name' => 'Commission Expense', 'type' => 'expense'],
             ['code' => '5900', 'name' => 'Cash Shortage', 'type' => 'expense'], // Or Other Expense
         ];
 

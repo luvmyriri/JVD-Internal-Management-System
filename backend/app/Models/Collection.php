@@ -23,6 +23,16 @@ class Collection extends Model
         return $this->belongsTo(Customer::class);
     }
 
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    public function liquidation()
+    {
+        return $this->belongsTo(Liquidation::class, 'liquidation_id');
+    }
+
     public function recalculate()
     {
         // If billing_amount is 0 or null, set it to rate (for manual/legacy collections)
@@ -54,6 +64,21 @@ class Collection extends Model
             $invoice->amount_received = $this->paid_amount;
             $invoice->status = $this->remaining_balance <= 0 ? 'paid' : ($this->paid_amount > 0 ? 'partial' : 'pending_payment');
             $invoice->save();
+        }
+
+        // Update linked driver liquidation shortage if this is a driver shortage collection
+        if ($this->liquidation_id) {
+            $liquidation = \App\Models\Liquidation::find($this->liquidation_id);
+            if ($liquidation) {
+                $liquidation->shortage_amount = $this->remaining_balance;
+                if ($this->remaining_balance <= 0 && $liquidation->status === 'disputed') {
+                    $hasDisputedItems = $liquidation->items()->where('status', 'disputed')->exists();
+                    if (!$hasDisputedItems) {
+                        $liquidation->status = 'settled';
+                    }
+                }
+                $liquidation->save();
+            }
         }
     }
 }

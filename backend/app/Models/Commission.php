@@ -16,6 +16,11 @@ class Commission extends Model
         return $this->hasMany(CommissionItem::class);
     }
 
+    public function employee()
+    {
+        return $this->belongsTo(User::class, 'employee_id');
+    }
+
     public function receivedBy()
     {
         return $this->belongsTo(User::class, 'received_by');

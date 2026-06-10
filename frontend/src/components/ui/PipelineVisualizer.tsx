@@ -32,6 +32,7 @@ interface PipelineVisualizerProps {
     budget_status?: string;
     po_no?: string;
     requires_po?: boolean;
+    wo_no?: string;
   };
 }
 
@@ -276,6 +277,12 @@ export default function PipelineVisualizer({
             <div>
               <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Purchase Order</p>
               <p className="font-bold text-gray-700 dark:text-gray-300 mt-0.5">{metadata.po_no}</p>
+            </div>
+          )}
+          {metadata.wo_no && (
+            <div>
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Work Order</p>
+              <p className="font-bold text-gray-700 dark:text-gray-300 mt-0.5">{metadata.wo_no}</p>
             </div>
           )}
         </div>

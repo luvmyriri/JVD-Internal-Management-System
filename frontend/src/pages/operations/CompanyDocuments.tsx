@@ -164,7 +164,7 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Link Customer</label>
                   <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.customer_id || ''} onChange={e => setForm({ ...form, customer_id: e.target.value ? Number(e.target.value) : null })}>
                     <option value="">-- None --</option>
-                    {customersRes?.data.data.map(c => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
+                    {customersRes?.data.data.map((c: any) => <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>)}
                   </select>
                 </div>
                 <div>
@@ -298,18 +298,8 @@ export default function CompanyDocuments() {
     }
   };
 
-  const getRowIndicatorStyle = (type?: string) => {
-    switch (type) {
-      case 'receipt': return 'border-l-4 border-emerald-500';
-      case 'invoice': return 'border-l-4 border-blue-500';
-      case 'delivery_note': return 'border-l-4 border-amber-500';
-      case 'agreement': return 'border-l-4 border-purple-500';
-      case 'kyc': return 'border-l-4 border-rose-500';
-      case 'passport': return 'border-l-4 border-teal-500';
-      case 'visa': return 'border-l-4 border-indigo-500';
-      case 'accreditation': return 'border-l-4 border-violet-500';
-      default: return 'border-l-4 border-transparent';
-    }
+  const getRowIndicatorStyle = (_type?: string) => {
+    return '';
   };
 
   return (
@@ -347,7 +337,7 @@ export default function CompanyDocuments() {
             className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group ${
               docTypeFilter === 'all'
                 ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
-                : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-700 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
+                : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-750 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
             }`}
           >
             <div className={`p-2 rounded-xl shrink-0 border transition-all ${
@@ -496,32 +486,32 @@ export default function CompanyDocuments() {
                             Driver: {doc.driver.first_name} {doc.driver.last_name}
                           </button>
                         )}
-                        {doc.customer && (
-                          <button onClick={() => showPreview('customer', doc.customer!.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
-                            Customer: {doc.customer.first_name} {doc.customer.last_name}
+                        {doc.linkages?.customer && (
+                          <button onClick={() => showPreview('customer', doc.linkages!.customer.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
+                            Customer: {doc.linkages.customer.first_name} {doc.linkages.customer.last_name}
                           </button>
                         )}
-                        {doc.job_order && (
+                        {doc.linkages?.job_order && (
                           <span className="text-left text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors uppercase tracking-tight">
-                            Job Order: #{doc.job_order.jo_number}
+                            Job Order: #{doc.linkages.job_order.jo_number}
                           </span>
                         )}
-                        {doc.work_order && (
+                        {doc.linkages?.work_order && (
                           <span className="text-left text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition-colors uppercase tracking-tight">
-                            Work Order: #{doc.work_order.wo_number}
+                            Work Order: #{doc.linkages.work_order.wo_number}
                           </span>
                         )}
-                        {doc.trip_ticket && (
+                        {doc.linkages?.trip_ticket && (
                           <span className="text-left text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors uppercase tracking-tight">
-                            Trip Ticket: #{doc.trip_ticket.control_no}
+                            Trip Ticket: #{doc.linkages.trip_ticket.control_no}
                           </span>
                         )}
-                        {doc.accreditation && (
+                        {doc.linkages?.accreditation && (
                           <span className="text-left text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded-lg w-fit uppercase tracking-tight">
-                            Accred: {doc.accreditation.entity_name} ({doc.accreditation.accreditation_type})
+                            Accred: {doc.linkages.accreditation.entity_name} ({doc.linkages.accreditation.accreditation_type})
                           </span>
                         )}
-                        {!doc.supplier && !doc.inventory_item && !doc.driver && !doc.customer && !doc.job_order && !doc.work_order && !doc.trip_ticket && !doc.accreditation && (
+                        {!doc.supplier && !doc.inventory_item && !doc.driver && !doc.linkages?.customer && !doc.linkages?.job_order && !doc.linkages?.work_order && !doc.linkages?.trip_ticket && !doc.linkages?.accreditation && (
                           <span className="text-gray-400 uppercase tracking-widest text-[9px]">Unlinked</span>
                         )}
                       </div>

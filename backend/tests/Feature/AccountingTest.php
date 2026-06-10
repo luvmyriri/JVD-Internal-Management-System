@@ -286,4 +286,216 @@ class AccountingTest extends TestCase
             'credit'           => 10000.00,
         ]);
     }
+
+    public function test_commission_approval_creates_cash_budget_request()
+    {
+        $employee = User::factory()->create(['role' => 'driver']);
+        
+        $commission = \App\Models\Commission::create([
+            'serial_no' => 'CMS-2026-00001',
+            'commissioner_name' => $employee->first_name . ' ' . $employee->last_name,
+            'employee_id' => $employee->id,
+            'date' => '2026-06-09',
+            'status' => 'draft',
+        ]);
+        
+        $commission->items()->create([
+            'travel_date' => '2026-06-09',
+            'destination' => 'Laguna',
+            'quantity' => 1,
+            'amount' => 1500.00,
+        ]);
+        
+        $this->actingAs($this->admin)
+             ->putJson("/api/commissions/{$commission->id}", [
+                 'status' => 'approved',
+             ])
+             ->assertOk();
+             
+        $commission->refresh();
+        $this->assertEquals('approved', $commission->status);
+        $this->assertEquals($this->admin->id, $commission->approved_by);
+        
+        $this->assertDatabaseHas('cash_budget_requests', [
+            'commission_id' => $commission->id,
+            'total_amount' => 1500.00,
+            'status' => 'pending_accounting',
+        ]);
+    }
+
+    public function test_liquidation_overspend_creates_reimbursement_and_credits_2100()
+    {
+        // Advanced 3000
+        $budget = CashBudgetRequest::create([
+            'date'                  => '2026-06-08',
+            'trip_ticket_id'        => $this->tripTicket->id,
+            'diesel'                => 3000,
+            'status'                => 'approved',
+            'total_amount'          => 3000,
+            'prepared_by'           => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 3000,
+             ])
+             ->assertOk();
+
+        $liquidation = Liquidation::where('trip_ticket_id', $this->tripTicket->id)->first();
+        $this->assertNotNull($liquidation);
+
+        // Spent 4500 (extra 1500 out-of-pocket)
+        $payload = [
+            'items' => [
+                [
+                    'expense_category' => 'Fuel',
+                    'amount'           => 4500,
+                    'receipt_number'   => 'REC-OVER',
+                    'status'           => 'approved',
+                ]
+            ],
+            'total_returned' => 0,
+            'notes' => 'Overspent',
+        ];
+
+        $this->actingAs($this->admin)
+             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->assertOk();
+
+        $liquidation->refresh();
+        // shortage is negative
+        $this->assertEquals(-1500.00, $liquidation->shortage_amount);
+        
+        // Assert a Cash Budget Request reimbursement was created
+        $this->assertDatabaseHas('cash_budget_requests', [
+            'liquidation_id' => $liquidation->id,
+            'total_amount' => 1500.00,
+            'status' => 'pending_accounting',
+        ]);
+
+        // Assert Credit to Due to Employees (2100) and Debit to Fuel (5000)
+        $settlementJournal = JournalEntry::where('reference_type', Liquidation::class)
+                                         ->where('reference_id', $liquidation->id)
+                                         ->first();
+        $this->assertNotNull($settlementJournal);
+
+        $dueToEmployeesAcc = Account::where('code', '2100')->first();
+        $fuelAcc = Account::where('code', '5000')->first();
+        $employeeAdvancesAcc = Account::where('code', '1200')->first();
+
+        // 3 ledger lines: Fuel Debit 4500, Employee Advances Credit 3000, Due to Employees Credit 1500
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $fuelAcc->id,
+            'debit'            => 4500.00,
+            'credit'           => 0.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $dueToEmployeesAcc->id,
+            'debit'            => 0.00,
+            'credit'           => 1500.00,
+        ]);
+
+        $this->assertDatabaseHas('ledger_lines', [
+            'journal_entry_id' => $settlementJournal->id,
+            'account_id'       => $employeeAdvancesAcc->id,
+            'debit'            => 0.00,
+            'credit'           => 3000.00,
+        ]);
+    }
+
+    public function test_liquidation_underspend_creates_collection_payment_syncs_liquidation()
+    {
+        // Advanced 5000
+        $budget = CashBudgetRequest::create([
+            'date'                  => '2026-06-08',
+            'trip_ticket_id'        => $this->tripTicket->id,
+            'diesel'                => 5000,
+            'status'                => 'approved',
+            'total_amount'          => 5000,
+            'prepared_by'           => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 5000,
+             ])
+             ->assertOk();
+
+        $liquidation = Liquidation::where('trip_ticket_id', $this->tripTicket->id)->first();
+
+        // Spent 3000, returned 0 cash. Shortage of 2000!
+        $payload = [
+            'items' => [
+                [
+                    'expense_category' => 'Fuel',
+                    'amount'           => 3000,
+                    'receipt_number'   => 'REC-UNDER',
+                    'status'           => 'approved',
+                ]
+            ],
+            'total_returned' => 0,
+            'notes' => 'Shortage of 2000',
+        ];
+
+        $this->actingAs($this->admin)
+             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->assertOk();
+
+        $liquidation->refresh();
+        $this->assertEquals(2000.00, $liquidation->shortage_amount);
+        $this->assertEquals('disputed', $liquidation->status); // because there is a shortage
+
+        // Assert Collection record created
+        $this->assertDatabaseHas('collections', [
+            'liquidation_id' => $liquidation->id,
+            'employee_id' => $this->driver->id,
+            'billing_amount' => 2000.00,
+            'remaining_balance' => 2000.00,
+            'service_type' => 'Other',
+            'other_service_type' => 'Driver Shortage',
+        ]);
+
+        $collection = \App\Models\Collection::where('liquidation_id', $liquidation->id)->first();
+        $this->assertNotNull($collection);
+
+        // Record a collection payment of 1200
+        $this->actingAs($this->admin)
+             ->postJson("/api/collections/{$collection->id}/add-payment", [
+                 'payment_date' => '2026-06-09',
+                 'payment_method' => 'Cash',
+                 'amount' => 1200.00,
+             ])
+             ->assertOk();
+
+        $collection->refresh();
+        $this->assertEquals(800.00, $collection->remaining_balance);
+        $this->assertEquals(1200.00, $collection->paid_amount);
+
+        // Assert liquidation shortage updated
+        $liquidation->refresh();
+        $this->assertEquals(800.00, $liquidation->shortage_amount);
+        $this->assertEquals('disputed', $liquidation->status);
+
+        // Pay the remaining 800
+        $this->actingAs($this->admin)
+             ->postJson("/api/collections/{$collection->id}/add-payment", [
+                 'payment_date' => '2026-06-09',
+                 'payment_method' => 'Cash',
+                 'amount' => 800.00,
+             ])
+             ->assertOk();
+
+        $collection->refresh();
+        $this->assertEquals(0.00, $collection->remaining_balance);
+        $this->assertEquals('completed', $collection->collection_status);
+
+        $liquidation->refresh();
+        $this->assertEquals(0.00, $liquidation->shortage_amount);
+        $this->assertEquals('settled', $liquidation->status);
+    }
 }

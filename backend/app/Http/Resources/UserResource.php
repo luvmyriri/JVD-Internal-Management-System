@@ -28,6 +28,7 @@ class UserResource extends JsonResource
             'last_login' => $this->last_login?->toISOString(),
             'custom_permissions' => $this->custom_permissions,
             'effective_permissions' => $this->getAllPermissions(),
+            'tags' => $this->tags ?? [],
             'created_by' => $this->created_by,
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),

@@ -28,6 +28,7 @@ import {
   LuEye as LuEyeOn,
   LuBus,
   LuChevronRight,
+  LuX,
 } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -127,7 +128,17 @@ interface User {
   created_at: string;
   custom_permissions?: any;
   effective_permissions?: any;
+  tags?: string[];
 }
+
+const PRESET_TAGS = [
+  { value: 'access:general', label: 'Access: General' },
+  { value: 'access:personalized', label: 'Access: Personalized' },
+  { value: 'process:approve_commission', label: 'Approve Commission' },
+  { value: 'process:approve_cash_budget', label: 'Approve Cash Budget' },
+  { value: 'process:disburse_cash_budget', label: 'Disburse Cash Budget' },
+  { value: 'process:settle_liquidation', label: 'Settle Liquidation' },
+];
 
 const ROLES = [
   { value: 'super_admin', label: 'Super Admin', icon: LuShieldCheck, color: 'text-rose-500', bg: 'bg-rose-500/10' },
@@ -172,7 +183,37 @@ export default function Users() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [assignedBusId, setAssignedBusId] = useState<number | ''>('');
   const [customPermissions, setCustomPermissions] = useState<Record<string, ModulePermission>>({});
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const addCustomTag = () => {
+    const trimmed = tagInput.trim().toLowerCase();
+    if (!trimmed) return;
+    if (tags.includes(trimmed)) {
+      toast.error('Tag already exists');
+      return;
+    }
+    setTags([...tags, trimmed]);
+    setTagInput('');
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(t => t !== tagToRemove));
+  };
+
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addCustomTag();
+    }
+  };
+
+  const addPresetTag = (preset: string) => {
+    if (!tags.includes(preset)) {
+      setTags([...tags, preset]);
+    }
+  };
 
   const { user: currentUser, hasPermission } = useAuth();
   const isSuperAdmin = currentUser?.role === 'super_admin';
@@ -219,6 +260,7 @@ export default function Users() {
       setValue('employee_id', user.employee_id);
       setValue('role', user.role);
       setValue('department', user.department);
+      setTags(user.tags || []);
     } else {
       setSelectedUser(null);
       reset({
@@ -227,7 +269,9 @@ export default function Users() {
         send_invitation: true,
         employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
       });
+      setTags([]);
     }
+    setTagInput('');
     // Reset password fields whenever modal opens
     setNewPassword('');
     setNewPasswordConfirm('');
@@ -269,7 +313,7 @@ export default function Users() {
           });
         }
         
-        const updateData = { ...data };
+        const updateData = { ...data, tags };
         if (isSuperAdmin) {
             updateData.custom_permissions = customPermissions;
         }
@@ -300,12 +344,14 @@ export default function Users() {
         setNewPassword('');
         setNewPasswordConfirm('');
         setCustomPermissions({});
+        setTags([]);
         reset();
       } else {
         const sendInvite = data.send_invitation !== false;
-        const res = await createUserMutation.mutateAsync({ ...data, send_invitation: sendInvite });
+        const res = await createUserMutation.mutateAsync({ ...data, tags, send_invitation: sendInvite });
         const tempPw = res?.data?.data?.temporary_password;
         setIsModalOpen(false);
+        setTags([]);
         reset();
         // If no invitation sent, show temp password modal
         if (!sendInvite && tempPw) {
@@ -880,6 +926,69 @@ export default function Users() {
               </div>
             </details>
 
+            <details className="group" open>
+              <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
+                <span className="flex items-center gap-1.5"><LuShieldCheck className="text-blue-500" /> Account Tags & Attributes</span>
+                <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+              </summary>
+              <div className="pt-4 px-1 space-y-4">
+                {/* Visual bubbles of current tags */}
+                <div className="flex flex-wrap gap-2 min-h-[48px] p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  {tags.length === 0 ? (
+                    <span className="text-xs text-gray-400 font-medium italic my-auto">No tags assigned. Default fallback (personalized access only) will apply.</span>
+                  ) : (
+                    tags.map(tag => (
+                      <span key={tag} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-xs font-bold rounded-full border border-blue-100 dark:border-blue-500/20">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="hover:text-blue-800 dark:hover:text-blue-200 shrink-0">
+                          <LuX className="w-3.5 h-3.5" />
+                        </button>
+                      </span>
+                    ))
+                  )}
+                </div>
+
+                {/* Input to add tag */}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter custom tag (e.g. access:logistics:general)..."
+                    value={tagInput}
+                    onChange={e => setTagInput(e.target.value)}
+                    onKeyDown={handleTagKeyDown}
+                    className="flex-1 px-4 py-2.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  />
+                  <Button type="button" onClick={addCustomTag} variant="secondary" className="px-5 py-2.5 text-xs font-bold uppercase tracking-wider">Add</Button>
+                </div>
+
+                {/* Quick-select options */}
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quick Add Preset Tags</p>
+                  <div className="flex flex-wrap gap-2">
+                    {PRESET_TAGS.map(preset => {
+                      const exists = tags.includes(preset.value);
+                      return (
+                        <button
+                          key={preset.value}
+                          type="button"
+                          disabled={exists}
+                          onClick={() => addPresetTag(preset.value)}
+                          className={cn(
+                            "px-2.5 py-1 text-[10px] font-bold rounded-lg border transition-all active:scale-95",
+                            exists
+                              ? "bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed"
+                              : "bg-white hover:bg-blue-50/50 dark:bg-gray-900 dark:hover:bg-blue-500/10 text-gray-600 hover:text-blue-600 dark:text-gray-300 dark:hover:text-blue-400 border-gray-200 dark:border-gray-800"
+                          )}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </details>
+
           {/* ── Assigned Bus (driver role only) ── */}
           {(watchedRole === 'driver' || selectedUser?.role === 'driver') && watchedRole === 'driver' && (
             <details className="group" open>
@@ -1198,6 +1307,19 @@ export default function Users() {
                       <LuGlobe size={12} className="text-gray-400 dark:text-gray-500 dark:text-gray-400" /> Internal Network
                     </span>
                   </div>
+
+                  {selectedUser.tags && selectedUser.tags.length > 0 && (
+                    <div className="flex flex-col gap-2 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-850">
+                      <span className="text-xs font-bold text-gray-500 dark:text-gray-400">Account Tags / Attributes</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedUser.tags.map(tag => (
+                          <span key={tag} className="px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider rounded-md border border-blue-100/50 dark:border-blue-800/40">
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {selectedUser.effective_permissions && Object.keys(selectedUser.effective_permissions).length > 0 && (
                     <details className="group" open>
