@@ -12,6 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 import BusLayout from '../../components/ui/BusLayout';
 import client from '../../api/client';
+import { fleetApi } from '../../api/fleet';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
@@ -545,8 +546,8 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
                 <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
                   <BusLayout
-                    totalSeats={buses.find(b => b.id === busRental.busId)?.seating_capacity || 49}
-                    hasRestroom={buses.find(b => b.id === busRental.busId)?.model?.toLowerCase().includes('vip') || false}
+                    totalSeats={buses.find((b: any) => b.id === busRental.busId)?.seating_capacity || 49}
+                    hasRestroom={buses.find((b: any) => b.id === busRental.busId)?.model?.toLowerCase().includes('vip') || false}
                     selectedSeats={busRental.selectedSeats}
                     occupiedSeats={occupiedSeats}
                     onSeatToggle={(seatNum) => {

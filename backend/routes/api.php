@@ -203,6 +203,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');
         Route::patch('/passport-cases/{passportCase}/checklist', [PassportCaseController::class, 'updateChecklist'])->name('passport-cases.checklist');
         Route::get('/passport-cases/{passportCase}/audit-logs',  [PassportCaseController::class, 'auditLogs'])->name('passport-cases.audit-logs');
+        Route::get('/passport-cases/{passportCase}/documents',   [PassportCaseController::class, 'getDocuments'])->name('passport-cases.documents.index');
+        Route::post('/passport-cases/{passportCase}/documents',  [PassportCaseController::class, 'uploadDocument'])->name('passport-cases.documents.store');
+        Route::delete('/passport-cases/{passportCase}/documents/{documentId}', [PassportCaseController::class, 'deleteDocument'])->name('passport-cases.documents.destroy');
+        Route::post('/visa/requirements', [App\Http\Controllers\Travel\VisaRequirementController::class, 'getRequirements'])->name('visa.requirements');
         // Legal Documents
         Route::get('/legal-documents',            [LegalDocumentController::class, 'index']);
         Route::post('/legal-documents',           [LegalDocumentController::class, 'store']);
@@ -282,6 +286,11 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         
         // HR Entities
         Route::apiResource('job-applications', \App\Http\Controllers\JobApplicationController::class);
+        Route::patch('/job-applications/{jobApplication}/checklist', [\App\Http\Controllers\JobApplicationController::class, 'updateChecklist'])->name('job-applications.checklist');
+        Route::get('/job-applications/{jobApplication}/documents',   [\App\Http\Controllers\JobApplicationController::class, 'getDocuments'])->name('job-applications.documents.index');
+        Route::post('/job-applications/{jobApplication}/documents',  [\App\Http\Controllers\JobApplicationController::class, 'uploadDocument'])->name('job-applications.documents.store');
+        Route::delete('/job-applications/{jobApplication}/documents/{documentId}', [\App\Http\Controllers\JobApplicationController::class, 'deleteDocument'])->name('job-applications.documents.destroy');
+        Route::post('/job-applications/{jobApplication}/convert-to-employee', [\App\Http\Controllers\JobApplicationController::class, 'convertToEmployee'])->name('job-applications.convert-to-employee');
         Route::apiResource('internships', \App\Http\Controllers\InternshipController::class);
     });
 

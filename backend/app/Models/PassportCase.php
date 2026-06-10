@@ -12,7 +12,7 @@ class PassportCase extends Model
     protected $fillable = [
         'customer_id', 'passenger_id', 'handled_by',
         'case_type', 'status', 'checklist', 'reference_number',
-        'submitted_date', 'release_date',
+        'submitted_date', 'release_date', 'destination_country', 'visa_type',
     ];
 
     protected function casts(): array

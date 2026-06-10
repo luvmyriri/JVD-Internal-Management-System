@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuStamp, LuPlus, LuSearch, LuLoaderCircle,
-  LuCircleCheck, LuCircle, LuChevronRight,
+  LuCircleCheck, LuCircle, LuChevronRight, LuTrash,
+  LuUpload, LuFileText, LuEye,
 } from 'react-icons/lu';
 import { passportingApi } from '../../api/passporting';
-import { customerApi } from '../../api/customers';
 import { Pagination, Modal, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 
@@ -19,10 +19,38 @@ interface PassportCase {
   checklist: Record<string, boolean>;
   submitted_date?: string;
   release_date?: string;
-  customer?: { id: number; first_name?: string; last_name?: string; full_name?: string; email?: string };
-  passenger?: { id: number; first_name?: string; last_name?: string; full_name?: string };
+  customer?: {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  passenger?: {
+    id: number;
+    first_name?: string;
+    last_name?: string;
+    full_name?: string;
+    birth_date?: string;
+    contact_no?: string;
+  };
   handler?: { id: number; first_name?: string; last_name?: string; full_name?: string };
 }
+
+const calculateAge = (dobString: string) => {
+  if (!dobString) return '';
+  const birthDate = new Date(dobString);
+  if (isNaN(birthDate.getTime())) return '';
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age >= 0 ? `${age} years old` : '';
+};
 
 const STATUS_FLOW = [
   'requirements_gathering',
@@ -82,19 +110,27 @@ const STATUS_TRANSITIONS: Record<string, string[]> = {
 // ── New Case Modal ─────────────────────────────────────────────────────────────
 function NewCaseModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState({
-    customer_id: '',
-    case_type: 'passport' as const,
-  });
-
-  const { data: customersRes } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => customerApi.list({ per_page: 200 }),
-  });
-  const customers = customersRes?.data?.data ?? [];
+  const [firstName, setFirstName] = useState('');
+  const [middleName, setMiddleName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [birthDate, setBirthDate] = useState('');
+  const [address, setAddress] = useState('');
 
   const mutation = useMutation({
-    mutationFn: () => passportingApi.create({ ...form, customer_id: parseInt(form.customer_id) }),
+    mutationFn: () => passportingApi.create({
+      first_name: firstName.trim(),
+      middle_name: middleName.trim() || undefined,
+      last_name: lastName.trim(),
+      suffix: suffix.trim() || undefined,
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
+      address: address.trim() || undefined,
+      birth_date: birthDate || undefined,
+      case_type: 'passport',
+    }),
     onSuccess: () => {
       toast.success('Passport case opened successfully!');
       qc.invalidateQueries({ queryKey: ['passport_cases'] });
@@ -113,24 +149,115 @@ function NewCaseModal({ onClose }: { onClose: () => void }) {
               <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
             </summary>
             <div className="pt-4 px-1 space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Customer *</label>
-                <select
-                  value={form.customer_id}
-                  onChange={e => setForm(p => ({ ...p, customer_id: e.target.value }))}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm text-gray-800 dark:text-gray-200 bg-white dark:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Customer...</option>
-                  {customers.map((c: any) => (
-                    <option key={c.id} value={c.id}>{c.first_name} {c.last_name}</option>
-                  ))}
-                </select>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">First Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    placeholder="John"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Middle Name</label>
+                  <input
+                    type="text"
+                    value={middleName}
+                    onChange={e => setMiddleName(e.target.value)}
+                    placeholder="Fitzgerald"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Last Name *</label>
+                  <input
+                    type="text"
+                    required
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    placeholder="Doe"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Suffix (optional)</label>
+                  <input
+                    type="text"
+                    value={suffix}
+                    onChange={e => setSuffix(e.target.value)}
+                    placeholder="Jr."
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Email Address</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="john@example.com"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Contact Number</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={e => setPhone(e.target.value)}
+                    placeholder="09171234567"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Birthdate</label>
+                    {birthDate && (
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
+                        {calculateAge(birthDate)}
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="date"
+                    value={birthDate}
+                    onChange={e => setBirthDate(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Complete Address</label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={e => setAddress(e.target.value)}
+                    placeholder="123 Street, Manila"
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50/50 dark:bg-blue-950/20 text-blue-700 dark:text-blue-400 rounded-xl text-xs font-bold flex items-center gap-2 border border-blue-100/30 dark:border-blue-900/30">
+                <span className="shrink-0 inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span>Passport: Filipino (PH)</span>
               </div>
             </div>
           </details>
           <div className="flex justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
             <Button variant="secondary" onClick={onClose}>Cancel</Button>
-            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!form.customer_id}>
+            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending} disabled={!firstName.trim() || !lastName.trim()}>
               Open Passport Case
             </Button>
           </div>
@@ -149,13 +276,26 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   const isAdmin = user?.role ? ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user.role) : false;
   const readOnly = !isHandler && !isAdmin;
 
-  const [activeTab, setActiveTab] = useState<'details'|'history'>('details');
+  const [activeTab, setActiveTab] = useState<'details' | 'documents' | 'history'>('details');
 
   const [localChecklist, setLocalChecklist] = useState<Record<string, boolean>>(
     caseData.checklist ?? {}
   );
   const checklistItems = caseData.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
   const allowedNext = STATUS_TRANSITIONS[caseData.status] ?? [];
+
+  // Document upload state
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [selectedTitle, setSelectedTitle] = useState('');
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
+  const [uploadingChecklistItem, setUploadingChecklistItem] = useState<string | null>(null);
+  const checklistFileInputRef = useRef<HTMLInputElement>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewTitle, setPreviewTitle] = useState('');
+
+  const completedCount = checklistItems.filter(i => localChecklist[i]).length;
 
   const statusMutation = useMutation({
     mutationFn: (status: string) => passportingApi.updateStatus(caseData.id, status),
@@ -173,6 +313,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
       toast.success('Checklist saved!');
       qc.invalidateQueries({ queryKey: ['passport_cases'] });
     },
+    onError: () => toast.error('Failed to save checklist.'),
   });
 
   const toggleItem = (item: string) => {
@@ -182,14 +323,116 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
     checklistMutation.mutate(updated);
   };
 
-  const completedCount = checklistItems.filter(i => localChecklist[i]).length;
-
   const { data: auditLogsRes, isLoading: logsLoading } = useQuery({
     queryKey: ['passport_case_audit', caseData.id],
     queryFn: () => passportingApi.getAuditLogs(caseData.id),
     enabled: activeTab === 'history'
   });
   const logs = auditLogsRes?.data?.data ?? [];
+
+  const { data: docsRes, refetch: refetchDocs, isLoading: docsLoading } = useQuery({
+    queryKey: ['passport_case_documents', caseData.id],
+    queryFn: () => passportingApi.getDocuments(caseData.id).then(r => r.data),
+    enabled: true,
+  });
+  const documents = docsRes?.data ?? [];
+
+  const handleUpload = async () => {
+    if (!fileToUpload || !uploadTitle.trim()) {
+      toast.error('Please select a file and enter a title.');
+      return;
+    }
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadTitle.trim());
+      formData.append('file', fileToUpload);
+
+      await passportingApi.uploadDocument(caseData.id, formData);
+      toast.success('Document uploaded successfully.');
+
+      // Automatically check and save checklist item
+      const matchedItem = checklistItems.find(i => i.toLowerCase() === uploadTitle.trim().toLowerCase());
+      if (matchedItem) {
+        const updated = { ...localChecklist, [matchedItem]: true };
+        setLocalChecklist(updated);
+        checklistMutation.mutate(updated);
+      }
+
+      setUploadTitle('');
+      setSelectedTitle('');
+      setFileToUpload(null);
+      setFileInputKey(Date.now());
+      refetchDocs();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload document.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleChecklistUploadClick = (item: string) => {
+    setUploadingChecklistItem(item);
+    setTimeout(() => {
+      checklistFileInputRef.current?.click();
+    }, 50);
+  };
+
+  const handleChecklistFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !uploadingChecklistItem) return;
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadingChecklistItem);
+      formData.append('file', file);
+
+      await passportingApi.uploadDocument(caseData.id, formData);
+      toast.success(`Document for "${uploadingChecklistItem}" uploaded successfully.`);
+
+      // Automatically check and save checklist item
+      const updated = { ...localChecklist, [uploadingChecklistItem]: true };
+      setLocalChecklist(updated);
+      checklistMutation.mutate(updated);
+
+      refetchDocs();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to upload document.');
+    } finally {
+      setIsUploading(false);
+      setUploadingChecklistItem(null);
+      if (checklistFileInputRef.current) {
+        checklistFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDeleteDoc = async (docId: number) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      const docToDelete = documents.find((d: any) => d.id === docId);
+
+      await passportingApi.deleteDocument(caseData.id, docId);
+      toast.success('Document deleted successfully.');
+
+      if (docToDelete) {
+        const matchedItem = checklistItems.find(i => i.toLowerCase() === docToDelete.title.trim().toLowerCase());
+        if (matchedItem) {
+          const updated = { ...localChecklist, [matchedItem]: false };
+          setLocalChecklist(updated);
+          checklistMutation.mutate(updated);
+        }
+      }
+
+      refetchDocs();
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete document.');
+    }
+  };
 
   return (
     <Modal isOpen onClose={onClose} title={`Case #${caseData.id} — ${caseData.case_type === 'passport' ? 'Passport' : 'Visa'}`} size="lg">
@@ -202,6 +445,12 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
             Details
           </button>
           <button
+            onClick={() => setActiveTab('documents')}
+            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'documents' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+          >
+            Documents
+          </button>
+          <button
             onClick={() => setActiveTab('history')}
             className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
           >
@@ -209,7 +458,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
           </button>
         </div>
 
-        {activeTab === 'details' ? (
+        {activeTab === 'details' && (
           <div className="p-2 space-y-5 mt-4">
             <details className="group" open>
               <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -243,6 +492,32 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                       {caseData.handler ? (caseData.handler.full_name || `${caseData.handler.first_name} ${caseData.handler.last_name}`) : '—'}
                     </p>
                   </div>
+                  {caseData.customer?.email && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{caseData.customer.email}</p>
+                    </div>
+                  )}
+                  {(caseData.passenger?.contact_no || caseData.customer?.phone) && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact Number</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{caseData.passenger?.contact_no || caseData.customer?.phone}</p>
+                    </div>
+                  )}
+                  {caseData.passenger?.birth_date && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl col-span-2">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Birthdate & Age</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">
+                        {new Date(caseData.passenger.birth_date).toLocaleDateString()} ({calculateAge(caseData.passenger.birth_date)})
+                      </p>
+                    </div>
+                  )}
+                  {caseData.customer?.address && (
+                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl col-span-2">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Complete Address</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{caseData.customer.address}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </details>
@@ -282,23 +557,86 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                     <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
                   </div>
                   <div className="space-y-2">
-                    {checklistItems.map(item => (
-                      <button
-                        key={item}
-                        onClick={() => toggleItem(item)}
-                        disabled={readOnly}
-                        className={`w-full flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition text-left ${readOnly ? 'opacity-75 cursor-default' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                      >
-                        {localChecklist[item]
-                          ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
-                          : <LuCircle size={18} className="text-gray-300 shrink-0" />
-                        }
-                        <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
-                          {item}
-                        </span>
-                      </button>
-                    ))}
+                    {checklistItems.map(item => {
+                      const matchingDoc = documents.find((d: any) => d.title.trim().toLowerCase() === item.trim().toLowerCase());
+                      return (
+                        <div
+                          key={item}
+                          className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 transition ${readOnly ? 'opacity-75 cursor-default' : ''}`}
+                        >
+                          <button
+                            onClick={() => toggleItem(item)}
+                            disabled={readOnly}
+                            className="flex-1 flex items-center gap-3 text-left"
+                          >
+                            {localChecklist[item]
+                              ? <LuCircleCheck size={18} className="text-emerald-500 shrink-0" />
+                              : <LuCircle size={18} className="text-gray-300 shrink-0" />
+                            }
+                            <span className={`text-sm font-medium ${localChecklist[item] ? 'line-through text-gray-400' : 'text-gray-700 dark:text-gray-200'}`}>
+                              {item}
+                            </span>
+                          </button>
+                          <div className="flex items-center gap-2">
+                            {matchingDoc ? (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setPreviewUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`);
+                                    setPreviewTitle(matchingDoc.title);
+                                  }}
+                                  className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                  title="Preview Document"
+                                >
+                                  <LuEye size={13} />
+                                  <span className="text-[10px] hidden sm:inline">Preview</span>
+                                </button>
+                                <a
+                                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 dark:text-emerald-400 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                  title="Download Document"
+                                >
+                                  <LuFileText size={13} />
+                                  <span className="text-[10px] hidden sm:inline">Download</span>
+                                </a>
+                                {!readOnly && (
+                                  <button
+                                    onClick={() => handleDeleteDoc(matchingDoc.id)}
+                                    className="p-1 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition"
+                                    title="Delete Document"
+                                  >
+                                    <LuTrash size={14} />
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              !readOnly && (
+                                <button
+                                  onClick={() => handleChecklistUploadClick(item)}
+                                  className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 dark:text-blue-400 rounded-lg text-xs font-bold transition flex items-center gap-1"
+                                  title="Upload Document"
+                                >
+                                  <LuUpload size={13} />
+                                  <span className="text-[10px] hidden sm:inline">Upload</span>
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
+
+                  {/* Hidden checklist file uploader */}
+                  <input
+                    type="file"
+                    ref={checklistFileInputRef}
+                    onChange={handleChecklistFileUpload}
+                    className="hidden"
+                  />
                 </div>
               </div>
             </details>
@@ -328,42 +666,183 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
               </details>
             )}
           </div>
-        ) : (
-        <div className="p-6">
-          {logsLoading ? (
-            <div className="text-sm text-gray-500 py-4 text-center">Loading history...</div>
-          ) : logs.length === 0 ? (
-            <div className="text-sm text-gray-500 py-4 text-center">No history available.</div>
-          ) : (
-            <div className="space-y-4">
-              {logs.map((log: any) => (
-                <div key={log.id} className="border-l-2 border-gray-200 dark:border-gray-700 pl-4 py-1">
-                  <div className="flex justify-between items-start mb-1">
-                    <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">
-                      {log.action.replace('_', ' ')}
-                    </p>
-                    <span className="text-xs text-gray-500">
-                      {new Date(log.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">
-                    By: {log.user?.first_name} {log.user?.last_name}
-                  </p>
-                  {log.old_values && log.new_values && log.action === 'update_status' && (
-                    <div className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded">
-                      <span className="text-gray-500">Status changed from </span>
-                      <span className="font-bold">{log.old_values.status}</span>
-                      <span className="text-gray-500"> to </span>
-                      <span className="font-bold">{log.new_values.status}</span>
+        )}
+
+        {activeTab === 'documents' && (
+          <div className="p-4 space-y-6">
+            {/* Upload form */}
+            {!readOnly && (
+              <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-750 space-y-4 shadow-sm">
+                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Upload New Document</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Document Title *</label>
+                    <div className="flex gap-2">
+                      <select
+                        value={selectedTitle}
+                        onChange={e => {
+                          setSelectedTitle(e.target.value);
+                          if (e.target.value !== 'custom') {
+                            setUploadTitle(e.target.value);
+                          } else {
+                            setUploadTitle('');
+                          }
+                        }}
+                        className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[180px]"
+                      >
+                        <option value="">-- Select Title --</option>
+                        {checklistItems.map(i => (
+                          <option key={i} value={i}>{i}</option>
+                        ))}
+                        <option value="custom">Custom Title...</option>
+                      </select>
+                      {(selectedTitle === 'custom' || selectedTitle === '') && (
+                        <input
+                          type="text"
+                          placeholder="e.g. Custom scan"
+                          value={uploadTitle}
+                          onChange={e => setUploadTitle(e.target.value)}
+                          className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      )}
                     </div>
-                  )}
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">File *</label>
+                    <input
+                      key={fileInputKey}
+                      type="file"
+                      onChange={e => setFileToUpload(e.target.files?.[0] || null)}
+                      className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 dark:file:bg-blue-900/20 dark:file:text-blue-400"
+                    />
+                  </div>
                 </div>
-              ))}
+                <div className="flex justify-end pt-2">
+                  <Button
+                    onClick={handleUpload}
+                    isLoading={isUploading}
+                    disabled={!fileToUpload || !uploadTitle.trim()}
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 shadow-md"
+                  >
+                    Upload Document
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Documents list */}
+            <div className="space-y-3">
+              <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Uploaded Files</h4>
+              {docsLoading ? (
+                <div className="flex justify-center py-8"><LuLoaderCircle className="animate-spin text-gray-400" size={24} /></div>
+              ) : documents.length === 0 ? (
+                <p className="text-xs text-gray-450 italic text-center py-6 bg-gray-50 dark:bg-gray-800/30 rounded-xl">No documents uploaded for this case.</p>
+              ) : (
+                <div className="space-y-2">
+                  {documents.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-750">
+                      <div className="space-y-0.5">
+                        <p className="text-sm font-bold text-gray-800 dark:text-gray-200">{doc.title}</p>
+                        <p className="text-[10px] text-gray-400">
+                          Uploaded by {doc.uploader?.first_name || 'System'} on {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPreviewUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${doc.file_path}`);
+                            setPreviewTitle(doc.title);
+                          }}
+                          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
+                        >
+                          <LuEye size={13} />
+                          Preview
+                        </button>
+                        <a
+                          href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${doc.file_path}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg text-xs font-bold transition"
+                        >
+                          Download
+                        </a>
+                        {!readOnly && (
+                          <button
+                            onClick={() => handleDeleteDoc(doc.id)}
+                            className="p-1.5 text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition"
+                            title="Delete Document"
+                          >
+                            <LuTrash size={15} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="p-6">
+            {logsLoading ? (
+              <div className="text-sm text-gray-500 py-4 text-center">Loading history...</div>
+            ) : logs.length === 0 ? (
+              <div className="text-sm text-gray-500 py-4 text-center">No history available.</div>
+            ) : (
+              <div className="space-y-4">
+                {logs.map((log: any) => (
+                  <div key={log.id} className="border-l-2 border-gray-200 dark:border-gray-700 pl-4 py-1">
+                    <div className="flex justify-between items-start mb-1">
+                      <p className="text-sm font-bold text-gray-900 dark:text-white capitalize">
+                        {log.action.replace('_', ' ')}
+                      </p>
+                      <span className="text-xs text-gray-500">
+                        {new Date(log.created_at).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">
+                      By: {log.user?.first_name} {log.user?.last_name}
+                    </p>
+                    {log.old_values && log.new_values && log.action === 'update_status' && (
+                      <div className="mt-2 text-xs bg-gray-50 dark:bg-gray-800 p-2 rounded">
+                        <span className="text-gray-500">Status changed from </span>
+                        <span className="font-bold">{log.old_values.status}</span>
+                        <span className="text-gray-500"> to </span>
+                        <span className="font-bold">{log.new_values.status}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
+
+      {/* Lightbox Document Preview */}
+      {previewUrl && (
+        <Modal isOpen onClose={() => setPreviewUrl(null)} title={previewTitle} size="lg">
+          <div className="bg-gray-950 p-4 rounded-2xl flex items-center justify-center overflow-auto h-[60vh] border border-gray-850">
+            {previewUrl.toLowerCase().endsWith('.pdf') || previewUrl.toLowerCase().includes('.pdf') ? (
+              <iframe
+                src={`${previewUrl}#toolbar=0`}
+                className="w-full h-full rounded-xl border border-gray-800"
+                title="Document Preview"
+              />
+            ) : (
+              <img
+                src={previewUrl}
+                alt="Document Preview"
+                className="max-w-full max-h-full object-contain rounded-xl border border-gray-800 shadow-lg"
+              />
+            )}
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 }

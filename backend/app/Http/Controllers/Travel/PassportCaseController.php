@@ -6,8 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePassportCaseRequest;
 use App\Http\Resources\PassportCaseResource;
 use App\Models\PassportCase;
+use App\Models\PassportCaseDocument;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PassportCaseController extends Controller
 {
@@ -70,10 +73,56 @@ class PassportCaseController extends Controller
      */
     public function store(StorePassportCaseRequest $request): JsonResponse
     {
-        $case = PassportCase::create(array_merge($request->validated(), [
-            'handled_by' => $request->user()->id,
-            'status'     => 'requirements_gathering',
-        ]));
+        $customerId = $request->input('customer_id');
+        $passengerId = $request->input('passenger_id');
+
+        if (!$customerId) {
+            $customer = \App\Models\Customer::firstOrCreate([
+                'first_name'  => $request->input('first_name'),
+                'middle_name' => $request->input('middle_name'),
+                'last_name'   => $request->input('last_name'),
+                'suffix'      => $request->input('suffix'),
+            ]);
+            $customerId = $customer->id;
+
+            $passenger = \App\Models\Passenger::firstOrCreate([
+                'customer_id' => $customerId,
+                'first_name'  => $request->input('first_name'),
+                'middle_name' => $request->input('middle_name'),
+                'last_name'   => $request->input('last_name'),
+                'suffix'      => $request->input('suffix'),
+            ]);
+            $passengerId = $passenger->id;
+        } else {
+            $customer = \App\Models\Customer::find($customerId);
+            $passenger = \App\Models\Passenger::find($passengerId);
+        }
+
+        if ($customer) {
+            $customer->update(array_filter([
+                'email'   => $request->input('email'),
+                'phone'   => $request->input('phone'),
+                'address' => $request->input('address'),
+            ]));
+        }
+
+        if ($passenger) {
+            $passenger->update(array_filter([
+                'birth_date' => $request->input('birth_date'),
+                'contact_no' => $request->input('phone') ?: $request->input('contact_no'),
+            ]));
+        }
+
+        $data = array_merge($request->validated(), [
+            'customer_id'  => $customerId,
+            'passenger_id' => $passengerId,
+            'handled_by'   => $request->user()->id,
+            'status'       => 'requirements_gathering',
+        ]);
+
+        unset($data['first_name'], $data['last_name'], $data['middle_name'], $data['suffix'], $data['email'], $data['phone'], $data['address'], $data['birth_date']);
+
+        $case = PassportCase::create($data);
         
         \App\Http\Services\AuditLogService::log('create', 'Travel', 'PassportCase', $case->id, null, $case->toArray());
 
@@ -230,6 +279,79 @@ class PassportCaseController extends Controller
         return response()->json([
             'success' => true,
             'data'    => \App\Http\Resources\AuditLogResource::collection($logs)->resolve(),
+        ]);
+    }
+
+    /**
+     * Retrieve documents uploaded for a specific passport case.
+     */
+    public function getDocuments(PassportCase $passportCase): JsonResponse
+    {
+        $documents = PassportCaseDocument::with('uploader:id,first_name,last_name,email')
+            ->where('passport_case_id', $passportCase->id)
+            ->orderByDesc('created_at')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data'    => $documents,
+        ]);
+    }
+
+    /**
+     * Upload a new document for a specific passport case.
+     */
+    public function uploadDocument(Request $request, PassportCase $passportCase): JsonResponse
+    {
+        $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'file'  => ['required', 'file', 'max:10240'], // Max 10MB
+        ]);
+
+        $file = $request->file('file');
+        $fileName = 'passport_cases/' . $passportCase->id . '/' . Str::random(20) . '.' . $file->getClientOriginalExtension();
+        Storage::disk('public')->put($fileName, file_get_contents($file));
+
+        $document = PassportCaseDocument::create([
+            'passport_case_id' => $passportCase->id,
+            'customer_id'      => $passportCase->customer_id,
+            'title'            => $request->input('title'),
+            'file_path'        => $fileName,
+            'uploaded_by'      => auth()->id() ?? 1, // Fallback to 1 for tests/seeding
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document uploaded and linked successfully.',
+            'data'    => $document->load('uploader:id,first_name,last_name,email'),
+        ], 201);
+    }
+
+    /**
+     * Delete a document.
+     */
+    public function deleteDocument(PassportCase $passportCase, $documentId): JsonResponse
+    {
+        $document = PassportCaseDocument::where('id', $documentId)
+            ->where('passport_case_id', $passportCase->id)
+            ->first();
+
+        if (!$document) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Document not found or does not belong to this case.',
+            ], 404);
+        }
+
+        if (Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document deleted successfully.',
         ]);
     }
 }
