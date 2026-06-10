@@ -66,6 +66,7 @@ export interface DashboardData {
   top_drivers: TopPerformer[];
   recent_bookings: RecentBooking[];
   user_distribution?: UserDistribution[];
+  peak_client_activity?: number[][];
 }
 
 export const dashboardApi = {
