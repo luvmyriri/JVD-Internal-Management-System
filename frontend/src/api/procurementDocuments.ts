@@ -52,6 +52,11 @@ export interface ProcurementDocument {
   job_order?: any;
   work_order?: any;
   trip_ticket?: any;
+  accreditation?: {
+    id: number;
+    entity_name: string;
+    accreditation_type: string;
+  };
 }
 
 export interface ProcurementDocumentFormData {

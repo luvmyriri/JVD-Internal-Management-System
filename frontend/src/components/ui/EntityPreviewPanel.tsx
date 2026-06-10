@@ -200,15 +200,10 @@ export default function EntityPreviewPanel() {
               <LuUser size={32} />
             </div>
             <div>
-<<<<<<< HEAD
-              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.full_name}</h2>
-              <p className="text-xs text-gray-500 mt-1">Customer Profile</p>
-=======
               <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.first_name} {customer.last_name}</h2>
               <span className="inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-blue-50 text-blue-700">
                 Customer Profile
               </span>
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
             </div>
           </div>
 
@@ -216,17 +211,10 @@ export default function EntityPreviewPanel() {
             <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Contact Information</h3>
             <div className="grid gap-3">
               <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-<<<<<<< HEAD
                 <LuPhone className="text-gray-400 shrink-0" /> <span>{customer.phone || 'N/A'}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
                 <LuMail className="text-gray-400 shrink-0" /> <span>{customer.email || 'N/A'}</span>
-=======
-                <LuMail className="text-gray-400 shrink-0" /> <span>{customer.email || 'N/A'}</span>
-              </div>
-              <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-300">
-                <LuPhone className="text-gray-400 shrink-0" /> <span>{customer.phone || 'N/A'}</span>
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
               </div>
               <div className="flex items-start gap-3 text-sm text-gray-600 dark:text-gray-300">
                 <LuMapPin className="text-gray-400 shrink-0 mt-0.5" /> <span>{customer.address || 'N/A'}</span>
@@ -237,19 +225,18 @@ export default function EntityPreviewPanel() {
           {customer.notes && (
             <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Internal Notes</h3>
-<<<<<<< HEAD
-              <p className="text-sm text-gray-600 dark:text-gray-300 bg-gray-55 dark:bg-gray-850 p-3 rounded-lg border border-gray-105 dark:border-gray-800">{customer.notes}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p>
             </div>
           )}
 
           <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Transaction & Billing History</h3>
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Transaction &amp; Billing History</h3>
             {!customer.invoices || customer.invoices.length === 0 ? (
               <p className="text-sm text-gray-500 italic">No invoice transactions found.</p>
             ) : (
               <div className="space-y-3">
                 {customer.invoices.map((inv: any) => (
-                  <div key={inv.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2 border border-gray-105 dark:border-gray-800/50">
+                  <div key={inv.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2 border border-gray-100 dark:border-gray-800/50">
                     <div className="flex justify-between items-start">
                       <div>
                         <span className="text-sm font-bold text-gray-900 dark:text-white">{inv.invoice_number}</span>
@@ -271,11 +258,6 @@ export default function EntityPreviewPanel() {
               </div>
             )}
           </div>
-=======
-              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p>
-            </div>
-          )}
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
         </div>
       );
     }
