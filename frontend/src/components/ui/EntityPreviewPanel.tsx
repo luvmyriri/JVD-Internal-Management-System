@@ -200,7 +200,7 @@ export default function EntityPreviewPanel() {
               <LuUser size={32} />
             </div>
             <div>
-              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.first_name} {customer.last_name}</h2>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{customer.full_name || `${customer.first_name} ${customer.last_name}`}</h2>
               <span className="inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-blue-50 text-blue-700">
                 Customer Profile
               </span>
@@ -228,6 +228,36 @@ export default function EntityPreviewPanel() {
               <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p>
             </div>
           )}
+
+          <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Transaction & Billing History</h3>
+            {!customer.invoices || customer.invoices.length === 0 ? (
+              <p className="text-sm text-gray-500 italic">No invoice transactions found.</p>
+            ) : (
+              <div className="space-y-3">
+                {customer.invoices.map((inv: any) => (
+                  <div key={inv.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-2 border border-gray-100 dark:border-gray-800">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">{inv.invoice_number}</span>
+                        <p className="text-[11px] text-gray-500">{new Date(inv.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                        inv.status === 'paid' ? 'bg-emerald-50 text-emerald-700' :
+                        inv.status === 'partial' ? 'bg-amber-50 text-amber-700' : 'bg-rose-50 text-rose-700'
+                      }`}>
+                        {(inv.status || '').replace('_', ' ')}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm pt-1 border-t border-dashed border-gray-200 dark:border-gray-700">
+                      <span className="text-gray-500">Amount due</span>
+                      <span className="font-semibold text-gray-900 dark:text-white">₱{Number(inv.total_amount).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       );
     }

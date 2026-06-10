@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
@@ -296,6 +297,7 @@ function DeleteModal({ supplier, onClose, deleteMutation }: DeleteModalProps) {
 
 function SupplierCard({ supplier, onEdit, onView }: { supplier: Supplier, onEdit: (s: Supplier) => void, onView: (s: Supplier) => void }) {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [showBlacklist, setShowBlacklist] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const verifyMutation = useMutation({
@@ -377,6 +379,13 @@ function SupplierCard({ supplier, onEdit, onView }: { supplier: Supplier, onEdit
           )}
           
           <div className="flex gap-1.5 ml-auto">
+            <button
+              onClick={() => navigate(`/procurement/accreditations?search=${encodeURIComponent(supplier.company_name)}`)}
+              className="px-3 py-1.5 rounded-lg border border-indigo-100 dark:border-indigo-900/50 text-indigo-600 hover:bg-indigo-50 dark:text-indigo-400 dark:hover:bg-indigo-900/30 transition text-xs font-semibold flex items-center gap-1.5"
+              title="View Accreditations"
+            >
+              <LuShieldCheck size={12} /> Accreditations
+            </button>
             <button onClick={() => onView(supplier)}
               className="px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-800 transition text-xs font-semibold">
               View

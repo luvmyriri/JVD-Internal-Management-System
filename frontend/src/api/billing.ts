@@ -58,7 +58,12 @@ export interface Invoice {
   notes?: string;
   cash_budget_request_id?: number;
   bus_id?: number | null;
+  driver_id?: number | null;
   seat_map?: any;
+  travel_date?: string | null;
+  pickup_location?: string | null;
+  tour_code?: string | null;
+  pax_count?: number | null;
   created_at: string;
   customer?: any;
   items?: InvoiceItem[];
@@ -83,7 +88,12 @@ export const billingApi = {
     items: { service_id: number; quantity: number; unit_price?: number; adults?: number; children?: number; service_date?: string; destination?: string; }[];
     notes?: string;
     bus_id?: number | null;
+    driver_id?: number | null;
     seat_map?: any;
+    travel_date?: string | null;
+    pickup_location?: string | null;
+    tour_code?: string | null;
+    pax_count?: number | null;
   }) => client.post('/billing', data),
   createService: (data: {
     name: string;

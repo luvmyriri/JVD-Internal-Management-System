@@ -11,7 +11,14 @@ class CommissionController extends Controller
 {
     public function index()
     {
-        return Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy'])->latest()->get();
+        $user = auth()->user();
+        $query = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy']);
+        
+        if ($user && $user->hasRole('driver')) {
+            $query->where('received_by', $user->id);
+        }
+        
+        return $query->latest()->get();
     }
 
     public function store(Request $request)
@@ -35,6 +42,7 @@ class CommissionController extends Controller
                 'serial_no' => $validated['serial_no'],
                 'date' => $validated['date'],
                 'status' => 'draft',
+                'received_by' => auth()->user()?->hasRole('driver') ? auth()->id() : null,
             ]);
 
             foreach ($validated['items'] as $item) {

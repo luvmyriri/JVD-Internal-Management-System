@@ -143,8 +143,8 @@ interface NewCommissionItem {
 }
 
 function CreateCommissionModal({ onClose }: { onClose: () => void }) {
-  const qc = useQueryClient();
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   const isAdmin = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
 

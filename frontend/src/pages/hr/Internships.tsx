@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { 
-  LuSearch, 
-  LuPlus, 
-  LuMail, 
+import {
+  LuSearch,
+  LuPlus,
+  LuMail,
   LuPhone,
   LuBook,
   LuPencil,
@@ -21,9 +21,38 @@ export default function Internships() {
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedInternship, setSelectedInternship] = useState<Internship | null>(null);
+
+  const [schools, setSchools] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetch('/data/philippines-schools.json')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.regions) {
+          const list = Object.values(data.regions).flatMap((regionSchools: any) =>
+            regionSchools.map((s: any) => s.name)
+          );
+          const uniqueList = Array.from(new Set(list)).sort() as string[];
+          setSchools(uniqueList);
+        }
+      })
+      .catch(err => console.error('Failed to load schools database:', err));
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (autocompleteRef.current && !autocompleteRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['internships'],
@@ -77,9 +106,17 @@ export default function Internships() {
     currentPage * itemsPerPage
   );
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<Internship>>({
+  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Partial<Internship>>({
     mode: 'onChange'
   });
+
+  const schoolValue = watch('school') || '';
+  const filteredSuggestions = schoolValue
+    ? schools.filter(school =>
+      school.toLowerCase().includes(schoolValue.toLowerCase()) &&
+      school.toLowerCase() !== schoolValue.toLowerCase()
+    ).slice(0, 10)
+    : [];
 
   const openModal = (internship?: Internship) => {
     if (internship) {
@@ -216,7 +253,7 @@ export default function Internships() {
             </tbody>
           </table>
         </div>
-        
+
         {filteredInternships.length > itemsPerPage && (
           <div className="p-4 border-t border-gray-100 dark:border-gray-800">
             <Pagination
@@ -238,7 +275,7 @@ export default function Internships() {
       >
         <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            
+
             <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
               <summary className="flex items-center justify-between p-4 cursor-pointer select-none">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
@@ -246,12 +283,12 @@ export default function Internships() {
                 </h3>
                 <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
               </summary>
-              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <div className="p-4 pt-3 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">First Name</label>
                     <input
-                      {...register('first_name', { 
+                      {...register('first_name', {
                         required: 'First name is required',
                         pattern: {
                           value: /^[A-Za-z\s'-]+$/,
@@ -268,7 +305,7 @@ export default function Internships() {
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Last Name</label>
                     <input
-                      {...register('last_name', { 
+                      {...register('last_name', {
                         required: 'Last name is required',
                         pattern: {
                           value: /^[A-Za-z\s'-]+$/,
@@ -283,13 +320,13 @@ export default function Internships() {
                     {errors.last_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.last_name.message}</p>}
                   </div>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Email</label>
                     <input
                       type="email"
-                      {...register('email', { 
+                      {...register('email', {
                         required: 'Email is required',
                         pattern: {
                           value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
@@ -329,14 +366,32 @@ export default function Internships() {
                 </h3>
                 <LuChevronRight size={16} className="text-gray-400 group-open:rotate-90 transition-transform" />
               </summary>
-              <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
+              <div className="p-4 pt-3 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
+                  <div className="relative" ref={autocompleteRef}>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">School/University</label>
                     <input
                       {...register('school', { required: 'School is required' })}
+                      onFocus={() => setShowSuggestions(true)}
+                      autoComplete="off"
                       className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
+                    {showSuggestions && filteredSuggestions.length > 0 && (
+                      <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl custom-scrollbar py-1">
+                        {filteredSuggestions.map((school) => (
+                          <div
+                            key={school}
+                            onClick={() => {
+                              setValue('school', school, { shouldValidate: true });
+                              setShowSuggestions(false);
+                            }}
+                            className="px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-950/40 text-left text-xs text-gray-700 dark:text-gray-200 cursor-pointer transition-colors font-medium border-b border-gray-50 last:border-0 dark:border-gray-900/50"
+                          >
+                            {school}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {errors.school && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.school.message}</p>}
                   </div>
                   <div>

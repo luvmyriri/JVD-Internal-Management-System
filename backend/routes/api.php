@@ -99,6 +99,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::delete('/conversation', [App\Http\Controllers\ChatController::class, 'deleteConversation'])->name('chat.conversation.delete');
     });
 
+    // Company Documents & Dynamic Categories (accessible to all authenticated roles)
+    Route::apiResource('procurement-documents', ProcurementDocumentController::class);
+    Route::apiResource('document-categories', App\Http\Controllers\Procurement\DocumentCategoryController::class)->except(['create', 'edit', 'show']);
 
     // ──────────────────────────────────────
     // ADMINISTRATION — Audit Logs (dynamic permissions)
@@ -116,7 +119,6 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         // Supplier cross-check / counter-check verification (boss-mandated)
         Route::post('/suppliers/{supplier}/verify', [SupplierController::class, 'verify'])->name('suppliers.verify');
         Route::post('/suppliers/{supplier}/blacklist', [SupplierController::class, 'blacklist'])->name('suppliers.blacklist');
-        Route::apiResource('procurement-documents', ProcurementDocumentController::class);
     });
 
     // ──────────────────────────────────────

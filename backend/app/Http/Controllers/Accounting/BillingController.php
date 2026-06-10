@@ -24,7 +24,7 @@ class BillingController extends Controller
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection']);
+        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'driver']);
 
         // Search
         if ($request->has('search')) {
@@ -276,6 +276,10 @@ class BillingController extends Controller
             'payment_method' => 'required|string',
             'payment_type' => 'nullable|string|in:full,downpayment',
             'due_date' => 'nullable|date',
+            'travel_date' => 'nullable|date',
+            'pickup_location' => 'nullable|string|max:255',
+            'tour_code' => 'nullable|string|max:255',
+            'pax_count' => 'nullable|integer|min:1',
             'items' => 'required|array|min:1',
             'items.*.service_id' => 'required|exists:services,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -286,6 +290,7 @@ class BillingController extends Controller
             'items.*.destination' => 'nullable|string',
             'notes' => 'nullable|string',
             'bus_id' => 'nullable|integer|exists:buses,id',
+            'driver_id' => 'nullable|integer|exists:users,id',
             'seat_map' => 'nullable|array',
         ], [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
@@ -350,10 +355,51 @@ class BillingController extends Controller
                 $balance = $totalAmount;
             }
 
+            // Resolve or Auto-Register Customer
+            $customerId = $request->customer_id;
+            if (!$customerId && $request->customer_name) {
+                $existingCustomer = null;
+                if ($request->customer_email) {
+                    $existingCustomer = \App\Models\Customer::where('email', $request->customer_email)->first();
+                }
+                if (!$existingCustomer && $request->customer_contact) {
+                    $existingCustomer = \App\Models\Customer::where('phone', $request->customer_contact)->first();
+                }
+                
+                if ($existingCustomer) {
+                    $customerId = $existingCustomer->id;
+                    $updatedData = [];
+                    if (!$existingCustomer->address && $request->customer_address) {
+                        $updatedData['address'] = $request->customer_address;
+                    }
+                    if (!empty($updatedData)) {
+                        $existingCustomer->update($updatedData);
+                    }
+                } else {
+                    $parts = explode(' ', trim($request->customer_name));
+                    if (count($parts) > 1) {
+                        $lastName = array_pop($parts);
+                        $firstName = implode(' ', $parts);
+                    } else {
+                        $firstName = $request->customer_name;
+                        $lastName = '';
+                    }
+                    
+                    $newCustomer = \App\Models\Customer::create([
+                        'first_name' => $firstName,
+                        'last_name' => $lastName,
+                        'email' => $request->customer_email,
+                        'phone' => $request->customer_contact,
+                        'address' => $request->customer_address,
+                    ]);
+                    $customerId = $newCustomer->id;
+                }
+            }
+
             // Create Invoice
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
-                'customer_id' => $request->customer_id,
+                'customer_id' => $customerId,
                 'customer_name' => $request->customer_name,
                 'customer_address' => $request->customer_address,
                 'customer_email' => $request->customer_email,
@@ -366,12 +412,17 @@ class BillingController extends Controller
                 'payment_method' => $request->payment_method,
                 'payment_type' => $paymentType,
                 'balance' => max(0, $balance),
-                'due_date' => $request->due_date,
+                'due_date' => $request->due_date ?? $request->travel_date,
                 'status'          => $status,
                 'created_by'      => auth()->id() ?? 1,
                 'notes'           => $request->notes,
                 'bus_id'          => $request->bus_id,
+                'driver_id'       => $request->driver_id,
                 'seat_map'        => $request->seat_map,
+                'travel_date'     => $request->travel_date,
+                'pickup_location' => $request->pickup_location,
+                'tour_code'     => $request->tour_code,
+                'pax_count'       => $request->pax_count,
             ]);
 
             // Create Invoice Items
@@ -463,14 +514,15 @@ class BillingController extends Controller
             if ($hasBusService) {
                 $jobOrderService = app(\App\Http\Services\JobOrderService::class);
                 $jo = $jobOrderService->create([
-                    'customer_id' => $request->customer_id ?? 1, // Fallback to 1 if walk-in
+                    'customer_id' => $invoice->customer_id ?? 1, // Use resolved customer ID
                     'bus_id' => $request->bus_id,
                     'service_type' => 'Bus Rental', // Mapped generically for now
                     'service_date' => $busServiceDate ?? date('Y-m-d', strtotime('+1 day')),
                     'destination' => $busDestination ?? 'Not Specified',
                     'total_cost' => $totalAmount,
                     'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
-                ]);
+                    'invoice_id' => $invoice->id,
+                ], auth()->id() ?? 1);
             }
 
             DB::commit();
@@ -500,7 +552,7 @@ class BillingController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => (new InvoiceResource($invoice->load('items.service')))->resolve()
+                'data' => (new InvoiceResource($invoice->load(['items.service', 'driver'])))->resolve()
             ], 201);
 
         } catch (\Exception $e) {
@@ -518,7 +570,7 @@ class BillingController extends Controller
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'creator', 'items.service'])->find($id);
+        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'driver'])->find($id);
 
         if (!$invoice) {
             return response()->json([

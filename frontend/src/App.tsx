@@ -167,6 +167,7 @@ export default function App() {
                 <Route path="/driver/overview" element={<DriverTrips />} />
                 <Route path="/driver/scheduled-trips" element={<DriverSchedule />} />
                 <Route path="/driver/my-fleet" element={<DriverBus />} />
+                <Route path="/driver/commissions" element={<Commissions />} />
                 <Route path="/driver/schedule" element={<Navigate to="/driver/scheduled-trips" replace />} />
                 <Route path="/driver/trips" element={<Navigate to="/driver/overview" replace />} />
                 <Route path="/driver/bus" element={<Navigate to="/driver/my-fleet" replace />} />

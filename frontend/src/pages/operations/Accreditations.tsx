@@ -1,14 +1,16 @@
 import { useState, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import ExcelJS from 'exceljs';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuShieldCheck, LuPlus, LuSearch, LuLoaderCircle, LuUserCheck,
   LuFileText, LuLink, LuX, LuMail, LuBuilding2, LuBus, LuClock,
-  LuCloudUpload, LuFileDown, LuFileUp, LuChevronRight
+  LuCloudUpload, LuFileDown, LuFileUp, LuChevronRight, LuExternalLink
 } from 'react-icons/lu';
 import { accreditationsApi, type Accreditation } from '../../api/accreditations';
 import { Pagination, Modal, Button } from '../../components/ui';
+import { useEntityPreview } from '../../context/EntityPreviewContext';
 
 const ENTITY_ICONS: Record<string, React.ReactNode> = {
   supplier: <LuBuilding2 size={16} />,
@@ -312,6 +314,7 @@ function AddAccreditationModal({ onClose }: AddModalProps) {
 interface DetailsModalProps { acc: Accreditation; onClose: () => void; }
 function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
   const qc = useQueryClient();
+  const { showPreview } = useEntityPreview();
   const uploadMutation = useMutation({
     mutationFn: ({ id, type, file }: { id: number, type: string, file: File }) => 
       accreditationsApi.uploadDocument(id, type, file),
@@ -354,6 +357,15 @@ function AccreditationDetailsModal({ acc, onClose }: DetailsModalProps) {
           <div>
             <h3 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{acc.entity_name}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 capitalize">{acc.entity_type} • {acc.accreditation_type}</p>
+          {acc.entity_type === 'supplier' && acc.entity_id && (
+            <button
+              onClick={() => showPreview('supplier', acc.entity_id!)}
+              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors border border-blue-100 dark:border-blue-800"
+            >
+              <LuExternalLink size={11} />
+              View Supplier Profile
+            </button>
+          )}
           </div>
           <div className="ml-auto">
             <StatusBadge status={acc.status} />
@@ -676,8 +688,9 @@ function AccreditationCard({ acc }: { acc: Accreditation }) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function Accreditations() {
+  const [searchParams] = useSearchParams();
   const [showAdd, setShowAdd] = useState(false);
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(searchParams.get('search') || '');
   const [page, setPage] = useState(1);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);

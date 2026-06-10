@@ -24,12 +24,13 @@ class JobOrderController extends Controller
         $user = $request->user();
 
         if ($user->hasRole('driver')) {
-            // Drivers only see job orders for their assigned bus
             $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
-            if (!$assignedBus) {
-                return response()->json(['success' => true, 'data' => [], 'meta' => ['total' => 0, 'current_page' => 1, 'last_page' => 1, 'per_page' => 20]]);
-            }
-            $query->where('bus_id', $assignedBus->id);
+            $query->where(function($q) use ($user, $assignedBus) {
+                $q->where('driver_id', $user->id);
+                if ($assignedBus) {
+                    $q->orWhere('bus_id', $assignedBus->id);
+                }
+            });
         } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             $query->where('created_by', $user->id);
         }
@@ -101,7 +102,7 @@ class JobOrderController extends Controller
         $user = $request->user();
         if ($user->hasRole('driver')) {
             $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
-            if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
+            if ((!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) && $jobOrder->driver_id !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
         } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
@@ -126,7 +127,7 @@ class JobOrderController extends Controller
         $user = $request->user();
         if ($user->hasRole('driver')) {
             $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
-            if (!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) {
+            if ((!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) && $jobOrder->driver_id !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
         } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {

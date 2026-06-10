@@ -270,6 +270,71 @@ class WorkOrderController extends Controller
         ], 422);
     }
 
+    private function generateJobOrderInternal(Request $request, WorkOrder $workOrder, bool $requiresPo = false): \App\Models\JobOrder
+    {
+        // Avoid duplicate JOs
+        $existing = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
+        if ($existing) {
+            return $existing;
+        }
+
+        $year = now()->year;
+        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
+        $sequence = 1;
+        if ($latest) {
+            $parts = explode('-', $latest->jo_number);
+            $sequence = (int) end($parts) + 1;
+        }
+        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
+
+        $invoice = $workOrder->invoice;
+        $busId = $workOrder->bus_id ?: ($invoice?->bus_id ?? null);
+        $driverId = null;
+        $driverName = null;
+
+        if ($invoice && $invoice->driver_id) {
+            $driverId = $invoice->driver_id;
+            $driverUser = \App\Models\User::find($driverId);
+            if ($driverUser) {
+                $driverName = "{$driverUser->first_name} {$driverUser->last_name}";
+            }
+        } elseif ($busId) {
+            $bus = \App\Models\Bus::find($busId);
+            if ($bus) {
+                $driverId = $bus->assigned_driver;
+                if ($bus->driver) {
+                    $driverName = "{$bus->driver->first_name} {$bus->driver->last_name}";
+                }
+            }
+        }
+
+        $serviceType = $workOrder->isTrip() ? 'bus_rental' : 'maintenance';
+        $destination = $workOrder->isTrip() ? ($invoice?->customer_address ?? 'TBD') : 'Internal Maintenance';
+        $notes = $workOrder->isTrip() 
+            ? 'Generated from Trip Work Order ' . $workOrder->wo_number 
+            : 'Generated from Maintenance Work Order ' . $workOrder->wo_number;
+
+        $jo = \App\Models\JobOrder::create([
+            'jo_number' => $joNumber,
+            'customer_id' => $invoice?->customer_id,
+            'bus_id' => $busId,
+            'driver_id' => $driverId,
+            'driver_name' => $driverName,
+            'work_order_id' => $workOrder->id,
+            'invoice_id' => $workOrder->invoice_id,
+            'created_by' => auth()->id() ?? 1,
+            'requested_by' => $workOrder->assigned_to ?? $workOrder->created_by ?? auth()->id() ?? 1,
+            'service_type' => $serviceType,
+            'status' => 'created',
+            'service_date' => $invoice?->due_date ?? now()->toDateString(),
+            'destination' => $destination,
+            'total_cost' => $workOrder->cost ?? 0,
+            'notes' => $notes,
+            'requires_po' => $requiresPo,
+        ]);
+
+        return $jo;
+    }
     /**
      * Designated employee rejects a requested WO.
      * Transitions: pending_approval | verified → cancelled

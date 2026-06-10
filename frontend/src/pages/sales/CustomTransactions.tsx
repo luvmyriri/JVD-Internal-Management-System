@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
@@ -8,19 +8,32 @@ import {
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
-import { fleetApi } from '../../api/fleet';
 import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
+import BusLayout from '../../components/ui/BusLayout';
+import { fleetApi } from '../../api/fleet';
+import client from '../../api/client';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
 
+  // Load buses list for selection
   const { data: busesRes } = useQuery({
-    queryKey: ['fleet-buses'],
+    queryKey: ['buses-list'],
     queryFn: () => fleetApi.list({ per_page: 100 }),
   });
-  const buses = busesRes?.data?.data || [];
+  const buses = busesRes?.data?.data ?? [];
+
+  // Load active drivers
+  const { data: drivers = [] } = useQuery({
+    queryKey: ['active-drivers'],
+    queryFn: async () => {
+      const res = await client.get('/chat/users');
+      const allUsers = res.data?.data ?? [];
+      return allUsers.filter((u: any) => u.role === 'driver' && u.is_active);
+    },
+  });
 
   // State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -41,9 +54,39 @@ export default function CustomTransactions() {
     route: '',
     serviceDate: '',
     days: 1,
-    busId: '',
-    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>
+    plateNumber: '',
+    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
+    travelDate: '',
+    busId: null as number | null,
+    driverId: null as number | null,
+    driverName: '',
+    selectedSeats: [] as string[]
   });
+
+  // Load calendar for selected bus to check seat occupancy on travel date
+  const { data: busCalendarRes } = useQuery({
+    queryKey: ['bus-calendar', busRental.busId, busRental.travelDate ? busRental.travelDate.substring(0, 7) : ''],
+    queryFn: async () => {
+      if (!busRental.busId || !busRental.travelDate) return null;
+      const date = new Date(busRental.travelDate);
+      const res = await fleetApi.getCalendar(busRental.busId, { month: date.getMonth() + 1, year: date.getFullYear() });
+      return res.data;
+    },
+    enabled: !!busRental.busId && !!busRental.travelDate,
+  });
+
+  const occupiedSeats = useMemo(() => {
+    if (!busCalendarRes?.data || !busRental.travelDate) return [];
+    const entries = busCalendarRes.data;
+    const sameDayInvoices = entries.filter((e: any) => e.date === busRental.travelDate && e.type === 'invoice');
+    const seats: string[] = [];
+    sameDayInvoices.forEach((inv: any) => {
+      if (Array.isArray(inv.seat_map)) {
+        seats.push(...inv.seat_map);
+      }
+    });
+    return seats;
+  }, [busCalendarRes, busRental.travelDate]);
 
   // 2. Educational Tour Custom Data
   const [eduTour, setEduTour] = useState({
@@ -96,8 +139,13 @@ export default function CustomTransactions() {
       route: '',
       serviceDate: '',
       days: 1,
-      busId: '',
-      inclusions: { driver: true, fuel: true, toll: false, insurance: true }
+      plateNumber: '',
+      inclusions: { driver: true, fuel: true, toll: false, insurance: true },
+      travelDate: '',
+      busId: null,
+      driverId: null,
+      driverName: '',
+      selectedSeats: []
     });
     setEduTour({
       schoolName: '',
@@ -208,17 +256,59 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
   };
 
   // Cart operations
-  const addToCart = (service: any, quantity: number, extraData?: any) => {
+  const addToCart = (
+    service: any,
+    quantity: number,
+    busId?: number,
+    selectedSeats?: string[],
+    driverId?: number,
+    driverName?: string,
+    travelDate?: string,
+    tourCode?: string,
+    pickupLocation?: string,
+    paxCount?: number,
+    serviceDate?: string,
+    destination?: string
+  ) => {
     setCart(prev => {
       const existing = prev.find(item => item.service.id === service.id);
       if (existing) {
         return prev.map(item =>
           item.service.id === service.id
-            ? { ...item, quantity: item.quantity + quantity, ...extraData }
+            ? {
+                ...item,
+                quantity: item.quantity + quantity,
+                busId,
+                selectedSeats,
+                driverId,
+                driverName,
+                travelDate,
+                tourCode,
+                pickupLocation,
+                paxCount,
+                serviceDate,
+                destination
+              }
             : item
         );
       }
-      return [...prev, { service, quantity, ...extraData }];
+      return [
+        ...prev,
+        {
+          service,
+          quantity,
+          busId,
+          selectedSeats,
+          driverId,
+          driverName,
+          travelDate,
+          tourCode,
+          pickupLocation,
+          paxCount,
+          serviceDate,
+          destination
+        }
+      ];
     });
   };
 
@@ -251,19 +341,61 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       if (res?.data?.success || res?.data?.data) {
         const createdService = res.data.data;
         
-        let extraData: any = {};
+        let busIdParam = undefined;
+        let driverIdParam = undefined;
+        let selectedSeatsParam = undefined;
+        let driverNameParam = undefined;
+        let travelDateParam = undefined;
+        let tourCodeParam = undefined;
+        let pickupLocationParam = undefined;
+        let paxCountParam = undefined;
+        let serviceDateParam = undefined;
+        let destinationParam = undefined;
+
         if (customForm.category === 'Bus Rental') {
-           extraData = { serviceDate: busRental.serviceDate, destination: busRental.route, busId: busRental.busId ? Number(busRental.busId) : undefined };
-        } else if (customForm.category === 'Educational Tour') {
-           extraData = { serviceDate: eduTour.serviceDate, destination: eduTour.stops, busId: eduTour.busId ? Number(eduTour.busId) : undefined };
-        } else if (customForm.category === 'Tour Package') {
-           extraData = { serviceDate: tourPackage.travelDates, destination: tourPackage.destination };
+          busIdParam = busRental.busId || undefined;
+          driverIdParam = busRental.driverId || undefined;
+          selectedSeatsParam = busRental.selectedSeats.length > 0 ? busRental.selectedSeats : undefined;
+          driverNameParam = busRental.driverName || undefined;
+          travelDateParam = busRental.travelDate || undefined;
+          serviceDateParam = busRental.serviceDate || undefined;
+          destinationParam = busRental.route || undefined;
         } else if (customForm.category === 'Joiners') {
-           extraData = { serviceDate: joiners.travelDate, destination: joiners.tourCode };
+          travelDateParam = joiners.travelDate || undefined;
+          tourCodeParam = joiners.tourCode || undefined;
+          pickupLocationParam = joiners.pickupLocation || undefined;
+          paxCountParam = joiners.paxCount || undefined;
+          serviceDateParam = joiners.travelDate || undefined;
+          destinationParam = joiners.tourCode || undefined;
+        } else if (customForm.category === 'Tour Package') {
+          travelDateParam = tourPackage.travelDates || undefined;
+          tourCodeParam = tourPackage.destination || undefined;
+          paxCountParam = (tourPackage.adults + tourPackage.children) || undefined;
+          serviceDateParam = tourPackage.travelDates || undefined;
+          destinationParam = tourPackage.destination || undefined;
+        } else if (customForm.category === 'Educational Tour') {
+          tourCodeParam = eduTour.schoolName || undefined;
+          paxCountParam = eduTour.expectedPax || undefined;
+          serviceDateParam = eduTour.serviceDate || undefined;
+          destinationParam = eduTour.stops || undefined;
+          busIdParam = eduTour.busId ? Number(eduTour.busId) : undefined;
         }
 
         // Add to order
-        addToCart(createdService, 1, extraData);
+        addToCart(
+          createdService,
+          1,
+          busIdParam,
+          selectedSeatsParam,
+          driverIdParam,
+          driverNameParam,
+          travelDateParam,
+          tourCodeParam,
+          pickupLocationParam,
+          paxCountParam,
+          serviceDateParam,
+          destinationParam
+        );
 
         toast.success('Customized transaction registered & added to order!');
         
@@ -291,11 +423,11 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
     }
   };
 
-  const removeFromCart = (serviceId: number) => {
+  const removeFromCart = (serviceId: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
     setCart(prev => prev.filter(item => item.service.id !== serviceId));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number) => {
+  const updateQuantity = (serviceId: number, newQty: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
     if (newQty < 1) {
       removeFromCart(serviceId);
       return;
@@ -340,6 +472,103 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
             </div>
 
             <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                <input
+                  type="date"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                  value={busRental.travelDate}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, travelDate: e.target.value, selectedSeats: [] }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Bus</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                  value={busRental.busId || ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const selectedBusObj = buses.find((b: any) => b.id === id);
+                    let driverIdVal = null;
+                    let driverNameVal = '';
+                    if (selectedBusObj && selectedBusObj.driver) {
+                      driverIdVal = selectedBusObj.driver.id;
+                      driverNameVal = `${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`;
+                    }
+                    setBusRental(prev => ({
+                      ...prev,
+                      busId: id,
+                      selectedSeats: [],
+                      driverId: driverIdVal,
+                      driverName: driverNameVal
+                    }));
+                  }}
+                >
+                  <option value="">Select a Bus...</option>
+                  {buses.filter((b: any) => b.status?.toLowerCase() === 'available').map((b: any) => (
+                    <option key={b.id} value={b.id}>
+                      {b.plate_number} - {b.model} ({b.seating_capacity} Seaters)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Driver</label>
+                <select
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
+                  value={busRental.driverId || ''}
+                  onChange={(e) => {
+                    const id = e.target.value ? Number(e.target.value) : null;
+                    const d = drivers.find((x: any) => x.id === id);
+                    const name = d ? `${d.first_name} ${d.last_name}` : '';
+                    setBusRental(prev => ({ ...prev, driverId: id, driverName: name }));
+                  }}
+                >
+                  <option value="">Select a Driver...</option>
+                  {drivers.map((d: any) => (
+                    <option key={d.id} value={d.id}>
+                      {d.first_name} {d.last_name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-2">
+                {/* Space holder */}
+              </div>
+            </div>
+
+            {/* Seat Selector Layout */}
+            {busRental.busId && busRental.travelDate && (
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+                  <BusLayout
+                    totalSeats={buses.find(b => b.id === busRental.busId)?.seating_capacity || 49}
+                    hasRestroom={buses.find(b => b.id === busRental.busId)?.model?.toLowerCase().includes('vip') || false}
+                    selectedSeats={busRental.selectedSeats}
+                    occupiedSeats={occupiedSeats}
+                    onSeatToggle={(seatNum) => {
+                      setBusRental(prev => ({
+                        ...prev,
+                        selectedSeats: prev.selectedSeats.includes(seatNum)
+                          ? prev.selectedSeats.filter(s => s !== seatNum)
+                          : [...prev.selectedSeats, seatNum]
+                      }));
+                    }}
+                  />
+                </div>
+                {busRental.selectedSeats.length > 0 && (
+                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">
+                    Selected: {busRental.selectedSeats.join(', ')} ({busRental.selectedSeats.length} seats selected)
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2 col-span-2 md:col-span-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Route / Destination</label>
                 <input
@@ -358,21 +587,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   value={busRental.serviceDate}
                   onChange={(e) => setBusRental(prev => ({ ...prev, serviceDate: e.target.value }))}
                 />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assigned Bus Unit (Optional)</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.busId}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, busId: e.target.value }))}
-                >
-                  <option value="">-- Let Dispatch Assign Later --</option>
-                  {buses.map((b: any) => (
-                    <option key={b.id} value={b.id}>
-                      {b.bus_number} - {b.plate_number} ({b.type})
-                    </option>
-                  ))}
-                </select>
               </div>
             </div>
 

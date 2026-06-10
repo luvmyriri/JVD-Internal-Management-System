@@ -34,7 +34,12 @@ class Invoice extends Model
         'notes',
         'cash_budget_request_id',
         'bus_id',
+        'driver_id',
         'seat_map',
+        'travel_date',
+        'pickup_location',
+        'tour_code',
+        'pax_count',
     ];
 
     protected function casts(): array
@@ -72,5 +77,10 @@ class Invoice extends Model
     public function bus(): BelongsTo
     {
         return $this->belongsTo(Bus::class);
+    }
+
+    public function driver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'driver_id');
     }
 }

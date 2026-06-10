@@ -25,6 +25,7 @@ class JobOrderService
                 'destination'  => $data['destination'],
                 'total_cost'   => $data['total_cost'],
                 'notes'        => $data['notes'] ?? null,
+                'invoice_id'   => $data['invoice_id'] ?? null,
             ]);
 
             // Attach passengers to the pivot table if provided

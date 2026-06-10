@@ -9,8 +9,10 @@ import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 import { Dropdown } from '../../components/ui';
+import { useEntityPreview } from '../../context/EntityPreviewContext';
 
 export default function Billing() {
+  const { showPreview } = useEntityPreview();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -238,7 +240,18 @@ export default function Billing() {
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">{invoice.customer_name || 'Walk-in Customer'}</p>
+                      {invoice.customer_id ? (
+                        <button
+                          onClick={() => showPreview('customer', invoice.customer_id!)}
+                          className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-left hover:underline leading-tight focus:outline-none"
+                        >
+                          {invoice.customer_name || 'Walk-in Customer'}
+                        </button>
+                      ) : (
+                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+                          {invoice.customer_name || 'Walk-in Customer'}
+                        </p>
+                      )}
                       <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Verified Account</p>
                     </td>
                     <td className="px-6 py-5">
@@ -317,7 +330,16 @@ export default function Billing() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="overflow-hidden">
                     <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Customer</p>
-                    <p className="text-sm font-bold text-gray-950 dark:text-gray-200 truncate">{invoice.customer_name || 'Walk-in'}</p>
+                    {invoice.customer_id ? (
+                      <button
+                        onClick={() => showPreview('customer', invoice.customer_id!)}
+                        className="text-sm font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline truncate block w-full text-left focus:outline-none"
+                      >
+                        {invoice.customer_name || 'Walk-in'}
+                      </button>
+                    ) : (
+                      <p className="text-sm font-bold text-gray-950 dark:text-gray-200 truncate">{invoice.customer_name || 'Walk-in'}</p>
+                    )}
                   </div>
                   <div className="overflow-hidden">
                     <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mb-1">Date</p>
@@ -454,7 +476,16 @@ export default function Billing() {
               <div className="grid grid-cols-2 gap-12 mb-12 border-t border-b border-gray-100 dark:border-gray-800 py-8">
                 <div>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Billed To</p>
-                  <p className="text-lg font-black text-gray-900 dark:text-white">{selectedInvoice.customer_name || 'Walk-in Customer'}</p>
+                  {selectedInvoice.customer_id ? (
+                    <button
+                      onClick={() => showPreview('customer', selectedInvoice.customer_id!)}
+                      className="text-lg font-black text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline text-left focus:outline-none block"
+                    >
+                      {selectedInvoice.customer_name || 'Walk-in Customer'}
+                    </button>
+                  ) : (
+                    <p className="text-lg font-black text-gray-900 dark:text-white">{selectedInvoice.customer_name || 'Walk-in Customer'}</p>
+                  )}
                   <div className="mt-2 space-y-1">
                     {selectedInvoice.customer_contact && (
                       <p className="text-xs text-gray-500 dark:text-gray-450 font-medium flex items-center gap-2">
