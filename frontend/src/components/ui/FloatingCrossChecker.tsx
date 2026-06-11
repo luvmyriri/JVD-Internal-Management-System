@@ -13,12 +13,19 @@ export default function FloatingCrossChecker() {
   useEffect(() => {
     const handleSelectionChange = () => {
       const selection = window.getSelection();
-      if (!selection || selection.isCollapsed || !selection.toString().trim()) {
-        setIsVisible(false);
-        return;
+      let text = '';
+      if (selection && !selection.isCollapsed) {
+        text = selection.toString().trim();
       }
 
-      const text = selection.toString().trim();
+      // Fallback for inputs and textareas where getSelection doesn't work
+      if (!text && document.activeElement) {
+        const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement;
+        if ((el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') && el.selectionStart !== null && el.selectionEnd !== null && el.selectionStart !== el.selectionEnd) {
+          text = el.value.substring(el.selectionStart, el.selectionEnd).trim();
+        }
+      }
+
       if (text.length < 2 || text.length > 50) {
         setIsVisible(false);
         return;
@@ -26,13 +33,23 @@ export default function FloatingCrossChecker() {
 
       // Removed table-only restriction to allow it to work across the entire system
 
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
+      let rect: DOMRect | null = null;
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        rect = range.getBoundingClientRect();
+      } else if (document.activeElement) {
+        rect = document.activeElement.getBoundingClientRect();
+      }
 
-      // Position the floating badge centered just above the selection
+      if (!rect) {
+        setIsVisible(false);
+        return;
+      }
+
+      // Position the floating badge centered just above the selection (fixed to viewport)
       setPosition({
-        top: rect.top + .scrollY - 46,
-        left: rect.left + window.scrollX + rect.width / 2,
+        top: rect.top - 46,
+        left: rect.left + rect.width / 2,
       });
       setSelectedText(text);
       setIsVisible(true);
@@ -45,16 +62,16 @@ export default function FloatingCrossChecker() {
 
     // Hide on scroll or click elsewhere
     const hideOnScroll = () => setIsVisible(false);
-    window.addEventListener('scroll', hideOnScroll, { passive: true });
+    window.addEventListener('scroll', hideOnScroll, { passive: true, capture: true });
 
     return () => {
       document.removeEventListener('mouseup', handleSelectionChange);
       document.removeEventListener('keyup', handleSelectionChange);
       document.removeEventListener('touchend', handleSelectionChange);
-      window.removeEventListener('scroll', hideOnScroll);
+      window.removeEventListener('scroll', hideOnScroll, { capture: true });
     };
   }, []);
-  window
+
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -76,7 +93,7 @@ export default function FloatingCrossChecker() {
           exit={{ opacity: 0, scale: 0.8, y: 10, x: '-50%' }}
           transition={{ type: 'spring', damping: 15, stiffness: 300 }}
           style={{
-            position: 'absolute',
+            position: 'fixed',
             top: position.top,
             left: position.left,
             zIndex: 9999,
