@@ -11,7 +11,7 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { useAuth } from '../../context/AuthContext';
 
-// Replaced seed data with real backend data mapping
+// Replaced seed data with real backend data mappin
 
 export default function Reports() {
   const [range, setRange] = useState('month');
