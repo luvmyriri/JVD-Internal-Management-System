@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 import { useState, useMemo } from 'react';
-=======
-import { useState } from 'react';
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
@@ -16,14 +12,12 @@ import { fleetApi } from '../../api/fleet';
 import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 import BusLayout from '../../components/ui/BusLayout';
-import { fleetApi } from '../../api/fleet';
 import client from '../../api/client';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
 
-<<<<<<< HEAD
   // Load buses list for selection
   const { data: busesRes } = useQuery({
     queryKey: ['buses-list'],
@@ -40,13 +34,6 @@ export default function CustomTransactions() {
       return allUsers.filter((u: any) => u.role === 'driver' && u.is_active);
     },
   });
-=======
-  const { data: busesRes } = useQuery({
-    queryKey: ['fleet-buses'],
-    queryFn: () => fleetApi.list({ per_page: 100 }),
-  });
-  const buses = busesRes?.data?.data || [];
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
 
   // State
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -67,7 +54,6 @@ export default function CustomTransactions() {
     route: '',
     serviceDate: '',
     days: 1,
-<<<<<<< HEAD
     plateNumber: '',
     inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
     travelDate: '',
@@ -75,10 +61,6 @@ export default function CustomTransactions() {
     driverId: null as number | null,
     driverName: '',
     selectedSeats: [] as string[]
-=======
-    busId: '',
-    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
   });
 
   // Load calendar for selected bus to check seat occupancy on travel date
@@ -157,7 +139,6 @@ export default function CustomTransactions() {
       route: '',
       serviceDate: '',
       days: 1,
-<<<<<<< HEAD
       plateNumber: '',
       inclusions: { driver: true, fuel: true, toll: false, insurance: true },
       travelDate: '',
@@ -165,10 +146,6 @@ export default function CustomTransactions() {
       driverId: null,
       driverName: '',
       selectedSeats: []
-=======
-      busId: '',
-      inclusions: { driver: true, fuel: true, toll: false, insurance: true }
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
     });
     setEduTour({
       schoolName: '',
@@ -279,7 +256,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
   };
 
   // Cart operations
-<<<<<<< HEAD
   const addToCart = (
     service: any,
     quantity: number,
@@ -292,15 +268,11 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
     pickupLocation?: string,
     paxCount?: number
   ) => {
-=======
-  const addToCart = (service: any, quantity: number, extraData?: any) => {
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
     setCart(prev => {
       const existing = prev.find(item => item.service.id === service.id);
       if (existing) {
         return prev.map(item =>
           item.service.id === service.id
-<<<<<<< HEAD
             ? {
                 ...item,
                 quantity: item.quantity + quantity,
@@ -331,13 +303,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           paxCount
         }
       ];
-=======
-            ? { ...item, quantity: item.quantity + quantity, ...extraData }
-            : item
-        );
-      }
-      return [...prev, { service, quantity, ...extraData }];
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
     });
   };
 
@@ -370,7 +335,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       if (res?.data?.success || res?.data?.data) {
         const createdService = res.data.data;
         
-<<<<<<< HEAD
         let busIdParam = undefined;
         let driverIdParam = undefined;
         let selectedSeatsParam = undefined;
@@ -413,21 +377,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           pickupLocationParam,
           paxCountParam
         );
-=======
-        let extraData: any = {};
-        if (customForm.category === 'Bus Rental') {
-           extraData = { serviceDate: busRental.serviceDate, destination: busRental.route, busId: busRental.busId ? Number(busRental.busId) : undefined };
-        } else if (customForm.category === 'Educational Tour') {
-           extraData = { serviceDate: eduTour.serviceDate, destination: eduTour.stops, busId: eduTour.busId ? Number(eduTour.busId) : undefined };
-        } else if (customForm.category === 'Tour Package') {
-           extraData = { serviceDate: tourPackage.travelDates, destination: tourPackage.destination };
-        } else if (customForm.category === 'Joiners') {
-           extraData = { serviceDate: joiners.travelDate, destination: joiners.tourCode };
-        }
-
-        // Add to order
-        addToCart(createdService, 1, extraData);
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
 
         toast.success('Customized transaction registered & added to order!');
         

@@ -237,14 +237,9 @@ export default function CompanyDocuments() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-<<<<<<< HEAD:frontend/src/pages/procurement/ProcurementDocuments.tsx
   const [docTypeFilter, setDocTypeFilter] = useState<string>('all');
   const [deleteDocId, setDeleteDocId] = useState<number | null>(null);
   const [deleteCatId, setDeleteCatId] = useState<number | null>(null);
-=======
-  const [docTypeFilter, setDocTypeFilter] = useState<'all' | 'receipt' | 'invoice' | 'delivery_note' | 'agreement' | 'kyc' | 'passport' | 'visa' | 'accreditation' | 'other'>('all');
-  const [deleteDocId, setDeleteDocId] = useState<number | string | null>(null);
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94:frontend/src/pages/operations/CompanyDocuments.tsx
   const qc = useQueryClient();
   const { showPreview } = useEntityPreview();
   const { user } = useAuth();
@@ -285,24 +280,9 @@ export default function CompanyDocuments() {
     return typeMatch;
   });
 
-<<<<<<< HEAD:frontend/src/pages/procurement/ProcurementDocuments.tsx
   // Build counts from categories + fallback static ones
   const countFor = (slug: string) =>
     slug === 'all' ? docs.length : docs.filter((d: any) => d.document_type === slug).length;
-=======
-  const counts = {
-    all: docs.length,
-    receipt: docs.filter((d: any) => d.document_type === 'receipt').length,
-    invoice: docs.filter((d: any) => d.document_type === 'invoice').length,
-    delivery_note: docs.filter((d: any) => d.document_type === 'delivery_note').length,
-    agreement: docs.filter((d: any) => d.document_type === 'agreement').length,
-    kyc: docs.filter((d: any) => d.document_type === 'kyc').length,
-    passport: docs.filter((d: any) => d.document_type === 'passport').length,
-    visa: docs.filter((d: any) => d.document_type === 'visa').length,
-    accreditation: docs.filter((d: any) => d.document_type === 'accreditation').length,
-    other: docs.filter((d: any) => d.document_type === 'other').length,
-  };
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94:frontend/src/pages/operations/CompanyDocuments.tsx
 
   const getDocumentTypeStyles = (type: string) => {
     switch (type) {
@@ -347,7 +327,6 @@ export default function CompanyDocuments() {
         </button>
       </div>
 
-<<<<<<< HEAD:frontend/src/pages/procurement/ProcurementDocuments.tsx
       {/* Dynamic Category Folders */}
       <div className="flex flex-col gap-4 shrink-0 relative z-20 no-print">
         <div className="flex items-center justify-between">
@@ -358,52 +337,6 @@ export default function CompanyDocuments() {
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:text-indigo-400 dark:hover:bg-indigo-900/40 transition-colors border border-indigo-100 dark:border-indigo-900/40"
             >
               <LuFolderPlus size={12} /> Manage Folders
-=======
-      {/* Quick Access Document Types */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-10 gap-2 shrink-0 relative z-20 no-print">
-        {[
-          { value: 'all', label: 'All Folders', icon: LuFolderOpen, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50' },
-          { value: 'receipt', label: 'Receipts', icon: LuFileText, color: 'text-emerald-500 bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/50' },
-          { value: 'invoice', label: 'Invoices', icon: LuFileText, color: 'text-blue-500 bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/50' },
-          { value: 'delivery_note', label: 'Delivery Notes', icon: LuFileText, color: 'text-amber-500 bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/50' },
-          { value: 'agreement', label: 'Agreements', icon: LuFileText, color: 'text-purple-500 bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/50' },
-          { value: 'kyc', label: 'KYC Docs', icon: LuFileText, color: 'text-rose-500 bg-rose-50 dark:bg-rose-950/30 border-rose-100 dark:border-rose-900/50' },
-          { value: 'passport', label: 'Passports', icon: LuFileText, color: 'text-teal-500 bg-teal-50 dark:bg-teal-950/30 border-teal-100 dark:border-teal-900/50' },
-          { value: 'visa', label: 'Visas', icon: LuFileText, color: 'text-indigo-500 bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/50' },
-          { value: 'accreditation', label: 'Accreds', icon: LuFileText, color: 'text-violet-500 bg-violet-50 dark:bg-violet-950/30 border-violet-100 dark:border-violet-900/50' },
-          { value: 'other', label: 'Others', icon: LuFile, color: 'text-gray-500 bg-gray-50 dark:bg-gray-800 border-gray-100 dark:border-gray-700' },
-        ].map((item) => {
-          const Icon = item.icon;
-          const isActive = docTypeFilter === item.value;
-          const count = counts[item.value as keyof typeof counts] || 0;
-          return (
-            <button
-              key={item.value}
-              onClick={() => setDocTypeFilter(item.value as any)}
-              className={`flex flex-col items-center justify-center p-3 rounded-2xl border transition-all text-center group ${
-                isActive
-                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
-                  : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-750 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
-              }`}
-            >
-              <div className={`p-2 rounded-xl shrink-0 border transition-all mb-1 ${
-                isActive 
-                  ? 'bg-white/20 text-white border-white/20' 
-                  : `${item.color}`
-              }`}>
-                <Icon className="w-4 h-4" />
-              </div>
-              <div className="min-w-0 font-medium">
-                <p className="text-[9px] font-black uppercase tracking-wider truncate">
-                  {item.label}
-                </p>
-                <p className={`text-[10px] font-bold leading-none mt-0.5 ${
-                  isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {count} {count === 1 ? 'file' : 'files'}
-                </p>
-              </div>
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94:frontend/src/pages/operations/CompanyDocuments.tsx
             </button>
           )}
         </div>
