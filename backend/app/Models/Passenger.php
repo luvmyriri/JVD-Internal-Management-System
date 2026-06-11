@@ -11,7 +11,7 @@ class Passenger extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'customer_id', 'first_name', 'last_name', 'birth_date',
+        'customer_id', 'first_name', 'middle_name', 'last_name', 'suffix', 'birth_date',
         'passport_no', 'contact_no', 'checklist_status',
     ];
 

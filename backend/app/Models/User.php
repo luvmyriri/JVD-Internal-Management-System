@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'department',
         'custom_permissions',
+        'tags',
         'totp_secret',
         'is_active',
         'last_login',
@@ -53,6 +54,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'custom_permissions' => 'array',
+            'tags' => 'array',
             'totp_secret' => 'encrypted',
         ];
     }
@@ -84,6 +86,11 @@ class User extends Authenticatable
     public function uploadedDocuments()
     {
         return $this->hasMany(ProcurementDocument::class, 'uploaded_by');
+    }
+
+    public function liquidations()
+    {
+        return $this->hasMany(Liquidation::class, 'employee_id');
     }
 
     // ──────────────────────────────────────────
@@ -158,5 +165,15 @@ class User extends Authenticatable
         }
 
         return $rolePermissions;
+    }
+
+    public function hasTag(string $tag): bool
+    {
+        return in_array($tag, $this->tags ?? []);
+    }
+
+    public function hasAnyTag(array $tags): bool
+    {
+        return count(array_intersect($tags, $this->tags ?? [])) > 0;
     }
 }

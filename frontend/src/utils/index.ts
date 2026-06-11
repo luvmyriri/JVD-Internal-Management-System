@@ -75,3 +75,25 @@ export function getAvatarUrl(path: string | null | undefined): string | null {
     : apiBase.replace(/\/api$/, '') || 'http://localhost:8000';
   return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
 }
+
+/**
+ * Get the full URL for files stored in Laravel storage.
+ * - External URLs (http/https) are returned unchanged
+ * - If path starts with /storage, return it relative (so Vite proxy resolves it)
+ * - Otherwise, return `/storage/${path}`
+ */
+export function getStorageUrl(path: string | null | undefined): string {
+  if (!path) return '';
+  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  
+  const apiBase = import.meta.env.VITE_API_URL || '';
+  const baseUrl = apiBase === '/' ? '' : apiBase.replace(/\/+$/, '');
+  
+  const relativePath = path.startsWith('/') ? path : `/${path}`;
+  
+  if (relativePath.startsWith('/storage/')) {
+    return `${baseUrl}${relativePath}`;
+  }
+  
+  return `${baseUrl}/storage${relativePath}`;
+}

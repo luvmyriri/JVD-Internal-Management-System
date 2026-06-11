@@ -63,15 +63,25 @@ export default function Login() {
   const [bgList, setBgList] = useState<string[]>(() => {
     const cached = localStorage.getItem('jvd_bg_list');
     try {
-      return cached ? JSON.parse(cached) : ['/bus-bg.png'];
-    } catch {
-      return ['/bus-bg.png'];
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.error('Failed to parse jvd_bg_list:', e);
     }
+    return ['/bus-bg.png'];
   });
   const [btnColor, setBtnColor] = useState(() => localStorage.getItem('jvd_btn_color') || '#2563eb');
   const [slideDuration, setSlideDuration] = useState<number>(() => {
     const cached = localStorage.getItem('jvd_slide_duration');
-    return cached ? parseInt(cached) : 6;
+    if (cached) {
+      const parsed = parseInt(cached, 10);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+    return 6;
   });
   const [currentBgIndex, setCurrentBgIndex] = useState(0);
   const [isBtnHovered, setIsBtnHovered] = useState(false);

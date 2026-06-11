@@ -18,7 +18,6 @@ import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
 import Liquidations from './pages/accounting/Liquidations';
-import EmployeeSOA from './pages/accounting/EmployeeSOA';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
 import WorkOrders from './pages/procurement/WorkOrders';
@@ -48,6 +47,7 @@ import DriverSchedule from './pages/driver/Schedule';
 import DriverTrips from './pages/driver/Trips';
 import DriverBus from './pages/driver/Bus';
 import KycSubmission from './pages/KycSubmission';
+import VisaUploadPublic from './pages/travel/VisaUploadPublic';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
@@ -85,6 +85,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/kyc-submission" element={<KycSubmission />} />
+              <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
 
               {/* Authenticated */}
               <Route
@@ -105,7 +106,6 @@ export default function App() {
                 <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
                 <Route path="/accounting/commissions" element={<Commissions />} />
                 <Route path="/accounting/liquidations" element={<Liquidations />} />
-                <Route path="/accounting/employee-soa" element={<EmployeeSOA />} />
                 <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
 
                 {/* Operations */}

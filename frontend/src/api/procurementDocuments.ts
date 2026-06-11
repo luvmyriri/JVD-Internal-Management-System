@@ -51,7 +51,17 @@ export interface ProcurementDocument {
   };
   job_order?: any;
   work_order?: any;
-  trip_ticket?: any;
+  linkages?: {
+    supplier?: any;
+    inventory_item?: any;
+    driver?: any;
+    customer?: any;
+    job_order?: any;
+    work_order?: any;
+    trip_ticket?: any;
+    accreditation?: any;
+    connected_to?: string;
+  };
 }
 
 export interface ProcurementDocumentFormData {

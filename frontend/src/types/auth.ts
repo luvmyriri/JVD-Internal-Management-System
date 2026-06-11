@@ -74,6 +74,7 @@ export interface User {
   is_online?: boolean;
   custom_permissions?: any;
   effective_permissions?: RolePermissions;
+  tags?: string[];
   must_change_password: boolean;
   last_login: string | null;
   created_by: number | null;

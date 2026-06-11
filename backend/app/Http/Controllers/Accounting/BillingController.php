@@ -512,41 +512,17 @@ class BillingController extends Controller
             }
 
             if ($hasBusService) {
-<<<<<<< HEAD
-                $year = now()->year;
-                $latest = \App\Models\WorkOrder::where('wo_number', 'like', "WO-{$year}-%")
-                    ->orderByDesc('id')
-                    ->first();
-
-                $sequence = 1;
-                if ($latest) {
-                    $parts = explode('-', $latest->wo_number);
-                    $sequence = (int) end($parts) + 1;
-                }
-                $woNumber = sprintf('WO-%d-%04d', $year, $sequence);
-
-                $wo = \App\Models\WorkOrder::create([
-                    'wo_number' => $woNumber,
-                    'type' => 'trip',
-                    'bus_id' => $invoice->bus_id, // Bus assigned from invoice
-                    'invoice_id' => $invoice->id,
-                    'created_by' => auth()->id() ?? 1,
-                    'status' => 'pending_approval',
-                    'priority' => 'routine',
-                    'description' => "Trip Work Order auto-generated for Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
-                    'auto_generated' => true,
-=======
                 $jobOrderService = app(\App\Http\Services\JobOrderService::class);
                 $jo = $jobOrderService->create([
-                    'customer_id' => $request->customer_id ?? 1, // Fallback to 1 if walk-in
+                    'customer_id' => $invoice->customer_id ?? 1, // Use resolved customer ID
                     'bus_id' => $request->bus_id,
                     'service_type' => 'Bus Rental', // Mapped generically for now
                     'service_date' => $busServiceDate ?? date('Y-m-d', strtotime('+1 day')),
                     'destination' => $busDestination ?? 'Not Specified',
                     'total_cost' => $totalAmount,
                     'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
->>>>>>> f4729849c25bd2e72d8bb29f8dc7fe351fc0df94
-                ]);
+                    'invoice_id' => $invoice->id,
+                ], auth()->id() ?? 1);
             }
 
             DB::commit();

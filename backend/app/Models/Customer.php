@@ -11,7 +11,7 @@ class Customer extends Model
     use HasFactory, SoftDeletes;
 
     protected $fillable = [
-        'first_name', 'last_name', 'email', 'phone', 'address', 'notes',
+        'first_name', 'middle_name', 'last_name', 'suffix', 'email', 'phone', 'address', 'notes',
     ];
 
     public function passengers()

@@ -10,6 +10,7 @@ import { commissionApi } from '../../api/operations';
 import type { Commission } from '../../types';
 import { Modal, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { userApi } from '../../api/users';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: any = {
@@ -34,6 +35,23 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CommissionDetailModal({ commission, onClose }: { commission: Commission; onClose: () => void }) {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  
+  const approveMutation = useMutation({
+    mutationFn: (id: number) => commissionApi.update(id, { status: 'approved' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['commissions'] });
+      toast.success('Commission approved and forwarded to Cash Budgets!');
+      onClose();
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to approve commission');
+    }
+  });
+
+  const canApprove = (user?.tags?.includes('process:approve_commission') || user?.tags?.includes('access:general')) && commission.status === 'draft';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -49,7 +67,7 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 transition-all">
+          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 dark:hover:text-white transition-all">
             <LuX size={20} />
           </button>
         </div>
@@ -98,10 +116,19 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
           </div>
         </div>
 
-        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end">
-          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
+        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end gap-3">
+          <button onClick={onClose} className="px-8 py-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-2xl font-black text-xs uppercase tracking-widest transition-all">
             Close
           </button>
+          {canApprove && (
+            <button
+              onClick={() => approveMutation.mutate(commission.id)}
+              disabled={approveMutation.isPending}
+              className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-md active:scale-95 disabled:opacity-50"
+            >
+              {approveMutation.isPending ? 'Approving...' : 'Approve Commission'}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -118,9 +145,22 @@ interface NewCommissionItem {
 function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
+
+  const isAdmin = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+
+  // Fetch users for selection if admin
+  const { data: usersRes } = useQuery({
+    queryKey: ['users-commission-select'],
+    queryFn: () => userApi.list({ per_page: 999 }),
+    enabled: isAdmin,
+  });
+
+  const users = usersRes?.data?.data || [];
+
   const [form, setForm] = useState({
-    commissioner_name: user && user.role === 'driver' ? `${user.first_name} ${user.last_name}` : '',
-    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100005)).toString().padStart(5, '0')}`,
+    commissioner_name: isAdmin ? '' : `${user?.first_name || ''} ${user?.last_name || ''}`,
+    employee_id: isAdmin ? '' : String(user?.id || ''),
+    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100000)).toString().padStart(5, '0')}`,
     date: new Date().toISOString().split('T')[0],
   });
 
@@ -135,7 +175,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: (data: any) => commissionApi.create(data),
     onSuccess: () => {
-      toast.success('Commission created successfully');
+      toast.success('Commission request submitted successfully');
       qc.invalidateQueries({ queryKey: ['commissions'] });
       onClose();
     },
@@ -181,6 +221,11 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (isAdmin && !form.employee_id) {
+      toast.error('Please select an employee for the commission');
+      return;
+    }
+
     if (items.length === 0) {
       toast.error('Please add at least one travel item');
       return;
@@ -195,7 +240,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title="New Commission" size="xl">
+    <Modal isOpen={true} onClose={onClose} title="Request Commission" size="xl">
       <form onSubmit={handleSubmit} className="space-y-8 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {/* Section 1: Commissioner Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
@@ -205,23 +250,39 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
           </summary>
           <div className="p-4 pt-0 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
-                <input
-                  type="text"
-                  required
-                  readOnly={user?.role === 'driver'}
-                  disabled={user?.role === 'driver'}
-                  value={form.commissioner_name}
-                  onChange={e => setForm(p => ({ ...p, commissioner_name: e.target.value }))}
-                  className={`w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    user?.role === 'driver'
-                      ? 'bg-gray-50 dark:bg-gray-900 text-gray-500 cursor-not-allowed'
-                      : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200'
-                  }`}
-                  placeholder="e.g. Jane Smith"
-                />
-              </div>
+              {isAdmin ? (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Employee</label>
+                  <select
+                    required
+                    value={form.employee_id}
+                    onChange={e => {
+                      const selectedUser = users.find((u: any) => String(u.id) === e.target.value);
+                      setForm(p => ({
+                        ...p,
+                        employee_id: e.target.value,
+                        commissioner_name: selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : ''
+                      }));
+                    }}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">-- Select Employee --</option>
+                    {users.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role.replace('_', ' ')})</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
+                  <input
+                    type="text"
+                    readOnly
+                    value={form.commissioner_name}
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-750 text-gray-450 dark:text-gray-400 rounded-2xl text-sm font-bold cursor-not-allowed focus:outline-none"
+                  />
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
                 <input
@@ -245,7 +306,6 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         </details>
-
         {/* Section 2: Items Dynamic Form */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
           <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
@@ -365,6 +425,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Commissions() {
+  const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'draft' | 'approved' | 'released'>('all');
   const [selectedCommission, setSelectedCommission] = useState<Commission | null>(null);
@@ -380,7 +441,14 @@ export default function Commissions() {
   // Handle ApiResponse structure where data is inside response.data
   const commissions: Commission[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
+  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+  const isGeneralEmployee = !hasGeneralAccess;
+
   const filtered = commissions.filter((c) => {
+    // General employees only see their own requests
+    if (isGeneralEmployee && c.employee_id !== user?.id) {
+      return false;
+    }
     const q = searchTerm.toLowerCase();
     const matchSearch = !q ||
       c.commissioner_name?.toLowerCase().includes(q) ||
@@ -391,19 +459,14 @@ export default function Commissions() {
 
   // Summary counts
   const counts = {
-    all: commissions.length,
-    draft: commissions.filter(c => c.status === 'draft').length,
-    approved: commissions.filter(c => c.status === 'approved').length,
-    released: commissions.filter(c => c.status === 'released').length,
+    all: filtered.length,
+    draft: filtered.filter(c => c.status === 'draft').length,
+    approved: filtered.filter(c => c.status === 'approved').length,
+    released: filtered.filter(c => c.status === 'released').length,
   };
 
-  const getRowIndicatorStyle = (status?: string) => {
-    switch (status) {
-      case 'draft': return 'border-l-4 border-amber-400';
-      case 'approved': return 'border-l-4 border-blue-500';
-      case 'released': return 'border-l-4 border-emerald-500';
-      default: return 'border-l-4 border-transparent';
-    }
+  const getRowIndicatorStyle = (_status?: string) => {
+    return '';
   };
 
   const STATUS_FILTERS = ['all', 'draft', 'approved', 'released'] as const;
@@ -541,7 +604,7 @@ export default function Commissions() {
                 <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
               </tr>
             </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800/50 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+            <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
                   <tr key={i} className="animate-pulse">
