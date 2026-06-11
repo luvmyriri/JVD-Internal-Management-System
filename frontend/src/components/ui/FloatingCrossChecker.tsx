@@ -31,7 +31,7 @@ export default function FloatingCrossChecker() {
 
       // Position the floating badge centered just above the selection
       setPosition({
-        top: rect.top + window.scrollY - 46,
+        top: rect.top + .scrollY - 46,
         left: rect.left + window.scrollX + rect.width / 2,
       });
       setSelectedText(text);
@@ -54,15 +54,15 @@ export default function FloatingCrossChecker() {
       window.removeEventListener('scroll', hideOnScroll);
     };
   }, []);
-
+  window
   const handleClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Clear selection so the floating badge closes
     window.getSelection()?.removeAllRanges();
     setIsVisible(false);
-    
+
     showSearchPreview(selectedText);
   };
 

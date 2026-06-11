@@ -26,6 +26,8 @@ class CustomerResource extends JsonResource
             'visas'      => $this->whenLoaded('visas'),
             'kycs'       => $this->whenLoaded('kycs'),
             'tasks'      => $this->whenLoaded('tasks'),
+            'job_orders' => $this->whenLoaded('jobOrders'),
+            'company_documents' => $this->whenLoaded('companyDocuments'),
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
         ];

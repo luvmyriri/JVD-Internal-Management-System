@@ -258,6 +258,58 @@ export default function EntityPreviewPanel() {
               </div>
             )}
           </div>
+
+          {(customer.passports && customer.passports.length > 0) || (customer.visas && customer.visas.length > 0) ? (
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Passports &amp; Visas</h3>
+              <div className="space-y-3">
+                {customer.passports?.map((p: any) => (
+                  <div key={p.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800/50 flex justify-between items-center">
+                    <div>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">Passport Processing</span>
+                      <p className="text-[11px] text-gray-500">{p.application_type.replace('_', ' ')}</p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-blue-50 text-blue-700">
+                      {p.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+                {customer.visas?.map((v: any) => (
+                  <div key={v.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800/50 flex justify-between items-center">
+                    <div>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">Visa Application</span>
+                      <p className="text-[11px] text-gray-500">{v.visa_type} - {v.destination_country}</p>
+                    </div>
+                    <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-purple-50 text-purple-700">
+                      {v.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {customer.job_orders && customer.job_orders.length > 0 ? (
+            <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Job Orders (Bus Rentals)</h3>
+              <div className="space-y-3">
+                {customer.job_orders.map((jo: any) => (
+                  <div key={jo.id} className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-3 border border-gray-100 dark:border-gray-800/50 flex justify-between items-center">
+                    <div>
+                      <span className="text-sm font-bold text-gray-900 dark:text-white">#{jo.jo_number}</span>
+                      <p className="text-[11px] text-gray-500 truncate max-w-[200px]">{jo.rental_requirement || 'N/A'}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                      jo.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
+                      jo.status === 'in_progress' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      {jo.status?.replace('_', ' ')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
       );
     }
