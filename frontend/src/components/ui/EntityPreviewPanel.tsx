@@ -225,7 +225,7 @@ export default function EntityPreviewPanel() {
           {customer.notes && (
             <div className="space-y-2 pt-4 border-t border-gray-100 dark:border-gray-800">
               <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Internal Notes</h3>
-              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800/30 p-3 rounded-lg leading-relaxed">{customer.notes}</p
             </div>
           )}
 

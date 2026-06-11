@@ -11,8 +11,8 @@ class TripTicketSeeder extends Seeder
 {
     public function run(): void
     {
-        $bus = Bus::where('plate_number', 'ABC-1234')->first();
-        $bus2 = Bus::where('plate_number', 'LMN-9101')->first();
+        $bus = Bus::where('plate_number', 'NGA 3628')->first();
+        $bus2 = Bus::where('plate_number', 'NKG 4030')->first();
         
         $driver1 = User::where('email', 'eduardo@jvd.com')->first();
         $driver2 = User::where('email', 'ken@jvd.com')->first();

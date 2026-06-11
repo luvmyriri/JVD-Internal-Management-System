@@ -18,7 +18,7 @@ class CashBudgetRequestSeeder extends Seeder
         CashBudgetRequest::create([
             'date' => now()->subDays(2),
             'travel_date' => now()->addDays(5),
-            'plate_number' => 'ABC-1234',
+            'plate_number' => 'NGA 3628',
             'destination' => 'Session Road, Baguio City',
             'diesel' => 8500.00,
             'meal_allowance' => 1500.00,
@@ -36,7 +36,7 @@ class CashBudgetRequestSeeder extends Seeder
         CashBudgetRequest::create([
             'date' => now()->subDays(1),
             'travel_date' => now()->addDays(12),
-            'plate_number' => 'LMN-9101',
+            'plate_number' => 'NKG 4030',
             'destination' => 'Enchanted Kingdom, Santa Rosa',
             'diesel' => 4000.00,
             'meal_allowance' => 800.00,

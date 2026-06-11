@@ -15,8 +15,8 @@ class WorkOrderSeeder extends Seeder
         $arnold = User::where('email', 'arnold@jvd.com')->first();
         $jhune = User::where('email', 'jhune@jvd.com')->first();
         
-        $bus1 = \App\Models\Bus::where('plate_number', 'ABC-1234')->first();
-        $bus2 = \App\Models\Bus::where('plate_number', 'XYZ-5678')->first();
+        $bus1 = \App\Models\Bus::where('plate_number', 'NGA 3628')->first();
+        $bus2 = \App\Models\Bus::where('plate_number', 'NKG 4030')->first();
         
         if (!$minda || !$arnold || !$jhune || !$bus1 || !$bus2) return;
 
