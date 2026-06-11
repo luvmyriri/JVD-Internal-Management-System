@@ -47,6 +47,7 @@ import DriverSchedule from './pages/driver/Schedule';
 import DriverTrips from './pages/driver/Trips';
 import DriverBus from './pages/driver/Bus';
 import KycSubmission from './pages/KycSubmission';
+import VisaUploadPublic from './pages/travel/VisaUploadPublic';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
@@ -84,6 +85,7 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/kyc-submission" element={<KycSubmission />} />
+              <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
 
               {/* Authenticated */}
               <Route

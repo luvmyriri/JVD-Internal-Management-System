@@ -280,12 +280,46 @@ class ProcurementDocumentController extends Controller
             }
         });
 
+        // 5. Fetch Passport Case Documents
+        $passportCaseDocs = \App\Models\PassportCaseDocument::with(['customer', 'passportCase'])->get()->map(function ($caseDoc) {
+            $case = $caseDoc->passportCase;
+            $typeLabel = ($case && $case->case_type === 'passport') ? 'Passport' : 'Visa';
+            return [
+                'id' => 'doc_case_' . $caseDoc->id,
+                'real_id' => $caseDoc->id,
+                'source_type' => 'passport_case_document',
+                'title' => '[' . $typeLabel . ' Case #' . $caseDoc->passport_case_id . '] ' . $caseDoc->title,
+                'document_type' => strtolower($typeLabel),
+                'file_path' => $caseDoc->file_path,
+                'amount' => null,
+                'custom_metadata' => [
+                    'passport_case_id' => $caseDoc->passport_case_id,
+                    'case_type' => $case ? $case->case_type : null,
+                ],
+                'uploaded_by' => $caseDoc->uploader ? [
+                    'id' => $caseDoc->uploader->id,
+                    'first_name' => $caseDoc->uploader->first_name,
+                    'last_name' => $caseDoc->uploader->last_name,
+                    'email' => $caseDoc->uploader->email,
+                ] : null,
+                'created_at' => $caseDoc->created_at ? $caseDoc->created_at->toIso8601String() : null,
+                'updated_at' => $caseDoc->updated_at ? $caseDoc->updated_at->toIso8601String() : null,
+                'customer_id' => $caseDoc->customer_id,
+                'customer' => $caseDoc->customer,
+                'linkages' => [
+                    'customer' => $caseDoc->customer,
+                    'connected_to' => ($case ? ($typeLabel . ' Case #' . $caseDoc->passport_case_id) : 'Unlinked') . ($caseDoc->customer ? (' — Customer: ' . $caseDoc->customer->first_name . ' ' . $caseDoc->customer->last_name) : ''),
+                ]
+            ];
+        });
+
         // 6. Consolidate Collections
         $allDocs = collect()
             ->concat($procurementDocs)
             ->concat($kycDocs)
             ->concat($passportDocs)
             ->concat($visaDocs)
+            ->concat($passportCaseDocs)
             ->concat($accreditationDocs);
 
         // 7. Filtering & Search
@@ -620,6 +654,38 @@ class ProcurementDocumentController extends Controller
                 }
                 $visa->delete();
             } 
+            elseif (str_starts_with($id, 'doc_case_')) {
+                $realId = (int) str_replace('doc_case_', '', $id);
+                $caseDoc = \App\Models\PassportCaseDocument::findOrFail($realId);
+                $user = auth()->user();
+                if ($user && !in_array($user->role, ['super_admin', 'executive_vice_president'])) {
+                    if ($caseDoc->uploaded_by !== $user->id) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Unauthorized. You can only delete documents that you uploaded.'
+                        ], 403);
+                    }
+                }
+                if ($caseDoc->file_path && Storage::disk('public')->exists($caseDoc->file_path)) {
+                    Storage::disk('public')->delete($caseDoc->file_path);
+                }
+                $passportCase = $caseDoc->passportCase;
+                if ($passportCase) {
+                    $checklist = $passportCase->checklist ?? [];
+                    $matchedKey = null;
+                    foreach (array_keys($checklist) as $key) {
+                        if (strtolower(trim($key)) === strtolower(trim($caseDoc->title))) {
+                            $matchedKey = $key;
+                            break;
+                        }
+                    }
+                    if ($matchedKey) {
+                        $checklist[$matchedKey] = false;
+                        $passportCase->update(['checklist' => $checklist]);
+                    }
+                }
+                $caseDoc->delete();
+            } 
             elseif (str_starts_with($id, 'doc_accreditation_')) {
                 $parts = explode('_', $id);
                 $realId = (int) $parts[2];
@@ -676,7 +742,6 @@ class ProcurementDocumentController extends Controller
                 Storage::disk('public')->delete($document->file_path);
             }
             $document->delete();
-        }
         }
 
         return response()->json([

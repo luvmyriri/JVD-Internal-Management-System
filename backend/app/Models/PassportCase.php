@@ -13,6 +13,7 @@ class PassportCase extends Model
         'customer_id', 'passenger_id', 'handled_by',
         'case_type', 'status', 'checklist', 'reference_number',
         'submitted_date', 'release_date', 'destination_country', 'visa_type',
+        'upload_token', 'upload_requested_docs', 'upload_email_sent_at',
     ];
 
     protected function casts(): array
@@ -21,6 +22,8 @@ class PassportCase extends Model
             'checklist' => 'array',
             'submitted_date' => 'date',
             'release_date' => 'date',
+            'upload_requested_docs' => 'array',
+            'upload_email_sent_at' => 'datetime',
         ];
     }
 

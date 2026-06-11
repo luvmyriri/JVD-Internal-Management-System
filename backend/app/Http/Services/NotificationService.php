@@ -225,4 +225,23 @@ class NotificationService
             ));
         }
     }
+
+    /**
+     * Notify visa agent that the customer has uploaded required documents.
+     */
+    public static function notifyCustomerDocumentUpload($passportCase, $docTitle)
+    {
+        $handler = User::find($passportCase->handled_by);
+        if ($handler) {
+            $customerName = $passportCase->customer ? ($passportCase->customer->first_name . ' ' . $passportCase->customer->last_name) : 'A customer';
+            $handler->notify(new SystemAlert(
+                "Customer Uploaded Document",
+                "Customer {$customerName} has uploaded a document for '{$docTitle}' in Visa Case #{$passportCase->id}.",
+                "success",
+                "/travel/visa-processing",
+                "passport_case",
+                $passportCase->id
+            ));
+        }
+    }
 }

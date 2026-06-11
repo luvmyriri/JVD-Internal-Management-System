@@ -15,13 +15,16 @@ import { Modal, Button, ConfirmDialog } from '../../components/ui';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 import { useAuth } from '../../context/AuthContext';
 
-interface AddDocumentModalProps { onClose: () => void; }
+interface AddDocumentModalProps {
+  categories: DocumentCategory[];
+  onClose: () => void;
+}
 
-function AddDocumentModal({ onClose }: AddDocumentModalProps) {
+function AddDocumentModal({ categories, onClose }: AddDocumentModalProps) {
   const qc = useQueryClient();
-  const [form, setForm] = useState<ProcurementDocumentFormData>({
+  const [form, setForm] = useState<ProcurementDocumentFormData>(() => ({
     title: '',
-    document_type: 'receipt',
+    document_type: categories[0]?.slug || 'receipt',
     amount: null,
     supplier_id: null,
     inventory_item_id: null,
@@ -31,7 +34,7 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
     work_order_id: null,
     trip_ticket_id: null,
     custom_metadata: {}
-  });
+  }));
   const [file, setFile] = useState<File | null>(null);
   const [metaKey, setMetaKey] = useState('');
   const [metaValue, setMetaValue] = useState('');
@@ -102,12 +105,24 @@ function AddDocumentModal({ onClose }: AddDocumentModalProps) {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Type *</label>
-                  <select className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" value={form.document_type} onChange={e => setForm({ ...form, document_type: e.target.value })}>
-                    <option value="receipt">Receipt</option>
-                    <option value="invoice">Invoice</option>
-                    <option value="delivery_note">Delivery Note</option>
-                    <option value="agreement">Agreement</option>
-                    <option value="other">Other</option>
+                  <select 
+                    className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white" 
+                    value={form.document_type} 
+                    onChange={e => setForm({ ...form, document_type: e.target.value })}
+                  >
+                    {categories.length > 0 ? (
+                      categories.map(cat => (
+                        <option key={cat.id} value={cat.slug}>{cat.name}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="receipt">Receipt</option>
+                        <option value="invoice">Invoice</option>
+                        <option value="delivery_note">Delivery Note</option>
+                        <option value="agreement">Agreement</option>
+                        <option value="other">Other</option>
+                      </>
+                    )}
                   </select>
                 </div>
               </div>
@@ -559,7 +574,7 @@ export default function CompanyDocuments() {
         </div>
       </div>
 
-      {isAddOpen && <AddDocumentModal onClose={() => setIsAddOpen(false)} />}
+      {isAddOpen && <AddDocumentModal categories={categories} onClose={() => setIsAddOpen(false)} />}
       
       {deleteDocId !== null && (
         <ConfirmDialog

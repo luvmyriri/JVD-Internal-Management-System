@@ -60,6 +60,10 @@ Route::post('/accreditations/{accreditation}/submit-kyc/upload/{type}', [App\Htt
 // Public settings route
 Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettings'])->name('settings.public');
 
+// Public Visa Document Request upload routes
+Route::get('/public/visa-requests/{token}', [PassportCaseController::class, 'verifyPublicToken'])->name('passport-cases.public.verify');
+Route::post('/public/visa-requests/{token}/upload', [PassportCaseController::class, 'uploadPublicDocument'])->name('passport-cases.public.upload');
+
 // ──────────────────────────────────────────
 // AUTHENTICATED routes (Sanctum + password-change enforcement)
 // ──────────────────────────────────────────
@@ -206,6 +210,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::get('/passport-cases/{passportCase}/documents',   [PassportCaseController::class, 'getDocuments'])->name('passport-cases.documents.index');
         Route::post('/passport-cases/{passportCase}/documents',  [PassportCaseController::class, 'uploadDocument'])->name('passport-cases.documents.store');
         Route::delete('/passport-cases/{passportCase}/documents/{documentId}', [PassportCaseController::class, 'deleteDocument'])->name('passport-cases.documents.destroy');
+        Route::post('/passport-cases/{passportCase}/request-documents', [PassportCaseController::class, 'sendDocumentRequest'])->name('passport-cases.request-documents');
         Route::post('/visa/requirements', [App\Http\Controllers\Travel\VisaRequirementController::class, 'getRequirements'])->name('visa.requirements');
         // Legal Documents
         Route::get('/legal-documents',            [LegalDocumentController::class, 'index']);

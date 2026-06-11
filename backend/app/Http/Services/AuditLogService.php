@@ -13,7 +13,7 @@ class AuditLogService
     public static function log(string $action, string $module, string $entityType, $entityId, array $old = null, array $new = null)
     {
         AuditLog::create([
-            'user_id'     => auth()->id(),
+            'user_id'     => auth()->id() ?: 1,
             'action'      => $action,
             'module'      => $module,
             'entity_type' => $entityType,

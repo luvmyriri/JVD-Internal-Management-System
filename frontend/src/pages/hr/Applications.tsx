@@ -25,12 +25,13 @@ import {
   LuCheckCheck,
   LuKeyRound,
   LuUserCheck,
+  LuTriangleAlert,
 } from 'react-icons/lu';
 import { Modal, StatusBadge, Button, Pagination } from '../../components/ui';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { jobApplicationsApi, type JobApplication, type ConvertToEmployeePayload } from '../../api/jobApplications';
-import { formatDate } from '../../utils';
+import { formatDate, getStorageUrl } from '../../utils';
 
 // ─── Role & Department constants (mirrors Employees.tsx) ─────────────────────
 const ROLES = [
@@ -306,6 +307,8 @@ export default function Applications() {
   const checklistFileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
+  const [imgLoading, setImgLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
 
   // Recruit-to-employee state
   const [recruitApp, setRecruitApp] = useState<JobApplication | null>(null);
@@ -879,8 +882,10 @@ export default function Applications() {
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setPreviewUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`);
+                                  setPreviewUrl(getStorageUrl(matchingDoc.file_path));
                                   setPreviewTitle(matchingDoc.title);
+                                  setImgLoading(true);
+                                  setImgError(false);
                                 }}
                                 className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-900 dark:hover:bg-gray-750 dark:text-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1"
                                 title="Preview Document"
@@ -889,7 +894,7 @@ export default function Applications() {
                                 <span className="text-[10px] hidden sm:inline">Preview</span>
                               </button>
                               <a
-                                href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`}
+                                href={getStorageUrl(matchingDoc.file_path)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 dark:text-emerald-400 rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -954,19 +959,41 @@ export default function Applications() {
       {/* Lightbox Document Preview */}
       {previewUrl && (
         <Modal isOpen onClose={() => setPreviewUrl(null)} title={previewTitle} size="lg">
-          <div className="bg-gray-950 p-4 rounded-2xl flex items-center justify-center overflow-auto h-[60vh] border border-gray-800">
+          <div className="bg-gray-950 p-4 rounded-2xl flex items-center justify-center overflow-auto h-[60vh] border border-gray-800 relative">
             {previewUrl.toLowerCase().endsWith('.pdf') || previewUrl.toLowerCase().includes('.pdf') ? (
               <iframe
                 src={`${previewUrl}#toolbar=0`}
-                className="w-full h-full rounded-xl border border-gray-800"
+                className="w-full h-full rounded-xl border border-gray-800 bg-white"
                 title="Document Preview"
               />
             ) : (
-              <img
-                src={previewUrl}
-                alt="Document Preview"
-                className="max-w-full max-h-full object-contain rounded-xl border border-gray-800 shadow-lg"
-              />
+              <div className="relative max-w-full max-h-full flex items-center justify-center">
+                {imgLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-950/40 z-10">
+                    <LuLoaderCircle className="animate-spin text-violet-500" size={32} />
+                  </div>
+                )}
+                {imgError ? (
+                  <div className="text-center p-6 space-y-3 text-gray-400">
+                    <LuTriangleAlert className="text-red-500 mx-auto" size={36} />
+                    <p className="text-sm font-bold">Failed to load image preview</p>
+                    <p className="text-xs">The image file could not be read or does not exist.</p>
+                  </div>
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Document Preview"
+                    onLoad={() => setImgLoading(false)}
+                    onError={() => {
+                      setImgLoading(false);
+                      setImgError(true);
+                    }}
+                    className={`max-w-full max-h-[50vh] object-contain rounded-xl border border-gray-800 shadow-lg ${
+                      imgLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-300'
+                    }`}
+                  />
+                )}
+              </div>
             )}
           </div>
         </Modal>

@@ -4,11 +4,14 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import {
   LuStamp, LuPlus, LuSearch, LuLoaderCircle,
   LuCircleCheck, LuCircle, LuChevronRight, LuTrash,
-  LuUpload, LuFileText, LuEye,
+  LuUpload, LuFileText, LuEye, LuTriangleAlert,
+  LuMail, LuCopy,
 } from 'react-icons/lu';
 import { passportingApi } from '../../api/passporting';
+import { customerApi } from '../../api/customers';
 import { Pagination, Modal, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { getStorageUrl } from '../../utils';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface PassportCase {
@@ -277,6 +280,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   const readOnly = !isHandler && !isAdmin;
 
   const [activeTab, setActiveTab] = useState<'details' | 'documents' | 'history'>('details');
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
   const [localChecklist, setLocalChecklist] = useState<Record<string, boolean>>(
     caseData.checklist ?? {}
@@ -294,6 +298,8 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
   const checklistFileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = useState('');
+  const [imgLoading, setImgLoading] = useState(true);
+  const [imgError, setImgError] = useState(false);
 
   const completedCount = checklistItems.filter(i => localChecklist[i]).length;
 
@@ -554,7 +560,20 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Document Checklist</p>
-                    <span className="text-[10px] font-bold text-blue-600">{completedCount}/{checklistItems.length} Complete</span>
+                    <div className="flex items-center gap-3">
+                      {!readOnly && (
+                        <button
+                          type="button"
+                          onClick={() => setShowRequestModal(true)}
+                          className="px-2.5 py-1.5 bg-blue-50 hover:bg-blue-100 dark:bg-blue-950/20 dark:hover:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl text-[10px] font-black uppercase tracking-wider transition flex items-center gap-1.5 border border-blue-100/80 dark:border-blue-900/30 shadow-sm"
+                          title="Request customer documents online"
+                        >
+                          <LuMail size={12} />
+                          Request Online
+                        </button>
+                      )}
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{completedCount}/{checklistItems.length} Complete</span>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     {checklistItems.map(item => {
@@ -583,8 +602,10 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    setPreviewUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`);
+                                    setPreviewUrl(getStorageUrl(matchingDoc.file_path));
                                     setPreviewTitle(matchingDoc.title);
+                                    setImgLoading(true);
+                                    setImgError(false);
                                   }}
                                   className="px-2.5 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1"
                                   title="Preview Document"
@@ -593,7 +614,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                                   <span className="text-[10px] hidden sm:inline">Preview</span>
                                 </button>
                                 <a
-                                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${matchingDoc.file_path}`}
+                                  href={getStorageUrl(matchingDoc.file_path)}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/20 dark:hover:bg-emerald-950/40 dark:text-emerald-400 rounded-lg text-xs font-bold transition flex items-center gap-1"
@@ -752,8 +773,10 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                         <button
                           type="button"
                           onClick={() => {
-                            setPreviewUrl(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${doc.file_path}`);
+                            setPreviewUrl(getStorageUrl(doc.file_path));
                             setPreviewTitle(doc.title);
+                            setImgLoading(true);
+                            setImgError(false);
                           }}
                           className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-300 rounded-lg text-xs font-bold transition flex items-center gap-1.5"
                         >
@@ -761,7 +784,7 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
                           Preview
                         </button>
                         <a
-                          href={`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/storage/${doc.file_path}`}
+                          href={getStorageUrl(doc.file_path)}
                           target="_blank"
                           rel="noreferrer"
                           className="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 dark:text-blue-400 rounded-lg text-xs font-bold transition"
@@ -826,22 +849,55 @@ function CaseDetailModal({ caseData, onClose }: { caseData: PassportCase; onClos
       {/* Lightbox Document Preview */}
       {previewUrl && (
         <Modal isOpen onClose={() => setPreviewUrl(null)} title={previewTitle} size="lg">
-          <div className="bg-gray-950 p-4 rounded-2xl flex items-center justify-center overflow-auto h-[60vh] border border-gray-850">
+          <div className="bg-gray-950 p-4 rounded-2xl flex items-center justify-center overflow-auto h-[60vh] border border-gray-850 relative">
             {previewUrl.toLowerCase().endsWith('.pdf') || previewUrl.toLowerCase().includes('.pdf') ? (
               <iframe
                 src={`${previewUrl}#toolbar=0`}
-                className="w-full h-full rounded-xl border border-gray-800"
+                className="w-full h-full rounded-xl border border-gray-800 bg-white"
                 title="Document Preview"
               />
             ) : (
-              <img
-                src={previewUrl}
-                alt="Document Preview"
-                className="max-w-full max-h-full object-contain rounded-xl border border-gray-800 shadow-lg"
-              />
+              <div className="relative max-w-full max-h-full flex items-center justify-center">
+                {imgLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-950/40 z-10">
+                    <LuLoaderCircle className="animate-spin text-violet-500" size={32} />
+                  </div>
+                )}
+                {imgError ? (
+                  <div className="text-center p-6 space-y-3 text-gray-400">
+                    <LuTriangleAlert className="text-red-500 mx-auto" size={36} />
+                    <p className="text-sm font-bold">Failed to load image preview</p>
+                    <p className="text-xs">The image file could not be read or does not exist.</p>
+                  </div>
+                ) : (
+                  <img
+                    src={previewUrl}
+                    alt="Document Preview"
+                    onLoad={() => setImgLoading(false)}
+                    onError={() => {
+                      setImgLoading(false);
+                      setImgError(true);
+                    }}
+                    className={`max-w-full max-h-[50vh] object-contain rounded-xl border border-gray-800 shadow-lg ${
+                      imgLoading ? 'opacity-0' : 'opacity-100 transition-opacity duration-300'
+                    }`}
+                  />
+                )}
+              </div>
             )}
           </div>
         </Modal>
+      )}
+
+      {showRequestModal && (
+        <RequestDocsModal
+          pc={caseData}
+          onClose={() => setShowRequestModal(false)}
+          onSuccess={() => {
+            qc.invalidateQueries({ queryKey: ['passport_cases'] });
+            onClose();
+          }}
+        />
       )}
     </Modal>
   );
@@ -997,5 +1053,189 @@ export default function Passporting() {
       {showNew && <NewCaseModal onClose={() => setShowNew(false)} />}
       {selected && <CaseDetailModal caseData={selected} onClose={() => setSelected(null)} />}
     </div>
+  );
+}
+
+// ── Document Request Modal ──────────────────────────────────────────────────
+interface RequestDocsModalProps {
+  pc: PassportCase;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function RequestDocsModal({ pc, onClose, onSuccess }: RequestDocsModalProps) {
+  const [email, setEmail] = useState(pc.customer?.email || '');
+  const [selectedDocs, setSelectedDocs] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    Object.keys(pc.checklist || {}).forEach(k => {
+      initial[k] = !pc.checklist[k]; // pre-check pending items
+    });
+    return initial;
+  });
+  const [isSending, setIsSending] = useState(false);
+  const [result, setResult] = useState<{
+    link: string;
+    message: string;
+    email_sent_to: string;
+    mail_error?: string;
+  } | null>(null);
+
+  const checklistItems = pc.case_type === 'passport' ? PASSPORT_CHECKLIST : VISA_CHECKLIST;
+  const items = Object.keys(pc.checklist || {}).length > 0 ? Object.keys(pc.checklist) : checklistItems;
+
+  const handleToggle = (item: string) => {
+    setSelectedDocs(prev => ({ ...prev, [item]: !prev[item] }));
+  };
+
+  const handleSend = async () => {
+    if (!email.trim()) {
+      toast.error('Email is required.');
+      return;
+    }
+    const docs = Object.keys(selectedDocs).filter(k => selectedDocs[k]);
+    if (docs.length === 0) {
+      toast.error('Please select at least one document to request.');
+      return;
+    }
+
+    setIsSending(true);
+    try {
+      if (email.trim() !== (pc.customer?.email || '') && pc.customer?.id) {
+        await customerApi.update(pc.customer.id, { email: email.trim() });
+        toast.success('Customer email updated in database.');
+      }
+
+      const res = await passportingApi.requestDocuments(pc.id, docs);
+      if (res.data.success) {
+        setResult(res.data);
+        if (res.data.mail_error) {
+          toast.error('Document request created, but email dispatch failed.');
+        } else {
+          toast.success('Document request email sent successfully.');
+        }
+      } else {
+        toast.error(res.data.message || 'Failed to send document request.');
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to send document request.');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  if (result) {
+    const isError = !!result.mail_error;
+    return (
+      <Modal isOpen onClose={onClose} title="Request Created" size="sm">
+        <div className="space-y-5 p-2 font-sans">
+          {isError ? (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/20 text-amber-800 dark:text-amber-300 rounded-2xl border border-amber-200/50 dark:border-amber-900/30 flex items-start gap-3">
+              <LuTriangleAlert size={20} className="shrink-0 text-amber-500 dark:text-amber-400 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-extrabold uppercase tracking-wider">Email Delivery Failed</p>
+                <p className="text-xs opacity-90 leading-relaxed">
+                  The upload link was generated, but sending the email failed: <code className="bg-amber-100/50 dark:bg-amber-900/50 px-1 py-0.5 rounded font-mono break-all">{result.mail_error}</code>.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 rounded-2xl border border-emerald-200/50 dark:border-emerald-900/30 flex items-start gap-3">
+              <LuCircleCheck size={20} className="shrink-0 text-emerald-500 dark:text-emerald-400 mt-0.5" />
+              <div className="space-y-1">
+                <p className="text-xs font-extrabold uppercase tracking-wider">Email Sent Successfully</p>
+                <p className="text-xs opacity-90 leading-relaxed">
+                  The document request link has been emailed to <strong className="font-semibold">{result.email_sent_to}</strong>.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <label className="block text-[10px] font-bold text-gray-400 dark:text-gray-450 uppercase tracking-wider">Secure Document Upload Link</label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={result.link}
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-gray-50 dark:bg-gray-850 text-gray-700 dark:text-gray-303 focus:outline-none font-mono"
+              />
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(result.link);
+                    toast.success('Link copied to clipboard!');
+                  } catch (err) {
+                    toast.error('Failed to copy link.');
+                  }
+                }}
+                className="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-600/15"
+              >
+                <LuCopy size={14} />
+                <span>Copy</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="flex justify-end pt-3 border-t border-gray-100 dark:border-gray-850">
+            <Button
+              onClick={() => {
+                onSuccess();
+                onClose();
+              }}
+              className="bg-blue-600 hover:bg-blue-700 shadow-md"
+            >
+              Done
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal isOpen onClose={onClose} title="Request Documents Online" size="sm">
+      <div className="space-y-4 p-2 font-sans">
+        <div>
+          <label className="block text-[10px] font-bold text-gray-455 uppercase tracking-wider mb-1.5">Customer Email Address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            placeholder="customer@example.com"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[10px] font-bold text-gray-455 uppercase tracking-wider mb-2">Select Documents to Request</label>
+          {items.length === 0 ? (
+            <p className="text-xs text-gray-500 italic py-2">No documents in checklist. Please add checklist items first.</p>
+          ) : (
+            <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+              {items.map(item => (
+                <label key={item} className="flex items-center gap-3 p-2.5 rounded-xl bg-gray-50 dark:bg-gray-850 hover:bg-gray-100 dark:hover:bg-gray-800 transition cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={!!selectedDocs[item]}
+                    onChange={() => handleToggle(item)}
+                    className="rounded text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-xs font-semibold text-gray-700 dark:text-gray-200">{item}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          <Button variant="secondary" onClick={onClose} disabled={isSending}>Cancel</Button>
+          <Button onClick={handleSend} isLoading={isSending} disabled={!email.trim() || Object.keys(selectedDocs).filter(k => selectedDocs[k]).length === 0}>
+            Send Email Request
+          </Button>
+        </div>
+      </div>
+    </Modal>
   );
 }
