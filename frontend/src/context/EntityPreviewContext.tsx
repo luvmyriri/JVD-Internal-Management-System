@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 
-export type PreviewEntityType = 'supplier' | 'inventory' | 'driver' | 'customer' | 'search' | null;
+export type PreviewEntityType = 'supplier' | 'inventory' | 'driver' | 'customer' | 'job_order' | 'document' | 'search' | null;
 
 interface EntityPreviewState {
   isOpen: boolean;

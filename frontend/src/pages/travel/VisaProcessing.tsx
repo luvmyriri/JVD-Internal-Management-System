@@ -322,7 +322,8 @@ function NewVisaCaseModal({ onClose }: { onClose: () => void }) {
                       <button
                         key={c.code}
                         type="button"
-                        onClick={() => {
+                        onMouseDown={(e) => {
+                          e.preventDefault();
                           setDestinationInput(c.name);
                           setDestinationCountry(c.code);
                           setShowSuggestions(false);

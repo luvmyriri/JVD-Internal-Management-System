@@ -6,6 +6,9 @@ import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
 import { customerApi } from '../../api/customers';
+import { procurementDocumentApi } from '../../api/procurementDocuments';
+import { jobOrderApi } from '../../api/jobOrders';
+import { LuFileText, LuClipboardList } from 'react-icons/lu';
 
 export default function EntityPreviewPanel() {
   const { isOpen, entityType, entityId, searchQuery, showPreview, closePreview } = useEntityPreview();
@@ -15,16 +18,22 @@ export default function EntityPreviewPanel() {
     queryKey: ['preview', entityType, entityId, searchQuery],
     queryFn: async () => {
       if (entityType === 'search' && searchQuery) {
-        const [suppliersRes, inventoryRes, usersRes] = await Promise.all([
+        const [suppliersRes, inventoryRes, usersRes, customersRes, docsRes, jobOrdersRes] = await Promise.all([
           supplierApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
           inventoryApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
           userApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
+          customerApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
+          procurementDocumentApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
+          jobOrderApi.list({ search: searchQuery }).catch(() => ({ data: { data: [] } })),
         ]);
         
         return {
           suppliers: suppliersRes.data?.data || [],
           inventory: inventoryRes.data?.data || [],
           users: usersRes.data?.data || [],
+          customers: customersRes.data?.data || [],
+          documents: docsRes.data?.data || [],
+          jobOrders: jobOrdersRes.data?.data || [],
         };
       }
 
@@ -33,6 +42,8 @@ export default function EntityPreviewPanel() {
       if (entityType === 'inventory') return inventoryApi.get(entityId).then(res => res.data.data);
       if (entityType === 'driver') return userApi.get(entityId).then(res => res.data.data);
       if (entityType === 'customer') return customerApi.get(entityId).then(res => res.data.data);
+      if (entityType === 'document') return procurementDocumentApi.get(entityId).then(res => res.data.data);
+      if (entityType === 'job_order') return jobOrderApi.get(entityId).then(res => res.data.data);
       return null;
     },
     enabled: isOpen && (!!entityId || (entityType === 'search' && !!searchQuery)),
@@ -314,9 +325,67 @@ export default function EntityPreviewPanel() {
       );
     }
 
+    if (entityType === 'document') {
+      const doc = data as any;
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+            <div className="w-16 h-16 bg-red-50 dark:bg-red-900/30 rounded-2xl flex items-center justify-center text-red-600 shrink-0">
+              <LuFileText size={32} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">{doc.title}</h2>
+              <span className="inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-red-50 text-red-700">
+                {doc.document_type?.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Document Details</h3>
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-4 space-y-3">
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Amount</span>
+                <span className="font-medium text-gray-900 dark:text-white">{doc.amount ? `₱${Number(doc.amount).toLocaleString()}` : 'N/A'}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Uploaded</span>
+                <span className="font-medium text-gray-900 dark:text-white">{new Date(doc.created_at).toLocaleDateString()}</span>
+              </div>
+            </div>
+          </div>
+          <a href={doc.file_path} target="_blank" rel="noopener noreferrer" className="block w-full py-3 px-4 bg-gray-900 dark:bg-white text-white dark:text-gray-900 text-center rounded-xl font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors">
+            View Full Document
+          </a>
+        </div>
+      );
+    }
+
+    if (entityType === 'job_order') {
+      const jo = data as any;
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4 border-b border-gray-100 dark:border-gray-800 pb-6">
+            <div className="w-16 h-16 bg-emerald-50 dark:bg-emerald-900/30 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0">
+              <LuClipboardList size={32} />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-gray-900 dark:text-white leading-tight">#{jo.jo_number}</h2>
+              <span className="inline-block mt-2 px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md bg-emerald-50 text-emerald-700">
+                {jo.status?.replace('_', ' ')}
+              </span>
+            </div>
+          </div>
+          <div className="space-y-4">
+            <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500">Requirement</h3>
+            <p className="text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-gray-800/50 p-3 rounded-lg">{jo.rental_requirement || 'N/A'}</p>
+          </div>
+        </div>
+      );
+    }
+
     if (entityType === 'search') {
-      const results = data as { suppliers: any[]; inventory: any[]; users: any[] };
-      const hasResults = results.suppliers.length > 0 || results.inventory.length > 0 || results.users.length > 0;
+      const results = data as { suppliers: any[]; inventory: any[]; users: any[]; customers: any[]; documents: any[]; jobOrders: any[] };
+      const hasResults = results.suppliers.length > 0 || results.inventory.length > 0 || results.users.length > 0 || results.customers?.length > 0 || results.documents?.length > 0 || results.jobOrders?.length > 0;
 
       return (
         <div className="space-y-6">
@@ -371,6 +440,54 @@ export default function EntityPreviewPanel() {
                       <button key={u.id} onClick={() => showPreview('driver', u.id)} className="w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-purple-200 transition-all active:scale-[0.98]">
                         <p className="font-bold text-sm text-gray-900 dark:text-white">{u.first_name} {u.last_name}</p>
                         <p className="text-xs text-gray-500 mt-0.5">Role: {u.role.replace('_', ' ')} | ID: {u.employee_id}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Customers */}
+              {results.customers?.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2"><LuUser /> Customers ({results.customers.length})</h3>
+                  <div className="grid gap-2">
+                    {results.customers.map((c: any) => (
+                      <button key={c.id} onClick={() => showPreview('customer', c.id)} className="w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-blue-200 transition-all active:scale-[0.98]">
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">{c.first_name} {c.last_name}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{c.email} {c.phone ? `| ${c.phone}` : ''}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Documents */}
+              {results.documents?.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2"><LuFileText /> Documents ({results.documents.length})</h3>
+                  <div className="grid gap-2">
+                    {results.documents.map((d: any) => (
+                      <button key={d.id} onClick={() => showPreview('document', d.id)} className="w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-red-50 dark:hover:bg-red-900/20 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-red-200 transition-all active:scale-[0.98]">
+                        <p className="font-bold text-sm text-gray-900 dark:text-white">{d.title}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">Type: {d.document_type.replace('_', ' ')}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Job Orders */}
+              {results.jobOrders?.length > 0 && (
+                <div className="space-y-2">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-gray-500 flex items-center gap-2"><LuHash /> Job Orders ({results.jobOrders.length})</h3>
+                  <div className="grid gap-2">
+                    {results.jobOrders.map((jo: any) => (
+                      <button key={jo.id} onClick={() => showPreview('job_order', jo.id)} className="w-full text-left bg-gray-50 dark:bg-gray-800/50 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 p-3 rounded-xl border border-gray-100 dark:border-gray-800 hover:border-emerald-200 transition-all active:scale-[0.98]">
+                        <div className="flex justify-between items-center">
+                          <p className="font-bold text-sm text-gray-900 dark:text-white">#{jo.jo_number}</p>
+                          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-gray-200 text-gray-700">{jo.status}</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5 truncate">{jo.rental_requirement || 'N/A'}</p>
                       </button>
                     ))}
                   </div>

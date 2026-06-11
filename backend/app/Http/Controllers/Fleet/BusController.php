@@ -155,8 +155,9 @@ class BusController extends Controller
 
         // POS invoices linked to this bus
         $invoices = \App\Models\Invoice::where('bus_id', $bus->id)
-            ->whereBetween('created_at', [$start, $end])
-            ->get(['id', 'invoice_number', 'created_at', 'customer_name', 'seat_map', 'status', 'total_amount']);
+            ->whereNotNull('travel_date')
+            ->whereBetween('travel_date', [$start->toDateString(), $end->toDateString()])
+            ->get(['id', 'invoice_number', 'travel_date', 'customer_name', 'seat_map', 'status', 'total_amount']);
 
         $entries = [];
 
@@ -176,7 +177,7 @@ class BusController extends Controller
 
         foreach ($invoices as $inv) {
             $entries[] = [
-                'date'          => $inv->created_at->toDateString(),
+                'date'          => $inv->travel_date,
                 'type'          => 'invoice',
                 'reference_id'  => $inv->id,
                 'reference_no'  => $inv->invoice_number,

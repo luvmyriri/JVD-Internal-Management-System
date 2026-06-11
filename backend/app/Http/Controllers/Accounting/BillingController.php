@@ -516,9 +516,9 @@ class BillingController extends Controller
                 $jo = $jobOrderService->create([
                     'customer_id' => $invoice->customer_id ?? 1, // Use resolved customer ID
                     'bus_id' => $request->bus_id,
-                    'service_type' => 'Bus Rental', // Mapped generically for now
-                    'service_date' => $busServiceDate ?? date('Y-m-d', strtotime('+1 day')),
-                    'destination' => $busDestination ?? 'Not Specified',
+                    'service_type' => 'bus_rental', // Mapped generically for now
+                    'service_date' => $busServiceDate ?? $request->travel_date ?? date('Y-m-d', strtotime('+1 day')),
+                    'destination' => $busDestination ?? $request->tour_code ?? $request->pickup_location ?? 'Not Specified',
                     'total_cost' => $totalAmount,
                     'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
                     'invoice_id' => $invoice->id,

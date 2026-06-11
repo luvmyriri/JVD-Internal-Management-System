@@ -1115,8 +1115,8 @@ export default function FixedPackages() {
 
       {/* Add/Edit Service Modal */}
       {showAddService && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300" onClick={() => setShowAddService(false)}>
+          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]" onClick={(e) => e.stopPropagation()}>
             <div className="p-8 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
               <div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight uppercase">{isEditingService ? 'Edit Service Details' : 'Register New Service'}</h3>
@@ -1522,8 +1522,8 @@ export default function FixedPackages() {
 
       {/* Service Detail Modal */}
       {showDetailModal && selectedServiceForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300" onClick={() => setShowDetailModal(false)}>
+          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]" onClick={(e) => e.stopPropagation()}>
             {/* Gallery Column */}
             <div className="flex-1 bg-gray-50 dark:bg-gray-800 relative group">
               {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
@@ -1825,20 +1825,22 @@ export default function FixedPackages() {
                 )}
 
                 {/* Joiner Specifications Block */}
-                {['Package', 'Tours & Travels', 'Transport', 'Other'].includes(selectedServiceForDetail.category) && (
+                {(['Package', 'Tours & Travels', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
                     
-                    {/* Travel Date */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                      <input
-                        type="date"
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                        value={bookingDate}
-                        onChange={(e) => setBookingDate(e.target.value)}
-                      />
-                    </div>
+                    {/* Travel Date (Hide here if Bus Rental block will show it) */}
+                    {!(['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                        <input
+                          type="date"
+                          className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                          value={bookingDate}
+                          onChange={(e) => setBookingDate(e.target.value)}
+                        />
+                      </div>
+                    )}
 
                     {/* Tour Code / Destination */}
                     <div className="space-y-2">
@@ -1879,7 +1881,7 @@ export default function FixedPackages() {
                 )}
 
                 {/* Bus Rental & Seating Options (Conditional for Bus Rental or Tour with Bus) */}
-                {(selectedServiceForDetail.category === 'Bus Rental' || (selectedServiceForDetail.is_tour && bookingTourVehicle === 'Bus')) && (
+                {(['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Rental & Seating Options</p>
                     
@@ -2033,14 +2035,14 @@ export default function FixedPackages() {
 
               <div className="space-y-3 font-black">
                 {(() => {
-                  const isBusAssigned = selectedServiceForDetail.category === 'Bus Rental' || (selectedServiceForDetail.is_tour && bookingTourVehicle === 'Bus');
+                  const isBusAssigned = ['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
                   const isBusSelectionInvalid = isBusAssigned && (!bookingDate || !bookingBusId || !bookingDriverId || bookingSeats.length === 0);
 
                   return (
                     <button
                       disabled={isBusSelectionInvalid}
                       onClick={() => {
-                        const isJoinerCategory = ['Package', 'Tours & Travels', 'Transport', 'Other'].includes(selectedServiceForDetail.category);
+                        const isJoinerCategory = ['Package', 'Tours & Travels', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
                         const travelDateParam = bookingDate || undefined;
                         const tourCodeParam = isJoinerCategory ? (joinerTourCode || undefined) : undefined;
                         const pickupLocationParam = isJoinerCategory ? (joinerPickup || undefined) : undefined;

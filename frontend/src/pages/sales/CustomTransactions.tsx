@@ -60,7 +60,9 @@ export default function CustomTransactions() {
     busId: null as number | null,
     driverId: null as number | null,
     driverName: '',
-    selectedSeats: [] as string[]
+    selectedSeats: [] as string[],
+    pickupLocation: '',
+    paxCount: 1
   });
 
   // Load calendar for selected bus to check seat occupancy on travel date
@@ -145,7 +147,9 @@ export default function CustomTransactions() {
       busId: null,
       driverId: null,
       driverName: '',
-      selectedSeats: []
+      selectedSeats: [],
+      pickupLocation: '',
+      paxCount: 1
     });
     setEduTour({
       schoolName: '',
@@ -197,6 +201,8 @@ Vehicle Type: ${busRental.vehicleType}
 Route/Destination: ${busRental.route || 'Not Specified'}
 Service Date: ${busRental.serviceDate || 'Not Specified'}
 Duration: ${busRental.days} Day(s)
+Pax Count: ${busRental.paxCount} Pax
+Pickup Location: ${busRental.pickupLocation || 'Not Specified'}
 Assigned Bus ID: ${busRental.busId || 'To Be Determined'}
 Included in Rate: ${incs.join(', ') || 'Base Rental Only'}`;
       }
@@ -360,6 +366,8 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           travelDateParam = busRental.travelDate || undefined;
           serviceDateParam = busRental.serviceDate || undefined;
           destinationParam = busRental.route || undefined;
+          pickupLocationParam = busRental.pickupLocation || undefined;
+          paxCountParam = busRental.paxCount || undefined;
         } else if (customForm.category === 'Joiners') {
           travelDateParam = joiners.travelDate || undefined;
           tourCodeParam = joiners.tourCode || undefined;
@@ -586,6 +594,29 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.serviceDate}
                   onChange={(e) => setBusRental(prev => ({ ...prev, serviceDate: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={busRental.paxCount}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, paxCount: Math.max(1, Number(e.target.value)) }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pickup Location</label>
+                <input
+                  type="text"
+                  placeholder="e.g. SM North EDSA"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                  value={busRental.pickupLocation}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, pickupLocation: e.target.value }))}
                 />
               </div>
             </div>

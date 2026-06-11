@@ -85,20 +85,10 @@ def run_integration_tests():
         
     supplier_id = response['data']['id']
     
-    # Create Accreditation for this supplier
-    acc_data = {
-        "entity_type": "supplier",
-        "entity_name": supplier_data["company_name"],
-        "accreditation_type": "Verified Vendor",
-        "issuing_body": "Internal Procurement Team",
-        "issue_date": "2026-05-01",
-        "expiry_date": "2027-05-01",
-        "contact_person": supplier_data["contact_person"],
-        "contact_email": supplier_data["email"],
-    }
-    status, response = make_request("POST", "/accreditations", data=acc_data)
-    acc_passed = status == 201
-    print_result("Create Accreditation linked to Supplier", acc_passed, f"Status: {status}")
+    # Verify/Accredit Supplier (Cross & Counter check)
+    status, response = make_request("POST", f"/suppliers/{supplier_id}/verify", data={})
+    acc_passed = status == 200
+    print_result("Counter Check & Accredit Supplier", acc_passed, f"Status: {status}")
     
     # 3. Inventory flow
     print("\n--- 3. Inventory Data Consistency ---")

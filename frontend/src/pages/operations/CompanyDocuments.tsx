@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight, LuFolderOpen, LuFolderPlus, LuLoaderCircle, LuSettings } from 'react-icons/lu';
+import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight, LuFolderOpen, LuFolderPlus, LuLoaderCircle, LuSettings, LuLock } from 'react-icons/lu';
 import { procurementDocumentApi, documentCategoryApi, type ProcurementDocumentFormData, type DocumentCategory } from '../../api/procurementDocuments';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
@@ -22,9 +22,15 @@ interface AddDocumentModalProps {
 
 function AddDocumentModal({ categories, onClose }: AddDocumentModalProps) {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  
+  const filteredCategories = categories.filter(cat => 
+    !cat.allowed_roles || cat.allowed_roles.length === 0 || (user && cat.allowed_roles.includes(user.role))
+  );
+
   const [form, setForm] = useState<ProcurementDocumentFormData>(() => ({
     title: '',
-    document_type: categories[0]?.slug || 'receipt',
+    document_type: filteredCategories.length > 0 ? filteredCategories[0].slug : (categories.length > 0 ? categories[0].slug : 'receipt'),
     amount: null,
     supplier_id: null,
     inventory_item_id: null,
@@ -111,7 +117,7 @@ function AddDocumentModal({ categories, onClose }: AddDocumentModalProps) {
                     onChange={e => setForm({ ...form, document_type: e.target.value })}
                   >
                     {categories.length > 0 ? (
-                      categories.map(cat => (
+                      filteredCategories.map(cat => (
                         <option key={cat.id} value={cat.slug}>{cat.name}</option>
                       ))
                     ) : (
@@ -299,6 +305,11 @@ export default function CompanyDocuments() {
   const countFor = (slug: string) =>
     slug === 'all' ? docs.length : docs.filter((d: any) => d.document_type === slug).length;
 
+  const canDelete = (doc: any) => {
+    if (user?.role === 'super_admin' || user?.role === 'executive_vice_president') return true;
+    return doc.uploaded_by === user?.id;
+  };
+
   const getDocumentTypeStyles = (type: string) => {
     switch (type) {
       case 'receipt': return 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50';
@@ -374,6 +385,7 @@ export default function CompanyDocuments() {
           {categories.map((cat) => {
             const isActive = docTypeFilter === cat.slug;
             const count = countFor(cat.slug);
+            const isRestricted = cat.allowed_roles && cat.allowed_roles.length > 0 && (!user || !cat.allowed_roles.includes(user.role));
             return (
               <button
                 key={cat.id}
@@ -381,6 +393,8 @@ export default function CompanyDocuments() {
                 className={`flex items-center gap-3 p-3 rounded-2xl border transition-all text-left group ${
                   isActive
                     ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-600/25 scale-[1.01]'
+                    : isRestricted
+                    ? 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-500 opacity-75 hover:opacity-100 hover:scale-[1.005]'
                     : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-800/80 text-gray-700 dark:text-gray-300 hover:border-gray-200 dark:hover:border-gray-700 hover:scale-[1.005]'
                 }`}
               >
@@ -396,7 +410,11 @@ export default function CompanyDocuments() {
                   <p className={`text-xs font-bold leading-none mt-0.5 ${isActive ? 'text-blue-100' : 'text-gray-400 dark:text-gray-500'}`}>
                     {count} {count === 1 ? 'file' : 'files'}
                   </p>
-                  {cat.allowed_roles && cat.allowed_roles.length > 0 && (
+                  {isRestricted ? (
+                    <p className="text-[9px] text-red-500 dark:text-red-400 truncate mt-0.5 font-bold uppercase tracking-wider flex items-center gap-1">
+                      <LuLock size={10} /> Access Restricted
+                    </p>
+                  ) : cat.allowed_roles && cat.allowed_roles.length > 0 && (
                     <p className="text-[9px] text-gray-400 dark:text-gray-600 truncate mt-0.5 uppercase tracking-wider">
                       {cat.allowed_roles.join(', ')}
                     </p>
@@ -473,8 +491,12 @@ export default function CompanyDocuments() {
                         </div>
                         <div>
                           <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{doc.title}</p>
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1">
-                            Uploaded by: {doc.uploader?.first_name ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : 'System Upload'}
+                          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1 flex items-center gap-1">
+                            Uploaded by: {doc.uploaded_by === user?.id ? (
+                              <span className="text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-md inline-block leading-none">You</span>
+                            ) : (
+                              doc.uploader?.first_name ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : 'System Upload'
+                            )}
                           </p>
                         </div>
                       </div>
@@ -557,13 +579,15 @@ export default function CompanyDocuments() {
                         >
                           <LuFileDown className="w-4 h-4" /> View
                         </a>
-                        <button
-                          onClick={() => setDeleteDocId(doc.id)}
-                          className="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
-                          title="Delete Document"
-                        >
-                          <LuTrash className="w-4 h-4" /> Delete
-                        </button>
+                        {canDelete(doc) && (
+                          <button
+                            onClick={() => setDeleteDocId(doc.id)}
+                            className="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+                            title="Delete Document"
+                          >
+                            <LuTrash className="w-4 h-4" /> Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -619,7 +643,11 @@ export default function CompanyDocuments() {
 
 // ── Manage Folders Modal (Superadmin) ────────────────────────────────────────
 
-const ALL_ROLES = ['super_admin', 'admin', 'accounting', 'hr', 'sales', 'procurement', 'logistics', 'operations', 'agent', 'driver'];
+const ALL_ROLES = [
+  'super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer',
+  'office_staff', 'accounting_executive', 'corporate_secretary', 'logistics_in_charge',
+  'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser', 'driver'
+];
 
 function ManageFoldersModal({ categories, onClose }: { categories: DocumentCategory[]; onClose: () => void }) {
   const qc = useQueryClient();
