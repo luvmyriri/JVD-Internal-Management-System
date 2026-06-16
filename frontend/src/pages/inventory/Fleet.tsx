@@ -72,7 +72,14 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
   const drivers = usersRes?.data?.data ?? [];
 
   const mutation = useMutation({
-    mutationFn: () => bus ? fleetApi.update(bus.id, form) : fleetApi.create(form as BusFormData),
+    mutationFn: () => {
+      const payload = {
+        ...form,
+        seating_capacity: Number(form.seating_capacity || 0),
+        total_mileage: Number(form.total_mileage || 0),
+      };
+      return bus ? fleetApi.update(bus.id, payload) : fleetApi.create(payload as BusFormData);
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['buses'] }); onClose(); },
   });
 
@@ -161,7 +168,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
                 
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
-                  <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: parseInt(e.target.value) || 0 }))}
+                  <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: e.target.value === '' ? '' : parseInt(e.target.value) as any }))}
                     disabled={mode === 'view'}
                     className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
                       mode === 'view' 
@@ -196,7 +203,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
             </summary>
             <div className="pt-4 px-1">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: parseInt(formatMileage(val)) || 0 })))}
+                {field('Total Mileage (km)', 'total_mileage', 'text', '0', val => setForm(p => ({ ...p, total_mileage: val === '' ? '' : (parseInt(formatMileage(val)) || 0) as any })))}
                 
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Assigned Driver</label>

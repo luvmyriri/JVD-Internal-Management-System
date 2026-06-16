@@ -9,10 +9,14 @@ class BusSeeder extends Seeder
 {
     public function run(): void
     {
-        // SQLite-compatible truncate with FK constraints disabled
-        \DB::statement('PRAGMA foreign_keys = OFF;');
-        \DB::table('buses')->delete();
-        \DB::statement('PRAGMA foreign_keys = ON;');
+        // DB-compatible truncate with FK constraints disabled
+        if (\DB::getDriverName() === 'sqlite') {
+            \DB::statement('PRAGMA foreign_keys = OFF;');
+            \DB::table('buses')->delete();
+            \DB::statement('PRAGMA foreign_keys = ON;');
+        } else {
+            \DB::statement('TRUNCATE TABLE buses RESTART IDENTITY CASCADE;');
+        }
 
         $buses = [
             // Standard Economy

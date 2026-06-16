@@ -50,13 +50,13 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
   const isOperationsOrAdmin = !!(user?.tags?.includes('process:disburse_cash_budget') || user?.tags?.includes('access:general'));
 
   const [form, setForm] = useState({
-    diesel: Number(budget.diesel) || 0,
-    meal_allowance: Number(budget.meal_allowance) || 0,
-    sop: Number(budget.sop) || 0,
-    autosweep: Number(budget.autosweep) || 0,
-    easytrip: Number(budget.easytrip) || 0,
-    coach_captain_salary: Number(budget.coach_captain_salary) || 0,
-    spare_driver_salary: Number(budget.spare_driver_salary) || 0,
+    diesel: (Number(budget.diesel) || '') as number | '',
+    meal_allowance: (Number(budget.meal_allowance) || '') as number | '',
+    sop: (Number(budget.sop) || '') as number | '',
+    autosweep: (Number(budget.autosweep) || '') as number | '',
+    easytrip: (Number(budget.easytrip) || '') as number | '',
+    coach_captain_salary: (Number(budget.coach_captain_salary) || '') as number | '',
+    spare_driver_salary: (Number(budget.spare_driver_salary) || '') as number | '',
   });
 
   const canEdit = 
@@ -67,15 +67,15 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
 
   // Compute live sum reactively
   const liveTotal =
-    Number(form.diesel) +
-    Number(form.meal_allowance) +
-    Number(form.sop) +
-    Number(form.autosweep) +
-    Number(form.easytrip) +
-    Number(form.coach_captain_salary) +
-    Number(form.spare_driver_salary);
+    Number(form.diesel || 0) +
+    Number(form.meal_allowance || 0) +
+    Number(form.sop || 0) +
+    Number(form.autosweep || 0) +
+    Number(form.easytrip || 0) +
+    Number(form.coach_captain_salary || 0) +
+    Number(form.spare_driver_salary || 0);
 
-  const [disbursedAmount, setDisbursedAmount] = useState<number>(Number(budget.disbursed_amount) || Number(budget.total_amount) || liveTotal);
+  const [disbursedAmount, setDisbursedAmount] = useState<number | ''>(Number(budget.disbursed_amount) || Number(budget.total_amount) || liveTotal);
 
   // Sync disbursedAmount with liveTotal when it changes, only if the budget is not already disbursed.
   useEffect(() => {
@@ -84,11 +84,21 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
     }
   }, [liveTotal, budget.status]);
 
+  const getPayload = () => ({
+    diesel: Number(form.diesel || 0),
+    meal_allowance: Number(form.meal_allowance || 0),
+    sop: Number(form.sop || 0),
+    autosweep: Number(form.autosweep || 0),
+    easytrip: Number(form.easytrip || 0),
+    coach_captain_salary: Number(form.coach_captain_salary || 0),
+    spare_driver_salary: Number(form.spare_driver_salary || 0),
+  });
+
   // Step 1: Operations forwards to accounting
   const forwardMutation = useMutation({
     mutationFn: () => cashBudgetApi.update(budget.id, { 
       status: 'pending_accounting',
-      ...form
+      ...getPayload()
     }),
     onSuccess: () => {
       toast.success('Budget forwarded to Accounting for approval.');
@@ -104,7 +114,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
   const approveMutation = useMutation({
     mutationFn: () => cashBudgetApi.update(budget.id, { 
       status: 'approved',
-      ...form
+      ...getPayload()
     }),
     onSuccess: () => {
       toast.success('Budget approved! Ready for disbursement.');
@@ -121,7 +131,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
     mutationFn: () => cashBudgetApi.update(budget.id, { 
       status: 'disbursed',
       disbursed_amount: Number(disbursedAmount),
-      ...form
+      ...getPayload()
     }),
     onSuccess: () => {
       toast.success('Budget disbursed! Invoice created in Billing.');
@@ -285,8 +295,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.diesel}
-                        onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, diesel: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -296,8 +306,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.meal_allowance}
-                        onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, meal_allowance: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -309,8 +319,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.sop}
-                        onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, sop: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -320,8 +330,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.autosweep}
-                        onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, autosweep: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -331,8 +341,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.easytrip}
-                        onChange={e => setForm(p => ({ ...p, easytrip: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, easytrip: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                   </div>
@@ -344,8 +354,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.coach_captain_salary}
-                        onChange={e => setForm(p => ({ ...p, coach_captain_salary: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onChange={e => setForm(p => ({ ...p, coach_captain_salary: e.target.value === '' ? '' : Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-655 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
                     <div className="space-y-1">
@@ -355,7 +365,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                         min="0"
                         step="0.01"
                         value={form.spare_driver_salary}
-                        onChange={e => setForm(p => ({ ...p, spare_driver_salary: Number(e.target.value) }))}
+                        onChange={e => setForm(p => ({ ...p, spare_driver_salary: e.target.value === '' ? '' : Number(e.target.value) }))}
                         className="w-full px-3 py-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-650 rounded-xl text-sm font-semibold text-gray-800 dark:text-gray-150 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </div>
@@ -407,7 +417,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                   min="0"
                   step="0.01"
                   value={disbursedAmount}
-                  onChange={e => setDisbursedAmount(Number(e.target.value))}
+                  onChange={e => setDisbursedAmount(e.target.value === '' ? '' : Number(e.target.value))}
                   className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <p className="text-[9px] text-gray-400 italic">
@@ -538,13 +548,13 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
     travel_date: new Date().toISOString().split('T')[0],
     plate_number: '',
     destination: '',
-    diesel: 0,
-    meal_allowance: 0,
-    sop: 0,
-    autosweep: 0,
-    easytrip: 0,
-    coach_captain_salary: 0,
-    spare_driver_salary: 0,
+    diesel: '' as number | '',
+    meal_allowance: '' as number | '',
+    sop: '' as number | '',
+    autosweep: '' as number | '',
+    easytrip: '' as number | '',
+    coach_captain_salary: '' as number | '',
+    spare_driver_salary: '' as number | '',
     trip_ticket_id: '',
     work_order_id: '',
   });
@@ -596,13 +606,13 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
 
   // Compute live sum reactively
   const liveTotal =
-    Number(form.diesel) +
-    Number(form.meal_allowance) +
-    Number(form.sop) +
-    Number(form.autosweep) +
-    Number(form.easytrip) +
-    Number(form.coach_captain_salary) +
-    Number(form.spare_driver_salary);
+    Number(form.diesel || 0) +
+    Number(form.meal_allowance || 0) +
+    Number(form.sop || 0) +
+    Number(form.autosweep || 0) +
+    Number(form.easytrip || 0) +
+    Number(form.coach_captain_salary || 0) +
+    Number(form.spare_driver_salary || 0);
 
   return (
     <Modal isOpen={true} onClose={onClose} title="New Cash Budget Request" size="lg">
@@ -715,7 +725,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.diesel}
-                  onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, diesel: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -725,7 +735,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.meal_allowance}
-                  onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, meal_allowance: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -735,7 +745,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.sop}
-                  onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, sop: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -745,7 +755,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.easytrip}
-                  onChange={e => setForm(p => ({ ...p, easytrip: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, easytrip: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -755,7 +765,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.autosweep}
-                  onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, autosweep: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -765,7 +775,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.coach_captain_salary}
-                  onChange={e => setForm(p => ({ ...p, coach_captain_salary: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, coach_captain_salary: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -775,7 +785,7 @@ function CreateCashBudgetModal({ onClose }: { onClose: () => void }) {
                   type="number"
                   min="0"
                   value={form.spare_driver_salary}
-                  onChange={e => setForm(p => ({ ...p, spare_driver_salary: Number(e.target.value) }))}
+                  onChange={e => setForm(p => ({ ...p, spare_driver_salary: e.target.value === '' ? '' : Number(e.target.value) }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

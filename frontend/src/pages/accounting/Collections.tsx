@@ -34,7 +34,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     travel_date: new Date().toISOString().split('T')[0],
     pick_up: '',
     drop_off: '',
-    rate: 0,
+    rate: '' as number | '',
   });
 
   // --- Autocomplete state ---
@@ -81,7 +81,10 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    mutation.mutate(form);
+    mutation.mutate({
+      ...form,
+      rate: Number(form.rate || 0),
+    });
   };
 
   const isOther = form.service_type === 'Other';
@@ -193,8 +196,8 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
           <input
             type="number"
             required
-            value={form.rate || ''}
-            onChange={e => setForm(p => ({ ...p, rate: parseFloat(e.target.value) || 0 }))}
+            value={form.rate}
+            onChange={e => setForm(p => ({ ...p, rate: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
             className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -227,7 +230,7 @@ export default function Collections() {
   const [paymentForm, setPaymentForm] = useState({
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'Cash',
-    amount: 0,
+    amount: '' as number | '',
   });
 
   // Debounce search
@@ -266,7 +269,7 @@ export default function Collections() {
       setPaymentForm({
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
-        amount: 0,
+        amount: '' as number | '',
       });
     },
     onError: () => {
@@ -276,8 +279,11 @@ export default function Collections() {
 
   const handleAddPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (paymentForm.amount <= 0) return toast.error('Amount must be greater than 0');
-    paymentMutation.mutate(paymentForm);
+    if (paymentForm.amount === '' || Number(paymentForm.amount) <= 0) return toast.error('Amount must be greater than 0');
+    paymentMutation.mutate({
+      ...paymentForm,
+      amount: Number(paymentForm.amount)
+    });
   };
 
   const remarksMutation = useMutation({
@@ -796,8 +802,8 @@ export default function Collections() {
                   step="0.01"
                   required
                   max={selectedCollection.remaining_balance ?? selectedCollection.rate}
-                  value={paymentForm.amount || ''}
-                  onChange={e => setPaymentForm(p => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
+                  value={paymentForm.amount}
+                  onChange={e => setPaymentForm(p => ({ ...p, amount: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                   className="w-full mt-1 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />

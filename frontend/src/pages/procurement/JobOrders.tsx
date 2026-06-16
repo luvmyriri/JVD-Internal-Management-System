@@ -69,12 +69,15 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
     service_type: 'bus_rental',
     service_date: '',
     destination: '',
-    total_cost: 0,
+    total_cost: '' as any,
     notes: '',
   });
 
   const mutation = useMutation({
-    mutationFn: () => jobOrderApi.create(form),
+    mutationFn: () => jobOrderApi.create({
+      ...form,
+      total_cost: Number(form.total_cost || 0),
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-orders'] }); onClose(); },
   });
 
@@ -191,7 +194,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Estimated Cost (₱)</label>
-                  <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', Number(e.target.value))}
+                  <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', e.target.value === '' ? '' : Number(e.target.value))}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
                 </div>
 
@@ -228,7 +231,7 @@ interface POLineItem { item_name: string; quantity: number; unit_price: number; 
 function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
   const qc = useQueryClient();
   const [supplierId, setSupplierId] = useState<number>(0);
-  const [items, setItems] = useState<POLineItem[]>([{ item_name: '', quantity: 1, unit_price: 0 }]);
+  const [items, setItems] = useState<POLineItem[]>([{ item_name: '', quantity: 1 as any, unit_price: '' as any }]);
 
   const { data: suppliersData, isLoading: suppliersLoading } = useQuery({
     queryKey: ['suppliers-dropdown', 'accredited'],
@@ -240,7 +243,11 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
   const mutation = useMutation({
     mutationFn: () => jobOrderApi.generatePurchaseOrder(jo.id, {
       supplier_id: supplierId,
-      items: items.filter(i => i.item_name.trim()),
+      items: items.filter(i => i.item_name.trim()).map(i => ({
+        ...i,
+        quantity: Number(i.quantity || 1),
+        unit_price: Number(i.unit_price || 0)
+      })),
     }),
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['job-orders'] });
@@ -253,12 +260,12 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
     }
   });
 
-  const addItem = () => setItems(p => [...p, { item_name: '', quantity: 1, unit_price: 0 }]);
+  const addItem = () => setItems(p => [...p, { item_name: '', quantity: 1 as any, unit_price: '' as any }]);
   const removeItem = (idx: number) => setItems(p => p.filter((_, i) => i !== idx));
   const setItem = (idx: number, key: keyof POLineItem, val: string | number) =>
     setItems(p => p.map((it, i) => i === idx ? { ...it, [key]: val } : it));
 
-  const total = items.reduce((s, i) => s + i.quantity * i.unit_price, 0);
+  const total = items.reduce((s, i) => s + (Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
   const canSubmit = supplierId > 0 && items.some(i => i.item_name.trim() && i.quantity > 0);
 
   return (
@@ -305,9 +312,9 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
                 <div key={idx} className="grid grid-cols-12 gap-3 items-center">
                   <input value={item.item_name} onChange={e => setItem(idx, 'item_name', e.target.value)}
                     placeholder="Item / Parts name" className="col-span-5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="number" min={1} value={item.quantity} onChange={e => setItem(idx, 'quantity', Number(e.target.value))}
+                  <input type="number" min={1} value={item.quantity} onChange={e => setItem(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="Qty" className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => setItem(idx, 'unit_price', Number(e.target.value))}
+                  <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => setItem(idx, 'unit_price', e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="Unit price" className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1}
                     className="col-span-1 flex items-center justify-center p-2 text-red-400 hover:text-red-600 disabled:opacity-30 transition">

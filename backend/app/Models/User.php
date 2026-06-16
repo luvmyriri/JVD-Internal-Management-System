@@ -93,6 +93,16 @@ class User extends Authenticatable
         return $this->hasMany(Liquidation::class, 'employee_id');
     }
 
+    public function salary()
+    {
+        return $this->hasOne(EmployeeSalary::class);
+    }
+
+    public function payslips()
+    {
+        return $this->hasMany(Payslip::class);
+    }
+
     // ──────────────────────────────────────────
     // Role helpers
     // ──────────────────────────────────────────

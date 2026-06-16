@@ -13,12 +13,14 @@ import {
   LuPhone,
   LuMail,
   LuWallet,
-  LuLoaderCircle
+  LuLoaderCircle,
+  LuPenLine
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
 
 export interface CartItem {
+  cartId?: string;
   service: Service;
   quantity: number;
   adults?: number;
@@ -41,12 +43,13 @@ export interface CartItem {
 
 interface SalesCheckoutProps {
   cart: CartItem[];
-  removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => void;
-  updateQuantity: (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => void;
+  removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => void;
+  updateQuantity: (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => void;
   clearCart: () => void;
+  onEditCartItem?: (item: CartItem) => void;
 }
 
-export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart }: SalesCheckoutProps) {
+export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart, onEditCartItem }: SalesCheckoutProps) {
 
   // State
   const [customerName, setCustomerName] = useState('');
@@ -287,15 +290,26 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                       )}
                       <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                     </div>
-                    <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="text-gray-300 hover:text-rose-500 transition-colors">
-                      <LuTrash2 className="w-4 h-4" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {onEditCartItem && (
+                        <button
+                          onClick={() => onEditCartItem(item)}
+                          className="text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                          title="Edit details"
+                        >
+                          <LuPenLine className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button onClick={() => removeFromCart(item.service.id, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="text-gray-300 hover:text-rose-500 transition-colors">
+                        <LuTrash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                      <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
                       <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                      <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                     </div>
                     <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>

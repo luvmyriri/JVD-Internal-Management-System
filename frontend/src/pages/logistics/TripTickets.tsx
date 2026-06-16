@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 
 import toast from 'react-hot-toast';
@@ -639,6 +639,47 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
     trip_type: (ticket as any)?.trip_type || 'domestic' as 'domestic' | 'international',
   });
 
+  const [conflicts, setConflicts] = useState<any[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    if (!form.date_of_travel) {
+      setConflicts([]);
+      return;
+    }
+
+    const check = async () => {
+      try {
+        const driverVal = form.driver_id ? Number(form.driver_id) : null;
+        const busVal = form.bus_id ? Number(form.bus_id) : null;
+
+        if (!driverVal && !busVal) {
+          setConflicts([]);
+          return;
+        }
+
+        const res = await tripTicketApi.checkConflict({
+          date_of_travel: form.date_of_travel,
+          driver_id: driverVal,
+          bus_id: busVal,
+          exclude_id: ticket?.id || null,
+        });
+
+        if (active) {
+          setConflicts(res.conflicts || []);
+        }
+      } catch (err) {
+        console.error('Error checking scheduling conflict:', err);
+      }
+    };
+
+    const timer = setTimeout(check, 300);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [form.date_of_travel, form.driver_id, form.bus_id, ticket?.id]);
+
   const mutation = useMutation({
     mutationFn: (data: any) => {
       if (ticket) {
@@ -864,6 +905,21 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 />
               </div>
             </div>
+            {conflicts.length > 0 && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl space-y-2">
+                <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
+                  <span className="text-base">⚠️</span>
+                  <span className="text-xs font-black uppercase tracking-widest">Schedule Conflict Detected</span>
+                </div>
+                <div className="space-y-1">
+                  {conflicts.map((c, i) => (
+                    <p key={i} className="text-xs text-red-700 dark:text-red-400 font-semibold leading-relaxed">
+                      {c.message}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </details>
 
@@ -987,7 +1043,7 @@ export default function TripTickets() {
   });
 
   return (
-    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-4 md:space-y-8">
+    <div className="space-y-4 md:space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
         <div>
           <div className="flex items-center gap-3 text-sm font-bold text-blue-600 dark:text-blue-500 mb-2 uppercase tracking-widest">

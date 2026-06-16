@@ -21,7 +21,10 @@ class TourPackagesSeeder extends Seeder
             ]
         );
 
-        // 2. Add Tours & Travels Packages
+        // Update existing "Tours & Travels" services to "Joiners" category
+        Service::where('category', 'Tours & Travels')->update(['category' => 'Joiners']);
+
+        // 2. Add Joiners Packages
         $tours = [
             // METRO MANILA
             ['name' => 'CITY TOUR', 'tour_kms' => 45, 'tour_hours' => 5, 'bus_price' => 12100.00, 'coaster_price' => 8960.00],
@@ -84,7 +87,7 @@ class TourPackagesSeeder extends Seeder
 
         foreach ($tours as $tour) {
             Service::firstOrCreate(
-                ['name' => $tour['name'], 'category' => 'Tours & Travels'],
+                ['name' => $tour['name'], 'category' => 'Joiners'],
                 [
                     'description' => 'Tour package for ' . $tour['name'],
                     'price' => $tour['bus_price'], // Default base price is bus

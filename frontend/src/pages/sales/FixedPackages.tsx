@@ -103,7 +103,13 @@ export default function FixedPackages() {
   // Joiner specifications states
   const [joinerTourCode, setJoinerTourCode] = useState<string>('');
   const [joinerPickup, setJoinerPickup] = useState<string>('');
-  const [joinerPaxCount, setJoinerPaxCount] = useState<number>(1);
+  const [joinerPaxCount, setJoinerPaxCount] = useState<number | ''>(1);
+  const [editingCartId, setEditingCartId] = useState<string | null>(null);
+
+  const closeDetailModal = () => {
+    setShowDetailModal(false);
+    setEditingCartId(null);
+  };
 
   // Load buses list for selection
   const { data: busesRes } = useQuery({
@@ -207,42 +213,121 @@ export default function FixedPackages() {
     paxCount?: number
   ) => {
     setCart(prev => {
-      const existing = prev.find(item =>
-        item.service.id === service.id &&
-        item.adults === adults &&
-        item.childrenCount === childrenCount &&
-        item.vehicleType === vehicleType &&
-        item.busId === busId &&
-        item.driverId === driverId
-      );
-      if (existing) {
-        return prev.map(item =>
-          (item.service.id === service.id && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId && item.driverId === driverId)
-            ? { ...item, quantity: item.quantity + 1, extraDays, extraHours, customPrice, selectedSeats, travelDate, tourCode, pickupLocation, paxCount }
-            : item
-        );
-      }
-      return [...prev, { service, quantity: 1, adults, childrenCount, customPrice, vehicleType, extraDays, extraHours, busId, selectedSeats, driverId, driverName, travelDate, tourCode, pickupLocation, paxCount }];
+      const cartId = `${service.id}-${Date.now()}-${Math.random()}`;
+      return [...prev, {
+        cartId,
+        service,
+        quantity: 1,
+        adults,
+        childrenCount,
+        customPrice,
+        vehicleType,
+        extraDays,
+        extraHours,
+        busId,
+        selectedSeats,
+        driverId,
+        driverName,
+        travelDate,
+        tourCode,
+        pickupLocation,
+        paxCount
+      }];
     });
   };
 
-  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => {
-    setCart(prev => prev.filter(item =>
-      !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId)
+  const saveCartItemEdit = (
+    cartId: string,
+    adults?: number,
+    childrenCount?: number,
+    customPrice?: number,
+    vehicleType?: 'Bus' | 'Coaster',
+    extraDays?: number,
+    extraHours?: number,
+    busId?: number,
+    selectedSeats?: string[],
+    driverId?: number,
+    driverName?: string,
+    travelDate?: string,
+    tourCode?: string,
+    pickupLocation?: string,
+    paxCount?: number
+  ) => {
+    setCart(prev => prev.map(item =>
+      item.cartId === cartId
+        ? {
+            ...item,
+            adults,
+            childrenCount,
+            customPrice,
+            vehicleType,
+            extraDays,
+            extraHours,
+            busId,
+            selectedSeats,
+            driverId,
+            driverName,
+            travelDate,
+            tourCode,
+            pickupLocation,
+            paxCount
+          }
+        : item
     ));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number) => {
+  const removeFromCart = (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => {
+    setCart(prev => prev.filter(item => {
+      if (cartId && item.cartId) {
+        return item.cartId !== cartId;
+      }
+      return !(item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId);
+    }));
+  };
+
+  const updateQuantity = (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => {
     if (newQty < 1) {
-      removeFromCart(serviceId, adults, childrenCount, vehicleType, busId);
+      removeFromCart(serviceId, adults, childrenCount, vehicleType, busId, cartId);
       return;
     }
-    setCart(prev => prev.map(item => {
-      if (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId) {
-        return { ...item, quantity: newQty };
+    setCart(prev => {
+      const targetItem = prev.find(item => cartId && item.cartId ? item.cartId === cartId : (item.service.id === serviceId && item.adults === adults && item.childrenCount === childrenCount && item.vehicleType === vehicleType && item.busId === busId));
+      if (!targetItem) return prev;
+
+      if (newQty > targetItem.quantity) {
+        const copiesToAdd = newQty - targetItem.quantity;
+        const newItems: CartItem[] = [];
+        for (let i = 0; i < copiesToAdd; i++) {
+          newItems.push({
+            ...targetItem,
+            cartId: `${targetItem.service.id}-${Date.now()}-${Math.random()}`,
+            quantity: 1
+          });
+        }
+        return [...prev, ...newItems];
+      } else {
+        return prev.filter(item => item.cartId !== cartId);
       }
-      return item;
-    }));
+    });
+  };
+
+  const onEditCartItem = (item: CartItem) => {
+    setSelectedServiceForDetail(item.service);
+    setBookingDate(item.travelDate || '');
+    setBookingBusId(item.busId || null);
+    setBookingSeats(item.selectedSeats || []);
+    setBookingDriverId(item.driverId || null);
+    setBookingDriverName(item.driverName || '');
+    setJoinerTourCode(item.tourCode || '');
+    setJoinerPickup(item.pickupLocation || '');
+    setJoinerPaxCount(item.paxCount || 1);
+    setBookingAdults(item.adults || 1);
+    setBookingChildren(item.childrenCount || 0);
+    setBookingTourVehicle(item.vehicleType || 'Bus');
+    setBookingTourExtraDays(item.extraDays || 0);
+    setBookingTourExtraHours(item.extraHours || 0);
+    setEditingCartId(item.cartId || null);
+    setShowDetailModal(true);
   };
 
   const selectedDetailChildDiscount = selectedServiceForDetail?.child_discount !== undefined ? Number(selectedServiceForDetail.child_discount) : 30;
@@ -873,7 +958,7 @@ export default function FixedPackages() {
             {/* Tabs & Action Buttons */}
             <div className="flex flex-wrap items-center gap-3 flex-1 sm:flex-none">
               <div className="flex flex-wrap bg-gray-50 dark:bg-gray-800 p-1 rounded-2xl border border-gray-100 dark:border-gray-700 items-center gap-1 flex-1 sm:flex-none">
-                {['All', 'Documentation', 'Package', 'Transport', 'Tours & Travels', 'Printing Services'].map((cat) => (
+                {['All', 'Documentation', 'Package', 'Transport', 'Joiners', 'Printing Services'].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
@@ -1071,7 +1156,7 @@ export default function FixedPackages() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (service.has_booking_fields || service.is_tour || service.category === 'Bus Rental' || ['Package', 'Tours & Travels', 'Transport', 'Other'].includes(service.category)) {
+                      if (service.has_booking_fields || service.is_tour || service.category === 'Bus Rental' || ['Package', 'Joiners', 'Transport', 'Other'].includes(service.category)) {
                         setSelectedServiceForDetail(service);
                         setDetailImageIndex(0);
                         setBookingAdults(1);
@@ -1111,6 +1196,7 @@ export default function FixedPackages() {
         removeFromCart={removeFromCart}
         updateQuantity={updateQuantity}
         clearCart={() => setCart([])}
+        onEditCartItem={onEditCartItem}
       />
 
       {/* Add/Edit Service Modal */}
@@ -1187,7 +1273,7 @@ export default function FixedPackages() {
                     onChange={e => setNewService({ ...newService, category: e.target.value })}
                   >
                     <option value="Package">Travel Package</option>
-                    <option value="Tours & Travels">Tours & Travels</option>
+                    <option value="Joiners">Joiners</option>
                     <option value="Documentation">Documentation</option>
                     <option value="Transport">Transportation</option>
                     <option value="Printing Services">Printing Services</option>
@@ -1196,7 +1282,7 @@ export default function FixedPackages() {
                 </div>
               </div>
 
-              {newService.category === 'Tours & Travels' && (
+              {newService.category === 'Joiners' && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Price (₱)</label>
@@ -1522,99 +1608,95 @@ export default function FixedPackages() {
 
       {/* Service Detail Modal */}
       {showDetailModal && selectedServiceForDetail && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300" onClick={() => setShowDetailModal(false)}>
-          <div className="bg-white dark:bg-gray-900 w-full max-w-4xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]" onClick={(e) => e.stopPropagation()}>
-            {/* Gallery Column */}
-            <div className="flex-1 bg-gray-50 dark:bg-gray-800 relative group">
-              {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
-                <>
-                  <img
-                    src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http')
-                      ? selectedServiceForDetail.images[detailImageIndex]
-                      : `/storage/${selectedServiceForDetail.images[detailImageIndex]}`}
-                    className="w-full h-full object-contain p-6 mx-auto bg-gray-50 dark:bg-gray-800"
-                    alt={selectedServiceForDetail.name}
-                  />
-                  {selectedServiceForDetail.images.length > 1 && (
-                    <div className="absolute inset-x-0 bottom-8 flex justify-center gap-2">
-                      {selectedServiceForDetail.images.map((_, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setDetailImageIndex(i)}
-                          className={`w-3 h-3 rounded-full border-2 border-white transition-all ${detailImageIndex === i ? 'bg-blue-600 w-8' : 'bg-white/50'}`}
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {selectedServiceForDetail.images.length > 1 && (
-                    <div className="absolute inset-y-0 inset-x-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronLeft className="w-6 h-6" /></button>
-                      <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronRight className="w-6 h-6" /></button>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-650 gap-4">
-                  <LuImage className="w-20 h-20 opacity-10" />
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em]">No Preview Available</p>
-                </div>
-              )}
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="absolute top-6 right-6 p-3 bg-white dark:bg-gray-900/20 backdrop-blur-md border border-white/20 rounded-2xl text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"
-              >
-                <LuX className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Info Column */}
-            <div className="w-full md:w-[400px] p-10 flex flex-col border-l border-gray-100 dark:border-gray-800 relative">
-              <div className="mb-8">
-                <div className="flex items-center justify-between">
-                  <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600' :
-                    selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600' :
-                      'bg-violet-50 text-violet-600'
-                    }`}>
-                    {selectedServiceForDetail.category}
-                  </span>
-
-                  {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
-                    <Dropdown
-                      items={[
-                        {
-                          label: 'Edit Service',
-                          icon: <Pencil size={16} />,
-                          onClick: () => handleOpenEditModal(selectedServiceForDetail)
-                        },
-                        {
-                          label: 'Delete Service',
-                          icon: <Trash2 size={16} />,
-                          onClick: () => handleDeleteService(selectedServiceForDetail.id),
-                          variant: 'danger'
-                        },
-                      ]}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300" onClick={closeDetailModal}>
+          <div className="bg-white dark:bg-gray-900 w-full max-w-6xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[85vh] md:h-[80vh]" onClick={(e) => e.stopPropagation()}>
+            {/* Left Column: Image & Service Info */}
+            <div className="w-full md:w-[380px] flex-shrink-0 bg-gray-50 dark:bg-gray-800/40 border-r border-gray-100 dark:border-gray-800 flex flex-col h-full overflow-y-auto custom-scrollbar">
+              {/* Image Gallery */}
+              <div className="h-64 bg-gray-100 dark:bg-gray-800 relative group flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
+                {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
+                  <>
+                    <img
+                      src={selectedServiceForDetail.images[detailImageIndex]?.startsWith('http')
+                        ? selectedServiceForDetail.images[detailImageIndex]
+                        : `/storage/${selectedServiceForDetail.images[detailImageIndex]}`}
+                      className="w-full h-full object-contain p-4 mx-auto bg-gray-100 dark:bg-gray-800"
+                      alt={selectedServiceForDetail.name}
                     />
-                  )}
-                </div>
-                <h3 className="text-3xl font-black text-gray-900 dark:text-white mt-4 leading-tight uppercase tracking-tighter">
-                  {selectedServiceForDetail.name}
-                </h3>
+                    {selectedServiceForDetail.images.length > 1 && (
+                      <div className="absolute inset-x-0 bottom-4 flex justify-center gap-1.5 z-10">
+                        {selectedServiceForDetail.images.map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => setDetailImageIndex(i)}
+                            className={`w-2 h-2 rounded-full border border-white transition-all ${detailImageIndex === i ? 'bg-blue-600 w-5' : 'bg-white/50'}`}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {selectedServiceForDetail.images.length > 1 && (
+                      <div className="absolute inset-y-0 inset-x-2 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <button onClick={() => setDetailImageIndex(prev => prev > 0 ? prev - 1 : (selectedServiceForDetail.images?.length || 1) - 1)} className="p-2 bg-white/80 dark:bg-gray-900/60 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronLeft className="w-4 h-4" /></button>
+                        <button onClick={() => setDetailImageIndex(prev => (prev + 1) % (selectedServiceForDetail.images?.length || 1))} className="p-2 bg-white/80 dark:bg-gray-900/60 backdrop-blur-md rounded-full text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 transition-all"><LuChevronRight className="w-4 h-4" /></button>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center text-gray-300 dark:text-gray-655 gap-3">
+                    <LuImage className="w-12 h-12 opacity-10" />
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em]">No Preview Available</p>
+                  </div>
+                )}
               </div>
 
-              <div className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 custom-scrollbar">
+              {/* Service Info Content */}
+              <div className="p-6 space-y-6 flex-1">
                 <div>
-                  <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Service Description</p>
-                  <p className="text-sm text-gray-655 dark:text-gray-405 font-medium leading-relaxed">
+                  <div className="flex items-center justify-between gap-4">
+                    <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
+                      selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' :
+                      selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' :
+                      'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400'
+                    }`}>
+                      {selectedServiceForDetail.category}
+                    </span>
+
+                    {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user?.role || '') && (
+                      <Dropdown
+                        items={[
+                          {
+                            label: 'Edit Service',
+                            icon: <Pencil size={16} />,
+                            onClick: () => handleOpenEditModal(selectedServiceForDetail)
+                          },
+                          {
+                            label: 'Delete Service',
+                            icon: <Trash2 size={16} />,
+                            onClick: () => handleDeleteService(selectedServiceForDetail.id),
+                            variant: 'danger'
+                          },
+                        ]}
+                      />
+                    )}
+                  </div>
+                  <h3 className="text-xl font-black text-gray-900 dark:text-white mt-3 leading-tight uppercase tracking-tight">
+                    {selectedServiceForDetail.name}
+                  </h3>
+                </div>
+
+                <div>
+                  <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Service Description</p>
+                  <p className="text-xs text-gray-600 dark:text-gray-350 font-medium leading-relaxed">
                     {selectedServiceForDetail.description}
                   </p>
                 </div>
 
                 {/* Inclusions & Exclusions */}
                 {(selectedServiceForDetail.inclusions || selectedServiceForDetail.exclusions) && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     {selectedServiceForDetail.inclusions && (
-                      <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-[1.5rem] border border-emerald-100 dark:border-emerald-900/30">
-                        <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Inclusions</p>
+                      <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/10 rounded-[1.2rem] border border-emerald-100/30 dark:border-emerald-900/20">
+                        <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-2">Inclusions</p>
                         <ul className="text-xs text-emerald-800 dark:text-emerald-300 font-medium space-y-1.5 list-none">
                           {selectedServiceForDetail.inclusions.split('\n').map((item, idx) => (
                             <li key={idx} className="flex items-start gap-1.5">
@@ -1626,9 +1708,9 @@ export default function FixedPackages() {
                       </div>
                     )}
                     {selectedServiceForDetail.exclusions && (
-                      <div className="p-4 bg-rose-50/50 dark:bg-rose-950/10 rounded-[1.5rem] border border-rose-100 dark:border-rose-900/30">
-                        <p className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Exclusions</p>
-                        <ul className="text-xs text-rose-800 dark:text-rose-300 font-medium space-y-1.5 list-none">
+                      <div className="p-4 bg-rose-50/50 dark:bg-rose-950/10 rounded-[1.2rem] border border-rose-100/30 dark:border-rose-900/20">
+                        <p className="text-[9px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest mb-2">Exclusions</p>
+                        <ul className="text-xs text-rose-805 dark:text-rose-300 font-medium space-y-1.5 list-none">
                           {selectedServiceForDetail.exclusions.split('\n').map((item, idx) => (
                             <li key={idx} className="flex items-start gap-1.5">
                               <span className="text-rose-600 dark:text-rose-400">✕</span>
@@ -1643,12 +1725,12 @@ export default function FixedPackages() {
 
                 {/* Cost Breakdown — Visible to all Sales page viewers */}
                 {['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'reservation_officer', 'office_staff'].includes(user?.role || '') && selectedServiceForDetail.cost_breakdown && (
-                  <div className="p-5 bg-amber-50 dark:bg-amber-900/10 rounded-[2rem] border border-amber-100 dark:border-amber-800/40">
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 rounded-[1.5rem] border border-amber-100 dark:border-amber-800/40">
                     <div className="flex items-center gap-2 mb-3">
-                      <p className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cost Breakdown</p>
-                      <span className="text-[9px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Internal Use Only</span>
+                      <p className="text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Cost Breakdown</p>
+                      <span className="text-[8px] font-black text-amber-600 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-0.5 rounded-full uppercase tracking-widest">Internal Use Only</span>
                     </div>
-                    <p className="text-sm text-amber-800 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap mb-3">
+                    <p className="text-xs text-amber-805 dark:text-amber-200 font-medium leading-relaxed whitespace-pre-wrap mb-3">
                       {selectedServiceForDetail.cost_breakdown}
                     </p>
 
@@ -1660,27 +1742,25 @@ export default function FixedPackages() {
                       const diff = breakdownSum - servicePrice;
 
                       return (
-                        <div className={`p-4 rounded-[1.5rem] border transition-all duration-300 ${isTallyMatch
+                        <div className={`p-3 rounded-[1rem] border transition-all duration-300 ${isTallyMatch
                           ? 'bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100/50 dark:border-emerald-900/30 text-emerald-800 dark:text-emerald-300'
                           : 'bg-amber-50/50 dark:bg-amber-950/10 border-amber-100/50 dark:border-amber-900/30 text-amber-800 dark:text-amber-300'
                           }`}>
-                          <div className="flex items-center justify-between text-xs font-bold">
-                            <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-between text-[11px] font-bold">
+                            <div className="flex items-center gap-1.5">
                               {isTallyMatch ? (
-                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-extrabold">✓</span>
+                                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 font-extrabold">✓</span>
                               ) : (
-                                <span className="flex items-center justify-center w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
+                                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-amber-100 dark:bg-amber-900/50 text-amber-600 dark:text-amber-400 font-extrabold">!</span>
                               )}
                               <span>
-                                {isTallyMatch
-                                  ? 'Breakdown tallies with Base Price'
-                                  : 'Breakdown does not tally with Base Price'}
+                                {isTallyMatch ? 'Tallies' : 'Mismatch'}
                               </span>
                             </div>
                             <div className="text-right">
                               <div>Sum: <span className="font-extrabold">₱{breakdownSum.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span></div>
                               {!isTallyMatch && (
-                                <div className="text-[10px] opacity-85 mt-0.5">
+                                <div className="text-[9px] opacity-85 mt-0.5">
                                   Diff: <span className="font-extrabold">{diff > 0 ? '+' : ''}₱{diff.toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
                                 </div>
                               )}
@@ -1694,23 +1774,44 @@ export default function FixedPackages() {
 
                 {selectedServiceForDetail.creator && (
                   <div>
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2.5">Published By</p>
-                    <div className="flex items-center gap-2.5 bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-[1.5rem] border border-gray-100 dark:border-gray-800">
-                      <div className="w-9 h-9 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xs">
+                    <p className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2">Published By</p>
+                    <div className="flex items-center gap-2 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-[1.2rem] border border-gray-150 dark:border-gray-800">
+                      <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-[10px]">
                         {selectedServiceForDetail.creator.first_name[0]}{selectedServiceForDetail.creator.last_name[0]}
                       </div>
                       <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none">
+                        <p className="text-[11px] font-black text-gray-900 dark:text-white leading-none">
                           {selectedServiceForDetail.creator.first_name} {selectedServiceForDetail.creator.last_name}
                         </p>
-                        <p className="text-[9px] text-gray-405 mt-1 font-bold">
+                        <p className="text-[8px] text-gray-400 mt-1 font-bold">
                           {selectedServiceForDetail.creator.email}
                         </p>
                       </div>
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
 
+            {/* Right Column: Booking Workspace */}
+            <div className="flex-1 p-8 md:p-10 flex flex-col h-full bg-white dark:bg-gray-900 relative">
+              {/* Header */}
+              <div className="flex justify-between items-start mb-6 gap-4 flex-shrink-0">
+                <div>
+                  <h4 className="text-lg font-black text-gray-950 dark:text-white uppercase tracking-tight">Booking Configuration</h4>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Configure travel dates, vehicle selection, and seating layout.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeDetailModal}
+                  className="p-3 bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-750 border border-gray-100 dark:border-gray-700 rounded-2xl text-gray-500 hover:text-gray-800 dark:hover:text-white transition-all shadow-sm"
+                >
+                  <LuX className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Scrollable Form Container */}
+              <div className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 custom-scrollbar">
                 {/* Booking options */}
                 {selectedServiceForDetail.has_booking_fields && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
@@ -1825,12 +1926,12 @@ export default function FixedPackages() {
                 )}
 
                 {/* Joiner Specifications Block */}
-                {(['Package', 'Tours & Travels', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                {(['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
                     
                     {/* Travel Date (Hide here if Bus Rental block will show it) */}
-                    {!(['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                    {!(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
                         <input
@@ -1863,7 +1964,7 @@ export default function FixedPackages() {
                           min="1"
                           className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
                           value={joinerPaxCount}
-                          onChange={(e) => setJoinerPaxCount(Math.max(1, Number(e.target.value)))}
+                          onChange={(e) => setJoinerPaxCount(e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <div className="space-y-2">
@@ -1881,7 +1982,7 @@ export default function FixedPackages() {
                 )}
 
                 {/* Bus Rental & Seating Options (Conditional for Bus Rental or Tour with Bus) */}
-                {(['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                {(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Rental & Seating Options</p>
                     
@@ -1959,8 +2060,9 @@ export default function FixedPackages() {
                     {bookingBusId && bookingDate && (
                       <div className="space-y-3">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
-                        <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
+                        <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-w-full overflow-x-auto">
                           <BusLayout
+                            compact={true}
                             totalSeats={buses.find(b => b.id === bookingBusId)?.seating_capacity || 49}
                             hasRestroom={buses.find(b => b.id === bookingBusId)?.model?.toLowerCase().includes('vip') || false}
                             selectedSeats={bookingSeats}
@@ -2035,42 +2137,121 @@ export default function FixedPackages() {
 
               <div className="space-y-3 font-black">
                 {(() => {
-                  const isBusAssigned = ['Bus Rental', 'Transport', 'Package', 'Tours & Travels', 'Joiner', 'Joiners'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
-                  const isBusSelectionInvalid = isBusAssigned && (!bookingDate || !bookingBusId || !bookingDriverId || bookingSeats.length === 0);
+                  const isBusAssigned = ['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
+                  const selectedBus = bookingBusId ? buses.find((b: any) => b.id === bookingBusId) : null;
+                  const isVipBus = selectedBus?.model?.toLowerCase().includes('vip');
+                  const isVipPackage = selectedServiceForDetail.name.toLowerCase().includes('vip');
+                  const isStandardPackage = selectedServiceForDetail.name.toLowerCase().includes('standard') || selectedServiceForDetail.name.toLowerCase().includes('economy');
+                  const totalPax = selectedServiceForDetail.has_booking_fields ? (bookingAdults + bookingChildren) : (joinerPaxCount === '' ? 1 : joinerPaxCount);
+
+                  // VIP / Economy mismatch
+                  const hasBusTypeMismatch = bookingBusId && (
+                    (isVipPackage && !isVipBus) ||
+                    (isStandardPackage && isVipBus)
+                  );
+
+                  // Pax count exceeds capacity
+                  const isPaxExceedingCapacity = selectedBus && totalPax > selectedBus.seating_capacity;
+
+                  // Seat selection mismatch
+                  const isSeatSelectionMismatch = isBusAssigned && bookingBusId && bookingSeats.length !== totalPax;
+
+                  const isBusSelectionInvalid = isBusAssigned && (
+                    !bookingDate ||
+                    !bookingBusId ||
+                    !bookingDriverId ||
+                    bookingSeats.length === 0 ||
+                    hasBusTypeMismatch ||
+                    isPaxExceedingCapacity ||
+                    isSeatSelectionMismatch
+                  );
 
                   return (
-                    <button
-                      disabled={isBusSelectionInvalid}
-                      onClick={() => {
-                        const isJoinerCategory = ['Package', 'Tours & Travels', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
-                        const travelDateParam = bookingDate || undefined;
-                        const tourCodeParam = isJoinerCategory ? (joinerTourCode || undefined) : undefined;
-                        const pickupLocationParam = isJoinerCategory ? (joinerPickup || undefined) : undefined;
-                        const paxCountParam = isJoinerCategory ? joinerPaxCount : undefined;
+                    <div className="space-y-3">
+                      {/* Validation Warnings/Errors */}
+                      {isBusAssigned && (
+                        <div className="space-y-2">
+                          {/* VIP / Economy Warning */}
+                          {hasBusTypeMismatch && (
+                            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-2xl flex items-start gap-2">
+                              <span className="text-amber-600 dark:text-amber-400 text-xs">⚠️</span>
+                              <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tight">
+                                {isVipPackage && "This VIP package requires a VIP Bus, but a Standard/Economy Bus is selected."}
+                                {isStandardPackage && "This Standard/Economy package requires a Standard/Economy Bus, but a VIP Bus is selected."}
+                              </div>
+                            </div>
+                          )}
 
-                        if (selectedServiceForDetail.is_tour) {
-                          const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
-                          const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
-                          const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
-                          const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                          addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
-                        } else if (selectedServiceForDetail.has_booking_fields) {
-                          const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                          addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
-                        } else {
-                          addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
-                        }
-                        setShowDetailModal(false);
-                      }}
-                      className={`w-full py-5 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
-                        isBusSelectionInvalid
-                          ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-500'
-                          : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                      }`}
-                    >
-                      <LuPlus className="w-5 h-5" />
-                      {isBusSelectionInvalid ? 'Select Date, Bus & Seats' : 'Add to Current Order'}
-                    </button>
+                          {/* Pax Exceeding Capacity Error */}
+                          {isPaxExceedingCapacity && (
+                            <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-2xl flex items-start gap-2">
+                              <span className="text-red-600 dark:text-red-400 text-xs">❌</span>
+                              <div className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-tight">
+                                Pax count ({totalPax}) exceeds the selected bus capacity ({selectedBus.seating_capacity} seats).
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Seat Selection Mismatch Error */}
+                          {isSeatSelectionMismatch && (
+                            <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-2xl flex items-start gap-2">
+                              <span className="text-red-600 dark:text-red-400 text-xs">❌</span>
+                              <div className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-tight">
+                                Please select exactly {totalPax} seats for {totalPax} Pax. (Currently selected: {bookingSeats.length})
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <button
+                        disabled={isBusSelectionInvalid}
+                        onClick={() => {
+                          const isJoinerCategory = ['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
+                          const travelDateParam = bookingDate || undefined;
+                          const tourCodeParam = isJoinerCategory ? (joinerTourCode || undefined) : undefined;
+                          const pickupLocationParam = isJoinerCategory ? (joinerPickup || undefined) : undefined;
+                          const paxCountParam = isJoinerCategory ? (joinerPaxCount === '' ? 1 : Math.max(1, joinerPaxCount)) : undefined;
+
+                          if (editingCartId) {
+                            if (selectedServiceForDetail.is_tour) {
+                              const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
+                              const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
+                              const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
+                              const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
+                              saveCartItemEdit(editingCartId, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            } else if (selectedServiceForDetail.has_booking_fields) {
+                              const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
+                              saveCartItemEdit(editingCartId, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            } else {
+                              saveCartItemEdit(editingCartId, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            }
+                          } else {
+                            if (selectedServiceForDetail.is_tour) {
+                              const basePrice = bookingTourVehicle === 'Bus' ? (selectedServiceForDetail.bus_price || 0) : (selectedServiceForDetail.coaster_price || 0);
+                              const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
+                              const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
+                              const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
+                              addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            } else if (selectedServiceForDetail.has_booking_fields) {
+                              const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
+                              addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            } else {
+                              addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                            }
+                          }
+                          closeDetailModal();
+                        }}
+                        className={`w-full py-5 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
+                          isBusSelectionInvalid
+                            ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-500'
+                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                        }`}
+                      >
+                        {editingCartId ? <LuCheck className="w-5 h-5" /> : <LuPlus className="w-5 h-5" />}
+                        {editingCartId ? 'Save Changes' : (isBusSelectionInvalid ? 'Select Date, Bus & Seats' : 'Add to Current Order')}
+                      </button>
+                    </div>
                   );
                 })()}
                 <button
@@ -2081,7 +2262,8 @@ export default function FixedPackages() {
                   <LuPrinter className="w-5 h-5" /> Print Brochure / Quotation
                 </button>
                 <button
-                  onClick={() => setShowDetailModal(false)}
+                  type="button"
+                  onClick={closeDetailModal}
                   className="w-full py-5 bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 rounded-2xl text-[10px] uppercase tracking-widest hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
                 >
                   Keep Browsing

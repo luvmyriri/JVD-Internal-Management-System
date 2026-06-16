@@ -27,6 +27,7 @@ export interface Service {
     last_name: string;
     email: string;
   };
+  max_pax?: number;
 }
 
 export interface InvoiceItem {
@@ -113,6 +114,7 @@ export const billingApi = {
     cost_breakdown?: string;
     inclusions?: string;
     exclusions?: string;
+    max_pax?: number;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -133,6 +135,7 @@ export const billingApi = {
     cost_breakdown?: string;
     inclusions?: string;
     exclusions?: string;
+    max_pax?: number;
   }) => client.put(`/billing/services/${id}`, data),
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 
@@ -141,4 +144,6 @@ export const billingApi = {
     client.get('/billing/reports/summary', { params: { range } }),
   getReportsDetailed: (range = 'month') => 
     client.get('/billing/reports/detailed', { params: { range } }),
+  getServiceOccupancy: (id: number, date: string) => 
+    client.get(`/billing/services/${id}/occupancy`, { params: { travel_date: date } }),
 };

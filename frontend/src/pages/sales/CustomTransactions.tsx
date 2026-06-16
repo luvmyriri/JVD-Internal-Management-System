@@ -42,7 +42,7 @@ export default function CustomTransactions() {
     name: '',
     category: 'Bus Rental',
     otherCategory: '',
-    price: 0,
+    price: '' as number | '',
     quantity: 1,
     description: '',
   });
@@ -53,7 +53,7 @@ export default function CustomTransactions() {
     vehicleType: 'Bus',
     route: '',
     serviceDate: '',
-    days: 1,
+    days: 1 as number | '',
     plateNumber: '',
     inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
     travelDate: '',
@@ -62,7 +62,7 @@ export default function CustomTransactions() {
     driverName: '',
     selectedSeats: [] as string[],
     pickupLocation: '',
-    paxCount: 1
+    paxCount: 1 as number | ''
   });
 
   // Load calendar for selected bus to check seat occupancy on travel date
@@ -94,7 +94,7 @@ export default function CustomTransactions() {
   const [eduTour, setEduTour] = useState({
     schoolName: '',
     gradeLevel: '',
-    expectedPax: 50,
+    expectedPax: 50 as number | '',
     stops: '',
     serviceDate: '',
     busId: '',
@@ -105,8 +105,8 @@ export default function CustomTransactions() {
   const [tourPackage, setTourPackage] = useState({
     destination: '',
     travelDates: '',
-    adults: 1,
-    children: 0,
+    adults: 1 as number | '',
+    children: 0 as number | '',
     accommodation: 'Hotel',
     itinerary: ''
   });
@@ -123,7 +123,7 @@ export default function CustomTransactions() {
   const [joiners, setJoiners] = useState({
     tourCode: '',
     travelDate: '',
-    paxCount: 1,
+    paxCount: 1 as number | '',
     pickupLocation: ''
   });
 
@@ -320,7 +320,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
 
   const handleAddCustomTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customForm.name || customForm.price <= 0) {
+    if (!customForm.name || customForm.price === '' || Number(customForm.price) <= 0) {
       toast.error('Please enter a valid service name and price.');
       return;
     }
@@ -338,7 +338,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       const res = await billingApi.createService({
         name: customForm.name,
         category: customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category,
-        price: customForm.price,
+        price: Number(customForm.price || 0),
         description: finalDescription || 'Custom service arrangement',
         is_tour: false,
         has_booking_fields: false,
@@ -367,23 +367,23 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           serviceDateParam = busRental.serviceDate || undefined;
           destinationParam = busRental.route || undefined;
           pickupLocationParam = busRental.pickupLocation || undefined;
-          paxCountParam = busRental.paxCount || undefined;
+          paxCountParam = busRental.paxCount ? Number(busRental.paxCount) : undefined;
         } else if (customForm.category === 'Joiners') {
           travelDateParam = joiners.travelDate || undefined;
           tourCodeParam = joiners.tourCode || undefined;
           pickupLocationParam = joiners.pickupLocation || undefined;
-          paxCountParam = joiners.paxCount || undefined;
+          paxCountParam = joiners.paxCount ? Number(joiners.paxCount) : undefined;
           serviceDateParam = joiners.travelDate || undefined;
           destinationParam = joiners.tourCode || undefined;
         } else if (customForm.category === 'Tour Package') {
           travelDateParam = tourPackage.travelDates || undefined;
           tourCodeParam = tourPackage.destination || undefined;
-          paxCountParam = (tourPackage.adults + tourPackage.children) || undefined;
+          paxCountParam = (Number(tourPackage.adults || 0) + Number(tourPackage.children || 0)) || undefined;
           serviceDateParam = tourPackage.travelDates || undefined;
           destinationParam = tourPackage.destination || undefined;
         } else if (customForm.category === 'Educational Tour') {
           tourCodeParam = eduTour.schoolName || undefined;
-          paxCountParam = eduTour.expectedPax || undefined;
+          paxCountParam = eduTour.expectedPax ? Number(eduTour.expectedPax) : undefined;
           serviceDateParam = eduTour.serviceDate || undefined;
           destinationParam = eduTour.stops || undefined;
           busIdParam = eduTour.busId ? Number(eduTour.busId) : undefined;
@@ -412,7 +412,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           name: '',
           category: 'Bus Rental',
           otherCategory: '',
-          price: 0,
+          price: '',
           quantity: 1,
           description: '',
         });
@@ -474,7 +474,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.days}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, days: Math.max(1, Number(e.target.value)) }))}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, days: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
             </div>
@@ -606,7 +606,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.paxCount}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, paxCount: Math.max(1, Number(e.target.value)) }))}
+                  onChange={(e) => setBusRental(prev => ({ ...prev, paxCount: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">
@@ -682,7 +682,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={eduTour.expectedPax}
-                  onChange={(e) => setEduTour(prev => ({ ...prev, expectedPax: Math.max(1, Number(e.target.value)) }))}
+                  onChange={(e) => setEduTour(prev => ({ ...prev, expectedPax: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
             </div>
@@ -787,7 +787,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={tourPackage.adults}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, adults: Math.max(1, Number(e.target.value)) }))}
+                  onChange={(e) => setTourPackage(prev => ({ ...prev, adults: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">
@@ -797,7 +797,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="0"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={tourPackage.children}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, children: Math.max(0, Number(e.target.value)) }))}
+                  onChange={(e) => setTourPackage(prev => ({ ...prev, children: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">
@@ -930,7 +930,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={joiners.paxCount}
-                  onChange={(e) => setJoiners(prev => ({ ...prev, paxCount: Math.max(1, Number(e.target.value)) }))}
+                  onChange={(e) => setJoiners(prev => ({ ...prev, paxCount: e.target.value === '' ? '' : Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-2">
@@ -1064,8 +1064,8 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                     step="any"
                     placeholder="PHP Price"
                     className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                    value={customForm.price || ''}
-                    onChange={(e) => setCustomForm(prev => ({ ...prev, price: Number(e.target.value) }))}
+                    value={customForm.price}
+                    onChange={(e) => setCustomForm(prev => ({ ...prev, price: e.target.value === '' ? '' : Number(e.target.value) }))}
                   />
                 </div>
               </div>

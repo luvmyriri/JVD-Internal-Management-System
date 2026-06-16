@@ -28,6 +28,7 @@ use App\Http\Controllers\TripTicketController;
 use App\Http\Controllers\CashBudgetRequestController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PayrollController;
 
 /*
 |--------------------------------------------------------------------------
@@ -63,6 +64,124 @@ Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettin
 // Public Visa Document Request upload routes
 Route::get('/public/visa-requests/{token}', [PassportCaseController::class, 'verifyPublicToken'])->name('passport-cases.public.verify');
 Route::post('/public/visa-requests/{token}/upload', [PassportCaseController::class, 'uploadPublicDocument'])->name('passport-cases.public.upload');
+
+// Public endpoints for presentation/showcase website connection
+Route::get('/public/buses', function () {
+    return response()->json([
+        'success' => true,
+        'data' => \App\Models\Bus::orderBy('plate_number')->get(['id', 'plate_number', 'model', 'status', 'custom_seats'])
+    ]);
+});
+
+Route::get('/public/drivers', function () {
+    return response()->json([
+        'success' => true,
+        'data' => \App\Models\User::where('role', 'driver')->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'email'])
+    ]);
+});
+
+Route::get('/public/suppliers', function () {
+    return response()->json([
+        'success' => true,
+        'data' => \App\Models\Supplier::orderBy('company_name')->get(['id', 'company_name', 'accreditation_status', 'contact_person', 'email'])->map(function ($supplier) {
+            return [
+                'id' => $supplier->id,
+                'name' => $supplier->company_name,
+                'accreditation_status' => $supplier->accreditation_status,
+                'contact_person' => $supplier->contact_person,
+                'email' => $supplier->email
+            ];
+        })
+    ]);
+});
+
+Route::get('/public/trip-tickets', function () {
+    $tickets = \App\Models\TripTicket::with(['bus', 'driver', 'workOrders.jobOrders'])
+        ->orderBy('created_at', 'desc')
+        ->take(10)
+        ->get();
+
+    return response()->json([
+        'success' => true,
+        'data' => $tickets->map(function ($ticket) {
+            $wo = $ticket->workOrders->first();
+            $jo = $wo ? $wo->jobOrders->first() : null;
+            $safetyChecked = $wo && $wo->status === 'completed' && $jo && $jo->status === 'completed';
+            return [
+                'id' => $ticket->id,
+                'control_no' => $ticket->control_no,
+                'date_of_travel' => $ticket->date_of_travel,
+                'pick_up' => $ticket->pick_up,
+                'drop_off' => $ticket->drop_off,
+                'status' => $ticket->status,
+                'driver' => $ticket->driver ? ($ticket->driver->first_name . ' ' . $ticket->driver->last_name) : 'TBA',
+                'bus' => $ticket->bus ? ($ticket->bus->model . ' (' . $ticket->bus->plate_number . ')') : 'TBA',
+                'safety_checked' => $safetyChecked,
+                'work_order' => $wo ? [
+                    'id' => $wo->id,
+                    'wo_number' => $wo->wo_number,
+                    'status' => $wo->status,
+                ] : null,
+                'job_order' => $jo ? [
+                    'id' => $jo->id,
+                    'jo_number' => $jo->jo_number,
+                    'status' => $jo->status,
+                ] : null,
+            ];
+        })
+    ]);
+});
+
+Route::get('/public/conflict-check', function (\Illuminate\Http\Request $request) {
+    $driverId = $request->query('driver_id');
+    $busId = $request->query('bus_id');
+    $dateOfTravel = $request->query('travel_date');
+
+    if (!$dateOfTravel) {
+        return response()->json([
+            'success' => false,
+            'message' => 'travel_date is required.'
+        ], 400);
+    }
+
+    $driverConflict = false;
+    $busConflict = false;
+    $conflictingTicket = null;
+
+    if ($driverId) {
+        $conflictingTicket = \App\Models\TripTicket::where('driver_id', $driverId)
+            ->where('date_of_travel', $dateOfTravel)
+            ->where('status', '!=', 'cancelled')
+            ->first();
+        if ($conflictingTicket) {
+            $driverConflict = true;
+        }
+    }
+
+    if ($busId && !$driverConflict) {
+        $conflictingTicket = \App\Models\TripTicket::where('bus_id', $busId)
+            ->where('date_of_travel', $dateOfTravel)
+            ->where('status', '!=', 'cancelled')
+            ->first();
+        if ($conflictingTicket) {
+            $busConflict = true;
+        }
+    }
+
+    $conflict = $driverConflict || $busConflict;
+
+    return response()->json([
+        'success' => true,
+        'conflict' => $conflict,
+        'type' => $driverConflict ? 'driver' : ($busConflict ? 'bus' : 'none'),
+        'conflicting_ticket' => $conflictingTicket ? [
+            'id' => $conflictingTicket->id,
+            'control_no' => $conflictingTicket->control_no,
+            'drop_off' => $conflictingTicket->drop_off,
+            'date_of_travel' => $conflictingTicket->date_of_travel,
+        ] : null,
+    ]);
+});
 
 // ──────────────────────────────────────────
 // AUTHENTICATED routes (Sanctum + password-change enforcement)
@@ -146,6 +265,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/job-orders/{jobOrder}/generate-purchase-order', [JobOrderController::class, 'generatePurchaseOrder'])->name('job-orders.generate-po');
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
         Route::apiResource('commissions', CommissionController::class);
+        Route::get('/trip-tickets/check-conflict', [TripTicketController::class, 'checkConflict'])->name('trip-tickets.check-conflict');
         Route::apiResource('trip-tickets', TripTicketController::class);
         Route::apiResource('cash-budgets', CashBudgetRequestController::class);
     });
@@ -266,6 +386,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
         Route::put('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'updateService'])->name('billing.services.update');
         Route::delete('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'deleteService'])->name('billing.services.delete');
+        Route::get('/billing/services/{id}/occupancy', [App\Http\Controllers\Accounting\BillingController::class, 'getServiceOccupancy'])->name('billing.services.occupancy');
         Route::patch('/billing/{billing}/status', [App\Http\Controllers\Accounting\BillingController::class, 'updateStatus'])->name('billing.status.update');
         Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
         Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
@@ -273,6 +394,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         
         // Ledger & Liquidations
         Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
+        Route::get('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');
+        Route::get('/accounting/journal-entries/{id}', [App\Http\Controllers\Accounting\JournalEntryController::class, 'show'])->name('accounting.journal-entries.show');
         Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
         Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');
         Route::get('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'show'])->name('liquidations.show');
@@ -297,6 +420,16 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
         Route::delete('/job-applications/{jobApplication}/documents/{documentId}', [\App\Http\Controllers\JobApplicationController::class, 'deleteDocument'])->name('job-applications.documents.destroy');
         Route::post('/job-applications/{jobApplication}/convert-to-employee', [\App\Http\Controllers\JobApplicationController::class, 'convertToEmployee'])->name('job-applications.convert-to-employee');
         Route::apiResource('internships', \App\Http\Controllers\InternshipController::class);
+
+        // Payroll Management
+        Route::get('/payroll/cycles', [PayrollController::class, 'indexCycles']);
+        Route::get('/payroll/cycles/{id}', [PayrollController::class, 'showCycle']);
+        Route::post('/payroll/cycles', [PayrollController::class, 'runPayroll']);
+        Route::post('/payroll/cycles/{id}/release', [PayrollController::class, 'releasePayroll']);
+        Route::delete('/payroll/cycles/{id}', [PayrollController::class, 'destroyCycle']);
+
+        Route::get('/payroll/employees', [PayrollController::class, 'indexEmployeeSalaries']);
+        Route::put('/payroll/employees/{id}', [PayrollController::class, 'updateEmployeeSalary']);
     });
 
     // ──────────────────────────────────────

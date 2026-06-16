@@ -69,6 +69,17 @@ class ServiceSeeder extends Seeder
                 'description' => 'One-way airport transfer in Metro Manila',
                 'images' => ['https://images.unsplash.com/photo-1449965408869-eaa3f722e40d?auto=format&fit=crop&q=80&w=800']
             ],
+            [
+                'name' => 'Joiners Tour - Sagada Weekend Getaway', 
+                'category' => 'Joiners', 
+                'price' => 3500.00, 
+                'description' => 'A weekend joiner package to Sagada. Visit caves, hanging coffins, Bomod-ok falls, and view Mt. Kiltepan clouds.',
+                'images' => ['https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=800'],
+                'has_booking_fields' => true,
+                'adult_price' => 3500.00,
+                'child_price' => 2450.00,
+                'max_pax' => 12,
+            ],
         ];
 
         foreach ($services as $service) {

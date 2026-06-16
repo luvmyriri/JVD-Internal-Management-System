@@ -61,7 +61,7 @@ function LineItemRow({
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qty *</label>
-          <input type="number" min={1} value={item.quantity} onChange={e => set('quantity', Number(e.target.value))}
+          <input type="number" min={1} value={item.quantity} onChange={e => set('quantity', e.target.value === '' ? '' : Number(e.target.value))}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
@@ -73,7 +73,7 @@ function LineItemRow({
         </div>
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit Price (₱) *</label>
-          <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => set('unit_price', Number(e.target.value))}
+          <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => set('unit_price', e.target.value === '' ? '' : Number(e.target.value))}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         {item.part_number && (
@@ -85,7 +85,7 @@ function LineItemRow({
         )}
       </div>
       <div className="text-right text-xs font-bold text-blue-600">
-        Subtotal: {fmt((item.quantity || 0) * (item.unit_price || 0))}
+        Subtotal: {fmt(Number(item.quantity || 0) * Number(item.unit_price || 0))}
       </div>
     </div>
   );
@@ -97,7 +97,7 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [supplierId, setSupplierId] = useState<number | ''>('');
   const [items, setItems] = useState<DraftLineItem[]>([
-    { item_name: '', part_number: '', description: '', quantity: 1, unit_of_measure: 'pcs', unit_price: 0, receipt_number: '', item_notes: '' },
+    { item_name: '', part_number: '', description: '', quantity: 1 as any, unit_of_measure: 'pcs', unit_price: '' as any, receipt_number: '', item_notes: '' },
   ]);
   const [notes, setNotes] = useState('');
 
@@ -108,15 +108,23 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
   const suppliers = suppliersData?.data?.data ?? [];
 
   const mutation = useMutation({
-    mutationFn: () => purchaseOrderApi.create({ supplier_id: supplierId as number, items, notes }),
+    mutationFn: () => purchaseOrderApi.create({
+      supplier_id: supplierId as number,
+      items: items.map(i => ({
+        ...i,
+        quantity: Number(i.quantity || 1),
+        unit_price: Number(i.unit_price || 0)
+      })),
+      notes
+    }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['purchase-orders'] }); onClose(); },
   });
 
-  const addItem = () => setItems(p => [...p, { item_name: '', part_number: '', description: '', quantity: 1, unit_of_measure: 'pcs', unit_price: 0, receipt_number: '', item_notes: '' }]);
+  const addItem = () => setItems(p => [...p, { item_name: '', part_number: '', description: '', quantity: 1 as any, unit_of_measure: 'pcs', unit_price: '' as any, receipt_number: '', item_notes: '' }]);
   const updateItem = (i: number, vals: Partial<DraftLineItem>) => setItems(p => p.map((it, idx) => idx === i ? { ...it, ...vals } : it));
   const removeItem = (i: number) => setItems(p => p.filter((_, idx) => idx !== i));
-  const total = items.reduce((s, it) => s + (it.quantity || 0) * (it.unit_price || 0), 0);
-  const canSubmit = supplierId && items.every(it => it.item_name && it.quantity > 0 && it.unit_price >= 0);
+  const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
+  const canSubmit = supplierId && items.every(it => it.item_name && Number(it.quantity || 0) > 0 && Number(it.unit_price || 0) >= 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

@@ -135,7 +135,7 @@ export default function Liquidations() {
     };
 
     const totalAdvanced = selectedLiquidation.total_advanced || 0;
-    const totalReturned = selectedLiquidation.total_returned || 0;
+    const totalReturned = Number(selectedLiquidation.total_returned) || 0;
     
     // Sum approved expense items by category
     const expenseGroup: Record<string, number> = {};
@@ -844,7 +844,7 @@ export default function Liquidations() {
                                 disabled={!canSettle}
                                 onChange={(e) => {
                                   const updatedItems = [...(selectedLiquidation.items || [])];
-                                  updatedItems[idx].amount = parseFloat(e.target.value) || 0;
+                                  updatedItems[idx].amount = (e.target.value === '' ? '' : parseFloat(e.target.value)) as any;
                                   setSelectedLiquidation({ ...selectedLiquidation, items: updatedItems });
                                 }}
                                 className="w-full bg-white dark:bg-gray-900 border border-gray-250 dark:border-gray-700 rounded-2xl px-3 py-2.5 text-xs font-bold font-sans focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
@@ -918,11 +918,11 @@ export default function Liquidations() {
                         <input
                           type="number"
                           placeholder="0.00"
-                          value={selectedLiquidation.total_returned || ''}
+                          value={selectedLiquidation.total_returned ?? ''}
                           onChange={(e) => {
                             setSelectedLiquidation({
                               ...selectedLiquidation,
-                              total_returned: parseFloat(e.target.value) || 0
+                              total_returned: (e.target.value === '' ? '' : parseFloat(e.target.value)) as any
                             });
                           }}
                           className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent dark:border-gray-700/50 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-850 transition-all focus:outline-none"
@@ -1060,8 +1060,11 @@ export default function Liquidations() {
                 onClick={() => {
                   settleMutation.mutate({
                     id: selectedLiquidation.id,
-                    items: selectedLiquidation.items || [],
-                    totalReturned: selectedLiquidation.total_returned,
+                    items: (selectedLiquidation.items || []).map(item => ({
+                      ...item,
+                      amount: Number(item.amount || 0)
+                    })),
+                    totalReturned: Number(selectedLiquidation.total_returned || 0),
                     notes: selectedLiquidation.notes
                   });
                 }}

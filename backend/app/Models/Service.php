@@ -29,6 +29,7 @@ class Service extends Model
         'cost_breakdown',
         'inclusions',
         'exclusions',
+        'max_pax',
     ];
 
     protected $casts = [
@@ -44,6 +45,7 @@ class Service extends Model
         'coaster_price' => 'decimal:2',
         'tour_kms' => 'integer',
         'tour_hours' => 'integer',
+        'max_pax' => 'integer',
     ];
 
     public function creator()

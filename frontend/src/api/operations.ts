@@ -15,6 +15,8 @@ export const tripTicketApi = {
   create: (data: Partial<TripTicket>) => client.post<TripTicket>('/trip-tickets', data).then((res) => res.data),
   update: (id: number, data: Partial<TripTicket>) => client.put<TripTicket>(`/trip-tickets/${id}`, data).then((res) => res.data),
   delete: (id: number) => client.delete(`/trip-tickets/${id}`).then((res) => res.data),
+  checkConflict: (params: { date_of_travel: string; driver_id?: number | null; bus_id?: number | null; exclude_id?: number | null }) =>
+    client.get<{ has_conflict: boolean; conflicts: Array<{ type: string; message: string; conflicting_ticket: any }> }>('/trip-tickets/check-conflict', { params }).then((res) => res.data),
 };
 
 export const cashBudgetApi = {
@@ -25,4 +27,9 @@ export const cashBudgetApi = {
   approve: (id: number) => client.put<CashBudgetRequest>(`/cash-budgets/${id}`, { status: 'approved' }).then((res) => res.data),
   decline: (id: number) => client.delete(`/cash-budgets/${id}`).then((res) => res.data),
   delete: (id: number) => client.delete(`/cash-budgets/${id}`).then((res) => res.data),
+};
+
+export const ledgerApi = {
+  getJournalEntries: (params?: any) => client.get('/accounting/journal-entries', { params }).then((res) => res.data),
+  getJournalEntry: (id: number) => client.get(`/accounting/journal-entries/${id}`).then((res) => res.data),
 };

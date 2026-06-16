@@ -44,7 +44,7 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
     mutationFn: () => fleetApi.update(bus.id, {
       last_service_date: form.last_service_date,
       next_service_due: form.next_service_due,
-      total_mileage: form.total_mileage,
+      total_mileage: Number(form.total_mileage || 0),
       status: 'available',
     }),
     onSuccess: () => {
@@ -146,7 +146,7 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
                 <div>
                   <label className={lbl}>Current Mileage (km) *</label>
                   <input type="number" className={inp} value={form.total_mileage} min={bus.total_mileage}
-                    onChange={e => setForm(p => ({ ...p, total_mileage: parseInt(e.target.value) || 0 }))} required />
+                    onChange={e => setForm(p => ({ ...p, total_mileage: e.target.value === '' ? '' : parseInt(e.target.value) as any }))} required />
                 </div>
                 <div>
                   <label className={lbl}>Service Notes</label>

@@ -17,6 +17,7 @@ import FixedPackages from './pages/sales/FixedPackages';
 import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
+import JournalEntries from './pages/accounting/JournalEntries';
 import Liquidations from './pages/accounting/Liquidations';
 import PurchaseOrders from './pages/procurement/PurchaseOrders';
 import JobOrders from './pages/procurement/JobOrders';
@@ -102,6 +103,7 @@ export default function App() {
                 <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
                 <Route path="/accounting/billing" element={<Billing />} />
                 <Route path="/accounting/reports" element={<Reports />} />
+                <Route path="/accounting/journal-entries" element={<JournalEntries />} />
                 <Route path="/accounting/collections" element={<Collections />} />
                 <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
                 <Route path="/accounting/commissions" element={<Commissions />} />

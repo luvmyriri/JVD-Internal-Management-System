@@ -83,6 +83,34 @@ class BillingController extends Controller
         ]);
     }
 
+    public function getServiceOccupancy(Request $request, $id)
+    {
+        $service = Service::findOrFail($id);
+        $travelDate = $request->query('travel_date');
+
+        if (!$travelDate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Travel date is required'
+            ], 400);
+        }
+
+        $totalBooked = DB::table('invoice_items')
+            ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+            ->where('invoice_items.service_id', $service->id)
+            ->where('invoices.travel_date', $travelDate)
+            ->where('invoices.status', '!=', 'cancelled')
+            ->sum(DB::raw('CASE WHEN invoice_items.adults IS NOT NULL OR invoice_items.children IS NOT NULL THEN COALESCE(invoice_items.adults, 0) + COALESCE(invoice_items.children, 0) ELSE invoice_items.quantity END'));
+
+        return response()->json([
+            'success' => true,
+            'service_id' => $service->id,
+            'travel_date' => $travelDate,
+            'total_booked' => (int) $totalBooked,
+            'max_pax' => $service->max_pax,
+        ]);
+    }
+
     public function storeService(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -104,6 +132,7 @@ class BillingController extends Controller
             'cost_breakdown' => 'nullable|string',
             'inclusions' => 'nullable|string',
             'exclusions' => 'nullable|string',
+            'max_pax' => 'nullable|integer|min:1',
         ]);
 
         if ($validator->fails()) {
@@ -149,6 +178,7 @@ class BillingController extends Controller
             'cost_breakdown' => $request->cost_breakdown,
             'inclusions' => $request->inclusions,
             'exclusions' => $request->exclusions,
+            'max_pax' => $request->max_pax,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -185,6 +215,7 @@ class BillingController extends Controller
             'cost_breakdown' => 'nullable|string',
             'inclusions' => 'nullable|string',
             'exclusions' => 'nullable|string',
+            'max_pax' => 'nullable|integer|min:1',
         ]);
 
         if ($validator->fails()) {
@@ -231,6 +262,7 @@ class BillingController extends Controller
             'cost_breakdown' => array_key_exists('cost_breakdown', $request->all()) ? $request->cost_breakdown : $service->cost_breakdown,
             'inclusions' => array_key_exists('inclusions', $request->all()) ? $request->inclusions : $service->inclusions,
             'exclusions' => array_key_exists('exclusions', $request->all()) ? $request->exclusions : $service->exclusions,
+            'max_pax' => array_key_exists('max_pax', $request->all()) ? $request->max_pax : $service->max_pax,
         ]);
 
         return response()->json([
@@ -315,6 +347,41 @@ class BillingController extends Controller
             foreach ($request->items as $item) {
                 $service = Service::find($item['service_id']);
                 
+                // Validate max_pax capacity if the service has a limit set
+                if ($service->max_pax && $request->travel_date) {
+                    $paxToAdd = 0;
+                    if (isset($item['adults']) || isset($item['children'])) {
+                        $paxToAdd = ($item['adults'] ?? 0) + ($item['children'] ?? 0);
+                    } else {
+                        $paxToAdd = $item['quantity'];
+                    }
+
+                    // Also consider pax_count from the request if set
+                    if ($request->pax_count && $request->pax_count > $paxToAdd) {
+                        $paxToAdd = $request->pax_count;
+                    }
+
+                    $alreadyBooked = DB::table('invoice_items')
+                        ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                        ->where('invoice_items.service_id', $service->id)
+                        ->where('invoices.travel_date', $request->travel_date)
+                        ->where('invoices.status', '!=', 'cancelled')
+                        ->sum(DB::raw('CASE WHEN invoice_items.adults IS NOT NULL OR invoice_items.children IS NOT NULL THEN COALESCE(invoice_items.adults, 0) + COALESCE(invoice_items.children, 0) ELSE invoice_items.quantity END'));
+
+                    $remaining = $service->max_pax - (int) $alreadyBooked;
+
+                    if ($paxToAdd > $remaining) {
+                        DB::rollBack();
+                        return response()->json([
+                            'success' => false,
+                            'message' => "Cannot book {$paxToAdd} pax for \"{$service->name}\" on {$request->travel_date}. Only {$remaining} of {$service->max_pax} slots are available.",
+                            'errors' => [
+                                'max_pax' => ["Exceeds maximum passenger capacity. {$remaining} slots remaining out of {$service->max_pax}."]
+                            ]
+                        ], 422);
+                    }
+                }
+
                 // Allow custom unit price calculated by frontend for bookings (pax base)
                 $unitPrice = isset($item['unit_price']) ? (double)$item['unit_price'] : $service->price;
                 $itemTotal = $unitPrice * $item['quantity'];
@@ -438,19 +505,7 @@ class BillingController extends Controller
                 ]);
             }
 
-            // Auto-create Collection for unpaid invoices
-            if ($invoice->balance > 0) {
-                \App\Models\Collection::create([
-                    'invoice_id' => $invoice->id,
-                    'customer_id' => $invoice->customer_id,
-                    'rate' => $invoice->total_amount, // legacy fallback
-                    'billing_amount' => $invoice->total_amount,
-                    'paid_amount' => $invoice->amount_received,
-                    'remaining_balance' => $invoice->balance,
-                    'due_date' => $invoice->due_date,
-                    'collection_status' => $invoice->status === 'partial' ? 'partial' : 'pending',
-                ]);
-            }
+
 
             // PayMongo Logic "Abang"
             if (in_array($request->payment_method, ['GCash', 'Card'])) {
