@@ -63,7 +63,7 @@ interface ColData {
 function buildColumns(totalSeats: number, hasRestroom: boolean): ColData[] {
   const backSeats = 5;
   const mainSeats = totalSeats - backSeats;
-  const seatColCount = mainSeats / 4; // number of columns with actual seats
+  const seatColCount = mainSeats / 4;
 
   if (hasRestroom) {
     // VIP: first 7 seat cols → WC → Door2 → remaining seat cols
@@ -127,8 +127,38 @@ const Seat = ({
     return <div className={sizeClass} />;
   }
 
-  const colors = statusColors[seat.status];
   const isClickable = !viewOnly && (isCustomizing || seat.status === 'available' || seat.status === 'selected' || seat.status === 'custom');
+
+  const isWC = seat.number.toUpperCase() === 'WC' || seat.number.toUpperCase() === 'RESTROOM';
+  const isDoor = seat.number.toUpperCase() === 'DOOR 2' || seat.number.toUpperCase() === 'DOOR2' || seat.number.toUpperCase() === 'DOOR';
+
+  if (isWC) {
+    return (
+      <div
+        onClick={() => isClickable && onClick?.(seat)}
+        title={`WC ${isCustomizing ? '(Click to edit)' : ''}`}
+        className={`${sizeClass} flex flex-col items-center justify-center rounded-[0.4rem] border-2 border-sky-300 bg-sky-50 dark:bg-sky-900/30 hover:border-sky-400 select-none transition-all ${isClickable ? 'cursor-pointer' : 'cursor-default'} ${isCustomizing ? 'border-dashed border-sky-400 ring-2 ring-sky-500/10' : ''}`}
+      >
+        <MdOutlineWc size={compact ? 12 : 16} className="text-sky-500" />
+        <span className="text-[6px] font-black text-sky-600 uppercase tracking-widest mt-0.5">WC</span>
+      </div>
+    );
+  }
+
+  if (isDoor) {
+    return (
+      <div
+        onClick={() => isClickable && onClick?.(seat)}
+        title={`Door ${isCustomizing ? '(Click to edit)' : ''}`}
+        className={`${sizeClass} flex flex-col items-center justify-center rounded-[0.4rem] border-2 border-green-300 bg-green-50 dark:bg-green-900/30 hover:border-green-400 select-none transition-all ${isClickable ? 'cursor-pointer' : 'cursor-default'} ${isCustomizing ? 'border-dashed border-green-400 ring-2 ring-green-500/10' : ''}`}
+      >
+        <LuDoorOpen size={compact ? 10 : 14} className="text-green-600" />
+        <span className="text-[6px] font-black text-green-700 uppercase tracking-wider mt-0.5">Door</span>
+      </div>
+    );
+  }
+
+  const colors = statusColors[seat.status];
 
   return (
     <div
@@ -186,17 +216,6 @@ export default function BusLayout({
   const mainSeats  = Math.floor((effectiveTotal - backSeats) / 4) * 4;
   const actualTotal = mainSeats + backSeats;
 
-  // When POS selection props are provided, build seats from them
-  const posSeats: SeatInfo[] = (selectedSeats.length > 0 || occupiedSeats.length > 0 || onSeatToggle)
-    ? Array.from({ length: actualTotal }, (_, i) => {
-        const num = String(i + 1);
-        let status: SeatStatus = 'available';
-        if (occupiedSeats.includes(num)) status = 'occupied';
-        else if (selectedSeats.includes(num)) status = 'selected';
-        return { id: `seat-${num}`, number: num, status };
-      })
-    : [];
-
   const defaultSeats: SeatInfo[] = Array.from({ length: actualTotal }, (_, i) => ({
     id: `seat-${i + 1}`,
     number: String(i + 1),
@@ -204,9 +223,27 @@ export default function BusLayout({
     active: true,
   }));
 
-  const activeSeats = posSeats.length > 0 ? posSeats : (seats.length > 0 ? seats : defaultSeats);
+  const baseSeats = seats && seats.length > 0 ? seats : defaultSeats;
+
+  // When POS selection props are provided, build seats by overlaying statuses onto baseSeats
+  const posSeats: SeatInfo[] = (selectedSeats.length > 0 || occupiedSeats.length > 0 || onSeatToggle)
+    ? baseSeats.map((seat) => {
+        let status: SeatStatus = seat.status;
+        if (occupiedSeats.includes(seat.number)) {
+          status = 'occupied';
+        } else if (selectedSeats.includes(seat.number)) {
+          status = 'selected';
+        } else if (status === 'selected' || status === 'occupied') {
+          status = 'available';
+        }
+        return { ...seat, status };
+      })
+    : [];
+
+  const activeSeats = posSeats.length > 0 ? posSeats : baseSeats;
 
   const getSeat = (n: number): SeatInfo => {
+    if (n === 0) return { id: 'seat-0', number: '', status: 'available', active: false };
     // Try finding by stable ID first so renames don't break lookup
     const foundById = activeSeats.find(s => s.id === `seat-${n}`);
     if (foundById) return foundById;
@@ -221,7 +258,7 @@ export default function BusLayout({
     ? (seat: SeatInfo) => onSeatToggle(seat.number)
     : onSeatClick;
 
-  const columns = buildColumns(actualTotal, hasRestroom);
+  const columns = buildColumns(actualTotal, hasRestroom || false);
 
   // Back row: last 5 seat numbers
   const backRowStart = mainSeats + 1;
@@ -269,7 +306,7 @@ export default function BusLayout({
           <div className={`flex flex-row items-stretch ${gapClass} mt-4`}>
 
             {/* ── FRONT BLOCK (left side) ── */}
-            <div className={`flex flex-col justify-between pr-4 border-r-2 border-dashed border-gray-200 dark:border-gray-700`}>
+            <div className={`flex flex-col justify-between pr-4 border-r-2 border-dashed border-gray-200 dark:border-gray-700 flex-shrink-0`}>
               {/* top: Door 1 + Guide */}
               <div className="flex flex-col items-center gap-2">
                 <div className={`${frontSize} bg-green-50 dark:bg-green-900/20 border-2 border-green-400/60 rounded-lg flex flex-col items-center justify-center`}>
@@ -297,11 +334,11 @@ export default function BusLayout({
             </div>
 
             {/* ── SEAT COLUMNS ── */}
-            <div className={`flex flex-row ${colGap}`}>
+            <div className={`flex flex-row ${colGap} flex-shrink-0`}>
               {columns.map((col, i) => (
-                <div key={i} className="flex flex-col">
+                <div key={i} className="flex flex-col flex-shrink-0">
 
-                  {/* TOP PAIR (guide/door side) — WC or Door 2 replaces the 2 guide-side seats */}
+                  {/* TOP PAIR (guide/door side) */}
                   <div className="flex flex-col gap-1">
                     {col.isWC ? (
                       <div
@@ -329,8 +366,8 @@ export default function BusLayout({
                         }}
                       >
                         <LuDoorOpen size={compact ? 10 : 15} className="text-green-600" />
-                        <span className="text-[7px] font-black text-green-700 uppercase tracking-wider mt-0.5 text-center leading-tight">
-                          Door 2
+                        <span className="text-[7px] font-black text-green-700 uppercase tracking-widest mt-0.5 text-center leading-tight">
+                          DOOR<br />2
                         </span>
                       </div>
                     ) : (
@@ -357,7 +394,7 @@ export default function BusLayout({
             </div>
 
             {/* ── BACK ROW (5 seats, vertical column on right) ── */}
-            <div className={`flex flex-col justify-center ${colGap} pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700`}>
+            <div className={`flex flex-col justify-center ${colGap} pl-3 border-l-2 border-dashed border-gray-200 dark:border-gray-700 flex-shrink-0`}>
               {backRowSeats.map(n => (
                 <Seat key={n} seat={getSeat(n)} onClick={handleSeatClick} viewOnly={viewOnly} compact={compact} isCustomizing={isCustomizing} />
               ))}
@@ -369,7 +406,7 @@ export default function BusLayout({
           <div className="mt-4 border-t-2 border-gray-200 dark:border-gray-700 pt-2 flex justify-between items-center">
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Front</span>
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">
-              {actualTotal} Seats {hasRestroom ? '• VIP' : ''}
+              {actualTotal} Slots
             </span>
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Rear</span>
           </div>

@@ -60,13 +60,14 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
   const [isCustomizing, setIsCustomizing] = useState(false);
   const [selectedSeatToEdit, setSelectedSeatToEdit] = useState<any | null>(null);
 
-  const default49Seats = Array.from({ length: 49 }, (_, idx) => ({
+  const capacity = Number(form.seating_capacity || bus?.seating_capacity || 49);
+  const defaultBusSeats = Array.from({ length: capacity }, (_, idx) => ({
     id: `seat-${idx + 1}`,
     number: String(idx + 1),
     status: 'available' as const,
     active: true,
   }));
-  const currentSeats = form.custom_seats || bus?.custom_seats || default49Seats;
+  const currentSeats = form.custom_seats || bus?.custom_seats || defaultBusSeats;
 
   const { data: usersRes } = useQuery({ queryKey: ['users', 'drivers'], queryFn: () => userApi.list({ role: 'driver', per_page: 999 }) });
   const drivers = usersRes?.data?.data ?? [];
@@ -277,6 +278,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
 
               <div className="w-full flex justify-center overflow-x-auto">
                 <BusLayout 
+                  hasRestroom={form.bus_category === 'VIP'}
                   seats={currentSeats}
                   totalSeats={form.seating_capacity}
                   isCustomizing={isCustomizing}
@@ -285,7 +287,6 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
                       setSelectedSeatToEdit(seat);
                     }
                   }}
-                  hasRestroom={(bus?.bus_category ?? form.bus_category) === 'VIP'}
                   className="transform scale-90 sm:scale-100 origin-top"
                 />
               </div>
@@ -898,14 +899,14 @@ function LayoutModal({ bus, isOpen, onClose }: LayoutModalProps) {
 
   if (!bus) return null;
 
-  const default49Seats = Array.from({ length: 49 }, (_, idx) => ({
+  const defaultBusSeats = Array.from({ length: Number(bus.seating_capacity || 49) }, (_, idx) => ({
     id: `seat-${idx + 1}`,
     number: String(idx + 1),
     status: 'available' as const,
     active: true,
   }));
 
-  const currentSeats = customSeats || default49Seats;
+  const currentSeats = customSeats || defaultBusSeats;
 
   return (
     <Modal
@@ -924,10 +925,10 @@ function LayoutModal({ bus, isOpen, onClose }: LayoutModalProps) {
 
         <div className="flex justify-center overflow-x-auto py-2">
           <BusLayout
+            hasRestroom={bus.bus_category === 'VIP'}
             seats={currentSeats}
             isCustomizing={true}
             onSeatClick={(seat) => setSelectedSeat(seat)}
-            hasRestroom={bus.bus_category === 'VIP'}
             className="transform scale-90 sm:scale-100 origin-top"
           />
         </div>
@@ -1025,7 +1026,7 @@ function LayoutModal({ bus, isOpen, onClose }: LayoutModalProps) {
               Cancel
             </Button>
             <Button
-              onClick={() => mutation.mutate(customSeats)}
+              onClick={() => mutation.mutate(currentSeats)}
               isLoading={mutation.isPending}
               className="px-8"
             >

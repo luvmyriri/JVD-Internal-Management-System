@@ -607,8 +607,10 @@ function CalendarDayDetailModal({
                   <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Selected Seating Chart</span>
                   <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 flex justify-center">
                     <BusLayout
+                      hasRestroom={bus?.bus_category === 'VIP'}
+                      seats={bus?.custom_seats || []}
                       totalSeats={bus?.seating_capacity || 49}
-                      hasRestroom={bus?.model?.toLowerCase().includes('vip') || bus?.bus_category === 'VIP'}
+
                       selectedSeats={entry.seat_map || []}
                       viewOnly={true}
                       compact={true}

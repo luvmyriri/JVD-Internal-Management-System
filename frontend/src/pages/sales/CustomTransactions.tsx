@@ -554,8 +554,10 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
                 <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
                   <BusLayout
+                    hasRestroom={buses.find((b: any) => b.id === busRental.busId)?.bus_category === 'VIP'}
+                    seats={buses.find((b: any) => b.id === busRental.busId)?.custom_seats || []}
                     totalSeats={buses.find((b: any) => b.id === busRental.busId)?.seating_capacity || 49}
-                    hasRestroom={buses.find((b: any) => b.id === busRental.busId)?.model?.toLowerCase().includes('vip') || false}
+
                     selectedSeats={busRental.selectedSeats}
                     occupiedSeats={occupiedSeats}
                     onSeatToggle={(seatNum) => {
@@ -606,7 +608,15 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                   min="1"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.paxCount}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, paxCount: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => setBusRental(prev => {
+                    const val = e.target.value === '' ? '' : Number(e.target.value);
+                    const selectedBusObj = buses.find((b: any) => b.id === prev.busId);
+                    const maxCap = selectedBusObj?.seating_capacity || 49;
+                    return {
+                      ...prev,
+                      paxCount: val !== '' && val > maxCap ? maxCap : val
+                    };
+                  })}
                 />
               </div>
               <div className="space-y-2">
