@@ -37,6 +37,8 @@ class Invoice extends Model
         'driver_id',
         'seat_map',
         'travel_date',
+        'arrival_datetime',
+        'departure_datetime',
         'pickup_location',
         'tour_code',
         'pax_count',

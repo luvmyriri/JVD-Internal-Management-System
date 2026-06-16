@@ -1,4 +1,6 @@
 import { useState, useMemo } from 'react';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuSearch,
@@ -95,6 +97,8 @@ export default function FixedPackages() {
 
   // Bus rental/seat selection states
   const [bookingDate, setBookingDate] = useState<string>('');
+  const [bookingArrivalDate, setBookingArrivalDate] = useState<string>('');
+  const [bookingDepartureDate, setBookingDepartureDate] = useState<string>('');
   const [bookingBusId, setBookingBusId] = useState<number | null>(null);
   const [bookingDriverId, setBookingDriverId] = useState<number | null>(null);
   const [bookingDriverName, setBookingDriverName] = useState<string>('');
@@ -210,7 +214,9 @@ export default function FixedPackages() {
     travelDate?: string,
     tourCode?: string,
     pickupLocation?: string,
-    paxCount?: number
+    paxCount?: number,
+    arrivalDate?: string,
+    departureDate?: string
   ) => {
     setCart(prev => {
       const cartId = `${service.id}-${Date.now()}-${Math.random()}`;
@@ -231,7 +237,9 @@ export default function FixedPackages() {
         travelDate,
         tourCode,
         pickupLocation,
-        paxCount
+        paxCount,
+        arrivalDate,
+        departureDate
       }];
     });
   };
@@ -251,27 +259,31 @@ export default function FixedPackages() {
     travelDate?: string,
     tourCode?: string,
     pickupLocation?: string,
-    paxCount?: number
+    paxCount?: number,
+    arrivalDate?: string,
+    departureDate?: string
   ) => {
     setCart(prev => prev.map(item =>
       item.cartId === cartId
         ? {
-            ...item,
-            adults,
-            childrenCount,
-            customPrice,
-            vehicleType,
-            extraDays,
-            extraHours,
-            busId,
-            selectedSeats,
-            driverId,
-            driverName,
-            travelDate,
-            tourCode,
-            pickupLocation,
-            paxCount
-          }
+          ...item,
+          adults,
+          childrenCount,
+          customPrice,
+          vehicleType,
+          extraDays,
+          extraHours,
+          busId,
+          selectedSeats,
+          driverId,
+          driverName,
+          travelDate,
+          tourCode,
+          pickupLocation,
+          paxCount,
+          arrivalDate,
+          departureDate
+        }
         : item
     ));
   };
@@ -321,6 +333,8 @@ export default function FixedPackages() {
     setJoinerTourCode(item.tourCode || '');
     setJoinerPickup(item.pickupLocation || '');
     setJoinerPaxCount(item.paxCount || 1);
+    setBookingArrivalDate(item.arrivalDate || '');
+    setBookingDepartureDate(item.departureDate || '');
     setBookingAdults(item.adults || 1);
     setBookingChildren(item.childrenCount || 0);
     setBookingTourVehicle(item.vehicleType || 'Bus');
@@ -848,13 +862,12 @@ export default function FixedPackages() {
               <div class="sign-col">
                 <div class="sign-title">Customer Acceptance</div>
                 <div class="sign-line"></div>
-                <div class="sign-name">___________________________</div>
                 <div style="font-size: 9px; color: #64748b; font-weight: 500;">Signature Over Printed Name</div>
               </div>
             </div>
             
             <div class="company-info">
-              JVD Event & Travel Management Co. • jvdmarketing8@gmail.com • (02) 829-380068
+              JVD Event & Travel Management Co. • jvdmarketing8@gmail.com • (02) 8652 7325
             </div>
           </div>
         </div>
@@ -1030,6 +1043,8 @@ export default function FixedPackages() {
                     setBookingTourExtraHours(0);
                   }
                   setBookingDate('');
+                  setBookingArrivalDate('');
+                  setBookingDepartureDate('');
                   setBookingBusId(null);
                   setBookingSeats([]);
                   setBookingDriverId(null);
@@ -1167,6 +1182,8 @@ export default function FixedPackages() {
                           setBookingTourExtraHours(0);
                         }
                         setBookingDate('');
+                        setBookingArrivalDate('');
+                        setBookingDepartureDate('');
                         setBookingBusId(null);
                         setBookingSeats([]);
                         setBookingDriverId(null);
@@ -1653,11 +1670,10 @@ export default function FixedPackages() {
               <div className="p-6 space-y-6 flex-1">
                 <div>
                   <div className="flex items-center justify-between gap-4">
-                    <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${
-                      selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' :
+                    <span className={`px-2.5 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest ${selectedServiceForDetail.category === 'Documentation' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' :
                       selectedServiceForDetail.category === 'Package' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' :
-                      'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400'
-                    }`}>
+                        'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400'
+                      }`}>
                       {selectedServiceForDetail.category}
                     </span>
 
@@ -1929,17 +1945,79 @@ export default function FixedPackages() {
                 {(['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
-                    
+
                     {/* Travel Date (Hide here if Bus Rental block will show it) */}
                     {!(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                        <input
-                          type="date"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                          value={bookingDate}
-                          onChange={(e) => setBookingDate(e.target.value)}
-                        />
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                          <DatePicker
+                            selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
+                            onChange={(date: Date | null) => {
+                              if (date) {
+                                setBookingDate(date.toISOString().split('T')[0]);
+                              } else {
+                                setBookingDate('');
+                              }
+                            }}
+                            minDate={new Date()}
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                            wrapperClassName="w-full"
+                            dateFormat="MMMM d, yyyy"
+                            placeholderText="Select Travel Date"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
+                            <DatePicker
+                              selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
+                              onChange={(date: Date | null) => {
+                                if (date && bookingDate) {
+                                  // Lock the date to the travel date, only keep the time
+                                  const [year, month, day] = bookingDate.split('-').map(Number);
+                                  const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
+                                  setBookingDepartureDate(merged.toISOString());
+                                  if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
+                                    setBookingArrivalDate('');
+                                  }
+                                } else {
+                                  setBookingDepartureDate('');
+                                }
+                              }}
+                              showTimeSelect
+                              showTimeSelectOnly
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="h:mm aa"
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText="Select Departure Time"
+                              disabled={!bookingDate}
+                            />
+                            {bookingDepartureDate && (
+                              <p className="text-[9px] text-gray-400 font-bold pl-1">
+                                Date: {bookingDate}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date & Time</label>
+                            <DatePicker
+                              selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
+                              onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
+                              showTimeSelect
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="MMM d, yyyy h:mm aa"
+                              minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
+                              disabled={!bookingDepartureDate}
+                            />
+                          </div>
+                        </div>
                       </div>
                     )}
 
@@ -1985,19 +2063,79 @@ export default function FixedPackages() {
                 {(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Rental & Seating Options</p>
-                    
-                    {/* Travel Date */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                      <input
-                        type="date"
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                        value={bookingDate}
-                        onChange={(e) => {
-                          setBookingDate(e.target.value);
-                          setBookingSeats([]);
-                        }}
-                      />
+
+                    {/* Travel Date & Arrival/Departure */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                        <DatePicker
+                          selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
+                          onChange={(date: Date | null) => {
+                            if (date) {
+                              setBookingDate(date.toISOString().split('T')[0]);
+                            } else {
+                              setBookingDate('');
+                            }
+                            setBookingSeats([]);
+                          }}
+                          minDate={new Date()}
+                          className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                          wrapperClassName="w-full"
+                          dateFormat="MMMM d, yyyy"
+                          placeholderText="Select Travel Date"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
+                          <DatePicker
+                            selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
+                            onChange={(date: Date | null) => {
+                              if (date && bookingDate) {
+                                // Lock the date to the travel date, only keep the time
+                                const [year, month, day] = bookingDate.split('-').map(Number);
+                                const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
+                                setBookingDepartureDate(merged.toISOString());
+                                if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
+                                  setBookingArrivalDate('');
+                                }
+                              } else {
+                                setBookingDepartureDate('');
+                              }
+                            }}
+                            showTimeSelect
+                            showTimeSelectOnly
+                            timeFormat="h:mm aa"
+                            timeIntervals={15}
+                            dateFormat="h:mm aa"
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                            wrapperClassName="w-full"
+                            placeholderText="Select Departure Time"
+                            disabled={!bookingDate}
+                          />
+                          {bookingDepartureDate && (
+                            <p className="text-[9px] text-gray-400 font-bold pl-1">
+                              Date: {bookingDate}
+                            </p>
+                          )}
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date & Time</label>
+                          <DatePicker
+                            selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
+                            onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
+                            showTimeSelect
+                            timeFormat="h:mm aa"
+                            timeIntervals={15}
+                            dateFormat="MMM d, yyyy h:mm aa"
+                            minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                            wrapperClassName="w-full"
+                            placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
+                            disabled={!bookingDepartureDate}
+                          />
+                        </div>
+                      </div>
                     </div>
 
                     {/* Assign Bus */}
@@ -2010,7 +2148,7 @@ export default function FixedPackages() {
                           const id = e.target.value ? Number(e.target.value) : null;
                           setBookingBusId(id);
                           setBookingSeats([]);
-                          
+
                           const selectedBusObj = buses.find((b: any) => b.id === id);
                           if (selectedBusObj && selectedBusObj.driver) {
                             setBookingDriverId(selectedBusObj.driver.id);
@@ -2059,7 +2197,43 @@ export default function FixedPackages() {
                     {/* Seat Selector Layout */}
                     {bookingBusId && bookingDate && (
                       <div className="space-y-3">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                          {(() => {
+                            const totalSeats = buses.find(b => b.id === bookingBusId)?.seating_capacity || 49;
+                            const allSeatNums = Array.from({ length: totalSeats }, (_, i) => String(i + 1));
+                            const availableSeats = allSeatNums.filter(s => !occupiedSeats.includes(s));
+                            const allSelected = availableSeats.length > 0 && availableSeats.every(s => bookingSeats.includes(s));
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (allSelected) {
+                                    setBookingSeats([]);
+                                  } else {
+                                    setBookingSeats(availableSeats);
+                                  }
+                                }}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${allSelected
+                                  ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-200 dark:border-red-800'
+                                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-200 dark:border-blue-800'
+                                  }`}
+                              >
+                                {allSelected ? (
+                                  <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                                    Deselect All
+                                  </>
+                                ) : (
+                                  <>
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                                    Select All
+                                  </>
+                                )}
+                              </button>
+                            );
+                          })()}
+                        </div>
                         <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-w-full overflow-x-auto">
                           <BusLayout
                             compact={true}
@@ -2150,20 +2324,18 @@ export default function FixedPackages() {
                     (isStandardPackage && isVipBus)
                   );
 
-                  // Pax count exceeds capacity
+                  // Pax count exceeds capacity — warning only, not blocking
                   const isPaxExceedingCapacity = selectedBus && totalPax > selectedBus.seating_capacity;
 
-                  // Seat selection mismatch
-                  const isSeatSelectionMismatch = isBusAssigned && bookingBusId && bookingSeats.length !== totalPax;
+                  // Seat selection mismatch — warning only, not blocking
+                  const isSeatSelectionMismatch = isBusAssigned && bookingBusId && bookingSeats.length > 0 && bookingSeats.length !== totalPax;
 
                   const isBusSelectionInvalid = isBusAssigned && (
                     !bookingDate ||
                     !bookingBusId ||
                     !bookingDriverId ||
                     bookingSeats.length === 0 ||
-                    hasBusTypeMismatch ||
-                    isPaxExceedingCapacity ||
-                    isSeatSelectionMismatch
+                    hasBusTypeMismatch
                   );
 
                   return (
@@ -2174,7 +2346,7 @@ export default function FixedPackages() {
                           {/* VIP / Economy Warning */}
                           {hasBusTypeMismatch && (
                             <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-2xl flex items-start gap-2">
-                              <span className="text-amber-600 dark:text-amber-400 text-xs">⚠️</span>
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
                               <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tight">
                                 {isVipPackage && "This VIP package requires a VIP Bus, but a Standard/Economy Bus is selected."}
                                 {isStandardPackage && "This Standard/Economy package requires a Standard/Economy Bus, but a VIP Bus is selected."}
@@ -2182,22 +2354,22 @@ export default function FixedPackages() {
                             </div>
                           )}
 
-                          {/* Pax Exceeding Capacity Error */}
+                          {/* Pax Exceeding Capacity — Warning only */}
                           {isPaxExceedingCapacity && (
-                            <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-2xl flex items-start gap-2">
-                              <span className="text-red-600 dark:text-red-400 text-xs">❌</span>
-                              <div className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-tight">
-                                Pax count ({totalPax}) exceeds the selected bus capacity ({selectedBus.seating_capacity} seats).
+                            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-2xl flex items-start gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                              <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tight">
+                                Warning: Pax count ({totalPax}) exceeds the selected bus capacity ({selectedBus.seating_capacity} seats). You may proceed but please verify with dispatch.
                               </div>
                             </div>
                           )}
 
-                          {/* Seat Selection Mismatch Error */}
+                          {/* Seat Selection Mismatch — Warning only */}
                           {isSeatSelectionMismatch && (
-                            <div className="p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-2xl flex items-start gap-2">
-                              <span className="text-red-600 dark:text-red-400 text-xs">❌</span>
-                              <div className="text-[10px] font-bold text-red-800 dark:text-red-300 uppercase tracking-tight">
-                                Please select exactly {totalPax} seats for {totalPax} Pax. (Currently selected: {bookingSeats.length})
+                            <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-2xl flex items-start gap-2">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /><path d="M12 9v4" /><path d="M12 17h.01" /></svg>
+                              <div className="text-[10px] font-bold text-amber-800 dark:text-amber-300 uppercase tracking-tight">
+                                Note: {bookingSeats.length} seat{bookingSeats.length !== 1 ? 's' : ''} selected for {totalPax} Pax. Seats do not match Pax count exactly.
                               </div>
                             </div>
                           )}
@@ -2209,6 +2381,8 @@ export default function FixedPackages() {
                         onClick={() => {
                           const isJoinerCategory = ['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
                           const travelDateParam = bookingDate || undefined;
+                          const arrivalDateParam = bookingArrivalDate || undefined;
+                          const departureDateParam = bookingDepartureDate || undefined;
                           const tourCodeParam = isJoinerCategory ? (joinerTourCode || undefined) : undefined;
                           const pickupLocationParam = isJoinerCategory ? (joinerPickup || undefined) : undefined;
                           const paxCountParam = isJoinerCategory ? (joinerPaxCount === '' ? 1 : Math.max(1, joinerPaxCount)) : undefined;
@@ -2219,12 +2393,12 @@ export default function FixedPackages() {
                               const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
                               const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
                               const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                              saveCartItemEdit(editingCartId, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              saveCartItemEdit(editingCartId, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             } else if (selectedServiceForDetail.has_booking_fields) {
                               const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                              saveCartItemEdit(editingCartId, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              saveCartItemEdit(editingCartId, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             } else {
-                              saveCartItemEdit(editingCartId, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              saveCartItemEdit(editingCartId, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             }
                           } else {
                             if (selectedServiceForDetail.is_tour) {
@@ -2232,21 +2406,20 @@ export default function FixedPackages() {
                               const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
                               const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
                               const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                              addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             } else if (selectedServiceForDetail.has_booking_fields) {
                               const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                              addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             } else {
-                              addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam);
+                              addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
                             }
                           }
                           closeDetailModal();
                         }}
-                        className={`w-full py-5 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${
-                          isBusSelectionInvalid
-                            ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-500'
-                            : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
-                        }`}
+                        className={`w-full py-5 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl transition-all active:scale-95 flex items-center justify-center gap-3 ${isBusSelectionInvalid
+                          ? 'bg-gray-300 dark:bg-gray-700 cursor-not-allowed shadow-none text-gray-500'
+                          : 'bg-blue-600 hover:bg-blue-700 shadow-blue-600/20'
+                          }`}
                       >
                         {editingCartId ? <LuCheck className="w-5 h-5" /> : <LuPlus className="w-5 h-5" />}
                         {editingCartId ? 'Save Changes' : (isBusSelectionInvalid ? 'Select Date, Bus & Seats' : 'Add to Current Order')}

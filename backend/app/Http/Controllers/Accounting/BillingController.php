@@ -309,6 +309,8 @@ class BillingController extends Controller
             'payment_type' => 'nullable|string|in:full,downpayment',
             'due_date' => 'nullable|date',
             'travel_date' => 'nullable|date',
+            'arrival_datetime' => 'nullable|date',
+            'departure_datetime' => 'nullable|date',
             'pickup_location' => 'nullable|string|max:255',
             'tour_code' => 'nullable|string|max:255',
             'pax_count' => 'nullable|integer|min:1',
@@ -487,6 +489,8 @@ class BillingController extends Controller
                 'driver_id'       => $request->driver_id,
                 'seat_map'        => $request->seat_map,
                 'travel_date'     => $request->travel_date,
+                'arrival_datetime'=> $request->arrival_datetime,
+                'departure_datetime' => $request->departure_datetime,
                 'pickup_location' => $request->pickup_location,
                 'tour_code'     => $request->tour_code,
                 'pax_count'       => $request->pax_count,
@@ -575,7 +579,7 @@ class BillingController extends Controller
                     'service_date' => $busServiceDate ?? $request->travel_date ?? date('Y-m-d', strtotime('+1 day')),
                     'destination' => $busDestination ?? $request->tour_code ?? $request->pickup_location ?? 'Not Specified',
                     'total_cost' => $totalAmount,
-                    'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nNotes: {$invoice->notes}",
+                    'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nArrival: " . ($request->arrival_datetime ?? 'N/A') . "\nDeparture: " . ($request->departure_datetime ?? 'N/A') . "\nNotes: {$invoice->notes}",
                     'invoice_id' => $invoice->id,
                 ], auth()->id() ?? 1);
             }

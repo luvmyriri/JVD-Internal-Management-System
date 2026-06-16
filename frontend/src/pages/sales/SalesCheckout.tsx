@@ -39,6 +39,8 @@ export interface CartItem {
   paxCount?: number;
   serviceDate?: string;
   destination?: string;
+  arrivalDate?: string;
+  departureDate?: string;
 }
 
 interface SalesCheckoutProps {
@@ -193,6 +195,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation || null,
         tour_code: cart.find(item => item.tourCode)?.tourCode || null,
         pax_count: cart.find(item => item.paxCount)?.paxCount || null,
+        arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
+        departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
       });
 
       setLastInvoice(response.data.data);
@@ -281,6 +285,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                       {item.pickupLocation && (
                         <p className="text-[9px] text-amber-600 dark:text-amber-400 font-black mt-1 uppercase tracking-tight">
                           Pickup: {item.pickupLocation}
+                        </p>
+                      )}
+                      {item.arrivalDate && (
+                        <p className="text-[9px] text-teal-600 dark:text-teal-400 font-black mt-1 uppercase tracking-tight">
+                          Arrival: {new Date(item.arrivalDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      )}
+                      {item.departureDate && (
+                        <p className="text-[9px] text-rose-600 dark:text-rose-400 font-black mt-1 uppercase tracking-tight">
+                          Departure: {new Date(item.departureDate).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       )}
                       {item.paxCount && (
@@ -731,6 +745,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     {lastInvoice.tour_code && (
                       <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
                         Tour Code/Destination: {lastInvoice.tour_code}
+                      </p>
+                    )}
+                    {lastInvoice.arrival_datetime && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Arrival: {new Date(lastInvoice.arrival_datetime).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    )}
+                    {lastInvoice.departure_datetime && (
+                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                        Departure: {new Date(lastInvoice.departure_datetime).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     )}
                     {lastInvoice.pax_count && (
