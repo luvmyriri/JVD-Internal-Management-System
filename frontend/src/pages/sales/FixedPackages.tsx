@@ -1028,7 +1028,7 @@ export default function FixedPackages() {
             )}
           </div>
         ) : (
-          <div className="flex-1 md:overflow-y-auto overflow-x-auto pr-2 flex flex-row md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
+          <div className="flex-1 overflow-x-auto pr-2 flex flex-row md:grid md:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6 hide-scrollbar snap-x snap-mandatory md:auto-rows-max pb-4">
             {filteredServices.map((service) => (
               <div
                 key={service.id}
@@ -1628,7 +1628,7 @@ export default function FixedPackages() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/90 backdrop-blur-xl duration-300" onClick={closeDetailModal}>
           <div className="bg-white dark:bg-gray-900 w-full max-w-6xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[85vh] md:h-[80vh]" onClick={(e) => e.stopPropagation()}>
             {/* Left Column: Image & Service Info */}
-            <div className="w-full md:w-[380px] flex-shrink-0 bg-gray-50 dark:bg-gray-800/40 border-r border-gray-100 dark:border-gray-800 flex flex-col h-full overflow-y-auto custom-scrollbar">
+            <div className="w-full md:w-[380px] flex-shrink-0 bg-gray-50 dark:bg-gray-800/40 border-r border-gray-100 dark:border-gray-800 flex flex-col h-full custom-scrollbar">
               {/* Image Gallery */}
               <div className="h-64 bg-gray-100 dark:bg-gray-800 relative group flex-shrink-0 border-b border-gray-100 dark:border-gray-800">
                 {(selectedServiceForDetail.images && selectedServiceForDetail.images.length > 0) ? (
@@ -1828,237 +1828,6 @@ export default function FixedPackages() {
 
               {/* Scrollable Form Container */}
               <div className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 custom-scrollbar">
-                {/* Booking options */}
-                {selectedServiceForDetail.has_booking_fields && (
-                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Booking Guest Configuration</p>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Adults</p>
-                        <p className="text-[9px] text-gray-450 font-bold mt-1">₱{selectedDetailAdultPrice.toLocaleString()} / Pax</p>
-                      </div>
-                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button
-                          onClick={() => setBookingAdults(prev => Math.max(1, prev - 1))}
-                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
-                        >
-                          <LuMinus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingAdults}</span>
-                        <button
-                          onClick={() => setBookingAdults(prev => prev + 1)}
-                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
-                        >
-                          <LuPlus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Children</p>
-                        <p className="text-[9px] text-gray-455 font-bold mt-1">₱{selectedDetailChildPrice.toLocaleString()} / Pax ({selectedDetailChildDiscount}% OFF)</p>
-                      </div>
-                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button
-                          onClick={() => setBookingChildren(prev => Math.max(0, prev - 1))}
-                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
-                        >
-                          <LuMinus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingChildren}</span>
-                        <button
-                          onClick={() => setBookingChildren(prev => prev + 1)}
-                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
-                        >
-                          <LuPlus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {selectedServiceForDetail.is_tour && (
-                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Configuration</p>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Vehicle Type</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setBookingTourVehicle('Bus')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Bus' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
-                        >
-                          Bus (₱{(selectedServiceForDetail.bus_price || 0).toLocaleString()})
-                        </button>
-                        <button
-                          onClick={() => setBookingTourVehicle('Coaster')}
-                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Coaster' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
-                        >
-                          Coaster (₱{(selectedServiceForDetail.coaster_price || 0).toLocaleString()})
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Days</p>
-                        <p className="text-[9px] text-gray-400 font-bold mt-1">
-                          ₱{(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()} / Day
-                        </p>
-                      </div>
-                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button onClick={() => setBookingTourExtraDays(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-450">
-                          <LuMinus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraDays}</span>
-                        <button onClick={() => setBookingTourExtraDays(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-450">
-                          <LuPlus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Hours</p>
-                        <p className="text-[9px] text-gray-400 font-bold mt-1">
-                          ₱{(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()} / Hour
-                        </p>
-                      </div>
-                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                        <button onClick={() => setBookingTourExtraHours(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-455">
-                          <LuMinus className="w-3.5 h-3.5" />
-                        </button>
-                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraHours}</span>
-                        <button onClick={() => setBookingTourExtraHours(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-455">
-                          <LuPlus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Joiner Specifications Block */}
-                {(['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
-                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
-                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
-
-                    {/* Travel Date (Hide here if Bus Rental block will show it) */}
-                    {!(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
-                      <div className="space-y-4">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                          <DatePicker
-                            selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
-                            onChange={(date: Date | null) => {
-                              if (date) {
-                                setBookingDate(date.toISOString().split('T')[0]);
-                              } else {
-                                setBookingDate('');
-                              }
-                            }}
-                            minDate={new Date()}
-                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                            wrapperClassName="w-full"
-                            dateFormat="MMMM d, yyyy"
-                            placeholderText="Select Travel Date"
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
-                            <DatePicker
-                              selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
-                              onChange={(date: Date | null) => {
-                                if (date && bookingDate) {
-                                  // Lock the date to the travel date, only keep the time
-                                  const [year, month, day] = bookingDate.split('-').map(Number);
-                                  const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
-                                  setBookingDepartureDate(merged.toISOString());
-                                  if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
-                                    setBookingArrivalDate('');
-                                  }
-                                } else {
-                                  setBookingDepartureDate('');
-                                }
-                              }}
-                              showTimeSelect
-                              showTimeSelectOnly
-                              timeFormat="h:mm aa"
-                              timeIntervals={15}
-                              dateFormat="h:mm aa"
-                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                              wrapperClassName="w-full"
-                              placeholderText="Select Departure Time"
-                              disabled={!bookingDate}
-                            />
-                            {bookingDepartureDate && (
-                              <p className="text-[9px] text-gray-400 font-bold pl-1">
-                                Date: {bookingDate}
-                              </p>
-                            )}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date & Time</label>
-                            <DatePicker
-                              selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
-                              onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
-                              showTimeSelect
-                              timeFormat="h:mm aa"
-                              timeIntervals={15}
-                              dateFormat="MMM d, yyyy h:mm aa"
-                              minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
-                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                              wrapperClassName="w-full"
-                              placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
-                              disabled={!bookingDepartureDate}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Tour Code / Destination */}
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Code / Destination</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. Boracay Weekend Joiner"
-                        className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                        value={joinerTourCode}
-                        onChange={(e) => setJoinerTourCode(e.target.value)}
-                      />
-                    </div>
-
-                    {/* Pax Count & Pickup */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
-                        <input
-                          type="number"
-                          min="1"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                          value={joinerPaxCount}
-                          onChange={(e) => setJoinerPaxCount(e.target.value === '' ? '' : Number(e.target.value))}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pickup Location &amp; Time</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. MoA Globe, 10:00 PM"
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                          value={joinerPickup}
-                          onChange={(e) => setJoinerPickup(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* Bus Rental & Seating Options (Conditional for Bus Rental or Tour with Bus) */}
                 {(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
@@ -2238,7 +2007,7 @@ export default function FixedPackages() {
                           <BusLayout
                             compact={true}
                             totalSeats={buses.find(b => b.id === bookingBusId)?.seating_capacity || 49}
-                            hasRestroom={buses.find(b => b.id === bookingBusId)?.model?.toLowerCase().includes('vip') || false}
+                            hasRestroom={buses.find(b => b.id === bookingBusId)?.bus_category === 'VIP'}
                             selectedSeats={bookingSeats}
                             occupiedSeats={occupiedSeats}
                             onSeatToggle={(seatNum) => {
@@ -2259,6 +2028,252 @@ export default function FixedPackages() {
                     )}
                   </div>
                 )}
+
+                {/* Booking options */}
+                {selectedServiceForDetail.has_booking_fields && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Booking Guest Configuration</p>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Adults</p>
+                        <p className="text-[9px] text-gray-450 font-bold mt-1">₱{selectedDetailAdultPrice.toLocaleString()} / Pax</p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button
+                          onClick={() => setBookingAdults(prev => Math.max(1, prev - 1))}
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingAdults}</span>
+                        <button
+                          onClick={() => {
+                            const maxCap = (bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49;
+                            setBookingAdults(prev => Math.min(prev + 1, maxCap - bookingChildren));
+                          }}
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Children</p>
+                        <p className="text-[9px] text-gray-455 font-bold mt-1">₱{selectedDetailChildPrice.toLocaleString()} / Pax ({selectedDetailChildDiscount}% OFF)</p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button
+                          onClick={() => setBookingChildren(prev => Math.max(0, prev - 1))}
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingChildren}</span>
+                        <button
+                          onClick={() => {
+                            const maxCap = (bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49;
+                            setBookingChildren(prev => Math.min(prev + 1, maxCap - bookingAdults));
+                          }}
+                          className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-400 transition-colors"
+                        >
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedServiceForDetail.is_tour && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Configuration</p>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Vehicle Type</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setBookingTourVehicle('Bus')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Bus' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
+                        >
+                          Bus (₱{(selectedServiceForDetail.bus_price || 0).toLocaleString()})
+                        </button>
+                        <button
+                          onClick={() => setBookingTourVehicle('Coaster')}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${bookingTourVehicle === 'Coaster' ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-100 dark:border-gray-700'}`}
+                        >
+                          Coaster (₱{(selectedServiceForDetail.coaster_price || 0).toLocaleString()})
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Days</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">
+                          ₱{(bookingTourVehicle === 'Bus' ? 22010 : 16780).toLocaleString()} / Day
+                        </p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => setBookingTourExtraDays(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-450">
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraDays}</span>
+                        <button onClick={() => setBookingTourExtraDays(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-450">
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs font-black text-gray-900 dark:text-white leading-none uppercase">Extra Hours</p>
+                        <p className="text-[9px] text-gray-400 font-bold mt-1">
+                          ₱{(bookingTourVehicle === 'Bus' ? 1950 : 1680).toLocaleString()} / Hour
+                        </p>
+                      </div>
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => setBookingTourExtraHours(prev => Math.max(0, prev - 1))} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-455">
+                          <LuMinus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{bookingTourExtraHours}</span>
+                        <button onClick={() => setBookingTourExtraHours(prev => prev + 1)} className="p-1.5 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-gray-455">
+                          <LuPlus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Joiner Specifications Block */}
+                {(['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                  <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
+                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
+
+                    {/* Travel Date (Hide here if Bus Rental block will show it) */}
+                    {!(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                          <DatePicker
+                            selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
+                            onChange={(date: Date | null) => {
+                              if (date) {
+                                setBookingDate(date.toISOString().split('T')[0]);
+                              } else {
+                                setBookingDate('');
+                              }
+                            }}
+                            minDate={new Date()}
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                            wrapperClassName="w-full"
+                            dateFormat="MMMM d, yyyy"
+                            placeholderText="Select Travel Date"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
+                            <DatePicker
+                              selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
+                              onChange={(date: Date | null) => {
+                                if (date && bookingDate) {
+                                  // Lock the date to the travel date, only keep the time
+                                  const [year, month, day] = bookingDate.split('-').map(Number);
+                                  const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
+                                  setBookingDepartureDate(merged.toISOString());
+                                  if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
+                                    setBookingArrivalDate('');
+                                  }
+                                } else {
+                                  setBookingDepartureDate('');
+                                }
+                              }}
+                              showTimeSelect
+                              showTimeSelectOnly
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="h:mm aa"
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText="Select Departure Time"
+                              disabled={!bookingDate}
+                            />
+                            {bookingDepartureDate && (
+                              <p className="text-[9px] text-gray-400 font-bold pl-1">
+                                Date: {bookingDate}
+                              </p>
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date & Time</label>
+                            <DatePicker
+                              selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
+                              onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
+                              showTimeSelect
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="MMM d, yyyy h:mm aa"
+                              minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
+                              disabled={!bookingDepartureDate}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tour Code / Destination */}
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Code / Destination</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Boracay Weekend Joiner"
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                        value={joinerTourCode}
+                        onChange={(e) => setJoinerTourCode(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Pax Count & Pickup */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={(bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49}
+                          className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                          value={joinerPaxCount}
+                          onChange={(e) => {
+                            if (e.target.value === '') {
+                              setJoinerPaxCount('');
+                            } else {
+                              const maxCap = (bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49;
+                              setJoinerPaxCount(Math.min(maxCap, Math.max(1, Number(e.target.value))));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pickup Location &amp; Time</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. MoA Globe, 10:00 PM"
+                          className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                          value={joinerPickup}
+                          onChange={(e) => setJoinerPickup(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
 
                 <div className="p-6 bg-gray-50 dark:bg-gray-800 rounded-[2rem] border border-gray-100 dark:border-gray-700">
                   <p className="text-[10px] font-black text-gray-450 uppercase tracking-widest mb-2">Package Investment</p>

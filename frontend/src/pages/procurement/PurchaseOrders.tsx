@@ -320,7 +320,7 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
                 Verify PO
               </button>
             )}
-            {po.status === 'verified' && (
+            {po.status === 'pending_ceo_approval' && (
               <button onClick={() => approveMutation.mutate()} disabled={approveMutation.isPending}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 disabled:opacity-60 transition">
                 {approveMutation.isPending ? <LuLoaderCircle size={14} className="animate-spin" /> : <LuCheck size={14} />}
@@ -385,7 +385,7 @@ function PORow({
               icon: <CheckCircle size={14} />,
               onClick: () => onVerify(po.id)
             }] : []),
-            ...(po.status === 'verified' ? [{
+            ...(po.status === 'pending_ceo_approval' ? [{
               label: 'Approve PO',
               icon: <CheckCircle size={14} />,
               onClick: () => onApprove(po.id)

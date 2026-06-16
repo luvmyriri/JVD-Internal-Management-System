@@ -47,6 +47,14 @@ class WorkOrderController extends Controller
             $query->where('bus_id', $request->bus_id);
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('wo_number', 'like', "%{$search}%")
+                  ->orWhereHas('bus', fn ($sq) => $sq->where('plate_number', 'like', "%{$search}%"));
+            });
+        }
+
         $wos = $query->orderByDesc('created_at')
                      ->paginate($request->per_page ?? 20);
 
@@ -409,9 +417,12 @@ class WorkOrderController extends Controller
             'work_order_id' => $workOrder->id,
         ]);
 
+        // Advance WO to in_progress once a JO is linked
+        $workOrder->update(['status' => 'in_progress']);
+
         return response()->json([
             'success' => true,
-            'data' => $jo,
+            'data' => new WorkOrderResource($jo->load('bus')),
             'message' => 'Job Order generated successfully.',
         ], 201);
     }

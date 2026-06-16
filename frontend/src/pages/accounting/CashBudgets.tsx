@@ -46,8 +46,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  const isAccountingOrAdmin = !!(user?.tags?.includes('process:approve_cash_budget') || user?.tags?.includes('access:general'));
-  const isOperationsOrAdmin = !!(user?.tags?.includes('process:disburse_cash_budget') || user?.tags?.includes('access:general'));
+  const isAccountingOrAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('process:approve_cash_budget') || user?.tags?.includes('access:general'));
+  const isOperationsOrAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('process:disburse_cash_budget') || user?.tags?.includes('access:general'));
 
   const [form, setForm] = useState({
     diesel: (Number(budget.diesel) || '') as number | '',
@@ -844,7 +844,7 @@ export default function CashBudgets() {
 
   const budgets: CashBudgetRequest[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:cash_budgets:general'));
+  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:cash_budgets:general'));
 
   const filtered = budgets.filter((b) => {
     if (!hasGeneralAccess && b.prepared_by !== user?.id) {

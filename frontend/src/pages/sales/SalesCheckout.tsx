@@ -248,7 +248,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           ) : (
             <div className="space-y-3">
               {cart.map((item) => (
-                <div key={`${item.service.id}-${item.adults ?? 0}-${item.childrenCount ?? 0}-${item.vehicleType ?? ''}-${item.busId ?? 0}`} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
+                <div key={item.cartId} className="group p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all hover:border-blue-200 dark:hover:border-blue-800">
                   <div className="flex justify-between items-start mb-3">
                     <div className="flex-1 pr-4">
                       <p className="text-[11px] font-black text-gray-900 dark:text-white uppercase leading-tight">{item.service.name}</p>

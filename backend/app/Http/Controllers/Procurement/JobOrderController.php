@@ -64,6 +64,13 @@ class JobOrderController extends Controller
         if ($request->filled('date_to')) {
             $query->whereDate('service_date', '<=', $request->date_to);
         }
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('jo_number', 'like', "%{$search}%")
+                  ->orWhere('destination', 'like', "%{$search}%");
+            });
+        }
 
         $jos = $query->orderBy('service_date')
                      ->paginate($request->per_page ?? 20);

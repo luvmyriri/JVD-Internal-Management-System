@@ -46,8 +46,8 @@ export default function Liquidations() {
   const liquidations = liqRes?.data || [];
   const employees = soaRes?.data || [];
 
-  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:liquidations:general'));
-  const canSettle = !!(user?.tags?.includes('process:settle_liquidation') || user?.tags?.includes('access:general'));
+  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:liquidations:general'));
+  const canSettle = !!(user?.role === 'super_admin' || user?.tags?.includes('process:settle_liquidation') || user?.tags?.includes('access:general'));
 
   // Mutation to settle a liquidation
   const settleMutation = useMutation({

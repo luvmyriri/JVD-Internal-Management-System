@@ -213,7 +213,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
 
 export default function Collections() {
   const { user } = useAuth();
-  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:collections:general'));
+  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:collections:general'));
 
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');

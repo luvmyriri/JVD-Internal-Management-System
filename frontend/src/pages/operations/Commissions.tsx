@@ -50,7 +50,7 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
     }
   });
 
-  const canApprove = (user?.tags?.includes('process:approve_commission') || user?.tags?.includes('access:general')) && commission.status === 'draft';
+  const canApprove = (user?.role === 'super_admin' || user?.tags?.includes('process:approve_commission') || user?.tags?.includes('access:general')) && commission.status === 'draft';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -146,7 +146,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const isAdmin = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+  const isAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
 
   // Fetch users for selection if admin
   const { data: usersRes } = useQuery({
@@ -441,7 +441,7 @@ export default function Commissions() {
   // Handle ApiResponse structure where data is inside response.data
   const commissions: Commission[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const hasGeneralAccess = !!(user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
   const isGeneralEmployee = !hasGeneralAccess;
 
   const filtered = commissions.filter((c) => {

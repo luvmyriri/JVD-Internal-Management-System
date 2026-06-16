@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
 import { cn } from '../../utils';
 
@@ -16,66 +17,65 @@ interface DropdownProps {
   align?: 'left' | 'right';
 }
 
-export default function Dropdown({ 
-  items, 
-  trigger, 
+export default function Dropdown({
+  items,
+  trigger,
   className,
-  align = 'right'
+  align = 'right',
 }: DropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [menuStyle, setMenuStyle] = useState<React.CSSProperties>({});
+  const triggerRef = useRef<HTMLDivElement>(null);
 
+  const calcPosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    const menuWidth = 192; // w-48 = 12rem = 192px
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const showAbove = spaceBelow < 160 && spaceAbove > spaceBelow;
+
+    setMenuStyle({
+      position: 'fixed',
+      zIndex: 9999,
+      width: menuWidth,
+      ...(showAbove
+        ? { bottom: window.innerHeight - rect.top + 4 }
+        : { top: rect.bottom + 4 }),
+      ...(align === 'right'
+        ? { right: window.innerWidth - rect.right }
+        : { left: rect.left }),
+    });
+  }, [align]);
+
+  const open = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    calcPosition();
+    setIsOpen((v) => !v);
+  };
+
+  // Close on outside click or scroll
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    if (!isOpen) return;
+    const close = (e: MouseEvent) => {
+      if (triggerRef.current && !triggerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
+    const closeOnScroll = () => setIsOpen(false);
+    document.addEventListener('mousedown', close);
+    window.addEventListener('scroll', closeOnScroll, true);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', close);
+      window.removeEventListener('scroll', closeOnScroll, true);
     };
   }, [isOpen]);
 
-  useEffect(() => {
-    if (isOpen && dropdownRef.current) {
-      const parentRow = dropdownRef.current.closest('tr');
-      let originalZIndex = '';
-      let originalPosition = '';
-      if (parentRow) {
-        originalZIndex = parentRow.style.zIndex;
-        originalPosition = parentRow.style.position;
-        parentRow.style.zIndex = '50';
-        parentRow.style.position = 'relative';
-      }
-      return () => {
-        if (parentRow) {
-          parentRow.style.zIndex = originalZIndex;
-          parentRow.style.position = originalPosition;
-        }
-      };
-    }
-  }, [isOpen]);
-
-  return (
-    <div className={cn("relative inline-block text-left", isOpen ? "z-[60]" : "z-0", className)} ref={dropdownRef}>
-      <div onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}>
-        {trigger || (
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all active:scale-95 shadow-sm bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
-            <MoreHorizontal className="w-5 h-5" />
-          </button>
-        )}
-      </div>
-
-      {isOpen && (
-        <div 
-          className={cn(
-            "absolute z-[200] mt-2 w-48 rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-800 py-2 animate-in fade-in slide-in-from-top-2 duration-200",
-            align === 'right' ? 'right-0' : 'left-0'
-          )}
+  const menu = isOpen
+    ? ReactDOM.createPortal(
+        <div
+          style={menuStyle}
+          className="rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-800 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
           onClick={(e) => e.stopPropagation()}
         >
           {items.map((item, idx) => (
@@ -86,18 +86,34 @@ export default function Dropdown({
                 setIsOpen(false);
               }}
               className={cn(
-                "w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all",
-                item.variant === 'danger' 
-                  ? "text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20" 
-                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
+                'w-full flex items-center gap-3 px-4 py-3 text-[11px] font-black uppercase tracking-widest transition-all',
+                item.variant === 'danger'
+                  ? 'text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20'
+                  : 'text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
               )}
             >
               {item.icon && <span className="w-4 h-4">{item.icon}</span>}
               {item.label}
             </button>
           ))}
-        </div>
-      )}
+        </div>,
+        document.body
+      )
+    : null;
+
+  return (
+    <div
+      className={cn('relative inline-block text-left', className)}
+      ref={triggerRef}
+    >
+      <div onClick={open}>
+        {trigger || (
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all active:scale-95 shadow-sm bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+            <MoreHorizontal className="w-5 h-5" />
+          </button>
+        )}
+      </div>
+      {menu}
     </div>
   );
-};
+}

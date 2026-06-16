@@ -40,7 +40,11 @@ class PurchaseOrderController extends Controller
         }
 
         if ($request->filled('search')) {
-            $query->where('po_number', 'like', "%{$request->search}%");
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('po_number', 'like', "%{$search}%")
+                  ->orWhereHas('supplier', fn ($sq) => $sq->where('company_name', 'like', "%{$search}%"));
+            });
         }
 
         $pos = $query->orderByDesc('created_at')
