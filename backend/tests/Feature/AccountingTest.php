@@ -498,4 +498,70 @@ class AccountingTest extends TestCase
         $this->assertEquals(0.00, $liquidation->shortage_amount);
         $this->assertEquals('settled', $liquidation->status);
     }
+
+    public function test_disbursing_po_cash_budget_creates_invoice_with_items_and_supplier_name()
+    {
+        $supplier = \App\Models\Supplier::factory()->create([
+            'company_name' => 'Apex Parts Supply',
+            'accreditation_status' => 'accredited',
+        ]);
+        
+        $po = \App\Models\PurchaseOrder::create([
+            'po_number' => 'PO-2026-9999',
+            'supplier_id' => $supplier->id,
+            'created_by' => $this->admin->id,
+            'status' => 'pending_ceo_approval',
+            'total_amount' => 4500,
+        ]);
+        
+        $po->lineItems()->create([
+            'item_name' => 'Brake Shoes',
+            'quantity' => 2,
+            'unit_price' => 1500,
+            'total_price' => 3000,
+        ]);
+        
+        $po->lineItems()->create([
+            'item_name' => 'Gear Oil',
+            'quantity' => 5,
+            'unit_price' => 300,
+            'total_price' => 1500,
+        ]);
+        
+        $budget = CashBudgetRequest::create([
+            'date'              => '2026-06-08',
+            'purchase_order_id' => $po->id,
+            'status'            => 'approved',
+            'total_amount'      => 4500,
+            'prepared_by'       => $this->admin->id,
+        ]);
+        
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'disbursed',
+                 'disbursed_amount' => 4500,
+             ])
+             ->assertOk();
+             
+        // Check that invoice exists
+        $invoice = \App\Models\Invoice::where('cash_budget_request_id', $budget->id)->first();
+        $this->assertNotNull($invoice);
+        $this->assertEquals('Apex Parts Supply', $invoice->customer_name);
+        $this->assertEquals(4500.00, $invoice->total_amount);
+        
+        // Check invoice items
+        $this->assertCount(2, $invoice->items);
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoice->id,
+            'unit_price' => 1500.00,
+            'quantity' => 2,
+            'total_price' => 3000.00,
+        ]);
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoice->id,
+            'unit_price' => 300.00,
+            'quantity' => 5,
+            'total_price' => 1500.00,
+        ]);
+    }
 }

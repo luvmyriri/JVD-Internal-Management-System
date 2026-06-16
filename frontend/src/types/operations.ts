@@ -92,6 +92,9 @@ export interface CashBudgetRequest {
   purchase_order_id?: number;
   trip_ticket_id?: number;
   work_order_id?: number;
+  // snake_case relationships from Laravel API
+  work_order?: WorkOrder;
+  /** @deprecated use work_order */
   workOrder?: WorkOrder;
   
   diesel?: number;
@@ -113,9 +116,28 @@ export interface CashBudgetRequest {
   created_at?: string;
   updated_at?: string;
   
+  // Laravel serializes relationship names to snake_case in JSON
+  prepared_by_user?: { id: number; name: string; first_name?: string; last_name?: string };
+  approved_by_user?: { id: number; name: string };
+  disbursed_by_user?: { id: number; name: string };
   preparedBy?: { id: number; name: string; first_name?: string; last_name?: string };
   approvedBy?: { id: number; name: string };
   disbursedBy?: { id: number; name: string };
+  purchase_order?: {
+    id: number;
+    po_number: string;
+    total_amount: number;
+    supplier?: { id: number; company_name: string };
+    line_items?: Array<{
+      id: number;
+      item_name: string;
+      description?: string;
+      quantity: number;
+      unit_price: number;
+      total_price?: number;
+    }>;
+  };
+  /** @deprecated use purchase_order */
   purchaseOrder?: {
     id: number;
     po_number: string;
@@ -128,6 +150,8 @@ export interface CashBudgetRequest {
       unit_price: number;
     }>;
   };
+  trip_ticket?: TripTicket;
+  /** @deprecated use trip_ticket */
   tripTicket?: TripTicket;
   invoice?: {
     id: number;

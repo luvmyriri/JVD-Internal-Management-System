@@ -392,8 +392,6 @@ class WorkOrderController extends Controller
 
         // Create the Job Order in created state
         $year = now()->year;
-        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id5')->first();
-        // Fallback search since it might be order by id
         $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
         $sequence = 1;
         if ($latest) {
@@ -422,7 +420,7 @@ class WorkOrderController extends Controller
 
         return response()->json([
             'success' => true,
-            'data' => new WorkOrderResource($jo->load('bus')),
+            'data' => new \App\Http\Resources\JobOrderResource($jo->load('bus')),
             'message' => 'Job Order generated successfully.',
         ], 201);
     }

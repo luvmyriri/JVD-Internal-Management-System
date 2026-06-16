@@ -204,7 +204,7 @@ class CashBudgetRequestController extends Controller
                         : 'Driver';
                     $customerName = "DTT: {$budget->tripTicket->control_no} — {$driverName}";
                 } elseif ($budget->purchase_order_id && $budget->purchaseOrder?->supplier) {
-                    $customerName = $budget->purchaseOrder->supplier->name;
+                    $customerName = $budget->purchaseOrder->supplier->company_name ?? $budget->purchaseOrder->supplier->name;
                 }
 
                 // Build invoice notes with destination/plate info
@@ -233,25 +233,31 @@ class CashBudgetRequestController extends Controller
                     'cash_budget_request_id' => $budget->id,
                 ]);
 
-                // Map each cash budget expense field to a human-readable label and create an invoice item per expense
-                $expenseFields = [
-                    'diesel'               => 'Diesel',
-                    'meal_allowance'       => 'Meal Allowance',
-                    'sop'                  => 'SOP',
-                    'autosweep'            => 'Autosweep',
-                    'easytrip'             => 'Easytrip',
-                    'coach_captain_salary' => 'Coach Captain Salary',
-                    'spare_driver_salary'  => 'Spare Driver Salary',
-                ];
+                if ($budget->purchase_order_id && $budget->purchaseOrder) {
+                    foreach ($budget->purchaseOrder->lineItems as $poItem) {
+                        $service = \App\Models\Service::firstOrCreate(
+                            ['name' => $poItem->item_name],
+                            [
+                                'category'   => 'Procurement',
+                                'price'      => 0,
+                                'is_active'  => true,
+                                'created_by' => auth()->id() ?? 1,
+                            ]
+                        );
 
-                foreach ($expenseFields as $field => $label) {
-                    $amount = (float) ($budget->$field ?? 0);
-                    if ($amount <= 0) continue;
-
+                        \App\Models\InvoiceItem::create([
+                            'invoice_id'  => $invoice->id,
+                            'service_id'  => $service->id,
+                            'quantity'    => $poItem->quantity,
+                            'unit_price'  => $poItem->unit_price,
+                            'total_price' => $poItem->total_price,
+                        ]);
+                    }
+                } elseif ($budget->work_order_id && $budget->workOrder) {
                     $service = \App\Models\Service::firstOrCreate(
-                        ['name' => $label],
+                        ['name' => 'Maintenance Work Order: ' . $budget->workOrder->wo_number],
                         [
-                            'category'   => 'Cash Budget',
+                            'category'   => 'Procurement',
                             'price'      => 0,
                             'is_active'  => true,
                             'created_by' => auth()->id() ?? 1,
@@ -262,9 +268,43 @@ class CashBudgetRequestController extends Controller
                         'invoice_id'  => $invoice->id,
                         'service_id'  => $service->id,
                         'quantity'    => 1,
-                        'unit_price'  => $amount,
-                        'total_price' => $amount,
+                        'unit_price'  => $disbursedAmount,
+                        'total_price' => $disbursedAmount,
                     ]);
+                } else {
+                    // Map each cash budget expense field to a human-readable label and create an invoice item per expense
+                    $expenseFields = [
+                        'diesel'               => 'Diesel',
+                        'meal_allowance'       => 'Meal Allowance',
+                        'sop'                  => 'SOP',
+                        'autosweep'            => 'Autosweep',
+                        'easytrip'             => 'Easytrip',
+                        'coach_captain_salary' => 'Coach Captain Salary',
+                        'spare_driver_salary'  => 'Spare Driver Salary',
+                    ];
+
+                    foreach ($expenseFields as $field => $label) {
+                        $amount = (float) ($budget->$field ?? 0);
+                        if ($amount <= 0) continue;
+
+                        $service = \App\Models\Service::firstOrCreate(
+                            ['name' => $label],
+                            [
+                                'category'   => 'Cash Budget',
+                                'price'      => 0,
+                                'is_active'  => true,
+                                'created_by' => auth()->id() ?? 1,
+                            ]
+                        );
+
+                        \App\Models\InvoiceItem::create([
+                            'invoice_id'  => $invoice->id,
+                            'service_id'  => $service->id,
+                            'quantity'    => 1,
+                            'unit_price'  => $amount,
+                            'total_price' => $amount,
+                        ]);
+                    }
                 }
 
                 // Notify the preparer that the budget was disbursed

@@ -187,11 +187,11 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
             }
             metadata={{
               approved_by: budget.approvedBy?.name,
-              bus_plate: budget.tripTicket?.bus?.plate_number || budget.tripTicket?.plate_no || budget.plate_number,
-              driver_name: budget.tripTicket?.driver?.name,
-              ticket_no: budget.tripTicket?.control_no,
-              po_no: budget.purchaseOrder?.po_number,
-              wo_no: budget.workOrder?.wo_number,
+              bus_plate: (budget.trip_ticket ?? budget.tripTicket)?.bus?.plate_number || (budget.trip_ticket ?? budget.tripTicket)?.plate_no || budget.plate_number,
+              driver_name: (budget.trip_ticket ?? budget.tripTicket)?.driver?.name,
+              ticket_no: (budget.trip_ticket ?? budget.tripTicket)?.control_no,
+              po_no: (budget.purchase_order ?? budget.purchaseOrder)?.po_number,
+              wo_no: (budget.work_order ?? budget.workOrder)?.wo_number,
             }}
           />
         </div>
@@ -208,34 +208,34 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                 <div className="flex justify-between items-center mb-4">
                   <div>
                     <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Linked Trip Ticket</p>
-                    <h3 className="text-lg font-black text-blue-900 dark:text-white mt-1">DTT #{budget.tripTicket?.control_no || budget.trip_ticket_id}</h3>
+                    <h3 className="text-lg font-black text-blue-900 dark:text-white mt-1">DTT #{(budget.trip_ticket ?? budget.tripTicket)?.control_no || budget.trip_ticket_id}</h3>
                     {budget.work_order_id && (
-                      <p className="text-xs font-bold text-gray-500 mt-1">Work Order: {budget.workOrder?.wo_number || budget.work_order_id}</p>
+                      <p className="text-xs font-bold text-gray-500 mt-1">Work Order: {(budget.work_order ?? budget.workOrder)?.wo_number || budget.work_order_id}</p>
                     )}
                   </div>
-                  {budget.tripTicket?.status && (
+                  {(budget.trip_ticket ?? budget.tripTicket)?.status && (
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                      DTT {budget.tripTicket.status}
+                      DTT {(budget.trip_ticket ?? budget.tripTicket)!.status}
                     </span>
                   )}
                 </div>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs mt-2 border-t border-blue-100/10 dark:border-blue-900/20 pt-4">
                   <div>
                     <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Coach Captain</span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">{budget.tripTicket?.driver?.name || 'TBA'}</span>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">{(budget.trip_ticket ?? budget.tripTicket)?.driver?.name || 'TBA'}</span>
                   </div>
                   <div>
                     <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Vehicle (Plate)</span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">{budget.tripTicket?.bus?.plate_number || budget.tripTicket?.plate_no || budget.plate_number || 'TBA'}</span>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">{(budget.trip_ticket ?? budget.tripTicket)?.bus?.plate_number || (budget.trip_ticket ?? budget.tripTicket)?.plate_no || budget.plate_number || 'TBA'}</span>
                   </div>
                   <div>
                     <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Passengers</span>
-                    <span className="font-bold text-gray-900 dark:text-gray-100">{budget.tripTicket?.no_of_passengers || 0} pax</span>
+                    <span className="font-bold text-gray-900 dark:text-gray-100">{(budget.trip_ticket ?? budget.tripTicket)?.no_of_passengers || 0} pax</span>
                   </div>
                   <div className="col-span-2 md:col-span-3">
                     <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Route</span>
                     <span className="font-bold text-gray-900 dark:text-white">
-                      {budget.tripTicket?.pick_up || 'TBA'} to {budget.tripTicket?.drop_off || budget.destination || 'TBA'}
+                      {(budget.trip_ticket ?? budget.tripTicket)?.pick_up || 'TBA'} to {(budget.trip_ticket ?? budget.tripTicket)?.drop_off || budget.destination || 'TBA'}
                     </span>
                   </div>
                 </div>
@@ -264,26 +264,36 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
             <div className="space-y-3">
               {budget.purchase_order_id ? (
                 <>
-                  {budget.purchaseOrder?.lineItems && budget.purchaseOrder.lineItems.length > 0 ? (
-                    budget.purchaseOrder.lineItems.map((item: any, idx: number) => (
-                      <div key={idx} className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-bold text-gray-900 dark:text-white">{item.item_name}</span>
-                          {item.description && (
-                            <span className="text-xs text-gray-400">{item.description}</span>
-                          )}
+                  {/* Support both snake_case (API) and camelCase (legacy) line items */}
+                  {(() => {
+                    const po = budget.purchase_order ?? budget.purchaseOrder;
+                    const items = (po as any)?.line_items ?? (po as any)?.lineItems;
+                    return items && items.length > 0 ? (
+                      items.map((item: any, idx: number) => (
+                        <div key={idx} className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">{item.item_name}</span>
+                            {item.description && (
+                              <span className="text-xs text-gray-400">{item.description}</span>
+                            )}
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-bold text-gray-900 dark:text-white">
+                              {item.quantity} × ₱{Number(item.unit_price || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                            {item.total_price != null && (
+                              <p className="text-xs text-gray-500">= ₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                            )}
+                          </div>
                         </div>
-                        <span className="text-sm font-bold text-gray-900 dark:text-white">
-                          {item.quantity} x ₱ {item.unit_price?.toLocaleString()}
-                        </span>
+                      ))
+                    ) : (
+                      <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
+                        <span className="text-sm text-gray-600 dark:text-gray-400">PO Total Value</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.total_amount?.toLocaleString() || 0}</span>
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">PO Total Value</span>
-                      <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {budget.total_amount?.toLocaleString() || 0}</span>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </>
               ) : canEdit ? (
                 <div className="space-y-4">
@@ -1034,7 +1044,7 @@ export default function CashBudgets() {
                             </span>
                           ) : budget.trip_ticket_id ? (
                             <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
-                              DTT #{budget.tripTicket?.control_no || budget.trip_ticket_id}
+                              DTT #{(budget.trip_ticket ?? budget.tripTicket)?.control_no || budget.trip_ticket_id}
                             </span>
                           ) : (
                             <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">

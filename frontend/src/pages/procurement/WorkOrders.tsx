@@ -221,7 +221,7 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 
 function CreateWOModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState<WorkOrderFormData>({ bus_id: 0, assigned_to: 0, priority: 'routine', description: '' });
+  const [form, setForm] = useState<WorkOrderFormData>({ bus_id: 0, priority: 'routine', description: '' });
   const mutation = useMutation({
     mutationFn: () => workOrderApi.create(form),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
@@ -254,27 +254,24 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
         
         <div className="p-8 overflow-y-auto">
           <form id="wo-form" onSubmit={e => { e.preventDefault(); mutation.mutate(); }} className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
+            <div>
               {/* Bus ID Dropdown */}
-              <div>
-                <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID *</label>
-                <div className="relative">
-                  <select
-                    value={form.bus_id || ''}
-                    onChange={e => setForm(p => ({ ...p, bus_id: Number(e.target.value) }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
-                  >
-                    <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
-                    {buses.map((bus) => (
-                      <option key={bus.id} value={bus.id}>
-                        {bus.plate_number} — {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''} {bus.year ? `(${bus.year})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
+              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Bus ID *</label>
+              <div className="relative">
+                <select
+                  value={form.bus_id || ''}
+                  onChange={e => setForm(p => ({ ...p, bus_id: Number(e.target.value) }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow"
+                >
+                  <option value="">{busesLoading ? 'Loading buses...' : 'Select a bus...'}</option>
+                  {buses.map((bus) => (
+                    <option key={bus.id} value={bus.id}>
+                      {bus.plate_number} — {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''} {bus.year ? `(${bus.year})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
               </div>
-              {f('Assigned Mechanic (User ID)', 'assigned_to', 'number')}
             </div>
             <div>
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Priority Level</label>

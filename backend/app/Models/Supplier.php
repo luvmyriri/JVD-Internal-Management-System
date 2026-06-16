@@ -115,4 +115,9 @@ class Supplier extends Model
     {
         return $this->morphMany(Accreditation::class, 'entity', 'entity_type', 'entity_id');
     }
+
+    public function getNameAttribute(): string
+    {
+        return $this->company_name;
+    }
 }
