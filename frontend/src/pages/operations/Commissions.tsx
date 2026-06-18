@@ -11,6 +11,7 @@ import type { Commission } from '../../types';
 import { Modal, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import { userApi } from '../../api/users';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: any = {
@@ -165,11 +166,11 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   });
 
   const [items, setItems] = useState<NewCommissionItem[]>([]);
-  const [newItem, setNewItem] = useState<NewCommissionItem>({
+  const [newItem, setNewItem] = useState<any>({
     travel_date: new Date().toISOString().split('T')[0],
     destination: '',
-    quantity: 1,
-    amount: 0,
+    quantity: '1',
+    amount: '0',
   });
 
   const mutation = useMutation({
@@ -202,15 +203,15 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
     setItems(prev => [...prev, {
       ...newItem,
       quantity: Number(newItem.quantity),
-      amount: Number(newItem.amount)
+      amount: Number(parseMoneyInput(String(newItem.amount)))
     }]);
 
     // Reset mini form
     setNewItem({
       travel_date: new Date().toISOString().split('T')[0],
       destination: '',
-      quantity: 1,
-      amount: 0,
+      quantity: '1',
+      amount: '0',
     });
   };
 
@@ -320,7 +321,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
                 <input
                   type="date"
                   value={newItem.travel_date}
-                  onChange={e => setNewItem(p => ({ ...p, travel_date: e.target.value }))}
+                  onChange={e => setNewItem((p: any) => ({ ...p, travel_date: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -329,7 +330,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
                 <input
                   type="text"
                   value={newItem.destination}
-                  onChange={e => setNewItem(p => ({ ...p, destination: e.target.value }))}
+                  onChange={e => setNewItem((p: any) => ({ ...p, destination: e.target.value }))}
                   placeholder="e.g. San Fernando, Pampanga"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -337,10 +338,19 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
+                  inputMode="numeric"
                   value={newItem.quantity}
-                  onChange={e => setNewItem(p => ({ ...p, quantity: Number(e.target.value) }))}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setNewItem((p: any) => ({ ...p, quantity: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -348,10 +358,21 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
                 <div className="flex-1 space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={newItem.amount}
-                    onChange={e => setNewItem(p => ({ ...p, amount: Number(e.target.value) }))}
+                    onChange={e => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      const formatted = formatMoneyInput(e.target.value);
+                      setNewItem((p: any) => ({ ...p, amount: formatted }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>

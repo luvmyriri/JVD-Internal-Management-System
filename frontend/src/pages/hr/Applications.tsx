@@ -88,7 +88,7 @@ function TempPasswordModal({ entry, onClose }: { entry: TempPasswordEntry; onClo
             <p className="text-[10px] text-gray-400 font-bold">{entry.email}</p>
           </div>
           <div className="flex items-center gap-2">
-            <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
+            <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
               {entry.password}
             </code>
             <button
@@ -176,7 +176,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
             <input
               readOnly
               value={app.first_name}
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
           <div>
@@ -184,7 +184,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
             <input
               readOnly
               value={app.last_name}
-              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+              className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
             />
           </div>
         </div>
@@ -194,7 +194,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
           <input
             readOnly
             value={app.email}
-            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-medium text-gray-500 dark:text-gray-400 cursor-not-allowed"
           />
         </div>
 
@@ -205,7 +205,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Employee ID</label>
           <input
             {...register('employee_id', { required: 'Employee ID is required' })}
-            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium font-mono"
+            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium font-mono"
             placeholder="JVD-EMP-0000"
           />
           {errors.employee_id && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.employee_id.message}</p>}
@@ -216,7 +216,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Assign Role</label>
           <select
             {...register('role', { required: 'Role is required' })}
-            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
+            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
           >
             {ROLES.map(r => (
               <option key={r.value} value={r.value}>{r.label}</option>
@@ -230,7 +230,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Department</label>
           <select
             {...register('department', { required: 'Department is required' })}
-            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
+            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
           >
             {DEPARTMENTS.map(d => (
               <option key={d} value={d}>{d}</option>
@@ -249,7 +249,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
               className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${
                 sendInvitation
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300'
+                  : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-300'
               }`}
             >
               <LuMail className="w-4 h-4 mb-1" />
@@ -262,7 +262,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
               className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${
                 !sendInvitation
                   ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
-                  : 'border-gray-200 dark:border-gray-700 text-gray-500 hover:border-gray-300'
+                  : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-300'
               }`}
             >
               <LuKeyRound className="w-4 h-4 mb-1" />
@@ -482,9 +482,11 @@ export default function Applications() {
     currentPage * itemsPerPage
   );
 
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<Partial<JobApplication>>({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Partial<JobApplication>>({
     mode: 'onChange'
   });
+
+  const currentStatus = watch('status') || 'pending';
 
   const openModal = (app?: JobApplication) => {
     setActiveTab('details');
@@ -500,9 +502,21 @@ export default function Applications() {
 
   const onSubmit = (data: Partial<JobApplication>) => {
     if (selectedApp) {
-      updateMutation.mutate({ id: selectedApp.id, data });
+      updateMutation.mutate({ id: selectedApp.id, data }, {
+        onSuccess: () => {
+          if (data.status === 'hired') {
+            setRecruitApp({ ...selectedApp, ...data } as JobApplication);
+          }
+        }
+      });
     } else {
-      createMutation.mutate(data);
+      createMutation.mutate(data, {
+        onSuccess: (res: any) => {
+          if (data.status === 'hired' && res?.data) {
+            setRecruitApp(res.data);
+          }
+        }
+      });
     }
   };
 
@@ -659,9 +673,10 @@ export default function Applications() {
         onClose={() => setIsModalOpen(false)}
         title={selectedApp ? 'Edit Application' : 'Add Application'}
         size={selectedApp ? 'lg' : 'md'}
+        noPadding
       >
         {selectedApp && (
-          <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
+          <div className="flex border-b border-gray-300 dark:border-gray-800 px-8 sticky top-0 bg-white dark:bg-gray-900 z-20">
             <button
               type="button"
               onClick={() => setActiveTab('details')}
@@ -679,7 +694,7 @@ export default function Applications() {
           </div>
         )}
 
-        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-4">
+        <div className="px-8 pb-8 pt-6">
           {(!selectedApp || activeTab === 'details') ? (
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
               
@@ -705,7 +720,7 @@ export default function Applications() {
                         onInput={(e) => {
                           e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
                         }}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                       />
                       {errors.first_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.first_name.message}</p>}
                     </div>
@@ -722,7 +737,7 @@ export default function Applications() {
                         onInput={(e) => {
                           e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
                         }}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                       />
                       {errors.last_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.last_name.message}</p>}
                     </div>
@@ -740,7 +755,7 @@ export default function Applications() {
                             message: 'Invalid email address'
                           }
                         })}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                       />
                       {errors.email && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.email.message}</p>}
                     </div>
@@ -758,7 +773,7 @@ export default function Applications() {
                         onInput={(e) => {
                           e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
                         }}
-                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                       />
                       {errors.phone && <p className="text-[10px] font-bold text-red-550 mt-1 ml-1">{errors.phone.message}</p>}
                     </div>
@@ -776,24 +791,88 @@ export default function Applications() {
                 <div className="p-4 pt-0 space-y-4 border-t border-gray-100 dark:border-gray-700 mt-2">
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Position Applied</label>
-                    <input
+                    <select
                       {...register('position_applied', { required: 'Position is required' })}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
-                    />
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
+                    >
+                      <option value="" disabled hidden>Select a position...</option>
+                      {ROLES.map(r => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
                     {errors.position_applied && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.position_applied.message}</p>}
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Status</label>
-                    <select
-                      {...register('status')}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="interviewing">Interviewing</option>
-                      <option value="hired">Hired</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-3">Application Status</label>
+                    <div className="flex items-center w-full relative mb-6">
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-gray-200 dark:bg-gray-700 rounded-full" />
+                      <div 
+                        className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-blue-500 rounded-full transition-all duration-300"
+                        style={{ width: currentStatus === 'pending' ? '0%' : currentStatus === 'interviewing' ? '50%' : currentStatus === 'hired' ? '100%' : '0%' }}
+                      />
+                      
+                      <button
+                        type="button"
+                        onClick={() => setValue('status', 'pending', { shouldValidate: true })}
+                        className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                          ['pending', 'interviewing', 'hired'].includes(currentStatus) 
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                            : 'bg-white dark:bg-gray-800 text-gray-400 border-2 border-gray-300 dark:border-gray-700 hover:border-blue-400'
+                        }`}
+                      >
+                        1
+                      </button>
+
+                      <div className="flex-1" />
+
+                      <button
+                        type="button"
+                        onClick={() => setValue('status', 'interviewing', { shouldValidate: true })}
+                        className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                          ['interviewing', 'hired'].includes(currentStatus) 
+                            ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' 
+                            : 'bg-white dark:bg-gray-800 text-gray-400 border-2 border-gray-300 dark:border-gray-700 hover:border-blue-400'
+                        }`}
+                      >
+                        2
+                      </button>
+
+                      <div className="flex-1" />
+
+                      <button
+                        type="button"
+                        onClick={() => setValue('status', 'hired', { shouldValidate: true })}
+                        className={`relative z-10 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                          currentStatus === 'hired'
+                            ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' 
+                            : 'bg-white dark:bg-gray-800 text-gray-400 border-2 border-gray-300 dark:border-gray-700 hover:border-emerald-400'
+                        }`}
+                      >
+                        <LuUserCheck size={14} />
+                      </button>
+
+                      <div className="absolute -bottom-5 left-0 w-full flex justify-between">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider absolute left-0 -translate-x-1/2 ml-4 ${['pending', 'interviewing', 'hired'].includes(currentStatus) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}>Pending</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider absolute left-1/2 -translate-x-1/2 ${['interviewing', 'hired'].includes(currentStatus) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400'}`}>Interviewing</span>
+                        <span className={`text-[10px] font-bold uppercase tracking-wider absolute right-0 translate-x-1/2 mr-4 ${currentStatus === 'hired' ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400'}`}>Hired</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-8 pt-4 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                      <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Is this candidate not a good fit?</span>
+                      <button
+                        type="button"
+                        onClick={() => setValue('status', 'rejected', { shouldValidate: true })}
+                        className={`text-[11px] font-bold px-3 py-1.5 rounded-lg border transition-colors ${
+                          currentStatus === 'rejected'
+                            ? 'bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-800/30'
+                            : 'text-gray-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/20 dark:hover:text-red-400 border-gray-300 dark:border-gray-700 hover:border-red-200 dark:hover:border-red-800/30'
+                        }`}
+                      >
+                        Reject Candidate
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -801,14 +880,14 @@ export default function Applications() {
                     <textarea
                       {...register('notes')}
                       rows={3}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                   </div>
                 </div>
               </details>
 
               <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <Button variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+                <Button type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Cancel</Button>
                 <Button type="submit" isLoading={createMutation.isPending || updateMutation.isPending}>
                   {selectedApp ? 'Update Application' : 'Create Application'}
                 </Button>
@@ -837,7 +916,7 @@ export default function Applications() {
                   placeholder="Add custom checklist requirement (e.g. NBI Clearance)..."
                   value={newRequirement}
                   onChange={e => setNewRequirement(e.target.value)}
-                  className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
+                  className="flex-1 px-4 py-2 rounded-xl border border-gray-300 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-400"
                   onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddRequirement(); } }}
                 />
                 <button

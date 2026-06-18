@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { accountingApi } from '../../api/accounting';
 import type { Liquidation, LiquidationItem } from '../../api/accounting';
 import { useAuth } from '../../context/AuthContext';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import {
   LuReceipt,
   LuCircleCheck,
@@ -100,13 +101,14 @@ export default function Liquidations() {
   const handleOpenReview = (liq: Liquidation) => {
     const clonedItems = liq.items?.map(item => ({
       ...item,
+      amount: item.amount !== undefined && item.amount !== null ? formatMoneyInput(String(item.amount)) : '',
       status: item.status || 'approved'
     })) || [];
     
     const defaultCategories: LiquidationItem['expense_category'][] = ['Fuel', 'Toll', 'Meals'];
     const finalItems = clonedItems.length > 0 ? clonedItems : defaultCategories.map(cat => ({
       expense_category: cat,
-      amount: 0,
+      amount: '',
       receipt_number: '',
       status: 'approved' as const,
       notes: ''
@@ -114,8 +116,9 @@ export default function Liquidations() {
 
     setSelectedLiquidation({
       ...liq,
-      items: finalItems as LiquidationItem[]
-    });
+      items: finalItems as any,
+      total_returned: liq.total_returned !== undefined && liq.total_returned !== null ? formatMoneyInput(String(liq.total_returned)) : ''
+    } as any);
   };
 
   const toggleExpandEmployee = (id: number) => {
@@ -135,14 +138,14 @@ export default function Liquidations() {
     };
 
     const totalAdvanced = selectedLiquidation.total_advanced || 0;
-    const totalReturned = Number(selectedLiquidation.total_returned) || 0;
+    const totalReturned = Number(parseMoneyInput(String(selectedLiquidation.total_returned || 0))) || 0;
     
     // Sum approved expense items by category
     const expenseGroup: Record<string, number> = {};
     selectedLiquidation.items?.forEach(item => {
       if (item.status === 'approved') {
         const cat = item.expense_category || 'Other';
-        expenseGroup[cat] = (expenseGroup[cat] || 0) + (Number(item.amount) || 0);
+        expenseGroup[cat] = (expenseGroup[cat] || 0) + (Number(parseMoneyInput(String(item.amount || 0))) || 0);
       }
     });
 
@@ -761,7 +764,7 @@ export default function Liquidations() {
                         <p className="text-[10px] font-bold text-gray-450 dark:text-gray-500 uppercase tracking-widest font-display">Calculated Spent</p>
                         <p className="text-2xl font-black font-sans text-gray-900 dark:text-white">
                           ₱{(
-                            selectedLiquidation.items?.filter(i => i.status === 'approved').reduce((acc, i) => acc + Number(i.amount), 0) || 0
+                            selectedLiquidation.items?.filter(i => i.status === 'approved').reduce((acc, i) => acc + Number(parseMoneyInput(String(i.amount || 0))), 0) || 0
                           ).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       </div>
@@ -838,16 +841,26 @@ export default function Liquidations() {
                             {/* Amount */}
                             <div className="md:col-span-3">
                               <input
-                                type="number"
+                                type="text"
+                                inputMode="decimal"
                                 placeholder="Amount"
                                 value={item.amount || ''}
                                 disabled={!canSettle}
                                 onChange={(e) => {
+                                  const clean = parseMoneyInput(e.target.value);
+                                  if ((clean.split('.').length - 1) > 1) return;
+                                  const formatted = formatMoneyInput(e.target.value);
                                   const updatedItems = [...(selectedLiquidation.items || [])];
-                                  updatedItems[idx].amount = (e.target.value === '' ? '' : parseFloat(e.target.value)) as any;
+                                  updatedItems[idx].amount = formatted as any;
                                   setSelectedLiquidation({ ...selectedLiquidation, items: updatedItems });
                                 }}
-                                className="w-full bg-white dark:bg-gray-900 border border-gray-250 dark:border-gray-700 rounded-2xl px-3 py-2.5 text-xs font-bold font-sans focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
+                                onKeyDown={(e) => {
+                                  if (e.ctrlKey || e.metaKey) return;
+                                  if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                                    e.preventDefault();
+                                  }
+                                }}
+                                className="w-full bg-white dark:bg-gray-900 border border-gray-255 dark:border-gray-700 rounded-2xl px-3 py-2.5 text-xs font-bold font-sans focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-75 disabled:cursor-not-allowed"
                               />
                             </div>
 
@@ -916,16 +929,26 @@ export default function Liquidations() {
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 font-bold text-gray-450">₱</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0.00"
                           value={selectedLiquidation.total_returned ?? ''}
                           onChange={(e) => {
+                            const clean = parseMoneyInput(e.target.value);
+                            if ((clean.split('.').length - 1) > 1) return;
+                            const formatted = formatMoneyInput(e.target.value);
                             setSelectedLiquidation({
                               ...selectedLiquidation,
-                              total_returned: (e.target.value === '' ? '' : parseFloat(e.target.value)) as any
+                              total_returned: formatted as any
                             });
                           }}
-                          className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent dark:border-gray-700/50 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-850 transition-all focus:outline-none"
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) return;
+                            if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
+                          className="w-full pl-8 pr-4 py-3 bg-gray-50 dark:bg-gray-800 border border-transparent dark:border-gray-700/50 rounded-2xl text-sm font-bold focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-gray-855 transition-all focus:outline-none"
                         />
                       </div>
                     </div>
@@ -1062,9 +1085,9 @@ export default function Liquidations() {
                     id: selectedLiquidation.id,
                     items: (selectedLiquidation.items || []).map(item => ({
                       ...item,
-                      amount: Number(item.amount || 0)
+                      amount: Number(parseMoneyInput(String(item.amount || 0)))
                     })),
-                    totalReturned: Number(selectedLiquidation.total_returned || 0),
+                    totalReturned: Number(parseMoneyInput(String(selectedLiquidation.total_returned || 0))),
                     notes: selectedLiquidation.notes
                   });
                 }}

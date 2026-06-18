@@ -20,19 +20,35 @@ import {
   LuChevronLeft,
   LuChevronRight,
   LuTrophy,
-  LuFlame,
   LuTicket,
   LuTrendingUp,
-  LuActivity
+  LuActivity,
+  LuUser,
+  LuBadgeCheck,
+  LuClock,
+  LuBriefcase
 } from 'react-icons/lu';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
+  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { StatusBadge } from '../../components/ui';
+import { formatDate } from '../../utils';
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+
+const DEPARTMENTS = [
+  'Administration',
+  'Accounting',
+  'Operations',
+  'Maintenance',
+  'Human Resources',
+  'Logistics',
+];
+
+const DEPT_COLORS = ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ec4899', '#6366f1'];
 
 // Donut â€“ user distribution
 const userDistributionData = [
@@ -165,7 +181,8 @@ const heatmapGridData = [
   [25, 20, 15, 25, 40, 55, 68, 78, 88, 85, 80, 65], // Sun
 ];
 
-const getHeatmapColor = (value: number, theme: string) => {
+// @ts-expect-error kept for future heatmap feature
+const _getHeatmapColor = (value: number, theme: string) => {
   if (theme === 'dark') {
     if (value <= 20) return 'bg-purple-950/20 border border-purple-900/10';
     if (value <= 40) return 'bg-purple-900/40 border border-purple-800/20';
@@ -246,7 +263,8 @@ export default function HRDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
-  const heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
+  // @ts-expect-error kept for future heatmap feature
+  const _heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
   const recentBookings = dashboardData?.recent_bookings && dashboardData.recent_bookings.length > 0 ? dashboardData.recent_bookings : detailedBranchData.travel;
   const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : topAgents;
   const drivers = dashboardData?.top_drivers && dashboardData.top_drivers.length > 0 ? dashboardData.top_drivers : topDrivers;
@@ -256,6 +274,115 @@ export default function HRDashboard() {
   const inactiveEmployeesCount = usersResponse?.data?.filter((u: any) => !u.is_active).length ?? 0;
   const openApplicationsCount = applicationsResponse?.data?.filter((a: any) => a.status === 'pending' || a.status === 'interviewing').length ?? 0;
   const activeInternsCount = internshipsResponse?.data?.filter((i: any) => i.status === 'active').length ?? 0;
+
+  const applications = Array.isArray(applicationsResponse) ? applicationsResponse : (applicationsResponse?.data || []);
+  const internships = Array.isArray(internshipsResponse) ? internshipsResponse : (internshipsResponse?.data || []);
+
+  const recentApplications = useMemo(() => applications.slice(0, 6), [applications]);
+  const recentInterns = useMemo(() => internships.slice(0, 6), [internships]);
+
+  const employeeDistribution = useMemo(() => {
+    if (!usersResponse?.data) return [];
+    return DEPARTMENTS.map((dept, idx) => ({
+      name: dept,
+      value: usersResponse.data.filter((u: any) => u.department === dept).length,
+      fill: DEPT_COLORS[idx]
+    })).filter((d: any) => d.value > 0);
+  }, [usersResponse]);
+
+  const availableBusesToday = useMemo(() => {
+    const todayDate = new Date();
+    const currentY = todayDate.getFullYear();
+    const currentM = todayDate.getMonth();
+    const isSameDay = (a: Date, b: Date) =>
+      a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+    const fallbackEvents = [
+      { id: 1,  date: new Date(currentY, currentM, 1), busIndex: 0, route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
+      { id: 2,  date: new Date(currentY, currentM, 3), busIndex: 1, route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
+      { id: 3,  date: new Date(currentY, currentM, 5), busIndex: 2, route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
+      { id: 4,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 3, route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
+      { id: 5,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 0, route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
+      { id: 6,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 4, route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
+      { id: 7,  date: new Date(currentY, currentM, todayDate.getDate() + 1), busIndex: 1, route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
+      { id: 8,  date: new Date(currentY, currentM, todayDate.getDate() + 2), busIndex: 5, route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
+      { id: 9,  date: new Date(currentY, currentM, todayDate.getDate() + 3), busIndex: 2, route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
+      { id: 10, date: new Date(currentY, currentM, todayDate.getDate() + 5), busIndex: 6, route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
+    ];
+
+    const fleetSchedules = !tickets || tickets.length === 0
+      ? (buses && buses.length > 0
+          ? fallbackEvents.map(event => {
+              const actualBus = buses[event.busIndex % buses.length];
+              return {
+                id: event.id,
+                date: event.date,
+                bus: actualBus.plate_number,
+                busModel: actualBus.model,
+                plate: actualBus.plate_number,
+                route: event.route,
+                driver: event.driver,
+                depart: event.depart,
+                status: event.status,
+                seats: actualBus.seating_capacity || event.seats
+              };
+            })
+          : fallbackEvents.map(event => ({
+              id: event.id,
+              date: event.date,
+              bus: `BUS-00${event.busIndex + 1}`,
+              busModel: 'Luxury Coach',
+              plate: `XYZ-00${event.busIndex + 1}`,
+              route: event.route,
+              driver: event.driver,
+              depart: event.depart,
+              status: event.status,
+              seats: event.seats
+            })))
+      : tickets.map((t: any) => ({
+          id: t.id,
+          date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
+          bus: t.bus?.plate_number || t.plate_no || 'N/A',
+          busModel: t.bus?.model || '',
+          plate: t.bus?.plate_number || t.plate_no || 'N/A',
+          route: `${t.pick_up || 'N/A'} - ${t.drop_off || 'N/A'}`,
+          driver: t.driver ? `${t.driver.first_name || ''} ${t.driver.last_name || ''}`.trim() : (t.driver?.name || 'N/A'),
+          depart: '09:00 AM',
+          status: t.status === 'completed' ? 'completed' : t.status === 'approved' ? 'in_service' : 'scheduled',
+          seats: t.no_of_passengers || 45,
+        }));
+
+    const todayEvents = fleetSchedules.filter(s => isSameDay(s.date, todayDate));
+    const occupiedToday = Array.from(new Set(todayEvents.map(d => d.bus)));
+
+    if (!buses || buses.length === 0) {
+      const allBusesPlaceholder = [
+        { id: 1, plate_number: 'XYZ-001', model: 'BUS-001', seating_capacity: 45 },
+        { id: 2, plate_number: 'XYZ-002', model: 'BUS-002', seating_capacity: 55 },
+        { id: 3, plate_number: 'XYZ-003', model: 'BUS-003', seating_capacity: 40 },
+        { id: 4, plate_number: 'XYZ-004', model: 'BUS-004', seating_capacity: 50 },
+        { id: 5, plate_number: 'XYZ-005', model: 'BUS-005', seating_capacity: 60 },
+        { id: 6, plate_number: 'XYZ-006', model: 'BUS-006', seating_capacity: 45 },
+        { id: 7, plate_number: 'XYZ-007', model: 'BUS-007', seating_capacity: 50 },
+      ];
+      return allBusesPlaceholder.filter((b: any) => !occupiedToday.includes(b.model));
+    }
+    return buses.filter((b: any) => !occupiedToday.includes(b.plate_number));
+  }, [tickets, buses]);
+
+  const getApplicationStatusVariant = (status: string): any => {
+    const map: Record<string, string> = {
+      pending: 'warning', reviewed: 'info', interviewing: 'info', hired: 'success', rejected: 'danger'
+    };
+    return map[status] || 'neutral';
+  };
+
+  const getInternStatusVariant = (status: string): any => {
+    const map: Record<string, string> = {
+      pending: 'warning', active: 'success', completed: 'info', terminated: 'danger'
+    };
+    return map[status] || 'neutral';
+  };
 
 
   const exportToPDF = (title: string, data: any[]) => {
@@ -653,53 +780,56 @@ export default function HRDashboard() {
         {/* Column 2: Heatmap + Travel Bookings */}
         <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
-          {/* Peak Client Activity Heatmap */}
+          {/* Employee Distribution */}
           <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                  <LuFlame className="w-3 h-3 text-orange-500" />
-                  Peak Client Activity
+                  <LuActivity className="w-3 h-3 text-blue-500" />
+                  Employee Distribution
                 </h3>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Client density per day · hour</p>
+                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">By Department</p>
               </div>
+              <DownloadActions variant="dark" title="Employee Distribution" data={employeeDistribution.map((d: any) => ({ Department: d.name, Count: d.value }))} />
             </div>
-
-            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3 overflow-x-auto custom-scrollbar select-none">
-              <div className="grid gap-y-1 w-full min-w-[290px]" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
-                <div className="col-start-1" />
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">8AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12PM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4PM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">8PM</div>
-
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].flatMap((day, dayIdx) => [
-                  <div key={`label-${day}`} className="text-[8px] font-black text-gray-400 dark:text-gray-500 flex items-center pr-1">
-                    {day}
-                  </div>,
-                  ...(heatmap[dayIdx] || []).map((dataVal, hourIdx) => (
-                    <div
-                      key={`block-${day}-${hourIdx}`}
-                      className={`h-[18px] rounded-[3px] transition-all duration-300 hover:scale-110 cursor-pointer ${getHeatmapColor(dataVal, theme)}`}
-                      title={`${day} at ${hourIdx * 2}:00 — Density: ${dataVal}%`}
-                    />
-                  ))
-                ])}
-              </div>
-
-              <div className="flex items-center justify-end gap-1 mt-3 text-[7.5px] font-bold text-gray-400 dark:text-gray-500 shrink-0">
-                <span>Low</span>
-                <div className="flex gap-0.5">
-                  <div className="w-2 h-2 rounded bg-purple-50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/10" />
-                  <div className="w-2 h-2 rounded bg-purple-100 dark:bg-purple-900/40 border border-purple-200/50 dark:border-purple-800/20" />
-                  <div className="w-2 h-2 rounded bg-purple-200 dark:bg-purple-800/60 border border-purple-300/50 dark:border-purple-700/30" />
-                  <div className="w-2 h-2 rounded bg-violet-400 dark:bg-violet-600/80 border border-violet-400/50 dark:border-violet-500/40" />
-                  <div className="w-2 h-2 rounded bg-fuchsia-600 dark:bg-fuchsia-500 border border-fuchsia-500 dark:border-fuchsia-400" />
-                </div>
-                <span>High</span>
-              </div>
+            <div className="flex-1 w-full mt-2 relative min-h-0">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={employeeDistribution}
+                    cx="50%"
+                    cy="45%"
+                    innerRadius={35}
+                    outerRadius={55}
+                    paddingAngle={2}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {employeeDistribution.map((entry: any, index: number) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#111827' : '#ffffff',
+                      border: '1px solid',
+                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                      borderRadius: '12px',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}
+                    itemStyle={{ color: theme === 'dark' ? '#f3f4f6' : '#111827' }}
+                    formatter={(value: any, name: any) => [value, name]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    iconType="circle"
+                    wrapperStyle={{ fontSize: '9px', fontWeight: 'bold' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -916,6 +1046,152 @@ export default function HRDashboard() {
 
         </div>
       </div>
+
+      {/* ── HR Analytics ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 min-h-[400px] flex-1 relative z-10 mt-2">
+
+        {/* Column 1: Available Buses Today */}
+        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+            <div>
+              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <LuBus className="w-3.5 h-3.5 text-emerald-500" />
+                Available Buses Today
+              </h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Ready for dispatch</p>
+            </div>
+            <DownloadActions 
+              variant="dark" 
+              title="Available Buses Today" 
+              data={availableBusesToday.map((b: any) => ({ 
+                'Plate Number': b.plate_number, 
+                'Model': b.model, 
+                'Capacity': b.seating_capacity || 49 
+              }))} 
+            />
+          </div>
+          <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
+            {availableBusesToday.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center mt-4">No available buses today.</p>
+            ) : (
+              availableBusesToday.map((bus: any) => (
+                <div key={bus.id || bus.plate_number} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <LuBus className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                        {bus.model || 'Luxury Coach'}
+                      </p>
+                      <p className="text-[9px] text-gray-500 font-bold truncate">
+                        Plate: {bus.plate_number || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
+                      {bus.seating_capacity || 49} Seats
+                    </span>
+                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                      <LuClock className="w-2.5 h-2.5" />
+                      Today
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Column 2: Recent Job Applications */}
+        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+            <div>
+              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <LuBriefcase className="w-3.5 h-3.5 text-violet-500" />
+                Recent Applications
+              </h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Latest candidates</p>
+            </div>
+          </div>
+          <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
+            {recentApplications.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center mt-4">No recent applications.</p>
+            ) : (
+              recentApplications.map((app: any) => (
+                <div key={app.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
+                      <LuUser className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                        {app.first_name} {app.last_name}
+                      </p>
+                      <p className="text-[9px] text-gray-500 font-bold truncate">
+                        {app.position_applied}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <StatusBadge status={app.status} variant={getApplicationStatusVariant(app.status)} />
+                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                      <LuClock className="w-2.5 h-2.5" />
+                      {formatDate(app.created_at)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* Column 3: Recent Internships */}
+        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+            <div>
+              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <LuBadgeCheck className="w-3.5 h-3.5 text-emerald-500" />
+                Recent Internships
+              </h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Latest interns</p>
+            </div>
+          </div>
+          <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
+            {recentInterns.length === 0 ? (
+              <p className="text-xs text-gray-400 text-center mt-4">No recent interns.</p>
+            ) : (
+              recentInterns.map((intern: any) => (
+                <div key={intern.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                      <LuGlobe className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                        {intern.first_name} {intern.last_name}
+                      </p>
+                      <p className="text-[9px] text-gray-500 font-bold truncate">
+                        {intern.department} / {intern.school}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
+                    <StatusBadge status={intern.status} variant={getInternStatusVariant(intern.status)} />
+                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                      <LuClock className="w-2.5 h-2.5" />
+                      {formatDate(intern.start_date)}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+      </div>
+
     </div>
   );
 }

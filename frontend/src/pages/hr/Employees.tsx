@@ -72,7 +72,7 @@ function TempPasswordModal({ entries, onClose }: { entries: TempPasswordEntry[];
                 <p className="text-[10px] text-gray-400 font-bold">{e.email}</p>
               </div>
               <div className="flex items-center gap-2">
-                <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
+                <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
                   {e.password}
                 </code>
                 <button
@@ -573,7 +573,7 @@ export default function Employees() {
             />
           </div>
           <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)}
-            className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]">
+            className="px-4 py-2.5 rounded-2xl border border-gray-300 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]">
             <option value="">All Roles</option>
             {ROLES.map(role => (
               <option key={role.value} value={role.value}>{role.label}</option>
@@ -713,9 +713,10 @@ export default function Employees() {
         onClose={() => setIsViewModalOpen(false)}
         title="Personnel Identity"
         size="lg"
+        noPadding
       >
         {selectedUser && (
-          <div className="space-y-8 p-2">
+          <div className="space-y-8 px-8 pb-8 pt-4">
             <div className="flex flex-col md:flex-row items-center gap-8 p-8 bg-gray-50 dark:bg-gray-800/60 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 relative overflow-hidden group">
               <div className="absolute -right-8 -top-8 w-40 h-40 bg-blue-500/5 rounded-full blur-3xl group-hover:bg-blue-500/10 transition-colors duration-700" />
               
@@ -741,7 +742,7 @@ export default function Employees() {
                       <span className="px-3 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-blue-100 dark:border-blue-900/30">
                         {selectedUser.department}
                       </span>
-                      <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-200 dark:border-gray-700">
+                      <span className="px-3 py-1 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest rounded-lg border border-gray-300 dark:border-gray-700">
                         {selectedUser.role.replace('_', ' ')}
                       </span>
                     </div>
@@ -825,8 +826,9 @@ export default function Employees() {
         onClose={() => setIsModalOpen(false)}
         title={selectedUser ? 'Modify Personnel' : 'Personnel Registration'}
         size="md"
+        noPadding
       >
-        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="px-8 pb-8 pt-4">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             
             {/* Personal Information */}
@@ -853,7 +855,7 @@ export default function Employees() {
                         }
                       })}
                       className={cn(
-                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                         errors.first_name && "border-red-300 bg-red-50/30"
                       )}
                       placeholder="e.g. Michael"
@@ -874,7 +876,7 @@ export default function Employees() {
                         }
                       })}
                       className={cn(
-                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                        "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                         errors.last_name && "border-red-300 bg-red-50/30"
                       )}
                       placeholder="e.g. Scofield"
@@ -895,7 +897,7 @@ export default function Employees() {
                     })}
                     type="email"
                     className={cn(
-                      "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
+                      "w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20",
                       errors.email && "border-red-300 bg-red-50/30"
                     )}
                     placeholder="name@jvd-logistics.com"
@@ -919,7 +921,7 @@ export default function Employees() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>
                     <select
                       {...register('role', { required: true })}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                     >
                       {ROLES.map(role => (
                         <option key={role.value} value={role.value}>{role.label}</option>
@@ -930,7 +932,7 @@ export default function Employees() {
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Department</label>
                     <select
                       {...register('department', { required: true })}
-                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
+                      className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 appearance-none"
                     >
                       {DEPARTMENTS.map(dept => (
                         <option key={dept} value={dept}>{dept}</option>
@@ -945,7 +947,7 @@ export default function Employees() {
                     {...register('employee_id', { required: 'Employee ID is required' })}
                     readOnly
                     className={cn(
-                      "w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono",
+                      "w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono",
                       errors.employee_id && "border-red-300 bg-red-50/30"
                     )}
                     placeholder="JVD-EMP-000"
@@ -971,7 +973,7 @@ export default function Employees() {
                         type="checkbox"
                         {...register('send_invitation')}
                         id="send_invitation"
-                        className="w-5 h-5 rounded-lg border-gray-200 dark:border-gray-700 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
+                        className="w-5 h-5 rounded-lg border-gray-300 dark:border-gray-700 text-blue-600 focus:ring-blue-500/20 transition-all cursor-pointer"
                         defaultChecked={true}
                       />
                     </div>

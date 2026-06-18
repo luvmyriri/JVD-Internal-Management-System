@@ -18,6 +18,7 @@ import {
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 export interface CartItem {
   cartId?: string;
@@ -132,18 +133,18 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const tax = subtotal * TAX_RATE;
   const total = subtotal + tax;
 
-  const change = amountReceived !== '' && !isNaN(Number(amountReceived))
-    ? (paymentType === 'full' ? Math.max(0, Number(amountReceived) - total) : 0)
+  const change = amountReceived !== '' && !isNaN(Number(parseMoneyInput(String(amountReceived))))
+    ? (paymentType === 'full' ? Math.max(0, Number(parseMoneyInput(String(amountReceived))) - total) : 0)
     : 0;
 
-  const balance = (paymentType === 'downpayment' || paymentType === 'half') && amountReceived !== '' && !isNaN(Number(amountReceived))
-    ? Math.max(0, total - Number(amountReceived))
+  const balance = (paymentType === 'downpayment' || paymentType === 'half') && amountReceived !== '' && !isNaN(Number(parseMoneyInput(String(amountReceived))))
+    ? Math.max(0, total - Number(parseMoneyInput(String(amountReceived))))
     : 0;
 
   // Auto-update amountReceived when total changes if paymentType is 'half'
   useEffect(() => {
     if (paymentType === 'half') {
-      setAmountReceived((total / 2).toFixed(2));
+      setAmountReceived(formatMoneyInput((total / 2).toFixed(2)));
     }
   }, [total, paymentType]);
 
@@ -177,7 +178,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
         payment_method: paymentMethod,
         payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
-        amount_received: paymentMethod === 'Cash' ? Number(amountReceived || 0) : undefined,
+        amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
         items: cart.map(item => ({
           service_id: item.service.id,
@@ -197,7 +198,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         pax_count: cart.find(item => item.paxCount)?.paxCount || null,
         arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
         departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
-      });
+      } as any);
 
       setLastInvoice(response.data.data);
       setReceiptAmountReceived(amountReceived);
@@ -528,18 +529,30 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             <div className="relative group">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-900 dark:text-white font-black text-sm">₱</span>
               <input
-                type="number"
+                type="text"
+                inputMode="decimal"
                 placeholder="0.00"
                 className="w-full pl-8 pr-4 py-4 bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 rounded-2xl text-xl font-black focus:ring-4 focus:ring-blue-600/5 transition-all text-gray-900 dark:text-white placeholder:text-gray-200 dark:placeholder:text-gray-700"
                 value={amountReceived}
-                onChange={(e) => setAmountReceived(e.target.value)}
+                onChange={(e) => {
+                  const clean = parseMoneyInput(e.target.value);
+                  if ((clean.split('.').length - 1) > 1) return;
+                  const formatted = formatMoneyInput(e.target.value);
+                  setAmountReceived(formatted);
+                }}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey) return;
+                  if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
               />
             </div>
             <div className="flex justify-between items-center px-1">
               {paymentType === 'full' ? (
                 <>
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Change</span>
-                  <div className={`text-lg font-black tracking-tighter ${Number(amountReceived) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
+                  <div className={`text-lg font-black tracking-tighter ${Number(parseMoneyInput(String(amountReceived))) - total >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-300 dark:text-gray-700'}`}>
                     ₱{change.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                   </div>
                 </>
@@ -573,7 +586,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         </div>
 
         <button
-          disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(amountReceived) < total)) || (paymentMethod === 'Cash' && (paymentType === 'downpayment' || paymentType === 'half') && (Number(amountReceived) <= 0 || Number(amountReceived) >= total)) || !isContactValid || !isEmailValid}
+          disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(parseMoneyInput(String(amountReceived))) < total)) || (paymentMethod === 'Cash' && (paymentType === 'downpayment' || paymentType === 'half') && (Number(parseMoneyInput(String(amountReceived))) <= 0 || Number(parseMoneyInput(String(amountReceived))) >= total)) || !isContactValid || !isEmailValid}
           onClick={handleCheckout}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-100 dark:bg-gray-800 dark:disabled:bg-gray-850 disabled:text-gray-405 dark:disabled:text-gray-600 dark:text-gray-300 text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl shadow-blue-600/20 transition-all flex justify-center items-center gap-3 active:scale-95"
         >
@@ -794,7 +807,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                                 : 'Downpayment Paid')
                               : 'Amount Received'}
                           </span>
-                          <span className="text-gray-900">₱{Number(receiptAmountReceived || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                          <span className="text-gray-900">₱{Number(parseMoneyInput(String(receiptAmountReceived || 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                         </div>
                         {lastInvoice?.payment_type === 'downpayment' ? (
                           <div className="flex justify-between pt-2 text-xs font-bold text-gray-400 uppercase tracking-widest">

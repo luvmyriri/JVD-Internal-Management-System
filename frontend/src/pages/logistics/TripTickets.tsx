@@ -4,6 +4,8 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { tripTicketApi } from '../../api/operations';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
+
 import type { TripTicket } from '../../types';
 import { Modal, Button, PipelineVisualizer } from '../../components/ui';
 import { useBuses } from '../../hooks/useFleet';
@@ -628,13 +630,13 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
     drop_off: ticket?.drop_off || '',
     bus_id: ticket?.bus_id || '' as string | number,
     plate_no: ticket?.plate_no || '',
-    no_of_passengers: ticket?.no_of_passengers || 1,
+    no_of_passengers: (ticket?.no_of_passengers || 1).toString(),
     driver_id: ticket?.driver_id || '' as string | number,
-    meal_allowance: ticket?.meal_allowance || 0,
-    diesel: ticket?.diesel || 0,
-    sop: ticket?.sop || 0,
-    easy_trip: ticket?.easy_trip || 0,
-    autosweep: ticket?.autosweep || 0,
+    meal_allowance: formatMoneyInput(String(ticket?.meal_allowance || 0)),
+    diesel: formatMoneyInput(String(ticket?.diesel || 0)),
+    sop: formatMoneyInput(String(ticket?.sop || 0)),
+    easy_trip: formatMoneyInput(String(ticket?.easy_trip || 0)),
+    autosweep: formatMoneyInput(String(ticket?.autosweep || 0)),
     passenger_name: ticket?.passenger_name || '',
     trip_type: (ticket as any)?.trip_type || 'domestic' as 'domestic' | 'international',
   });
@@ -706,11 +708,11 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
       bus_id: form.bus_id ? Number(form.bus_id) : null,
       driver_id: form.driver_id ? Number(form.driver_id) : null,
       no_of_passengers: Number(form.no_of_passengers),
-      meal_allowance: Number(form.meal_allowance),
-      diesel: Number(form.diesel),
-      sop: Number(form.sop),
-      easy_trip: Number(form.easy_trip),
-      autosweep: Number(form.autosweep),
+      meal_allowance: Number(parseMoneyInput(String(form.meal_allowance || 0))),
+      diesel: Number(parseMoneyInput(String(form.diesel || 0))),
+      sop: Number(parseMoneyInput(String(form.sop || 0))),
+      easy_trip: Number(parseMoneyInput(String(form.easy_trip || 0))),
+      autosweep: Number(parseMoneyInput(String(form.autosweep || 0))),
     };
 
     // If bus is selected, sync plate_no with that bus's plate_number for safety
@@ -824,11 +826,20 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">No. of Passengers</label>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="numeric"
                   required
-                  min="1"
                   value={form.no_of_passengers}
-                  onChange={e => setForm(p => ({ ...p, no_of_passengers: Number(e.target.value) }))}
+                  onChange={e => {
+                    const val = e.target.value.replace(/\D/g, '');
+                    setForm(p => ({ ...p, no_of_passengers: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -933,50 +944,105 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Meal</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.meal_allowance}
-                  onChange={e => setForm(p => ({ ...p, meal_allowance: Number(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm(p => ({ ...p, meal_allowance: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.diesel}
-                  onChange={e => setForm(p => ({ ...p, diesel: Number(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm(p => ({ ...p, diesel: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">SOP</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.sop}
-                  onChange={e => setForm(p => ({ ...p, sop: Number(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm(p => ({ ...p, sop: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">EasyTrip</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.easy_trip}
-                  onChange={e => setForm(p => ({ ...p, easy_trip: Number(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm(p => ({ ...p, easy_trip: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="space-y-2 col-span-2 md:col-span-1">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">AutoSweep</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
+                  inputMode="decimal"
                   value={form.autosweep}
-                  onChange={e => setForm(p => ({ ...p, autosweep: Number(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm(p => ({ ...p, autosweep: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

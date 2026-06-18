@@ -13,6 +13,7 @@ import SalesCheckout, { type CartItem } from './SalesCheckout';
 import BusLayout from '../../components/ui/BusLayout';
 import client from '../../api/client';
 import { fleetApi } from '../../api/fleet';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
@@ -42,7 +43,7 @@ export default function CustomTransactions() {
     name: '',
     category: 'Bus Rental',
     otherCategory: '',
-    price: '' as number | '',
+    price: '',
     quantity: 1,
     description: '',
   });
@@ -53,7 +54,7 @@ export default function CustomTransactions() {
     vehicleType: 'Bus',
     route: '',
     serviceDate: '',
-    days: 1 as number | '',
+    days: '1',
     plateNumber: '',
     inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
     travelDate: '',
@@ -62,7 +63,7 @@ export default function CustomTransactions() {
     driverName: '',
     selectedSeats: [] as string[],
     pickupLocation: '',
-    paxCount: 1 as number | ''
+    paxCount: '1'
   });
 
   // Load calendar for selected bus to check seat occupancy on travel date
@@ -94,7 +95,7 @@ export default function CustomTransactions() {
   const [eduTour, setEduTour] = useState({
     schoolName: '',
     gradeLevel: '',
-    expectedPax: 50 as number | '',
+    expectedPax: '50',
     stops: '',
     serviceDate: '',
     busId: '',
@@ -105,8 +106,8 @@ export default function CustomTransactions() {
   const [tourPackage, setTourPackage] = useState({
     destination: '',
     travelDates: '',
-    adults: 1 as number | '',
-    children: 0 as number | '',
+    adults: '1',
+    children: '0',
     accommodation: 'Hotel',
     itinerary: ''
   });
@@ -123,7 +124,7 @@ export default function CustomTransactions() {
   const [joiners, setJoiners] = useState({
     tourCode: '',
     travelDate: '',
-    paxCount: 1 as number | '',
+    paxCount: '1',
     pickupLocation: ''
   });
 
@@ -140,7 +141,7 @@ export default function CustomTransactions() {
       vehicleType: 'Bus',
       route: '',
       serviceDate: '',
-      days: 1,
+      days: '1',
       plateNumber: '',
       inclusions: { driver: true, fuel: true, toll: false, insurance: true },
       travelDate: '',
@@ -149,12 +150,12 @@ export default function CustomTransactions() {
       driverName: '',
       selectedSeats: [],
       pickupLocation: '',
-      paxCount: 1
+      paxCount: '1'
     });
     setEduTour({
       schoolName: '',
       gradeLevel: '',
-      expectedPax: 50,
+      expectedPax: '50',
       stops: '',
       serviceDate: '',
       busId: '',
@@ -163,8 +164,8 @@ export default function CustomTransactions() {
     setTourPackage({
       destination: '',
       travelDates: '',
-      adults: 1,
-      children: 0,
+      adults: '1',
+      children: '0',
       accommodation: 'Hotel',
       itinerary: ''
     });
@@ -177,7 +178,7 @@ export default function CustomTransactions() {
     setJoiners({
       tourCode: '',
       travelDate: '',
-      paxCount: 1,
+      paxCount: '1',
       pickupLocation: ''
     });
     setBooking({
@@ -320,7 +321,8 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
 
   const handleAddCustomTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customForm.name || customForm.price === '' || Number(customForm.price) <= 0) {
+    const cleanPrice = parseMoneyInput(customForm.price);
+    if (!customForm.name || customForm.price === '' || Number(cleanPrice) <= 0) {
       toast.error('Please enter a valid service name and price.');
       return;
     }
@@ -338,7 +340,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
       const res = await billingApi.createService({
         name: customForm.name,
         category: customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category,
-        price: Number(customForm.price || 0),
+        price: Number(cleanPrice || 0),
         description: finalDescription || 'Custom service arrangement',
         is_tour: false,
         has_booking_fields: false,
@@ -470,11 +472,19 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Number of Days</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.days}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, days: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setBusRental(prev => ({ ...prev, days: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -604,19 +614,25 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={busRental.paxCount}
-                  onChange={(e) => setBusRental(prev => {
-                    const val = e.target.value === '' ? '' : Number(e.target.value);
-                    const selectedBusObj = buses.find((b: any) => b.id === prev.busId);
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    const selectedBusObj = buses.find((b: any) => b.id === busRental.busId);
                     const maxCap = selectedBusObj?.seating_capacity || 49;
-                    return {
+                    const num = val === '' ? '' : Math.min(maxCap, Number(val));
+                    setBusRental(prev => ({
                       ...prev,
-                      paxCount: val !== '' && val > maxCap ? maxCap : val
-                    };
-                  })}
+                      paxCount: num === '' ? '' : String(num)
+                    }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -688,11 +704,19 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Expected Headcount</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={eduTour.expectedPax}
-                  onChange={(e) => setEduTour(prev => ({ ...prev, expectedPax: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setEduTour(prev => ({ ...prev, expectedPax: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -793,21 +817,37 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Adults</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={tourPackage.adults}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, adults: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setTourPackage(prev => ({ ...prev, adults: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Children</label>
                 <input
-                  type="number"
-                  min="0"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={tourPackage.children}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, children: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setTourPackage(prev => ({ ...prev, children: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -936,11 +976,19 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
                 <input
-                  type="number"
-                  min="1"
+                  type="text"
                   className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   value={joiners.paxCount}
-                  onChange={(e) => setJoiners(prev => ({ ...prev, paxCount: e.target.value === '' ? '' : Number(e.target.value) }))}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^0-9]/g, '');
+                    setJoiners(prev => ({ ...prev, paxCount: val }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                 />
               </div>
               <div className="space-y-2">
@@ -1068,14 +1116,23 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                     Base Rate / Price (PHP)
                   </label>
                   <input
-                    type="number"
+                    type="text"
                     required
-                    min="1"
-                    step="any"
                     placeholder="PHP Price"
                     className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                     value={customForm.price}
-                    onChange={(e) => setCustomForm(prev => ({ ...prev, price: e.target.value === '' ? '' : Number(e.target.value) }))}
+                    onChange={(e) => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      const formatted = formatMoneyInput(e.target.value);
+                      setCustomForm(prev => ({ ...prev, price: formatted }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                   />
                 </div>
               </div>

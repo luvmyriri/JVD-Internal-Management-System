@@ -12,6 +12,8 @@ import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../typ
 import { PO_STATUS_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
 import toast from 'react-hot-toast';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
+
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -61,7 +63,17 @@ function LineItemRow({
         </div>
         <div>
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Qty *</label>
-          <input type="number" min={1} value={item.quantity} onChange={e => set('quantity', e.target.value === '' ? '' : Number(e.target.value))}
+          <input type="text" inputMode="numeric" value={item.quantity} 
+            onChange={e => {
+              const val = e.target.value.replace(/\D/g, '');
+              set('quantity', val);
+            }}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey) return;
+              if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         <div>
@@ -73,7 +85,19 @@ function LineItemRow({
         </div>
         <div className="col-span-2">
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit Price (₱) *</label>
-          <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => set('unit_price', e.target.value === '' ? '' : Number(e.target.value))}
+          <input type="text" inputMode="decimal" value={item.unit_price} 
+            onChange={e => {
+              const clean = parseMoneyInput(e.target.value);
+              if ((clean.split('.').length - 1) > 1) return;
+              const formatted = formatMoneyInput(e.target.value);
+              set('unit_price', formatted);
+            }}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey) return;
+              if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
         </div>
         {item.part_number && (
@@ -85,7 +109,7 @@ function LineItemRow({
         )}
       </div>
       <div className="text-right text-xs font-bold text-blue-600">
-        Subtotal: {fmt(Number(item.quantity || 0) * Number(item.unit_price || 0))}
+        Subtotal: {fmt(Number(item.quantity || 0) * Number(parseMoneyInput(String(item.unit_price || 0))))}
       </div>
     </div>
   );
@@ -113,7 +137,7 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
       items: items.map(i => ({
         ...i,
         quantity: Number(i.quantity || 1),
-        unit_price: Number(i.unit_price || 0)
+        unit_price: Number(parseMoneyInput(String(i.unit_price || 0)))
       })),
       notes
     }),
@@ -123,8 +147,8 @@ function CreatePOModal({ onClose }: { onClose: () => void }) {
   const addItem = () => setItems(p => [...p, { item_name: '', part_number: '', description: '', quantity: 1 as any, unit_of_measure: 'pcs', unit_price: '' as any, receipt_number: '', item_notes: '' }]);
   const updateItem = (i: number, vals: Partial<DraftLineItem>) => setItems(p => p.map((it, idx) => idx === i ? { ...it, ...vals } : it));
   const removeItem = (i: number) => setItems(p => p.filter((_, idx) => idx !== i));
-  const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_price || 0), 0);
-  const canSubmit = supplierId && items.every(it => it.item_name && Number(it.quantity || 0) > 0 && Number(it.unit_price || 0) >= 0);
+  const total = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(parseMoneyInput(String(it.unit_price || 0))), 0);
+  const canSubmit = supplierId && items.every(it => it.item_name && Number(it.quantity || 0) > 0 && Number(parseMoneyInput(String(it.unit_price || 0))) >= 0);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

@@ -145,8 +145,18 @@ function LogMaintenanceModal({ bus, onClose }: LogModalProps) {
                 </div>
                 <div>
                   <label className={lbl}>Current Mileage (km) *</label>
-                  <input type="number" className={inp} value={form.total_mileage} min={bus.total_mileage}
-                    onChange={e => setForm(p => ({ ...p, total_mileage: e.target.value === '' ? '' : parseInt(e.target.value) as any }))} required />
+                  <input type="text" inputMode="numeric" className={inp} value={form.total_mileage}
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setForm(p => ({ ...p, total_mileage: val === '' ? '' : parseInt(val, 10) as any }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
+                    required />
                 </div>
                 <div>
                   <label className={lbl}>Service Notes</label>

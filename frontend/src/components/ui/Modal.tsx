@@ -10,6 +10,7 @@ interface ModalProps {
   children: React.ReactNode;
   className?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | 'full';
+  noPadding?: boolean;
 }
 
 const sizeClasses = {
@@ -21,7 +22,7 @@ const sizeClasses = {
   full: 'max-w-[95vw]',
 };
 
-export default function Modal({ isOpen, onClose, title, children, className, size = 'md' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, className, size = 'md', noPadding = false }: ModalProps) {
   // Close on ESC key
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -83,7 +84,7 @@ export default function Modal({ isOpen, onClose, title, children, className, siz
             </div>
 
             {/* Content */}
-            <div className="p-8 overflow-y-auto custom-scrollbar flex-1">
+            <div className={cn("overflow-y-auto custom-scrollbar flex-1", !noPadding && "p-8")}>
               {children}
             </div>
           </motion.div>

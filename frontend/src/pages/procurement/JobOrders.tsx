@@ -19,6 +19,7 @@ import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
 import toast from 'react-hot-toast';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,7 +77,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
   const mutation = useMutation({
     mutationFn: () => jobOrderApi.create({
       ...form,
-      total_cost: Number(form.total_cost || 0),
+      total_cost: Number(parseMoneyInput(String(form.total_cost || 0))),
     }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['job-orders'] }); onClose(); },
   });
@@ -194,7 +195,19 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Estimated Cost (₱)</label>
-                  <input type="number" min={0} step={0.01} value={form.total_cost} onChange={e => set('total_cost', e.target.value === '' ? '' : Number(e.target.value))}
+                  <input type="text" inputMode="decimal" value={form.total_cost}
+                    onChange={e => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      const formatted = formatMoneyInput(e.target.value);
+                      set('total_cost', formatted);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder="0.00" />
                 </div>
 
@@ -246,7 +259,7 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
       items: items.filter(i => i.item_name.trim()).map(i => ({
         ...i,
         quantity: Number(i.quantity || 1),
-        unit_price: Number(i.unit_price || 0)
+        unit_price: Number(parseMoneyInput(String(i.unit_price || 0)))
       })),
     }),
     onSuccess: (res) => {
@@ -265,7 +278,7 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
   const setItem = (idx: number, key: keyof POLineItem, val: string | number) =>
     setItems(p => p.map((it, i) => i === idx ? { ...it, [key]: val } : it));
 
-  const total = items.reduce((s, i) => s + (Number(i.quantity || 0) * Number(i.unit_price || 0)), 0);
+  const total = items.reduce((s, i) => s + (Number(i.quantity || 0) * Number(parseMoneyInput(String(i.unit_price || 0)))), 0);
   const canSubmit = supplierId > 0 && items.some(i => i.item_name.trim() && i.quantity > 0);
 
   return (
@@ -312,9 +325,31 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
                 <div key={idx} className="grid grid-cols-12 gap-3 items-center">
                   <input value={item.item_name} onChange={e => setItem(idx, 'item_name', e.target.value)}
                     placeholder="Item / Parts name" className="col-span-5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="number" min={1} value={item.quantity} onChange={e => setItem(idx, 'quantity', e.target.value === '' ? '' : Number(e.target.value))}
+                  <input type="text" inputMode="numeric" value={item.quantity} 
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setItem(idx, 'quantity', val);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="Qty" className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="number" min={0} step={0.01} value={item.unit_price} onChange={e => setItem(idx, 'unit_price', e.target.value === '' ? '' : Number(e.target.value))}
+                  <input type="text" inputMode="decimal" value={item.unit_price} 
+                    onChange={e => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      const formatted = formatMoneyInput(e.target.value);
+                      setItem(idx, 'unit_price', formatted);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     placeholder="Unit price" className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
                   <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1}
                     className="col-span-1 flex items-center justify-center p-2 text-red-400 hover:text-red-600 disabled:opacity-30 transition">

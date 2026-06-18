@@ -34,9 +34,22 @@ class CashBudgetRequestController extends Controller
         ]);
 
         $validated['prepared_by'] = auth()->id();
-        $validated['total_amount'] = collect($validated)->only([
-            'diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary'
-        ])->sum();
+
+        if ($request->filled('purchase_order_id')) {
+            $po = \App\Models\PurchaseOrder::find($request->purchase_order_id);
+            $validated['total_amount'] = $po ? $po->total_amount : 0;
+        } elseif ($request->filled('work_order_id')) {
+            $wo = \App\Models\WorkOrder::find($request->work_order_id);
+            $validated['total_amount'] = $wo ? ($wo->cost ?? 0) : 0;
+        } elseif ($request->filled('total_amount')) {
+            // General requests or direct amounts passed
+            $validated['total_amount'] = $request->total_amount;
+        } else {
+            // Driver Trip Ticket or default breakdown sum
+            $validated['total_amount'] = collect($validated)->only([
+                'diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary'
+            ])->sum();
+        }
 
         $budget = CashBudgetRequest::create($validated);
 
@@ -67,13 +80,13 @@ class CashBudgetRequestController extends Controller
             'disbursed_amount'     => 'sometimes|numeric|nullable',
         ]);
 
-        // Recalculate total if any amounts updated
+        // Recalculate total if any amounts updated and it's a DTT flow
         $amounts = ['diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary'];
         $needsRecalculation = collect($amounts)->contains(fn($a) => $request->has($a));
 
         $budget->update($validated);
 
-        if ($needsRecalculation && !$budget->purchase_order_id) {
+        if ($needsRecalculation && !$budget->purchase_order_id && !$budget->work_order_id && $budget->trip_ticket_id) {
             $budget->update([
                 'total_amount' => collect($budget->only($amounts))->sum()
             ]);

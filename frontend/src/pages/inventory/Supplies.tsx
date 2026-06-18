@@ -6,6 +6,8 @@ import {
 import { inventoryApi } from '../../api/inventory';
 import { Pagination } from '../../components/ui';
 import type { InventoryItem, InventoryItemFormData } from '../../types/inventory';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
+
 
 // ── Add/Edit Item Modal ──────────────────────────────────────────────────────
 interface ItemModalProps {
@@ -30,19 +32,26 @@ function ItemModal({ item, mode = 'create', onClose }: ItemModalProps) {
   );
 
   const mutation = useMutation({
-    mutationFn: () => item ? inventoryApi.update(item.id, form) : inventoryApi.create(form as InventoryItemFormData),
+    mutationFn: () => {
+      const payload = {
+        ...form,
+        unit_cost: Number(parseMoneyInput(String(form.unit_cost || 0))),
+        quantity: Number(form.quantity || 0),
+        reorder_level: Number(form.reorder_level || 0),
+      };
+      return item ? inventoryApi.update(item.id, payload) : inventoryApi.create(payload as InventoryItemFormData);
+    },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['inventory'] }); onClose(); },
   });
 
   const formatNumber = (val: string) => val.replace(/\D/g, '');
-  const formatCost = (val: string) => val.replace(/[^0-9.]/g, '');
 
   const field = (label: string, key: keyof InventoryItemFormData, type = 'text', placeholder = '', customOnChange?: (val: string) => void) => (
     <div>
       <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
       <input
         type={type}
-        value={form[key] as string ?? ''}
+        value={key === 'unit_cost' ? formatMoneyInput(String(form[key] ?? '')) : (form[key] as string ?? '')}
         onChange={e => {
           if (customOnChange) customOnChange(e.target.value);
           else setForm(p => ({ ...p, [key]: e.target.value }));
@@ -93,7 +102,11 @@ function ItemModal({ item, mode = 'create', onClose }: ItemModalProps) {
               {field('Unit of Measurement *', 'unit', 'text', 'e.g. liters, pcs, sets')}
               
               {field('Reorder Level *', 'reorder_level', 'text', '10', val => setForm(p => ({ ...p, reorder_level: parseInt(formatNumber(val)) || 0 })))}
-              {field('Unit Cost (₱) *', 'unit_cost', 'text', '0.00', val => setForm(p => ({ ...p, unit_cost: parseFloat(formatCost(val)) || 0 })))}
+              {field('Unit Cost (₱) *', 'unit_cost', 'text', '0.00', val => {
+                const clean = parseMoneyInput(val);
+                if ((clean.split('.').length - 1) > 1) return;
+                setForm(p => ({ ...p, unit_cost: clean as any }));
+              })}
             </div>
 
             {mutation.isError && (

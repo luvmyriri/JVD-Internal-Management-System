@@ -169,7 +169,17 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
                 
                 <div className="space-y-2">
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1">Capacity</label>
-                  <input type="number" min="1" max="120" value={form.seating_capacity ?? ''} onChange={e => setForm(p => ({ ...p, seating_capacity: e.target.value === '' ? '' : parseInt(e.target.value) as any }))}
+                  <input type="text" inputMode="numeric" value={form.seating_capacity ?? ''} 
+                    onChange={e => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      setForm(p => ({ ...p, seating_capacity: val === '' ? '' : parseInt(val, 10) as any }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     disabled={mode === 'view'}
                     className={`w-full px-4 py-3 rounded-2xl border text-sm font-medium transition-all ${
                       mode === 'view' 

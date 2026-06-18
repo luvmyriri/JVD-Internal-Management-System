@@ -18,6 +18,8 @@ import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
+
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -221,9 +223,9 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 
 function CreateWOModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
-  const [form, setForm] = useState<WorkOrderFormData>({ bus_id: 0, priority: 'routine', description: '' });
+  const [form, setForm] = useState<Partial<WorkOrderFormData>>({ bus_id: 0, priority: 'routine', description: '' });
   const mutation = useMutation({
-    mutationFn: () => workOrderApi.create(form),
+    mutationFn: () => workOrderApi.create(form as WorkOrderFormData),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
   });
 
@@ -234,13 +236,6 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
   });
   const buses = busesData?.data?.data ?? [];
 
-  const f = (label: string, key: keyof WorkOrderFormData, type = 'text') => (
-    <div>
-      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
-      <input type={type} value={(form[key] as string | number) || ''} onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" placeholder={`Enter ${label.replace(' *', '').replace(' (User ID)', '').toLowerCase()}...`} />
-    </div>
-  );
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2rem] shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
@@ -327,7 +322,13 @@ function EditWOModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
   });
 
   const mutation = useMutation({
-    mutationFn: () => workOrderApi.update(wo.id, form),
+    mutationFn: () => {
+      const payload = {
+        ...form,
+        cost: Number(parseMoneyInput(String(form.cost || 0))),
+      };
+      return workOrderApi.update(wo.id, payload);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['work-orders'] });
       toast.success('Work Order updated successfully!');
@@ -345,18 +346,37 @@ function EditWOModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
   });
   const buses = busesData?.data?.data ?? [];
 
-  const f = (label: string, key: keyof Partial<WorkOrderFormData>, type = 'text') => (
-    <div>
-      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
-      <input 
-        type={type} 
-        value={(form[key] as string | number) || ''} 
-        onChange={e => setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }))}
-        className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" 
-        placeholder={`Enter ${label.toLowerCase()}...`} 
-      />
-    </div>
-  );
+  const f = (label: string, key: keyof Partial<WorkOrderFormData>, type = 'text') => {
+    const isCost = key === 'cost';
+    return (
+      <div>
+        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">{label}</label>
+        <input 
+          type={isCost ? 'text' : type} 
+          value={isCost ? formatMoneyInput(String(form[key] ?? '')) : ((form[key] as string | number) || '')} 
+          onChange={e => {
+            if (isCost) {
+              const clean = parseMoneyInput(e.target.value);
+              if ((clean.split('.').length - 1) > 1) return;
+              setForm(p => ({ ...p, cost: clean as any }));
+            } else {
+              setForm(p => ({ ...p, [key]: type === 'number' ? Number(e.target.value) : e.target.value }));
+            }
+          }}
+          onKeyDown={(e) => {
+            if (isCost) {
+              if (e.ctrlKey || e.metaKey) return;
+              if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+              }
+            }
+          }}
+          className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" 
+          placeholder={`Enter ${label.toLowerCase()}...`} 
+        />
+      </div>
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">

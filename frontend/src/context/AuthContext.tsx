@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth';
 import type { User, RolePermissions } from '../types/auth';
 
@@ -51,6 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (perms) setPermissions(perms);
   }, []);
 
+  const queryClient = useQueryClient();
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout();
@@ -59,8 +62,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(null);
       setUser(null);
       setPermissions(null);
+      queryClient.clear();
     }
-  }, []);
+  }, [queryClient]);
 
   const hasPermission = useCallback((module: string, action: 'can_view' | 'can_create' | 'can_edit' | 'can_delete' = 'can_view') => {
     if (!user) return false;

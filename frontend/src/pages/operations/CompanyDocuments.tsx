@@ -14,6 +14,8 @@ import { tripTicketApi } from '../../api/operations';
 import { Modal, Button, ConfirmDialog } from '../../components/ui';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 import { useAuth } from '../../context/AuthContext';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
+
 
 interface AddDocumentModalProps {
   categories: DocumentCategory[];
@@ -65,7 +67,11 @@ function AddDocumentModal({ categories, onClose }: AddDocumentModalProps) {
           reader.onerror = error => reject(error);
         });
       }
-      return procurementDocumentApi.create({ ...form, file_base64: base64 });
+      return procurementDocumentApi.create({
+        ...form,
+        amount: form.amount ? Number(parseMoneyInput(String(form.amount))) : null,
+        file_base64: base64
+      });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['procurement-documents'] });
@@ -220,7 +226,21 @@ function AddDocumentModal({ categories, onClose }: AddDocumentModalProps) {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount (Optional)</label>
-                <input type="number" step="0.01" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800" value={form.amount || ''} onChange={e => setForm({ ...form, amount: e.target.value ? Number(e.target.value) : null })} />
+                <input type="text" inputMode="decimal" className="w-full rounded-lg border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  value={form.amount !== null && form.amount !== undefined ? formatMoneyInput(String(form.amount)) : ''}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setForm({ ...form, amount: formatted as any });
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
+                />
               </div>
 
               <div className="border-t border-gray-200 dark:border-gray-700 pt-4">

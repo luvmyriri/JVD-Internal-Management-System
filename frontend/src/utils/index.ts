@@ -25,6 +25,35 @@ export function formatCurrency(amount: number): string {
 }
 
 /**
+ * Format raw input string representing money to add commas as separators.
+ * e.g., '19000' -> '19,000', '19000.50' -> '19,000.50'
+ */
+export function formatMoneyInput(value: string): string {
+  const clean = value.replace(/[^0-9.]/g, '');
+  const parts = clean.split('.');
+  let integerPart = parts[0];
+  const decimalPart = parts.length > 1 ? '.' + parts.slice(1).join('') : '';
+
+  if (integerPart) {
+    if (integerPart.length > 1 && integerPart.startsWith('0')) {
+      integerPart = integerPart.replace(/^0+/, '');
+      if (integerPart === '') integerPart = '0';
+    }
+    integerPart = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+  return integerPart + decimalPart;
+}
+
+/**
+ * Remove commas from a money formatted string so it can be parsed as a number.
+ * e.g., '19,000.50' -> '19000.50'
+ */
+export function parseMoneyInput(value: string): string {
+  return value.replace(/,/g, '');
+}
+
+
+/**
  * Truncate a string to a maximum length with ellipsis.
  */
 export function truncate(str: string, maxLength: number = 50): string {

@@ -13,6 +13,7 @@ import { customerApi } from '../../api/customers';
 import type { Collection } from '../../types';
 import { Modal, Button } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 const SERVICE_TYPES = [
   'Bus Rental',
@@ -34,7 +35,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     travel_date: new Date().toISOString().split('T')[0],
     pick_up: '',
     drop_off: '',
-    rate: '' as number | '',
+    rate: '',
   });
 
   // --- Autocomplete state ---
@@ -83,7 +84,7 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
     e.preventDefault();
     mutation.mutate({
       ...form,
-      rate: Number(form.rate || 0),
+      rate: Number(parseMoneyInput(form.rate) || 0),
     });
   };
 
@@ -194,10 +195,22 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
         <div className="space-y-2">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Rate / Amount</label>
           <input
-            type="number"
+            type="text"
+            inputMode="decimal"
             required
             value={form.rate}
-            onChange={e => setForm(p => ({ ...p, rate: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+            onChange={e => {
+              const clean = parseMoneyInput(e.target.value);
+              if ((clean.split('.').length - 1) > 1) return;
+              const formatted = formatMoneyInput(e.target.value);
+              setForm(p => ({ ...p, rate: formatted }));
+            }}
+            onKeyDown={(e) => {
+              if (e.ctrlKey || e.metaKey) return;
+              if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+              }
+            }}
             className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -230,7 +243,7 @@ export default function Collections() {
   const [paymentForm, setPaymentForm] = useState({
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'Cash',
-    amount: '' as number | '',
+    amount: '',
   });
 
   // Debounce search
@@ -269,7 +282,7 @@ export default function Collections() {
       setPaymentForm({
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
-        amount: '' as number | '',
+        amount: '',
       });
     },
     onError: () => {
@@ -279,10 +292,15 @@ export default function Collections() {
 
   const handleAddPayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (paymentForm.amount === '' || Number(paymentForm.amount) <= 0) return toast.error('Amount must be greater than 0');
+    const cleanAmount = parseMoneyInput(paymentForm.amount);
+    if (paymentForm.amount === '' || Number(cleanAmount) <= 0) return toast.error('Amount must be greater than 0');
+    const maxVal = selectedCollection ? (selectedCollection.remaining_balance ?? selectedCollection.rate) : 0;
+    if (Number(cleanAmount) > Number(maxVal)) {
+      return toast.error(`Amount cannot exceed the remaining balance of ₱${Number(maxVal).toLocaleString()}`);
+    }
     paymentMutation.mutate({
       ...paymentForm,
-      amount: Number(paymentForm.amount)
+      amount: Number(cleanAmount)
     });
   };
 
@@ -798,12 +816,22 @@ export default function Collections() {
               <div>
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount</label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   required
-                  max={selectedCollection.remaining_balance ?? selectedCollection.rate}
                   value={paymentForm.amount}
-                  onChange={e => setPaymentForm(p => ({ ...p, amount: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                  onChange={e => {
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setPaymentForm(p => ({ ...p, amount: formatted }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.ctrlKey || e.metaKey) return;
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                      e.preventDefault();
+                    }
+                  }}
                   className="w-full mt-1 px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium focus:ring-2 focus:ring-blue-500"
                   placeholder="0.00"
                 />

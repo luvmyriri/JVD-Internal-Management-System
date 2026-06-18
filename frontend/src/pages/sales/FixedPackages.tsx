@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 const getBreakdownSum = (breakdownText: string) => {
   if (!breakdownText) return 0;
@@ -68,17 +69,17 @@ export default function FixedPackages() {
     name: '',
     category: 'Package',
     description: '',
-    price: 0,
+    price: '',
     image_url: '',
-    child_discount: 30,
+    child_discount: '30',
     has_booking_fields: false,
-    adult_price: 0,
-    child_price: 0,
+    adult_price: '',
+    child_price: '',
     is_tour: false,
-    bus_price: 0,
-    coaster_price: 0,
-    tour_kms: 0,
-    tour_hours: 0,
+    bus_price: '',
+    coaster_price: '',
+    tour_kms: '',
+    tour_hours: '',
     cost_breakdown: '',
     inclusions: '',
     exclusions: '',
@@ -917,17 +918,17 @@ export default function FixedPackages() {
       name: service.name,
       category: service.category,
       description: service.description,
-      price: Number(service.price),
+      price: service.price !== undefined && service.price !== null ? formatMoneyInput(String(service.price)) : '',
       image_url: '',
-      child_discount: service.child_discount !== undefined ? Number(service.child_discount) : 30,
+      child_discount: service.child_discount !== undefined ? String(service.child_discount) : '30',
       has_booking_fields: !!service.has_booking_fields,
-      adult_price: service.adult_price !== undefined && service.adult_price !== null ? Number(service.adult_price) : Number(service.price),
-      child_price: service.child_price !== undefined && service.child_price !== null ? Number(service.child_price) : Number(service.price) * 0.7,
+      adult_price: service.adult_price !== undefined && service.adult_price !== null ? formatMoneyInput(String(service.adult_price)) : (service.price !== undefined && service.price !== null ? formatMoneyInput(String(service.price)) : ''),
+      child_price: service.child_price !== undefined && service.child_price !== null ? formatMoneyInput(String(service.child_price)) : formatMoneyInput(String(Number(service.price ?? 0) * 0.7)),
       is_tour: !!service.is_tour,
-      bus_price: service.bus_price !== undefined && service.bus_price !== null ? Number(service.bus_price) : 0,
-      coaster_price: service.coaster_price !== undefined && service.coaster_price !== null ? Number(service.coaster_price) : 0,
-      tour_kms: service.tour_kms !== undefined && service.tour_kms !== null ? Number(service.tour_kms) : 0,
-      tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? Number(service.tour_hours) : 0,
+      bus_price: service.bus_price !== undefined && service.bus_price !== null ? formatMoneyInput(String(service.bus_price)) : '',
+      coaster_price: service.coaster_price !== undefined && service.coaster_price !== null ? formatMoneyInput(String(service.coaster_price)) : '',
+      tour_kms: service.tour_kms !== undefined && service.tour_kms !== null ? String(service.tour_kms) : '',
+      tour_hours: service.tour_hours !== undefined && service.tour_hours !== null ? String(service.tour_hours) : '',
       cost_breakdown: service.cost_breakdown || '',
       inclusions: service.inclusions || '',
       exclusions: service.exclusions || '',
@@ -990,7 +991,7 @@ export default function FixedPackages() {
                   onClick={() => {
                     setEditingServiceId(null);
                     setIsEditingService(false);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
+                    setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '' });
                     setServiceImages([]);
                     setShowAddService(true);
                   }}
@@ -1017,7 +1018,7 @@ export default function FixedPackages() {
                 onClick={() => {
                   setEditingServiceId(null);
                   setIsEditingService(false);
-                  setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
+                  setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '' });
                   setServiceImages([]);
                   setShowAddService(true);
                 }}
@@ -1304,37 +1305,79 @@ export default function FixedPackages() {
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Price (₱)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.bus_price}
-                      onChange={e => setNewService({ ...newService, bus_price: Number(e.target.value), is_tour: true, price: Number(e.target.value) })}
+                      onChange={e => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        const formatted = formatMoneyInput(e.target.value);
+                        setNewService({ ...newService, bus_price: formatted, is_tour: true, price: formatted });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Coaster Price (₱)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.coaster_price}
-                      onChange={e => setNewService({ ...newService, coaster_price: Number(e.target.value) })}
+                      onChange={e => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        const formatted = formatMoneyInput(e.target.value);
+                        setNewService({ ...newService, coaster_price: formatted });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Distance (KMS)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.tour_kms}
-                      onChange={e => setNewService({ ...newService, tour_kms: Number(e.target.value) })}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9.]/g, '');
+                        if ((val.split('.').length - 1) > 1) return;
+                        setNewService({ ...newService, tour_kms: val });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Time (Hours)</label>
                     <input
-                      type="number"
+                      type="text"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.tour_hours}
-                      onChange={e => setNewService({ ...newService, tour_hours: Number(e.target.value) })}
+                      onChange={e => {
+                        const val = e.target.value.replace(/[^0-9.]/g, '');
+                        if ((val.split('.').length - 1) > 1) return;
+                        setNewService({ ...newService, tour_hours: val });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -1346,18 +1389,39 @@ export default function FixedPackages() {
                   <div className="relative">
                     <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
                     <input
-                      type="number"
+                      type="text"
                       placeholder="0.00"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-xl font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.price}
                       onChange={e => {
-                        const newPrice = Number(e.target.value);
-                        setNewService(prev => ({
-                          ...prev,
-                          price: newPrice,
-                          adult_price: prev.has_booking_fields && (prev.adult_price === 0 || prev.adult_price === prev.price) ? newPrice : prev.adult_price,
-                          child_price: prev.has_booking_fields && (prev.child_price === 0 || prev.child_price === prev.price * (1 - prev.child_discount / 100)) ? (newPrice * (1 - prev.child_discount / 100)) : prev.child_price
-                        }));
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        const formatted = formatMoneyInput(e.target.value);
+                        setNewService(prev => {
+                          const prevPriceNum = Number(parseMoneyInput(prev.price)) || 0;
+                          const prevAdultPriceNum = Number(parseMoneyInput(prev.adult_price)) || 0;
+                          const prevChildPriceNum = Number(parseMoneyInput(prev.child_price)) || 0;
+                          const prevDiscountNum = Number(prev.child_discount) || 0;
+                          const newPriceNum = Number(clean) || 0;
+
+                          const adultPrice = prev.has_booking_fields && (prevAdultPriceNum === 0 || prevAdultPriceNum === prevPriceNum) ? formatted : prev.adult_price;
+                          const childPrice = prev.has_booking_fields && (prevChildPriceNum === 0 || prevChildPriceNum === prevPriceNum * (1 - prevDiscountNum / 100))
+                            ? formatMoneyInput(String(newPriceNum * (1 - prevDiscountNum / 100)))
+                            : prev.child_price;
+
+                          return {
+                            ...prev,
+                            price: formatted,
+                            adult_price: adultPrice,
+                            child_price: childPrice
+                          };
+                        });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
                       }}
                     />
                   </div>
@@ -1367,19 +1431,37 @@ export default function FixedPackages() {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Child Discount Rate (%)</label>
                   <div className="relative">
                     <input
-                      type="number"
-                      min="0"
-                      max="100"
+                      type="text"
                       placeholder="e.g. 30"
                       className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 pr-16 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                       value={newService.child_discount}
                       onChange={e => {
-                        const discount = Math.min(100, Math.max(0, Number(e.target.value)));
-                        setNewService(prev => ({
-                          ...prev,
-                          child_discount: discount,
-                          child_price: prev.has_booking_fields && (prev.child_price === 0 || prev.child_price === prev.price * (1 - prev.child_discount / 100)) ? (prev.price * (1 - discount / 100)) : prev.child_price
-                        }));
+                        const val = e.target.value.replace(/[^0-9.]/g, '');
+                        if ((val.split('.').length - 1) > 1) return;
+                        const discount = Math.min(100, Math.max(0, Number(val) || 0));
+                        const discountStr = val === '' ? '' : String(discount);
+
+                        setNewService(prev => {
+                          const priceNum = Number(prev.price) || 0;
+                          const prevDiscountNum = Number(prev.child_discount) || 0;
+                          const prevChildPriceNum = Number(prev.child_price) || 0;
+
+                          const childPrice = prev.has_booking_fields && (prevChildPriceNum === 0 || prevChildPriceNum === priceNum * (1 - prevDiscountNum / 100))
+                            ? String(priceNum * (1 - discount / 100))
+                            : prev.child_price;
+
+                          return {
+                            ...prev,
+                            child_discount: discountStr,
+                            child_price: childPrice
+                          };
+                        });
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
                       }}
                     />
                     <span className="absolute right-5 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase tracking-widest">% OFF</span>
@@ -1400,8 +1482,8 @@ export default function FixedPackages() {
                     setNewService({
                       ...newService,
                       has_booking_fields: nextVal,
-                      adult_price: nextVal ? (newService.adult_price || newService.price) : 0,
-                      child_price: nextVal ? (newService.child_price || (newService.price * (1 - newService.child_discount / 100))) : 0
+                      adult_price: nextVal ? (newService.adult_price || newService.price) : '',
+                      child_price: nextVal ? (newService.child_price || formatMoneyInput(String((Number(parseMoneyInput(newService.price)) || 0) * (1 - (Number(newService.child_discount) || 0) / 100)))) : ''
                     });
                   }}
                   className={`w-14 h-8 rounded-full transition-all duration-300 p-1 flex items-center ${newService.has_booking_fields ? 'bg-blue-600 justify-end' : 'bg-gray-200 dark:bg-gray-700 justify-start'
@@ -1431,11 +1513,22 @@ export default function FixedPackages() {
                       <div className="relative">
                         <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
                         <input
-                          type="number"
+                          type="text"
                           placeholder="0.00"
                           className="w-full bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                           value={newService.adult_price || ''}
-                          onChange={e => setNewService({ ...newService, adult_price: Number(e.target.value) })}
+                          onChange={e => {
+                            const clean = parseMoneyInput(e.target.value);
+                            if ((clean.split('.').length - 1) > 1) return;
+                            const formatted = formatMoneyInput(e.target.value);
+                            setNewService({ ...newService, adult_price: formatted });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) return;
+                            if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -1444,8 +1537,7 @@ export default function FixedPackages() {
                       <div className="flex justify-between items-center pl-1">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Child Price (₱)</label>
                         <button
-                          type="button"
-                          onClick={() => setNewService({ ...newService, child_price: newService.price * (1 - newService.child_discount / 100) })}
+                           onClick={() => setNewService({ ...newService, child_price: formatMoneyInput(String((Number(parseMoneyInput(newService.price)) || 0) * (1 - (Number(newService.child_discount) || 0) / 100))) })}
                           className="text-[9px] font-black text-blue-600 dark:text-blue-400 hover:underline uppercase tracking-tight"
                         >
                           Reset
@@ -1454,11 +1546,22 @@ export default function FixedPackages() {
                       <div className="relative">
                         <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-400 font-black">₱</span>
                         <input
-                          type="number"
+                          type="text"
                           placeholder="0.00"
-                          className="w-full bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                          className="w-full bg-white dark:bg-gray-855 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 pl-10 pr-5 text-sm font-black dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
                           value={newService.child_price || ''}
-                          onChange={e => setNewService({ ...newService, child_price: Number(e.target.value) })}
+                          onChange={e => {
+                            const clean = parseMoneyInput(e.target.value);
+                            if ((clean.split('.').length - 1) > 1) return;
+                            const formatted = formatMoneyInput(e.target.value);
+                            setNewService({ ...newService, child_price: formatted });
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) return;
+                            if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                              e.preventDefault();
+                            }
+                          }}
                         />
                       </div>
                     </div>
@@ -1493,7 +1596,7 @@ export default function FixedPackages() {
                   {/* Real-time Tally Status */}
                   {newService.cost_breakdown && (() => {
                     const breakdownSum = getBreakdownSum(newService.cost_breakdown);
-                    const servicePrice = Number(newService.price || 0);
+                    const servicePrice = Number(parseMoneyInput(newService.price) || 0);
                     const isTallyMatch = Math.abs(breakdownSum - servicePrice) < 0.01;
                     const diff = breakdownSum - servicePrice;
 
@@ -1591,7 +1694,7 @@ export default function FixedPackages() {
 
             <div className="p-8 bg-gray-50 dark:bg-gray-800/30 border-t border-gray-100 dark:border-gray-800 flex gap-4">
               <button
-                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' }); }}
+                onClick={() => { setShowAddService(false); setIsEditingService(false); setServiceImages([]); setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '' }); }}
                 className="flex-1 py-5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl font-black text-[10px] uppercase tracking-widest text-gray-400 hover:text-gray-900 dark:text-white dark:hover:text-white transition-all"
               >
                 Cancel
@@ -1599,16 +1702,28 @@ export default function FixedPackages() {
               <button
                 onClick={async () => {
                   try {
+                    const payload = {
+                      ...newService,
+                      price: Number(parseMoneyInput(newService.price)) || 0,
+                      child_discount: Number(newService.child_discount) || 0,
+                      adult_price: newService.has_booking_fields ? (Number(parseMoneyInput(newService.adult_price)) || 0) : undefined,
+                      child_price: newService.has_booking_fields ? (Number(parseMoneyInput(newService.child_price)) || 0) : undefined,
+                      bus_price: newService.is_tour ? (Number(parseMoneyInput(newService.bus_price)) || 0) : undefined,
+                      coaster_price: newService.is_tour ? (Number(parseMoneyInput(newService.coaster_price)) || 0) : undefined,
+                      tour_kms: newService.is_tour ? (Number(newService.tour_kms) || 0) : undefined,
+                      tour_hours: newService.is_tour ? (Number(newService.tour_hours) || 0) : undefined,
+                      images: serviceImages
+                    };
                     if (isEditingService && editingServiceId) {
-                      await billingApi.updateService(editingServiceId, { ...newService, images: serviceImages });
+                      await billingApi.updateService(editingServiceId, payload);
                     } else {
-                      await billingApi.createService({ ...newService, images: serviceImages });
+                      await billingApi.createService(payload);
                     }
                     queryClient.invalidateQueries({ queryKey: ['billing-services'] });
                     setIsEditingService(false);
                     setEditingServiceId(null);
                     setServiceImages([]);
-                    setNewService({ name: '', category: 'Package', description: '', price: 0, image_url: '', child_discount: 30, has_booking_fields: false, adult_price: 0, child_price: 0, is_tour: false, bus_price: 0, coaster_price: 0, tour_kms: 0, tour_hours: 0, cost_breakdown: '', inclusions: '', exclusions: '' });
+                    setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '' });
                     setShowAddService(false);
                   } catch (err) {
                     alert('Failed to save service');
@@ -2245,17 +2360,22 @@ export default function FixedPackages() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
                         <input
-                          type="number"
-                          min="1"
-                          max={(bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49}
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                          type="text"
+                          className="w-full px-4 py-3 bg-white dark:bg-gray-855 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
                           value={joinerPaxCount}
                           onChange={(e) => {
-                            if (e.target.value === '') {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            if (val === '') {
                               setJoinerPaxCount('');
                             } else {
                               const maxCap = (bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49;
-                              setJoinerPaxCount(Math.min(maxCap, Math.max(1, Number(e.target.value))));
+                              setJoinerPaxCount(Math.min(maxCap, Math.max(1, Number(val))));
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.ctrlKey || e.metaKey) return;
+                            if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                              e.preventDefault();
                             }
                           }}
                         />
@@ -2392,7 +2512,7 @@ export default function FixedPackages() {
                       )}
 
                       <button
-                        disabled={isBusSelectionInvalid}
+                        disabled={!!isBusSelectionInvalid}
                         onClick={() => {
                           const isJoinerCategory = ['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
                           const travelDateParam = bookingDate || undefined;

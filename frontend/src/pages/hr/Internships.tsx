@@ -272,8 +272,9 @@ export default function Internships() {
         onClose={() => setIsModalOpen(false)}
         title={selectedInternship ? 'Edit Intern Record' : 'Add Intern Record'}
         size="md"
+        noPadding
       >
-        <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+        <div className="px-8 pb-8 pt-4">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
 
             <details className="group [&_summary::-webkit-details-marker]:hidden bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700" open>
@@ -298,7 +299,7 @@ export default function Internships() {
                       onInput={(e) => {
                         e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
                       }}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.first_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.first_name.message}</p>}
                   </div>
@@ -315,7 +316,7 @@ export default function Internships() {
                       onInput={(e) => {
                         e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '');
                       }}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.last_name && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.last_name.message}</p>}
                   </div>
@@ -333,7 +334,7 @@ export default function Internships() {
                           message: 'Invalid email address'
                         }
                       })}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.email && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.email.message}</p>}
                   </div>
@@ -351,7 +352,7 @@ export default function Internships() {
                       onInput={(e) => {
                         e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '');
                       }}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.phone && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.phone.message}</p>}
                   </div>
@@ -374,10 +375,10 @@ export default function Internships() {
                       {...register('school', { required: 'School is required' })}
                       onFocus={() => setShowSuggestions(true)}
                       autoComplete="off"
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {showSuggestions && filteredSuggestions.length > 0 && (
-                      <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl shadow-xl custom-scrollbar py-1">
+                      <div className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-xl shadow-xl custom-scrollbar py-1">
                         {filteredSuggestions.map((school) => (
                           <div
                             key={school}
@@ -398,7 +399,7 @@ export default function Internships() {
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Course/Program</label>
                     <input
                       {...register('course', { required: 'Course is required' })}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.course && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.course.message}</p>}
                   </div>
@@ -408,9 +409,23 @@ export default function Internships() {
                   <div>
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Hours Required</label>
                     <input
-                      type="number"
-                      {...register('hours_required', { required: 'Hours required is required', valueAsNumber: true })}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                      type="text"
+                      inputMode="numeric"
+                      {...register('hours_required', {
+                        required: 'Hours required is required',
+                        setValueAs: (v) => v === '' ? '' : parseInt(v, 10),
+                        pattern: {
+                          value: /^[0-9]+$/,
+                          message: 'Only positive integers are allowed'
+                        }
+                      })}
+                      onKeyDown={(e) => {
+                        if (e.ctrlKey || e.metaKey) return;
+                        if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                          e.preventDefault();
+                        }
+                      }}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                     />
                     {errors.hours_required && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.hours_required.message}</p>}
                   </div>
@@ -418,7 +433,7 @@ export default function Internships() {
                     <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Status</label>
                     <select
                       {...register('status')}
-                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium appearance-none"
                     >
                       <option value="pending">Pending</option>
                       <option value="active">Active</option>
@@ -433,7 +448,7 @@ export default function Internships() {
                   <textarea
                     {...register('notes')}
                     rows={3}
-                    className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
+                    className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium"
                   />
                 </div>
               </div>

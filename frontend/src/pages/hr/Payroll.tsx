@@ -17,6 +17,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { Modal, Button, StatusBadge } from '../../components/ui';
 import { payrollApi } from '../../api/payroll';
 import toast from 'react-hot-toast';
+import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 export default function Payroll() {
   const { theme } = useTheme();
@@ -40,9 +41,9 @@ export default function Payroll() {
   const [endDate, setEndDate] = useState('');
   
   // Edit Salary Form State
-  const [baseSalary, setBaseSalary] = useState<number>(0);
-  const [allowances, setAllowances] = useState<number>(0);
-  const [deductions, setDeductions] = useState<number>(0);
+  const [baseSalary, setBaseSalary] = useState<string>('0');
+  const [allowances, setAllowances] = useState<string>('0');
+  const [deductions, setDeductions] = useState<string>('0');
   
   // Sub-modal Search
   const [payslipSearchTerm, setPayslipSearchTerm] = useState('');
@@ -157,9 +158,9 @@ export default function Payroll() {
   // Open edit salary modal
   const handleOpenEditModal = (emp: any) => {
     setSelectedEmployee(emp);
-    setBaseSalary(parseFloat(emp.salary?.base_salary || 0));
-    setAllowances(parseFloat(emp.salary?.allowances || 0));
-    setDeductions(parseFloat(emp.salary?.deductions || 0));
+    setBaseSalary(emp.salary?.base_salary !== undefined && emp.salary?.base_salary !== null ? formatMoneyInput(parseFloat(emp.salary.base_salary).toString()) : '0');
+    setAllowances(emp.salary?.allowances !== undefined && emp.salary?.allowances !== null ? formatMoneyInput(parseFloat(emp.salary.allowances).toString()) : '0');
+    setDeductions(emp.salary?.deductions !== undefined && emp.salary?.deductions !== null ? formatMoneyInput(parseFloat(emp.salary.deductions).toString()) : '0');
     setIsEditModalOpen(true);
   };
 
@@ -169,9 +170,9 @@ export default function Payroll() {
       updateSalaryMutation.mutate({
         id: selectedEmployee.id,
         data: {
-          base_salary: baseSalary,
-          allowances: allowances,
-          deductions: deductions
+          base_salary: parseFloat(parseMoneyInput(baseSalary)) || 0,
+          allowances: parseFloat(parseMoneyInput(allowances)) || 0,
+          deductions: parseFloat(parseMoneyInput(deductions)) || 0
         }
       });
     }
@@ -513,12 +514,16 @@ export default function Payroll() {
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">₱</span>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
-                    min="0"
-                    step="0.01"
                     value={baseSalary}
-                    onChange={(e) => setBaseSalary(parseFloat(e.target.value) || 0)}
+                    onChange={(e) => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      const formatted = formatMoneyInput(e.target.value);
+                      setBaseSalary(formatted);
+                    }}
                     className="w-full pl-8 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                   />
                 </div>
@@ -530,12 +535,16 @@ export default function Payroll() {
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">₱</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       required
-                      min="0"
-                      step="0.01"
                       value={allowances}
-                      onChange={(e) => setAllowances(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        const formatted = formatMoneyInput(e.target.value);
+                        setAllowances(formatted);
+                      }}
                       className="w-full pl-8 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                     />
                   </div>
@@ -546,12 +555,16 @@ export default function Payroll() {
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">₱</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="decimal"
                       required
-                      min="0"
-                      step="0.01"
                       value={deductions}
-                      onChange={(e) => setDeductions(parseFloat(e.target.value) || 0)}
+                      onChange={(e) => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        const formatted = formatMoneyInput(e.target.value);
+                        setDeductions(formatted);
+                      }}
                       className="w-full pl-8 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
                     />
                   </div>
@@ -562,7 +575,7 @@ export default function Payroll() {
             <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex items-center justify-between">
               <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Estimated Net Salary</span>
               <span className="text-base font-black text-blue-600 dark:text-blue-400">
-                {formatCurrency(baseSalary + allowances - (baseSalary * 0.10) - deductions)}
+                {formatCurrency((parseFloat(parseMoneyInput(baseSalary)) || 0) + (parseFloat(parseMoneyInput(allowances)) || 0) - ((parseFloat(parseMoneyInput(baseSalary)) || 0) * 0.10) - (parseFloat(parseMoneyInput(deductions)) || 0))}
               </span>
             </div>
 
@@ -744,10 +757,10 @@ export default function Payroll() {
           <div className="space-y-6">
             
             {/* Printable Payslip Card Container */}
-            <div id="printable-payslip" className="p-8 border border-gray-200 dark:border-gray-800 rounded-3xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative font-sans">
+            <div id="printable-payslip" className="p-8 border border-gray-300 dark:border-gray-800 rounded-3xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white relative font-sans">
               
               {/* Company Logo / Header */}
-              <div className="flex justify-between items-start border-b border-gray-200 dark:border-gray-800 pb-6 mb-6">
+              <div className="flex justify-between items-start border-b border-gray-300 dark:border-gray-800 pb-6 mb-6">
                 <div>
                   <h2 className="text-xl font-black uppercase tracking-tight text-blue-600 dark:text-blue-400">JVD Trans Logistics</h2>
                   <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">Operations & Logistics Services Provider</p>
@@ -798,7 +811,7 @@ export default function Payroll() {
                       <span className="text-gray-500 font-medium">Allowances</span>
                       <span className="font-bold text-emerald-600">{formatCurrency(selectedPayslip.allowances)}</span>
                     </div>
-                    <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
+                    <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-300 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
                       <span>Total Earnings (Gross)</span>
                       <span>{formatCurrency(parseFloat(selectedPayslip.base_salary) + parseFloat(selectedPayslip.allowances))}</span>
                     </div>
@@ -819,7 +832,7 @@ export default function Payroll() {
                       <span className="text-gray-500 font-medium">Other Deductions</span>
                       <span className="font-bold text-rose-500">{formatCurrency(selectedPayslip.deductions)}</span>
                     </div>
-                    <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-200 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
+                    <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-300 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
                       <span>Total Deductions</span>
                       <span>{formatCurrency(parseFloat(selectedPayslip.tax_amount) + parseFloat(selectedPayslip.deductions))}</span>
                     </div>
