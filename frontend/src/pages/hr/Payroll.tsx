@@ -178,6 +178,29 @@ export default function Payroll() {
     }
   };
 
+  /**
+   * M-02: BIR TRAIN Law progressive withholding tax (semi-monthly share).
+   * Mirrors the backend computeBirTax() for accurate live preview.
+   */
+  const computeBirTax = (monthlyBase: number): number => {
+    const annual = monthlyBase * 12;
+    let annualTax = 0;
+    if (annual <= 250000) {
+      annualTax = 0;
+    } else if (annual <= 400000) {
+      annualTax = (annual - 250000) * 0.15;
+    } else if (annual <= 800000) {
+      annualTax = 22500 + (annual - 400000) * 0.20;
+    } else if (annual <= 2000000) {
+      annualTax = 102500 + (annual - 800000) * 0.25;
+    } else if (annual <= 8000000) {
+      annualTax = 402500 + (annual - 2000000) * 0.30;
+    } else {
+      annualTax = 2202500 + (annual - 8000000) * 0.35;
+    }
+    return Math.round((annualTax / 24) * 100) / 100;
+  };
+
   // Helper formatting functions
   const formatCurrency = (val: any) => {
     const num = parseFloat(val || 0);
@@ -413,8 +436,8 @@ export default function Payroll() {
                     const base = parseFloat(emp.salary?.base_salary || 0);
                     const allowance = parseFloat(emp.salary?.allowances || 0);
                     const deduction = parseFloat(emp.salary?.deductions || 0);
-                    const tax = base * 0.10;
-                    const net = base + allowance - tax - deduction;
+                    const tax = computeBirTax(base);
+                    const net = Math.max(0, base + allowance - tax - deduction);
 
                     return (
                       <tr key={emp.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/10 transition-colors">
@@ -456,7 +479,7 @@ export default function Payroll() {
             <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <div className="text-xs text-amber-700 dark:text-amber-400">
               <span className="font-bold uppercase tracking-wider block mb-1">Semi-Monthly Run Confirmation</span>
-              This operation will scan all active employees, divide their monthly salary figures in half, deduct 10% tax from their base portion, and create a draft cycle with payslips.
+              This operation will scan all active employees, pro-rate their monthly salary based on the selected date range, apply BIR TRAIN Law progressive withholding tax, and create a draft cycle with payslips.
             </div>
           </div>
 
@@ -573,9 +596,9 @@ export default function Payroll() {
             </div>
 
             <div className="p-4 bg-blue-50/50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/30 rounded-2xl flex items-center justify-between">
-              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Estimated Net Salary</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Est. Monthly Net (after BIR tax)</span>
               <span className="text-base font-black text-blue-600 dark:text-blue-400">
-                {formatCurrency((parseFloat(parseMoneyInput(baseSalary)) || 0) + (parseFloat(parseMoneyInput(allowances)) || 0) - ((parseFloat(parseMoneyInput(baseSalary)) || 0) * 0.10) - (parseFloat(parseMoneyInput(deductions)) || 0))}
+                {formatCurrency(Math.max(0, (parseFloat(parseMoneyInput(baseSalary)) || 0) + (parseFloat(parseMoneyInput(allowances)) || 0) - computeBirTax(parseFloat(parseMoneyInput(baseSalary)) || 0) * 2 - (parseFloat(parseMoneyInput(deductions)) || 0)))}
               </span>
             </div>
 
@@ -696,7 +719,7 @@ export default function Payroll() {
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Employee</th>
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Base</th>
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Allowances</th>
-                      <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Tax (10%)</th>
+                      <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Withholding Tax</th>
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Deductions</th>
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest">Net Pay</th>
                       <th className="py-3 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>

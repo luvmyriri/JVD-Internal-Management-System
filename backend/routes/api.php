@@ -405,31 +405,58 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // HR (dynamic permissions)
     // ──────────────────────────────────────
+    // HR Dynamic Permissions - Read (GET) Routes
     Route::middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary,hr:view')->group(function () {
-        // User/Employee Management
-        Route::apiResource('users', UserController::class)->except(['destroy']);
-        Route::post('/users/{user}/deactivate',    [UserController::class, 'deactivate'])->name('users.deactivate');
-        Route::post('/users/{user}/activate',       [UserController::class, 'activate'])->name('users.activate');
-        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        Route::get('/users', [UserController::class, 'index'])->name('users.index');
+        Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
         
-        // HR Entities
-        Route::apiResource('job-applications', \App\Http\Controllers\JobApplicationController::class);
-        Route::patch('/job-applications/{jobApplication}/checklist', [\App\Http\Controllers\JobApplicationController::class, 'updateChecklist'])->name('job-applications.checklist');
-        Route::get('/job-applications/{jobApplication}/documents',   [\App\Http\Controllers\JobApplicationController::class, 'getDocuments'])->name('job-applications.documents.index');
-        Route::post('/job-applications/{jobApplication}/documents',  [\App\Http\Controllers\JobApplicationController::class, 'uploadDocument'])->name('job-applications.documents.store');
-        Route::delete('/job-applications/{jobApplication}/documents/{documentId}', [\App\Http\Controllers\JobApplicationController::class, 'deleteDocument'])->name('job-applications.documents.destroy');
-        Route::post('/job-applications/{jobApplication}/convert-to-employee', [\App\Http\Controllers\JobApplicationController::class, 'convertToEmployee'])->name('job-applications.convert-to-employee');
-        Route::apiResource('internships', \App\Http\Controllers\InternshipController::class);
+        Route::get('/job-applications', [\App\Http\Controllers\JobApplicationController::class, 'index'])->name('job-applications.index');
+        Route::get('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'show'])->name('job-applications.show');
+        Route::get('/job-applications/{jobApplication}/documents', [\App\Http\Controllers\JobApplicationController::class, 'getDocuments'])->name('job-applications.documents.index');
+        
+        Route::get('/internships', [\App\Http\Controllers\InternshipController::class, 'index'])->name('internships.index');
+        Route::get('/internships/{internship}', [\App\Http\Controllers\InternshipController::class, 'show'])->name('internships.show');
 
-        // Payroll Management
         Route::get('/payroll/cycles', [PayrollController::class, 'indexCycles']);
         Route::get('/payroll/cycles/{id}', [PayrollController::class, 'showCycle']);
-        Route::post('/payroll/cycles', [PayrollController::class, 'runPayroll']);
-        Route::post('/payroll/cycles/{id}/release', [PayrollController::class, 'releasePayroll']);
-        Route::delete('/payroll/cycles/{id}', [PayrollController::class, 'destroyCycle']);
-
         Route::get('/payroll/employees', [PayrollController::class, 'indexEmployeeSalaries']);
+    });
+
+    // HR Dynamic Permissions - Create (POST) Routes
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary,hr:create')->group(function () {
+        Route::post('/users', [UserController::class, 'store'])->name('users.store');
+        Route::post('/job-applications', [\App\Http\Controllers\JobApplicationController::class, 'store'])->name('job-applications.store');
+        Route::post('/job-applications/{jobApplication}/documents', [\App\Http\Controllers\JobApplicationController::class, 'uploadDocument'])->name('job-applications.documents.store');
+        Route::post('/job-applications/{jobApplication}/convert-to-employee', [\App\Http\Controllers\JobApplicationController::class, 'convertToEmployee'])->name('job-applications.convert-to-employee');
+        Route::post('/internships', [\App\Http\Controllers\InternshipController::class, 'store'])->name('internships.store');
+        Route::post('/payroll/cycles', [PayrollController::class, 'runPayroll']);
+    });
+
+    // HR Dynamic Permissions - Edit (PUT/PATCH) Routes
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary,hr:edit')->group(function () {
+        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::patch('/users/{user}', [UserController::class, 'update']);
+        Route::post('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+        Route::post('/users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
+        Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        
+        Route::put('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'update'])->name('job-applications.update');
+        Route::patch('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'update']);
+        Route::patch('/job-applications/{jobApplication}/checklist', [\App\Http\Controllers\JobApplicationController::class, 'updateChecklist'])->name('job-applications.checklist');
+        
+        Route::put('/internships/{internship}', [\App\Http\Controllers\InternshipController::class, 'update'])->name('internships.update');
+        Route::patch('/internships/{internship}', [\App\Http\Controllers\InternshipController::class, 'update']);
+        
+        Route::post('/payroll/cycles/{id}/release', [PayrollController::class, 'releasePayroll']);
         Route::put('/payroll/employees/{id}', [PayrollController::class, 'updateEmployeeSalary']);
+    });
+
+    // HR Dynamic Permissions - Delete (DELETE) Routes
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary,hr:delete')->group(function () {
+        Route::delete('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'destroy'])->name('job-applications.destroy');
+        Route::delete('/job-applications/{jobApplication}/documents/{documentId}', [\App\Http\Controllers\JobApplicationController::class, 'deleteDocument'])->name('job-applications.documents.destroy');
+        Route::delete('/internships/{internship}', [\App\Http\Controllers\InternshipController::class, 'destroy'])->name('internships.destroy');
+        Route::delete('/payroll/cycles/{id}', [PayrollController::class, 'destroyCycle']);
     });
 
     // ──────────────────────────────────────
@@ -437,7 +464,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     Route::get('/ping', fn () => response()->json(['pong' => true, 'time' => microtime(true)]));
 
-    Route::middleware(['auth:sanctum'])->group(function () {
+    Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
         // Super Admin can directly set a specific password for any user
         Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');

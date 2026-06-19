@@ -69,14 +69,17 @@ class LedgerService
             ['code' => '1100', 'name' => 'Cash on Hand', 'type' => 'asset'],
             ['code' => '1200', 'name' => 'Employee Advances', 'type' => 'asset'],
             ['code' => '2000', 'name' => 'Accounts Payable', 'type' => 'liability'],
-            ['code' => '2100', 'name' => 'Due to Employees', 'type' => 'liability'], // For over-liquidations
+            ['code' => '2100', 'name' => 'Due to Employees', 'type' => 'liability'],       // For over-liquidations
+            ['code' => '2200', 'name' => 'Accrued Payroll', 'type' => 'liability'],         // Net pay owed to staff
+            ['code' => '2300', 'name' => 'Tax/Deductions Payable', 'type' => 'liability'],  // BIR withholding tax
             ['code' => '4000', 'name' => 'Service Revenue', 'type' => 'revenue'],
             ['code' => '5000', 'name' => 'Fuel Expense', 'type' => 'expense'],
             ['code' => '5100', 'name' => 'Toll Expense', 'type' => 'expense'],
             ['code' => '5200', 'name' => 'Meals Expense', 'type' => 'expense'],
             ['code' => '5300', 'name' => 'Maintenance Expense', 'type' => 'expense'],
             ['code' => '5400', 'name' => 'Commission Expense', 'type' => 'expense'],
-            ['code' => '5900', 'name' => 'Cash Shortage', 'type' => 'expense'], // Or Other Expense
+            ['code' => '5900', 'name' => 'Cash Shortage', 'type' => 'expense'],             // Or Other Expense
+            ['code' => '6000', 'name' => 'Salary Expense', 'type' => 'expense'],            // Gross payroll cost
         ];
 
         foreach ($defaults as $data) {
