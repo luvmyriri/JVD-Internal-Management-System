@@ -149,6 +149,16 @@ class UserController extends Controller
      */
     public function update(Request $request, User $user): JsonResponse
     {
+        // Only super_admin can assign the super_admin role
+        if ($request->has('role') && $request->role === 'super_admin' && $request->user()->role !== 'super_admin') {
+            abort(403, 'Unauthorized role assignment. Only a Super Admin can assign the Super Admin role.');
+        }
+
+        // Only super_admin can update a super_admin user
+        if ($user->role === 'super_admin' && $request->user()->role !== 'super_admin') {
+            abort(403, 'Unauthorized update of Super Admin user.');
+        }
+
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],

@@ -31,6 +31,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
+import { loadLogoAsBase64 } from '../../utils/pdfHelpers';
 
 // Donut â€“ user distribution
 const userDistributionData = [
@@ -229,15 +230,14 @@ export default function DriverDashboard() {
   const recentBookings = dashboardData?.recent_bookings && dashboardData.recent_bookings.length > 0 ? dashboardData.recent_bookings : detailedBranchData.travel;
 
 
-  const exportToPDF = (title: string, data: any[]) => {
+  const exportToPDF = async (title: string, data: any[]) => {
     try {
       const doc = new jsPDF();
 
-      // Add Logo
-      try {
-        doc.addImage('/JVDlogo-removebg-preview.png', 'PNG', 160, 10, 35, 35);
-      } catch (e) {
-        console.warn("Logo failed to load, skipping...", e);
+      // Add Logo (loaded as base64 to work in all environments including production)
+      const logoBase64 = await loadLogoAsBase64('/JVDlogo-removebg-preview.png');
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', 160, 10, 35, 35);
       }
 
       // Header Section
@@ -281,7 +281,7 @@ export default function DriverDashboard() {
         head: [Object.keys(data[0]).map(k => k.toUpperCase())],
         body: data.map(obj => 
           Object.values(obj).map(val => 
-            typeof val === 'string' ? val.replace(/PHP /g, 'PHP ') : val
+            typeof val === 'string' ? val.replace(/PHP /g, 'PHP ').replace(/₱/g, 'PHP ') : val
           )
         ) as any,
         startY: 80,
@@ -340,7 +340,6 @@ export default function DriverDashboard() {
   };
 
   const exportToExcel = async (title: string, data: any[]) => {
-    alert("Starting Excel export...");
     try {
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('JVD Report');
@@ -381,7 +380,7 @@ export default function DriverDashboard() {
         const cleanedItem = { ...item };
         Object.keys(cleanedItem).forEach(key => {
           if (typeof cleanedItem[key] === 'string') {
-            cleanedItem[key] = cleanedItem[key].replace(/PHP /g, 'PHP ');
+            cleanedItem[key] = cleanedItem[key].replace(/PHP /g, 'PHP ').replace(/₱/g, 'PHP ');
           }
         });
         worksheet.addRow(cleanedItem);
@@ -515,7 +514,7 @@ export default function DriverDashboard() {
           <div className="absolute top-full right-0 pt-2 z-[100]">
               <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
                 <button
-                  onClick={(e) => { e.stopPropagation(); exportToPDF(title, data); setIsOpen(false); }}
+                  onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
                   className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
                 >
                   <LuFileText className="w-3.5 h-3.5" />

@@ -1029,6 +1029,7 @@ export default function Applications() {
                 ref={checklistFileInputRef}
                 onChange={handleChecklistFileUpload}
                 className="hidden"
+                accept=".pdf,.jpeg,.jpg,.png,.doc,.docx"
               />
             </div>
           )}

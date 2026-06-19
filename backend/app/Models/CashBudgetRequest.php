@@ -31,6 +31,7 @@ class CashBudgetRequest extends Model
         'work_order_id',
         'commission_id',
         'liquidation_id',
+        'payroll_cycle_id',
     ];
 
     protected function casts(): array
@@ -85,5 +86,10 @@ class CashBudgetRequest extends Model
     public function liquidation(): BelongsTo
     {
         return $this->belongsTo(Liquidation::class, 'liquidation_id');
+    }
+
+    public function payrollCycle(): BelongsTo
+    {
+        return $this->belongsTo(PayrollCycle::class, 'payroll_cycle_id');
     }
 }

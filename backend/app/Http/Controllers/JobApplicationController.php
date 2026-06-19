@@ -85,11 +85,18 @@ class JobApplicationController extends Controller
     {
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'file'  => ['required', 'file', 'max:10240'], // Max 10MB
+            'file'  => ['required', 'file', 'mimes:pdf,jpeg,jpg,png,doc,docx', 'max:10240'], // Max 10MB
         ]);
 
         $file = $request->file('file');
-        $fileName = 'job_applications/' . $jobApplication->id . '/' . \Illuminate\Support\Str::random(20) . '.' . $file->getClientOriginalExtension();
+        $extension = strtolower($file->extension() ?: $file->getClientOriginalExtension());
+        if (!in_array($extension, ['pdf', 'jpeg', 'jpg', 'png', 'doc', 'docx'])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid file extension resolved.'
+            ], 422);
+        }
+        $fileName = 'job_applications/' . $jobApplication->id . '/' . \Illuminate\Support\Str::random(20) . '.' . $extension;
         \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, file_get_contents($file));
 
         $document = \App\Models\JobApplicationDocument::create([
@@ -200,6 +207,14 @@ class JobApplicationController extends Controller
             'send_invitation' => ['required', 'boolean'],
         ]);
 
+        // Check if email already exists in users table (H-01)
+        if (\App\Models\User::where('email', $jobApplication->email)->exists()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An employee account with this email (' . $jobApplication->email . ') already exists.',
+            ], 422);
+        }
+
         $sendInvitation = (bool) $validated['send_invitation'];
         $tempPassword = null;
 
@@ -220,36 +235,48 @@ class JobApplicationController extends Controller
             $userData['password'] = \Illuminate\Support\Facades\Hash::make($tempPassword);
         }
 
-        $user = \App\Models\User::create($userData);
+        // Wrap db and notification dispatching in transaction (H-02)
+        DB::beginTransaction();
+        try {
+            $user = \App\Models\User::create($userData);
 
-        if ($sendInvitation) {
-            $token = \Illuminate\Support\Facades\Password::broker()->createToken($user);
-            $user->notify(new \App\Notifications\AccountInvitation($token, $user->email));
-        } else {
-            $user->notify(new \App\Notifications\TempPasswordNotification($tempPassword));
+            if ($sendInvitation) {
+                $token = \Illuminate\Support\Facades\Password::broker()->createToken($user);
+                $user->notify(new \App\Notifications\AccountInvitation($token, $user->email));
+            } else {
+                $user->notify(new \App\Notifications\TempPasswordNotification($tempPassword));
+            }
+
+            // Mark the job application as converted
+            $jobApplication->update(['converted_user_id' => $user->id]);
+
+            \App\Http\Services\AuditLogService::log(
+                action: 'RECRUIT_APPLICANT_TO_EMPLOYEE',
+                module: 'hr',
+                entityType: 'user',
+                entityId: $user->id,
+                new: $user->toArray()
+            );
+
+            DB::commit();
+
+            return response()->json([
+                'success'            => true,
+                'message'            => $sendInvitation
+                    ? 'Employee account created and invitation email sent to ' . $user->email
+                    : 'Employee account created. Provide the temporary password securely.',
+                'data' => [
+                    'user'               => new \App\Http\Resources\UserResource($user),
+                    'temporary_password' => $tempPassword,
+                    'invitation_sent'    => $sendInvitation,
+                ],
+            ], 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to convert applicant to employee: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Mark the job application as converted
-        $jobApplication->update(['converted_user_id' => $user->id]);
-
-        \App\Http\Services\AuditLogService::log(
-            action: 'RECRUIT_APPLICANT_TO_EMPLOYEE',
-            module: 'hr',
-            entityType: 'user',
-            entityId: $user->id,
-            new: $user->toArray()
-        );
-
-        return response()->json([
-            'success'            => true,
-            'message'            => $sendInvitation
-                ? 'Employee account created and invitation email sent to ' . $user->email
-                : 'Employee account created. Provide the temporary password securely.',
-            'data' => [
-                'user'               => new \App\Http\Resources\UserResource($user),
-                'temporary_password' => $tempPassword,
-                'invitation_sent'    => $sendInvitation,
-            ],
-        ], 201);
     }
 }

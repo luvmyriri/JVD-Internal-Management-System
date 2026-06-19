@@ -10,7 +10,16 @@ class StoreUserRequest extends FormRequest
     public function authorize(): bool
     {
         // Only users with admin create permission can create accounts
-        return $this->user()->hasPermission('admin', 'create');
+        if (!$this->user()->hasPermission('admin', 'create')) {
+            return false;
+        }
+
+        // Only super_admin can create another super_admin
+        if ($this->input('role') === 'super_admin' && $this->user()->role !== 'super_admin') {
+            return false;
+        }
+
+        return true;
     }
 
     public function rules(): array

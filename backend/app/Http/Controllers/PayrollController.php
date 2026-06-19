@@ -8,6 +8,9 @@ use App\Models\User;
 use App\Models\PayrollCycle;
 use App\Models\Payslip;
 use App\Models\EmployeeSalary;
+use App\Models\CashBudgetRequest;
+use App\Models\Account;
+use App\Services\LedgerService;
 use Carbon\Carbon;
 
 class PayrollController extends Controller
@@ -108,8 +111,33 @@ class PayrollController extends Controller
     }
 
     /**
-     * Run/generate a new draft payroll cycle for a date range.
+     * BIR-compliant progressive withholding tax on the annualised MONTHLY base salary.
+     * Returns the per-CYCLE (semi-monthly) tax amount.
      */
+    private function computeBirTax(float $monthlyBase): float
+    {
+        // Annualise the monthly base salary
+        $annual = $monthlyBase * 12;
+
+        // 2024 BIR Tax Table (TRAIN Law)
+        if ($annual <= 250000) {
+            $annualTax = 0;
+        } elseif ($annual <= 400000) {
+            $annualTax = ($annual - 250000) * 0.15;
+        } elseif ($annual <= 800000) {
+            $annualTax = 22500 + ($annual - 400000) * 0.20;
+        } elseif ($annual <= 2000000) {
+            $annualTax = 102500 + ($annual - 800000) * 0.25;
+        } elseif ($annual <= 8000000) {
+            $annualTax = 402500 + ($annual - 2000000) * 0.30;
+        } else {
+            $annualTax = 2202500 + ($annual - 8000000) * 0.35;
+        }
+
+        // Return semi-monthly tax portion (annual ÷ 24 pay periods)
+        return round($annualTax / 24, 2);
+    }
+
     public function runPayroll(Request $request)
     {
         $validated = $request->validate([
@@ -117,14 +145,15 @@ class PayrollController extends Controller
             'end_date' => 'required|date|after_or_equal:start_date',
         ]);
 
-        $startDate = Carbon::parse($validated['start_date']);
-        $endDate = Carbon::parse($validated['end_date']);
+        $startDate = Carbon::parse($validated['start_date'])->startOfDay();
+        $endDate   = Carbon::parse($validated['end_date'])->endOfDay();
 
-        // Check for overlapping/duplicate payroll cycles
-        $overlap = PayrollCycle::where(function ($query) use ($startDate, $endDate) {
-            $query->whereBetween('start_date', [$startDate, $endDate])
-                  ->orWhereBetween('end_date', [$startDate, $endDate]);
-        })->first();
+        // H-03: Interval intersection — detect any existing cycle whose period
+        // overlaps with [startDate, endDate] using the standard overlap condition:
+        //   existing.start_date <= new.end_date AND existing.end_date >= new.start_date
+        $overlap = PayrollCycle::where('start_date', '<=', $endDate->toDateString())
+            ->where('end_date', '>=', $startDate->toDateString())
+            ->first();
 
         if ($overlap) {
             return response()->json([
@@ -162,37 +191,44 @@ class PayrollController extends Controller
             $totalTax = 0;
             $totalNet = 0;
 
+            // M-01: Determine working-day ratio for pro-rating
+            $cycleDays    = $startDate->copy()->diffInDays($endDate) + 1;
+            $monthDays    = $startDate->daysInMonth; // days in the pay period's month
+
             foreach ($activeEmployees as $employee) {
                 // Get monthly salary profile or use default zeroes
-                $salaryProfile = $employee->salary;
-                $monthlyBase = $salaryProfile ? $salaryProfile->base_salary : 0.00;
-                $monthlyAllowances = $salaryProfile ? $salaryProfile->allowances : 0.00;
-                $monthlyDeductions = $salaryProfile ? $salaryProfile->deductions : 0.00;
+                $salaryProfile    = $employee->salary;
+                $monthlyBase      = $salaryProfile ? (float) $salaryProfile->base_salary : 0.00;
+                $monthlyAllowances = $salaryProfile ? (float) $salaryProfile->allowances  : 0.00;
+                $monthlyDeductions = $salaryProfile ? (float) $salaryProfile->deductions  : 0.00;
 
-                // Calculations (semi-monthly: divide by 2)
-                $cycleBase = $monthlyBase / 2;
-                $cycleAllowances = $monthlyAllowances / 2;
-                $cycleDeductions = $monthlyDeductions / 2;
+                // M-01: Daily pro-rating instead of a fixed ÷2
+                $ratio            = $monthDays > 0 ? $cycleDays / $monthDays : 0;
+                $cycleBase        = round($monthlyBase      * $ratio, 2);
+                $cycleAllowances  = round($monthlyAllowances * $ratio, 2);
+                $cycleDeductions  = round($monthlyDeductions * $ratio, 2);
 
-                // 10% tax rate on base salary per guidelines
-                $cycleTax = $cycleBase * 0.10;
-                $cycleNet = $cycleBase + $cycleAllowances - $cycleTax - $cycleDeductions;
+                // M-02: BIR progressive withholding tax (semi-monthly share)
+                $cycleTax = $this->computeBirTax($monthlyBase);
+
+                // M-02: Floor net salary at 0 — never pay a negative amount
+                $cycleNet = max(0.00, round($cycleBase + $cycleAllowances - $cycleTax - $cycleDeductions, 2));
 
                 // Create payslip record
                 Payslip::create([
                     'payroll_cycle_id' => $cycle->id,
-                    'user_id' => $employee->id,
-                    'base_salary' => $cycleBase,
-                    'allowances' => $cycleAllowances,
-                    'deductions' => $cycleDeductions,
-                    'tax_amount' => $cycleTax,
-                    'net_salary' => $cycleNet,
-                    'status' => 'draft',
+                    'user_id'          => $employee->id,
+                    'base_salary'      => $cycleBase,
+                    'allowances'       => $cycleAllowances,
+                    'deductions'       => $cycleDeductions,
+                    'tax_amount'       => $cycleTax,
+                    'net_salary'       => $cycleNet,
+                    'status'           => 'draft',
                 ]);
 
                 $totalGross += ($cycleBase + $cycleAllowances);
-                $totalTax += $cycleTax;
-                $totalNet += $cycleNet;
+                $totalTax   += $cycleTax;
+                $totalNet   += $cycleNet;
             }
 
             // Update cycle totals
@@ -244,7 +280,7 @@ class PayrollController extends Controller
 
         try {
             $cycle->update([
-                'status' => 'released',
+                'status'      => 'released',
                 'released_at' => now(),
             ]);
 
@@ -252,12 +288,46 @@ class PayrollController extends Controller
                 'status' => 'released',
             ]);
 
+            // H-04: Record double-entry journal for the payroll disbursement
+            $ledger = app(LedgerService::class);
+            $ledger->seedDefaultAccounts(); // ensure payroll accounts exist
+
+            $salaryExpenseAcc  = Account::where('code', '6000')->first(); // Salary Expense
+            $accruedPayrollAcc = Account::where('code', '2200')->first(); // Accrued Payroll
+            $taxPayableAcc     = Account::where('code', '2300')->first(); // Tax/Deductions Payable
+
+            if ($salaryExpenseAcc && $accruedPayrollAcc && $taxPayableAcc) {
+                $grossAmount = (float) $cycle->gross_amount;
+                $taxAmount   = (float) $cycle->tax_amount;
+                $netAmount   = (float) $cycle->net_amount;
+
+                $ledger->recordEntry(
+                    now()->toDateString(),
+                    "Payroll release for cycle {$cycle->start_date->format('Y-m-d')} to {$cycle->end_date->format('Y-m-d')}",
+                    [
+                        ['account_id' => $salaryExpenseAcc->id,  'debit' => $grossAmount, 'credit' => 0,          'description' => 'Gross payroll expense'],
+                        ['account_id' => $taxPayableAcc->id,     'debit' => 0,            'credit' => $taxAmount,  'description' => 'Withholding tax payable'],
+                        ['account_id' => $accruedPayrollAcc->id, 'debit' => 0,            'credit' => $netAmount,  'description' => 'Net accrued payroll payable'],
+                    ],
+                    $cycle
+                );
+            }
+
+            // H-04: Create a CashBudgetRequest so finance can track the outflow
+            CashBudgetRequest::create([
+                'date'         => now()->toDateString(),
+                'destination'  => 'Payroll Disbursement',
+                'total_amount' => $cycle->net_amount,
+                'status'       => 'approved',
+                'prepared_by'  => auth()->id(),
+            ]);
+
             DB::commit();
 
             return response()->json([
                 'success' => true,
                 'message' => 'Payroll cycle and payslips released successfully.',
-                'data' => $cycle
+                'data'    => $cycle
             ]);
 
         } catch (\Exception $e) {

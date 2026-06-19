@@ -129,4 +129,99 @@ class UserManagementTest extends TestCase
 
         $this->assertTrue($target->fresh()->must_change_password);
     }
+
+    public function test_non_super_admin_cannot_access_super_admin_routes()
+    {
+        $target = User::factory()->create(['role' => 'reservation_officer']);
+
+        // Test set-password route (Super Admin exclusive)
+        $this->actingAs($this->agent)
+             ->patchJson("/api/users/{$target->id}/set-password", [
+                 'password' => 'NewPass123!',
+             ])
+             ->assertForbidden();
+
+        // Test role-permissions route (Super Admin exclusive)
+        $this->actingAs($this->agent)
+             ->getJson('/api/role-permissions')
+             ->assertForbidden();
+    }
+
+    public function test_non_super_admin_cannot_create_user_with_super_admin_role()
+    {
+        $payload = [
+            'employee_id' => 'EMP-9903',
+            'first_name'  => 'Hack',
+            'last_name'   => 'Admin',
+            'email'       => 'hack@jvd.com',
+            'password'    => 'SecurePass123!',
+            'role'        => 'super_admin',
+        ];
+
+        // Agent does not have permission anyway, but let's test a user role that *does* have admin create permission, e.g. a regular manager with create permissions.
+        // Wait, does agent have admin:create? Let's check: in setUp we do RolePermissionSeeder.
+        // Let's create an office staff or custom user with admin:create permission but role is not super_admin.
+        $manager = User::factory()->create(['role' => 'operations_manager']);
+        // Assign create permission on 'admin' module to manager
+        \App\Models\RolePermission::updateOrCreate(
+            ['role' => 'operations_manager', 'module' => 'admin'],
+            ['can_create' => true, 'can_view' => true]
+        );
+
+        $this->actingAs($manager)
+             ->postJson('/api/users', $payload)
+             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_create_user_with_super_admin_role()
+    {
+        $payload = [
+            'employee_id' => 'EMP-9904',
+            'first_name'  => 'New',
+            'last_name'   => 'Super',
+            'email'       => 'newsuper@jvd.com',
+            'password'    => 'SecurePass123!',
+            'role'        => 'super_admin',
+        ];
+
+        $this->actingAs($this->admin)
+             ->postJson('/api/users', $payload)
+             ->assertCreated();
+    }
+
+    public function test_non_super_admin_cannot_update_user_role_to_super_admin()
+    {
+        $manager = User::factory()->create(['role' => 'operations_manager']);
+        $target = User::factory()->create(['role' => 'reservation_officer']);
+
+        $this->actingAs($manager)
+             ->putJson("/api/users/{$target->id}", [
+                 'role' => 'super_admin',
+             ])
+             ->assertForbidden();
+    }
+
+    public function test_non_super_admin_cannot_update_super_admin_user()
+    {
+        $manager = User::factory()->create(['role' => 'operations_manager']);
+
+        $this->actingAs($manager)
+             ->putJson("/api/users/{$this->admin->id}", [
+                 'first_name' => 'HackName',
+             ])
+             ->assertForbidden();
+    }
+
+    public function test_super_admin_can_update_super_admin_user()
+    {
+        $otherAdmin = User::factory()->superAdmin()->create();
+
+        $this->actingAs($this->admin)
+             ->putJson("/api/users/{$otherAdmin->id}", [
+                 'first_name' => 'NewName',
+             ])
+             ->assertOk();
+
+        $this->assertEquals('NewName', $otherAdmin->fresh()->first_name);
+    }
 }
