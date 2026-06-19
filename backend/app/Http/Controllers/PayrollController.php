@@ -192,7 +192,7 @@ class PayrollController extends Controller
             $totalNet = 0;
 
             // M-01: Determine working-day ratio for pro-rating
-            $cycleDays    = $startDate->copy()->diffInDays($endDate) + 1;
+            $cycleDays    = $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
             $monthDays    = $startDate->daysInMonth; // days in the pay period's month
 
             foreach ($activeEmployees as $employee) {
@@ -300,15 +300,27 @@ class PayrollController extends Controller
                 $grossAmount = (float) $cycle->gross_amount;
                 $taxAmount   = (float) $cycle->tax_amount;
                 $netAmount   = (float) $cycle->net_amount;
+                $deductionsAmount = round($grossAmount - $taxAmount - $netAmount, 2);
+
+                $entries = [
+                    ['account_id' => $salaryExpenseAcc->id,  'debit' => $grossAmount, 'credit' => 0,          'description' => 'Gross payroll expense'],
+                    ['account_id' => $taxPayableAcc->id,     'debit' => 0,            'credit' => $taxAmount,  'description' => 'Withholding tax payable'],
+                    ['account_id' => $accruedPayrollAcc->id, 'debit' => 0,            'credit' => $netAmount,  'description' => 'Net accrued payroll payable'],
+                ];
+
+                if ($deductionsAmount > 0) {
+                    $entries[] = [
+                        'account_id'  => $taxPayableAcc->id,
+                        'debit'       => 0,
+                        'credit'      => $deductionsAmount,
+                        'description' => 'Payroll deductions withheld'
+                    ];
+                }
 
                 $ledger->recordEntry(
                     now()->toDateString(),
                     "Payroll release for cycle {$cycle->start_date->format('Y-m-d')} to {$cycle->end_date->format('Y-m-d')}",
-                    [
-                        ['account_id' => $salaryExpenseAcc->id,  'debit' => $grossAmount, 'credit' => 0,          'description' => 'Gross payroll expense'],
-                        ['account_id' => $taxPayableAcc->id,     'debit' => 0,            'credit' => $taxAmount,  'description' => 'Withholding tax payable'],
-                        ['account_id' => $accruedPayrollAcc->id, 'debit' => 0,            'credit' => $netAmount,  'description' => 'Net accrued payroll payable'],
-                    ],
+                    $entries,
                     $cycle
                 );
             }

@@ -90,15 +90,15 @@ class PayrollTest extends TestCase
         // For employee: Monthly Base = 50000 -> Cycle Base = 25000
         // Monthly Allowances = 6000 -> Cycle Allowances = 3000
         // Monthly Deductions = 2000 -> Cycle Deductions = 1000
-        // Cycle Tax = 25000 * 10% = 2500
-        // Cycle Net = 25000 + 3000 - 2500 - 1000 = 24500
+        // Cycle Tax = 2604.17 (BIR progressive tax)
+        // Cycle Net = 25000 + 3000 - 2604.17 - 1000 = 24395.83
         // Gross per employee = 25000 + 3000 = 28000
         $this->assertDatabaseHas('payroll_cycles', [
             'id' => $cycleId,
             'status' => 'draft',
             'gross_amount' => 28000.00,
-            'tax_amount' => 2500.00,
-            'net_amount' => 24500.00,
+            'tax_amount' => 2604.17,
+            'net_amount' => 24395.83,
         ]);
 
         // Check generated payslip
@@ -108,8 +108,8 @@ class PayrollTest extends TestCase
             'base_salary' => 25000.00,
             'allowances' => 3000.00,
             'deductions' => 1000.00,
-            'tax_amount' => 2500.00,
-            'net_salary' => 24500.00,
+            'tax_amount' => 2604.17,
+            'net_salary' => 24395.83,
             'status' => 'draft',
         ]);
     }
