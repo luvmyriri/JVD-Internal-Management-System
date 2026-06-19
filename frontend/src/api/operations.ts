@@ -15,7 +15,7 @@ export const tripTicketApi = {
   create: (data: Partial<TripTicket>) => client.post<TripTicket>('/trip-tickets', data).then((res) => res.data),
   update: (id: number, data: Partial<TripTicket>) => client.put<TripTicket>(`/trip-tickets/${id}`, data).then((res) => res.data),
   delete: (id: number) => client.delete(`/trip-tickets/${id}`).then((res) => res.data),
-  checkConflict: (params: { date_of_travel: string; driver_id?: number | null; bus_id?: number | null; exclude_id?: number | null }) =>
+  checkConflict: (params: { date_of_travel: string; duration?: string | null; driver_id?: number | null; bus_id?: number | null; exclude_id?: number | null }) =>
     client.get<{ has_conflict: boolean; conflicts: Array<{ type: string; message: string; conflicting_ticket: any }> }>('/trip-tickets/check-conflict', { params }).then((res) => res.data),
 };
 

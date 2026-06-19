@@ -12,10 +12,10 @@ class CommissionController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $query = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy']);
+        $query = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee']);
         
-        if ($user && $user->hasRole('driver')) {
-            $query->where('received_by', $user->id);
+        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager')) {
+            $query->where('employee_id', $user->id);
         }
         
         return $query->latest()->get();
@@ -60,6 +60,25 @@ class CommissionController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = auth()->user();
+        if ($user->hasRole('driver')) {
+            return response()->json(['error' => 'Drivers cannot update commissions.'], 403);
+        }
+
+        if ($request->has('status')) {
+            $newStatus = $request->status;
+            if ($newStatus === 'approved') {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+                    return response()->json(['error' => 'Unauthorized to approve commissions.'], 403);
+                }
+            }
+            if ($newStatus === 'released') {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+                    return response()->json(['error' => 'Unauthorized to release commissions.'], 403);
+                }
+            }
+        }
+
         $commission = Commission::findOrFail($id);
         
         $validated = $request->validate([

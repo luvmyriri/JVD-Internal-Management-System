@@ -158,11 +158,17 @@ class CollectionController extends Controller
     {
         $collection = Collection::findOrFail($id);
 
-        $collection->update([
-            'collection_status' => 'completed',
-            'paid_amount'       => $collection->billing_amount,
-            'remaining_balance' => 0,
-        ]);
+        $remaining = $collection->billing_amount - $collection->payments()->sum('amount');
+        if ($remaining > 0) {
+            $collection->payments()->create([
+                'payment_date'   => date('Y-m-d'),
+                'payment_method' => 'Cash',
+                'amount'         => $remaining,
+                'balance'        => 0,
+            ]);
+        }
+
+        $collection->recalculate();
 
         // Sync the linked invoice to paid as well
         if ($collection->invoice_id) {

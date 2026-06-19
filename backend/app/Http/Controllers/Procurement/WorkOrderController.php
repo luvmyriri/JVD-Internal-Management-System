@@ -75,6 +75,10 @@ class WorkOrderController extends Controller
      */
     public function store(StoreWorkOrderRequest $request): JsonResponse
     {
+        if ($request->user()->hasRole('driver')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $wo = $this->service->create($request->validated(), $request->user()->id);
 
         return response()->json([
@@ -112,10 +116,7 @@ class WorkOrderController extends Controller
     {
         $user = $request->user();
         if ($user->hasRole('driver')) {
-            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
-            if (!$assignedBus || $assignedBus->id !== $workOrder->bus_id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
         $wasCompleted = false;
@@ -349,6 +350,11 @@ class WorkOrderController extends Controller
      */
     public function reject(Request $request, WorkOrder $workOrder): JsonResponse
     {
+        $user = $request->user();
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'head_mechanic', 'service_adviser')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         if (!in_array($workOrder->status, ['pending_approval', 'verified'])) {
             return response()->json([
                 'success' => false,
@@ -379,6 +385,11 @@ class WorkOrderController extends Controller
      */
     public function generateJobOrder(Request $request, WorkOrder $workOrder): JsonResponse
     {
+        $user = $request->user();
+        if ($user->hasRole('driver')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         // Check if a Job Order is already linked to this Work Order
         $existingJo = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
         if ($existingJo) {
@@ -387,8 +398,6 @@ class WorkOrderController extends Controller
                 'message' => 'A Job Order has already been generated for this Work Order.',
             ], 422);
         }
-
-        $user = $request->user();
 
         // Create the Job Order in created state
         $year = now()->year;

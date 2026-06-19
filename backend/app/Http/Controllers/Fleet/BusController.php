@@ -93,7 +93,7 @@ class BusController extends Controller
      */
     public function update(Request $request, Bus $bus): JsonResponse
     {
-        $validated = $request->validate([
+        $rules = [
             'model'             => ['sometimes', 'string', 'max:150'],
             'bus_category'      => ['sometimes', 'in:LUXURY,VIP,ECONOMY'],
             'seating_capacity'  => ['sometimes', 'integer', 'min:1', 'max:120'],
@@ -104,18 +104,36 @@ class BusController extends Controller
             'assigned_driver'   => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
             'plate_number'      => ['sometimes', 'string', 'max:20', 'unique:buses,plate_number,' . $bus->id],
             'custom_seats'      => ['nullable', 'array'],
-        ]);
+        ];
+
+        if ($request->user() && $request->user()->role === 'corporate_secretary') {
+            $rules = [
+                'assigned_driver' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
+            ];
+
+            $extraFields = array_diff(array_keys($request->except(['_method'])), ['assigned_driver']);
+            if (!empty($extraFields)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized field updates: Corporate Secretary is only allowed to assign drivers.'
+                ], 403);
+            }
+        }
+
+        $validated = $request->validate($rules);
 
         $oldValues = $bus->getOriginal();
         
-        // Ensure atomic driver assignment: a driver can only be assigned to one bus at a time
-        if (array_key_exists('assigned_driver', $validated) && $validated['assigned_driver'] !== null) {
-            Bus::where('assigned_driver', $validated['assigned_driver'])
-               ->where('id', '!=', $bus->id)
-               ->update(['assigned_driver' => null]);
-        }
+        \DB::transaction(function () use ($validated, $bus) {
+            // Ensure atomic driver assignment: a driver can only be assigned to one bus at on time
+            if (array_key_exists('assigned_driver', $validated) && $validated['assigned_driver'] !== null) {
+                Bus::where('assigned_driver', $validated['assigned_driver'])
+                   ->where('id', '!=', $bus->id)
+                   ->update(['assigned_driver' => null]);
+            }
 
-        $bus->update($validated);
+            $bus->update($validated);
+        });
 
         AuditLogService::log(
             action: 'UPDATE_BUS',

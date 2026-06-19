@@ -63,6 +63,25 @@ class CashBudgetRequestController extends Controller
 
     public function update(Request $request, $id)
     {
+        $user = auth()->user();
+        if ($user->hasRole('driver')) {
+            return response()->json(['error' => 'Drivers cannot update cash budget requests.'], 403);
+        }
+
+        if ($request->has('status')) {
+            $newStatus = $request->status;
+            if ($newStatus === 'approved') {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
+                    return response()->json(['error' => 'Unauthorized to approve cash budget requests.'], 403);
+                }
+            }
+            if ($newStatus === 'disbursed') {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager', 'dispatcher', 'service_adviser', 'logistics_in_charge', 'purchasing_manager')) {
+                    return response()->json(['error' => 'Unauthorized to disburse cash budget requests.'], 403);
+                }
+            }
+        }
+
         $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier', 'workOrder'])->findOrFail($id);
 
         $validated = $request->validate([

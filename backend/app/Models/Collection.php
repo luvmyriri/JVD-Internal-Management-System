@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class Collection extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'client_name', 'service_type', 'other_service_type', 'date', 'travel_date',
+        'pick_up', 'drop_off', 'rate', 'customer_id', 'billing_amount',
+        'remaining_balance', 'due_date', 'collection_status', 'paid_amount',
+        'invoice_id', 'liquidation_id', 'employee_id', 'auto_generated', 'remarks'
+    ];
 
     public function payments()
     {

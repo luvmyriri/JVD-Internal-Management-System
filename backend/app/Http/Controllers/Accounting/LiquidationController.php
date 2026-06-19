@@ -30,6 +30,10 @@ class LiquidationController extends Controller
 
     public function settle(Request $request, Liquidation $liquidation)
     {
+        $user = auth()->user();
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
+            return response()->json(['error' => 'Unauthorized to settle liquidations.'], 403);
+        }
         $request->validate([
             'items' => 'required|array',
             'items.*.expense_category' => 'required|string',

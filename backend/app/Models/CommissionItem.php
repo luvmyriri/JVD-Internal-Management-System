@@ -6,6 +6,8 @@ use Illuminate\Database\Eloquent\Model;
 
 class CommissionItem extends Model
 {
-    protected $guarded = [];
+    protected $fillable = [
+        'commission_id', 'travel_date', 'destination', 'quantity', 'amount'
+    ];
 }
 

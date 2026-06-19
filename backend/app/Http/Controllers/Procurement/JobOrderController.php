@@ -92,6 +92,10 @@ class JobOrderController extends Controller
      */
     public function store(StoreJobOrderRequest $request): JsonResponse
     {
+        if ($request->user()->hasRole('driver')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         $jo = $this->service->create($request->validated(), $request->user()->id);
 
         return response()->json([
@@ -133,11 +137,10 @@ class JobOrderController extends Controller
     {
         $user = $request->user();
         if ($user->hasRole('driver')) {
-            $assignedBus = \App\Models\Bus::where('assigned_driver', $user->id)->first();
-            if ((!$assignedBus || $assignedBus->id !== $jobOrder->bus_id) && $jobOrder->driver_id !== $user->id) {
-                return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-            }
-        } elseif (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+        
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             if ($jobOrder->created_by !== $user->id) {
                 return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
             }
@@ -174,6 +177,10 @@ class JobOrderController extends Controller
      */
     public function generatePurchaseOrder(Request $request, JobOrder $jobOrder): JsonResponse
     {
+        if ($request->user()->hasRole('driver')) {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
         if ($jobOrder->purchase_order_id) {
             return response()->json([
                 'success' => false,

@@ -21,6 +21,11 @@ class TripTicketController extends Controller
 
     public function store(Request $request)
     {
+        $user = auth()->user();
+        if ($user && $user->role === 'driver') {
+            return response()->json(['success' => false, 'message' => 'Drivers are not authorized to create trip tickets.'], 403);
+        }
+
         $validated = $request->validate([
             'control_no' => 'nullable|string|unique:trip_tickets,control_no',
             'issue_date' => 'required|date',
@@ -47,16 +52,26 @@ class TripTicketController extends Controller
             'passenger_rating' => 'nullable|in:outstanding,satisfactory,needs_improvement,poor',
             'passenger_name' => 'nullable|string',
             'trip_type' => 'nullable|in:domestic,international',
+            'override_conflict' => 'nullable|boolean',
         ]);
 
-        // ── Conflict Check: Prevent double-booking driver or bus on the same date ──
-        $conflictResponse = $this->detectScheduleConflict(
-            $validated['driver_id'] ?? null,
-            $validated['bus_id'] ?? null,
-            $validated['date_of_travel']
+        // ── Conflict Check: Prevent double-booking driver or bus on overlapping date ranges ──
+        $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
+        $canOverride = $user && (
+            $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
+            $user->hasTag('process:override_schedule')
         );
-        if ($conflictResponse) {
-            return $conflictResponse;
+
+        if (!$override || !$canOverride) {
+            $conflictResponse = $this->detectScheduleConflict(
+                $validated['driver_id'] ?? null,
+                $validated['bus_id'] ?? null,
+                $validated['date_of_travel'],
+                $validated['duration'] ?? null
+            );
+            if ($conflictResponse) {
+                return $conflictResponse;
+            }
         }
 
         $validated['requested_by'] = auth()->id();
@@ -73,7 +88,7 @@ class TripTicketController extends Controller
             $validated['control_no'] = sprintf('DTT-%d-%04d', $year, $sequence);
         }
         
-        $ticket = TripTicket::create($validated);
+        $ticket = TripTicket::create(array_diff_key($validated, ['override_conflict' => '']));
 
         if ($ticket->bus_id) {
             $this->autoGeneratePreTripWorkOrder($ticket);
@@ -84,13 +99,74 @@ class TripTicketController extends Controller
 
     public function show($id)
     {
-        return TripTicket::with(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest'])->findOrFail($id);
+        $ticket = TripTicket::with(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest'])->findOrFail($id);
+
+        $user = auth()->user();
+        if ($user && $user->role === 'driver') {
+            if ($ticket->driver_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access to this trip ticket.'], 403);
+            }
+        }
+
+        return $ticket;
     }
 
     public function update(Request $request, $id)
     {
         $ticket = TripTicket::findOrFail($id);
-        
+        $user = auth()->user();
+
+        // 1. Enforce ownership and role checks
+        if ($user && $user->role === 'driver') {
+            if ($ticket->driver_id !== $user->id) {
+                return response()->json(['success' => false, 'message' => 'Unauthorized access to this trip ticket.'], 403);
+            }
+
+            // Drivers can only update travel completion fields
+            $allowedFields = [
+                'passenger_rating', 'passenger_name', 
+                'fuel_consumed', 'fuel_gauge_before', 'fuel_gauge_after', 'odometer_reading',
+                'status'
+            ];
+            
+            // Reject if request has other fields
+            $extra = array_diff(array_keys($request->except(['_method'])), $allowedFields);
+            if (!empty($extra)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized field updates: Drivers are only allowed to submit completion reports.'
+                ], 403);
+            }
+
+            // Drivers cannot approve a ticket
+            if ($request->has('status') && $request->input('status') === 'approved') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Drivers cannot approve trip tickets.'
+                ], 403);
+            }
+        }
+
+        // 2. Enforce C-04: Block updates to allowance fields if CashBudgetRequest has been submitted/approved/disbursed
+        $financialFields = ['meal_allowance', 'diesel', 'sop', 'easy_trip', 'autosweep'];
+        $hasFinancialUpdates = false;
+        foreach ($financialFields as $field) {
+            if ($request->has($field)) {
+                $hasFinancialUpdates = true;
+                break;
+            }
+        }
+
+        if ($hasFinancialUpdates) {
+            $budget = \App\Models\CashBudgetRequest::where('trip_ticket_id', $ticket->id)->first();
+            if ($budget && $budget->status !== 'draft') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot modify allowances: The associated Cash Budget Request is already in status "' . $budget->status . '" and cannot be updated.'
+                ], 422);
+            }
+        }
+
         $validated = $request->validate([
             'control_no' => 'sometimes|string|unique:trip_tickets,control_no,' . $id,
             'issue_date' => 'sometimes|date',
@@ -117,28 +193,50 @@ class TripTicketController extends Controller
             'fuel_gauge_after' => 'nullable|string',
             'odometer_reading' => 'nullable|numeric',
             'trip_type' => 'sometimes|in:domestic,international',
+            'override_conflict' => 'nullable|boolean',
         ]);
 
-        $oldBusId = $ticket->bus_id;
+        if ($user && $user->role === 'driver') {
+            // Keep only allowed driver fields in $validated
+            $validated = array_intersect_key($validated, array_flip([
+                'passenger_rating', 'passenger_name', 
+                'fuel_consumed', 'fuel_gauge_before', 'fuel_gauge_after', 'odometer_reading',
+                'status'
+            ]));
+        }
 
-        // ── Conflict Check on update: when driver, bus, or date changes ──
+        $oldBusId = $ticket->bus_id;
+        $oldDriverId = $ticket->driver_id;
+
+        // ── Conflict Check on update: when driver, bus, date, or duration changes ──
         $newDriverId = $validated['driver_id'] ?? $ticket->driver_id;
         $newBusId = $validated['bus_id'] ?? $ticket->bus_id;
         $newDate = $validated['date_of_travel'] ?? $ticket->date_of_travel;
+        $newDuration = array_key_exists('duration', $validated) ? $validated['duration'] : $ticket->duration;
 
         $driverChanged = isset($validated['driver_id']) && $validated['driver_id'] != $ticket->driver_id;
         $busChanged = isset($validated['bus_id']) && $validated['bus_id'] != $ticket->bus_id;
         $dateChanged = isset($validated['date_of_travel']) && $validated['date_of_travel'] != $ticket->date_of_travel;
+        $durationChanged = array_key_exists('duration', $validated) && $validated['duration'] != $ticket->duration;
 
-        if ($driverChanged || $busChanged || $dateChanged) {
-            $conflictResponse = $this->detectScheduleConflict(
-                $newDriverId,
-                $newBusId,
-                $newDate,
-                $ticket->id
+        if ($driverChanged || $busChanged || $dateChanged || $durationChanged) {
+            $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
+            $canOverride = $user && (
+                $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
+                $user->hasTag('process:override_schedule')
             );
-            if ($conflictResponse) {
-                return $conflictResponse;
+
+            if (!$override || !$canOverride) {
+                $conflictResponse = $this->detectScheduleConflict(
+                    $newDriverId,
+                    $newBusId,
+                    $newDate,
+                    $newDuration,
+                    $ticket->id
+                );
+                if ($conflictResponse) {
+                    return $conflictResponse;
+                }
             }
         }
 
@@ -195,11 +293,18 @@ class TripTicketController extends Controller
             }
         }
 
-        $ticket->update($validated);
+        $ticket->update(array_diff_key($validated, ['override_conflict' => '']));
 
         // If bus was newly assigned or changed, generate work order
         if ($ticket->bus_id && ($ticket->bus_id !== $oldBusId) && !$ticket->workOrders()->where('bus_id', $ticket->bus_id)->exists()) {
             $this->autoGeneratePreTripWorkOrder($ticket);
+        }
+
+        // H-03: Sync driver update on trip ticket to the pre-trip safety Work Order
+        if ($ticket->driver_id && ($ticket->driver_id !== $oldDriverId)) {
+            \App\Models\WorkOrder::where('trip_ticket_id', $ticket->id)
+                ->where('bus_id', $ticket->bus_id)
+                ->update(['assigned_to' => $ticket->driver_id]);
         }
 
         if ($request->has('status') && $request->status === 'approved') {
@@ -239,18 +344,44 @@ class TripTicketController extends Controller
 
     public function destroy($id)
     {
-        TripTicket::findOrFail($id)->delete();
+        $ticket = TripTicket::findOrFail($id);
+        $user = auth()->user();
+        
+        if ($user && $user->role === 'driver') {
+            return response()->json(['success' => false, 'message' => 'Drivers are not authorized to delete trip tickets.'], 403);
+        }
+
+        $ticket->delete();
         return response()->json(['message' => 'Trip ticket deleted successfully.']);
+    }
+
+    private function getTripDateRange($dateOfTravel, $duration)
+    {
+        $startDate = \Carbon\Carbon::parse($dateOfTravel)->startOfDay();
+        
+        $days = 1;
+        if ($duration && preg_match('/(\d+)\s*day/i', $duration, $matches)) {
+            $days = (int) $matches[1];
+        }
+        
+        if ($days < 1) {
+            $days = 1;
+        }
+        
+        $endDate = $startDate->copy()->addDays($days - 1)->endOfDay();
+        
+        return [$startDate, $endDate];
     }
 
     /**
      * Proactive conflict-check endpoint for frontend use.
-     * GET /api/trip-tickets/check-conflict?driver_id=&bus_id=&date_of_travel=&exclude_id=
+     * GET /api/trip-tickets/check-conflict?driver_id=&bus_id=&date_of_travel=&duration=&exclude_id=
      */
     public function checkConflict(Request $request)
     {
         $request->validate([
             'date_of_travel' => 'required|date',
+            'duration' => 'nullable|string',
             'driver_id' => 'nullable|integer',
             'bus_id' => 'nullable|integer',
             'exclude_id' => 'nullable|integer',
@@ -259,55 +390,64 @@ class TripTicketController extends Controller
         $driverId = $request->query('driver_id');
         $busId = $request->query('bus_id');
         $dateOfTravel = $request->query('date_of_travel');
+        $duration = $request->query('duration');
         $excludeId = $request->query('exclude_id');
 
         $conflicts = [];
 
+        list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
+
         if ($driverId) {
-            $driverConflict = TripTicket::where('driver_id', $driverId)
-                ->where('date_of_travel', $dateOfTravel)
+            $driverTrips = TripTicket::where('driver_id', $driverId)
                 ->where('status', '!=', 'cancelled')
                 ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
                 ->with('driver:id,first_name,last_name')
-                ->first();
+                ->get();
 
-            if ($driverConflict) {
-                $conflicts[] = [
-                    'type' => 'driver',
-                    'message' => 'Driver is already assigned to trip ' . $driverConflict->control_no
-                        . ' (' . $driverConflict->pick_up . ' → ' . $driverConflict->drop_off . ') on ' . $driverConflict->date_of_travel,
-                    'conflicting_ticket' => [
-                        'id' => $driverConflict->id,
-                        'control_no' => $driverConflict->control_no,
-                        'pick_up' => $driverConflict->pick_up,
-                        'drop_off' => $driverConflict->drop_off,
-                        'date_of_travel' => $driverConflict->date_of_travel,
-                    ]
-                ];
+            foreach ($driverTrips as $trip) {
+                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
+                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+                    $conflicts[] = [
+                        'type' => 'driver',
+                        'message' => 'Driver is already assigned to trip ' . $trip->control_no
+                            . ' (' . $trip->pick_up . ' → ' . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ')',
+                        'conflicting_ticket' => [
+                            'id' => $trip->id,
+                            'control_no' => $trip->control_no,
+                            'pick_up' => $trip->pick_up,
+                            'drop_off' => $trip->drop_off,
+                            'date_of_travel' => $trip->date_of_travel,
+                        ]
+                    ];
+                    break;
+                }
             }
         }
 
         if ($busId) {
-            $busConflict = TripTicket::where('bus_id', $busId)
-                ->where('date_of_travel', $dateOfTravel)
+            $busTrips = TripTicket::where('bus_id', $busId)
                 ->where('status', '!=', 'cancelled')
                 ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
                 ->with('bus:id,plate_number,model')
-                ->first();
+                ->get();
 
-            if ($busConflict) {
-                $conflicts[] = [
-                    'type' => 'bus',
-                    'message' => 'Vehicle is already assigned to trip ' . $busConflict->control_no
-                        . ' (' . $busConflict->pick_up . ' → ' . $busConflict->drop_off . ') on ' . $busConflict->date_of_travel,
-                    'conflicting_ticket' => [
-                        'id' => $busConflict->id,
-                        'control_no' => $busConflict->control_no,
-                        'pick_up' => $busConflict->pick_up,
-                        'drop_off' => $busConflict->drop_off,
-                        'date_of_travel' => $busConflict->date_of_travel,
-                    ]
-                ];
+            foreach ($busTrips as $trip) {
+                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
+                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+                    $conflicts[] = [
+                        'type' => 'bus',
+                        'message' => 'Vehicle is already assigned to trip ' . $trip->control_no
+                            . ' (' . $trip->pick_up . ' → ' . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ')',
+                        'conflicting_ticket' => [
+                            'id' => $trip->id,
+                            'control_no' => $trip->control_no,
+                            'pick_up' => $trip->pick_up,
+                            'drop_off' => $trip->drop_off,
+                            'date_of_travel' => $trip->date_of_travel,
+                        ]
+                    ];
+                    break;
+                }
             }
         }
 
@@ -318,42 +458,48 @@ class TripTicketController extends Controller
     }
 
     /**
-     * Detect scheduling conflicts for a driver or bus on a given date.
+     * Detect scheduling conflicts for a driver or bus on a given date range.
      * Returns a JSON error response if conflict found, or null if clear.
      */
-    private function detectScheduleConflict($driverId, $busId, $dateOfTravel, $excludeTicketId = null)
+    private function detectScheduleConflict($driverId, $busId, $dateOfTravel, $duration = null, $excludeTicketId = null)
     {
+        list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
+
         if ($driverId) {
-            $driverConflict = TripTicket::where('driver_id', $driverId)
-                ->where('date_of_travel', $dateOfTravel)
+            $driverTrips = TripTicket::where('driver_id', $driverId)
                 ->where('status', '!=', 'cancelled')
                 ->when($excludeTicketId, fn($q) => $q->where('id', '!=', $excludeTicketId))
-                ->first();
+                ->get();
 
-            if ($driverConflict) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Schedule conflict: The selected driver is already assigned to trip '
-                        . $driverConflict->control_no . ' (' . $driverConflict->pick_up . ' → '
-                        . $driverConflict->drop_off . ') on ' . $driverConflict->date_of_travel . '.'
-                ], 422);
+            foreach ($driverTrips as $trip) {
+                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
+                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Schedule conflict: The selected driver is already assigned to trip '
+                            . $trip->control_no . ' (' . $trip->pick_up . ' → '
+                            . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ').'
+                    ], 422);
+                }
             }
         }
 
         if ($busId) {
-            $busConflict = TripTicket::where('bus_id', $busId)
-                ->where('date_of_travel', $dateOfTravel)
+            $busTrips = TripTicket::where('bus_id', $busId)
                 ->where('status', '!=', 'cancelled')
                 ->when($excludeTicketId, fn($q) => $q->where('id', '!=', $excludeTicketId))
-                ->first();
+                ->get();
 
-            if ($busConflict) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Schedule conflict: The selected vehicle is already assigned to trip '
-                        . $busConflict->control_no . ' (' . $busConflict->pick_up . ' → '
-                        . $busConflict->drop_off . ') on ' . $busConflict->date_of_travel . '.'
-                ], 422);
+            foreach ($busTrips as $trip) {
+                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
+                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Schedule conflict: The selected vehicle is already assigned to trip '
+                            . $trip->control_no . ' (' . $trip->pick_up . ' → '
+                            . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ').'
+                    ], 422);
+                }
             }
         }
 

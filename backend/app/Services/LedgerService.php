@@ -23,16 +23,37 @@ class LedgerService
     public function recordEntry(string $date, string $notes, array $entries, $reference = null): JournalEntry
     {
         return DB::transaction(function () use ($date, $notes, $entries, $reference) {
-            $totalDebit = 0;
-            $totalCredit = 0;
-
-            foreach ($entries as $entry) {
-                $totalDebit += round($entry['debit'] ?? 0, 2);
-                $totalCredit += round($entry['credit'] ?? 0, 2);
+            if (count($entries) < 2) {
+                throw new Exception("Journal entry must have at least 2 entries (debit and credit).");
             }
 
-            if (round($totalDebit, 2) !== round($totalCredit, 2)) {
-                throw new Exception("Journal entry unbalanced. Debits: {$totalDebit}, Credits: {$totalCredit}");
+            $totalDebitCents = 0;
+            $totalCreditCents = 0;
+
+            foreach ($entries as $entry) {
+                $debit = round($entry['debit'] ?? 0, 2);
+                $credit = round($entry['credit'] ?? 0, 2);
+
+                if ($debit < 0 || $credit < 0) {
+                    throw new Exception("Debit and credit amounts cannot be negative.");
+                }
+
+                if ($debit > 0 && $credit > 0) {
+                    throw new Exception("A single line item cannot have both a debit and a credit amount.");
+                }
+
+                $totalDebitCents += (int) round($debit * 100);
+                $totalCreditCents += (int) round($credit * 100);
+            }
+
+            if ($totalDebitCents !== $totalCreditCents) {
+                $totalDebitFormatted = number_format($totalDebitCents / 100, 2);
+                $totalCreditFormatted = number_format($totalCreditCents / 100, 2);
+                throw new Exception("Journal entry unbalanced. Debits: {$totalDebitFormatted}, Credits: {$totalCreditFormatted}");
+            }
+
+            if ($totalDebitCents === 0) {
+                throw new Exception("Journal entry cannot be empty or have a zero total amount.");
             }
 
             $journalEntry = new JournalEntry();

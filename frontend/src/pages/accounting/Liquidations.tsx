@@ -1091,7 +1091,7 @@ export default function Liquidations() {
                     notes: selectedLiquidation.notes
                   });
                 }}
-                disabled={settleMutation.isPending}
+                disabled={settleMutation.isPending || !canSettle}
                 className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold text-xs tracking-wider rounded-2xl uppercase shadow-lg shadow-blue-600/30 active:scale-95 cursor-pointer transition-all"
               >
                 {settleMutation.isPending ? 'Settling...' : 'Complete Review & Settle'}

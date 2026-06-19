@@ -615,6 +615,7 @@ function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket
 
 function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose: () => void }) {
   const qc = useQueryClient();
+  const { user } = useAuth();
   const { data: busesData } = useBuses({ per_page: 999 });
   const { data: driversData } = useUsers({ role: 'driver', per_page: 999 });
 
@@ -642,26 +643,35 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
   });
 
   const [conflicts, setConflicts] = useState<any[]>([]);
+  const [isCheckingConflict, setIsCheckingConflict] = useState<boolean>(false);
+  const [overrideConflict, setOverrideConflict] = useState<boolean>(false);
 
   useEffect(() => {
     let active = true;
     if (!form.date_of_travel) {
       setConflicts([]);
+      setOverrideConflict(false);
       return;
     }
 
     const check = async () => {
+      setIsCheckingConflict(true);
       try {
         const driverVal = form.driver_id ? Number(form.driver_id) : null;
         const busVal = form.bus_id ? Number(form.bus_id) : null;
 
         if (!driverVal && !busVal) {
           setConflicts([]);
+          setOverrideConflict(false);
+          setIsCheckingConflict(false);
           return;
         }
 
+        setOverrideConflict(false);
+
         const res = await tripTicketApi.checkConflict({
           date_of_travel: form.date_of_travel,
+          duration: form.duration || null,
           driver_id: driverVal,
           bus_id: busVal,
           exclude_id: ticket?.id || null,
@@ -672,6 +682,10 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
         }
       } catch (err) {
         console.error('Error checking scheduling conflict:', err);
+      } finally {
+        if (active) {
+          setIsCheckingConflict(false);
+        }
       }
     };
 
@@ -680,7 +694,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
       active = false;
       clearTimeout(timer);
     };
-  }, [form.date_of_travel, form.driver_id, form.bus_id, ticket?.id]);
+  }, [form.date_of_travel, form.duration, form.driver_id, form.bus_id, ticket?.id]);
 
   const mutation = useMutation({
     mutationFn: (data: any) => {
@@ -698,6 +712,9 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
       toast.error(error.response?.data?.message || `Failed to ${ticket ? 'approve' : 'create'} trip ticket`);
     },
   });
+
+  const canOverride = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.tags?.includes('process:override_schedule');
+  const isSubmitDisabled = mutation.isPending || isCheckingConflict || (conflicts.length > 0 && (!canOverride || !overrideConflict));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -916,21 +933,41 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 />
               </div>
             </div>
-            {conflicts.length > 0 && (
-              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl space-y-2">
-                <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
-                  <span className="text-base">⚠️</span>
-                  <span className="text-xs font-black uppercase tracking-widest">Schedule Conflict Detected</span>
-                </div>
-                <div className="space-y-1">
-                  {conflicts.map((c, i) => (
-                    <p key={i} className="text-xs text-red-700 dark:text-red-400 font-semibold leading-relaxed">
-                      {c.message}
+            {conflicts.length > 0 && (() => {
+              const canOverride = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.tags?.includes('process:override_schedule');
+              return (
+                <div className="mt-4 p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/40 rounded-2xl space-y-2">
+                  <div className="flex items-center gap-2 text-red-800 dark:text-red-400">
+                    <span className="text-base">⚠️</span>
+                    <span className="text-xs font-black uppercase tracking-widest">Schedule Conflict Detected</span>
+                  </div>
+                  <div className="space-y-1">
+                    {conflicts.map((c, i) => (
+                      <p key={i} className="text-xs text-red-700 dark:text-red-400 font-semibold leading-relaxed">
+                        {c.message}
+                      </p>
+                    ))}
+                  </div>
+                  {canOverride ? (
+                    <label className="flex items-center gap-2 mt-3 p-2 bg-white/50 dark:bg-black/10 rounded-xl cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={overrideConflict}
+                        onChange={(e) => setOverrideConflict(e.target.checked)}
+                        className="rounded text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-xs font-bold text-red-800 dark:text-red-300">
+                        Override schedule conflict (Administrator bypass)
+                      </span>
+                    </label>
+                  ) : (
+                    <p className="text-[10px] font-black text-red-500 uppercase tracking-wider mt-2">
+                      Submission blocked. Only administrators can override scheduling conflicts.
                     </p>
-                  ))}
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </details>
 
@@ -1065,7 +1102,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
           </Button>
           <button
             type="submit"
-            disabled={mutation.isPending}
+            disabled={isSubmitDisabled}
             className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {mutation.isPending && (

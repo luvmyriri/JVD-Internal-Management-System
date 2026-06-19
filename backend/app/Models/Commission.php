@@ -9,7 +9,10 @@ class Commission extends Model
 {
     use HasFactory;
     
-    protected $guarded = [];
+    protected $fillable = [
+        'commissioner_name', 'employee_id', 'serial_no', 'date', 'status',
+        'received_by', 'released_by', 'approved_by'
+    ];
 
     public function items()
     {

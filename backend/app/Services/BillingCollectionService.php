@@ -60,11 +60,23 @@ class BillingCollectionService
                 $collection->other_service_type = $firstItem?->service?->name ?? $firstItem?->description ?? null;
             }
             $collection->billing_amount    = $invoice->total_amount;
-            $collection->paid_amount       = $invoice->amount_received ?? 0;
-            $collection->remaining_balance = $invoice->balance;
             $collection->due_date          = $invoice->due_date;
-            $collection->collection_status = $this->determineStatus($invoice);
-            $collection->save();
+
+            // Sync payment records
+            $invoicePaidAmount = $invoice->amount_received ?? 0;
+            $existingPaidSum = $collection->payments()->sum('amount');
+            $diff = $invoicePaidAmount - $existingPaidSum;
+
+            if ($diff > 0) {
+                $collection->payments()->create([
+                    'payment_date'   => date('Y-m-d'),
+                    'payment_method' => $invoice->payment_method ?? 'Cash',
+                    'amount'         => $diff,
+                    'balance'        => $invoice->balance,
+                ]);
+            }
+
+            $collection->recalculate();
         }
     }
 

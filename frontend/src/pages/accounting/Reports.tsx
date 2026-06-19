@@ -19,10 +19,22 @@ export default function Reports() {
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedTxn, setSelectedTxn] = useState<any>(null);
   
+  const { user } = useAuth();
+
+  const isAuthorized = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role || '');
+
+  if (!isAuthorized) {
+    return (
+      <div className="p-12 text-center text-gray-600 bg-white rounded-[2rem] border border-gray-100 shadow-sm max-w-md mx-auto mt-20">
+        <LuTriangleAlert className="mx-auto text-red-500 text-5xl mb-4 animate-bounce" />
+        <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Access Denied</h3>
+        <p className="text-xs text-gray-400 font-semibold mt-2">You do not have the required permissions to view corporate financial reports.</p>
+      </div>
+    );
+  }
+
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
-
-  const { user } = useAuth();
 
   // Dynamic Avatar Helper
   const getAvatarUrl = (name: string, email: string) => {
