@@ -316,7 +316,7 @@ export default function Customers() {
                   <td className="px-8 py-5">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center font-black text-sm border border-rose-100 dark:border-rose-800 shrink-0">
-                        {c.first_name[0]}{c.last_name[0]}
+                        {(c.first_name?.[0] || '')}{(c.last_name?.[0] || '')}
                       </div>
                       <div>
                         <p className="font-bold text-gray-900 dark:text-white text-sm">{c.first_name} {c.last_name}</p>

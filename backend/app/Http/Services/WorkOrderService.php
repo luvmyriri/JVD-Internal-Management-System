@@ -75,8 +75,10 @@ class WorkOrderService
     private function generateWONumber(): string
     {
         $year = now()->year;
+        // H-03: lock the latest row so concurrent create() transactions cannot read the same sequence.
         $latest = WorkOrder::where('wo_number', 'like', "WO-{$year}-%")
             ->orderByDesc('id')
+            ->lockForUpdate()
             ->first();
 
         $sequence = 1;

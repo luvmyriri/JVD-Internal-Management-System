@@ -53,7 +53,8 @@ class LegalDocumentController extends Controller
             'job_order_id'  => 'nullable|exists:job_orders,id',
             'title'         => 'required|string|max:255',
             'document_type' => 'required|string|max:100',
-            'file'          => 'required|file|max:20480', // 20MB
+            // C-02: restrict to safe document/image types — never store client-supplied executables.
+            'file'          => 'required|file|max:20480|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png', // 20MB
             'notes'         => 'nullable|string|max:1000',
         ]);
 
@@ -80,6 +81,14 @@ class LegalDocumentController extends Controller
      */
     public function destroy(LegalDocument $legalDocument): JsonResponse
     {
+        // H-02: remove the physical file from disk before deleting the record to avoid orphaned files.
+        if ($legalDocument->file_path) {
+            $relativePath = str_replace('/storage/', '', $legalDocument->file_path);
+            if (Storage::disk('public')->exists($relativePath)) {
+                Storage::disk('public')->delete($relativePath);
+            }
+        }
+
         $legalDocument->delete();
 
         return response()->json([

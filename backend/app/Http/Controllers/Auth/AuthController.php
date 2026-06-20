@@ -125,6 +125,17 @@ class AuthController extends Controller
      */
     public function verify2FA(Verify2FARequest $request): JsonResponse
     {
+        // Rate-limit TOTP verification to prevent brute-forcing the 6-digit code.
+        $key = '2fa:' . $request->user_id . '|' . $request->ip();
+
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'success' => false,
+                'message' => "Too many verification attempts. Try again in {$seconds} seconds.",
+            ], 429);
+        }
+
         $user = User::findOrFail($request->user_id);
 
         if (!$user->totp_secret) {
@@ -137,12 +148,14 @@ class AuthController extends Controller
         $valid = $this->google2fa->verifyKey($user->totp_secret, $request->code);
 
         if (!$valid) {
+            RateLimiter::hit($key, 60);
             return response()->json([
                 'success' => false,
                 'message' => 'Invalid verification code.',
             ], 401);
         }
 
+        RateLimiter::clear($key);
         $token = $user->createToken('auth-token')->plainTextToken;
         $user->update(['last_login' => now()]);
 

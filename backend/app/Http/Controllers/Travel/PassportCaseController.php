@@ -138,8 +138,28 @@ class PassportCaseController extends Controller
     /**
      * Get a single case with all its details.
      */
+    /**
+     * H-03: ensure the user may act on this case. Mirrors index() scoping — privileged roles
+     * see everything; everyone else may only touch cases they are assigned to handle.
+     */
+    private function ensureCanAccessCase(PassportCase $passportCase): void
+    {
+        $user = auth()->user();
+        if (!$user) {
+            abort(403, 'Unauthorized.');
+        }
+        if ($user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
+            return;
+        }
+        if ((int) $passportCase->handled_by !== (int) $user->id) {
+            abort(403, 'You are not authorized to access this case.');
+        }
+    }
+
     public function show(PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         return response()->json([
             'success' => true,
             'data'    => new PassportCaseResource(
@@ -153,6 +173,8 @@ class PassportCaseController extends Controller
      */
     public function update(Request $request, PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         // Status transition with state machine guard
         if ($request->filled('status')) {
             $newStatus = $request->status;
@@ -196,6 +218,8 @@ class PassportCaseController extends Controller
      */
     public function updateStatus(Request $request, PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $request->validate(['status' => ['required', 'string']]);
 
         $newStatus = $request->status;
@@ -209,37 +233,41 @@ class PassportCaseController extends Controller
             ], 422);
         }
 
-        $old = $passportCase->toArray();
-        $passportCase->update(['status' => $newStatus]);
-        
-        \App\Http\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+        // H-01: status change and auto-invoice generation must be atomic — if invoice creation
+        // fails the status must roll back too, otherwise the case is stuck 'released' with no invoice.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $passportCase, $newStatus, $current) {
+            $old = $passportCase->toArray();
+            $passportCase->update(['status' => $newStatus]);
 
-        // Create an Invoice if the case is released
-        if ($newStatus === 'released' && $current !== 'released') {
-            $customer = $passportCase->customer;
-            $invoiceNumber = 'INV-' . date('Ymd') . '-P' . str_pad($passportCase->id, 4, '0', STR_PAD_LEFT);
-            
-            // Avoid duplicate invoices
-            $existingInvoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
-            
-            if (!$existingInvoice) {
-                \App\Models\Invoice::create([
-                    'invoice_number'   => $invoiceNumber,
-                    'customer_id'      => $customer->id,
-                    'customer_name'    => $customer->first_name . ' ' . $customer->last_name,
-                    'customer_email'   => $customer->email,
-                    'customer_contact' => $customer->phone,
-                    'customer_address' => $customer->address ?? '',
-                    'subtotal'         => 0,
-                    'tax_amount'       => 0,
-                    'total_amount'     => 0,
-                    'balance'          => 0,
-                    'status'           => 'pending',
-                    'created_by'       => $request->user()->id,
-                    'notes'            => 'Auto-generated invoice for Released Passport/Visa Case: ' . ($passportCase->reference_number ?? 'N/A'),
-                ]);
+            \App\Http\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+
+            // Create an Invoice if the case is released
+            if ($newStatus === 'released' && $current !== 'released') {
+                $customer = $passportCase->customer;
+                $invoiceNumber = 'INV-' . date('Ymd') . '-P' . str_pad($passportCase->id, 4, '0', STR_PAD_LEFT);
+
+                // Avoid duplicate invoices
+                $existingInvoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
+
+                if (!$existingInvoice) {
+                    \App\Models\Invoice::create([
+                        'invoice_number'   => $invoiceNumber,
+                        'customer_id'      => $customer->id,
+                        'customer_name'    => $customer->first_name . ' ' . $customer->last_name,
+                        'customer_email'   => $customer->email,
+                        'customer_contact' => $customer->phone,
+                        'customer_address' => $customer->address ?? '',
+                        'subtotal'         => 0,
+                        'tax_amount'       => 0,
+                        'total_amount'     => 0,
+                        'balance'          => 0,
+                        'status'           => 'pending',
+                        'created_by'       => $request->user()->id,
+                        'notes'            => 'Auto-generated invoice for Released Passport/Visa Case: ' . ($passportCase->reference_number ?? 'N/A'),
+                    ]);
+                }
             }
-        }
+        });
 
         return response()->json([
             'success' => true,
@@ -253,6 +281,8 @@ class PassportCaseController extends Controller
      */
     public function updateChecklist(Request $request, PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $request->validate(['checklist' => ['required', 'array']]);
 
         $old = $passportCase->toArray();
@@ -289,6 +319,8 @@ class PassportCaseController extends Controller
      */
     public function getDocuments(PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $documents = PassportCaseDocument::with('uploader:id,first_name,last_name,email')
             ->where('passport_case_id', $passportCase->id)
             ->orderByDesc('created_at')
@@ -305,13 +337,18 @@ class PassportCaseController extends Controller
      */
     public function uploadDocument(Request $request, PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'file'  => ['required', 'file', 'max:10240'], // Max 10MB
+            // C-01: restrict to safe document/image types — never store client-supplied executables.
+            'file'  => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx'], // Max 10MB
         ]);
 
         $file = $request->file('file');
-        $fileName = 'passport_cases/' . $passportCase->id . '/' . Str::random(20) . '.' . $file->getClientOriginalExtension();
+        // Use the server-resolved extension, not the client-supplied original name.
+        $extension = $file->extension() ?: $file->getClientOriginalExtension();
+        $fileName = 'passport_cases/' . $passportCase->id . '/' . Str::random(20) . '.' . $extension;
         Storage::disk('public')->put($fileName, file_get_contents($file));
 
         $document = PassportCaseDocument::create([
@@ -334,6 +371,8 @@ class PassportCaseController extends Controller
      */
     public function deleteDocument(PassportCase $passportCase, $documentId): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $document = PassportCaseDocument::where('id', $documentId)
             ->where('passport_case_id', $passportCase->id)
             ->first();
@@ -362,6 +401,8 @@ class PassportCaseController extends Controller
      */
     public function sendDocumentRequest(Request $request, PassportCase $passportCase): JsonResponse
     {
+        $this->ensureCanAccessCase($passportCase);
+
         $passportCase->load(['customer', 'passenger']);
 
         if (!$passportCase->customer || empty($passportCase->customer->email)) {
@@ -508,10 +549,12 @@ class PassportCaseController extends Controller
                 'status'              => $case->status,
                 'requested_docs'      => $case->upload_requested_docs ?? [],
                 'uploaded_docs'       => $uploadedDocs,
+                // C-04: do NOT expose file_path / download links on this unauthenticated
+                // endpoint — anyone holding the link could otherwise download sensitive scans.
+                // Only the title and upload timestamp are returned so the portal can show status.
                 'documents'           => $uploadedDocsQuery->map(fn($doc) => [
                     'id'         => $doc->id,
                     'title'      => $doc->title,
-                    'file_path'  => $doc->file_path,
                     'created_at' => $doc->created_at,
                 ]),
             ],

@@ -190,46 +190,56 @@ class PurchaseOrderController extends Controller
         }
 
         $oldStatus = $purchaseOrder->status;
-        $purchaseOrder->update([
-            'status'          => $request->approved ? 'approved' : 'rejected',
-            'approved_by'     => auth()->id(),
-            'approved_at'     => $request->approved ? now() : null,
-            'rejection_notes' => $request->approved ? null : $request->notes,
-        ]);
 
-
-        if ($request->approved) {
-            foreach ($purchaseOrder->lineItems as $item) {
-                $inventory = InventoryItem::firstOrCreate(
-                    ['item_name' => $item->item_name],
-                    [
-                        'category' => 'General',
-                        'quantity' => 0,
-                        'reorder_level' => 10,
-                        'unit' => $item->unit_of_measure ?? 'pcs',
-                        'unit_cost' => $item->unit_price,
-                    ]
-                );
-                
-                $inventory->quantity += $item->quantity;
-                $inventory->unit_cost = $item->unit_price;
-                $inventory->save();
-            }
-
-            // Automatically create a Cash Budget Request for the approved P.O.
-            $jo = \App\Models\JobOrder::where('purchase_order_id', $purchaseOrder->id)->first();
-            $plateNumber = $jo?->bus?->plate_number ?? $jo?->plate_no;
-
-            \App\Models\CashBudgetRequest::create([
-                'date' => now()->toDateString(),
-                'total_amount' => $purchaseOrder->total_amount,
-                'status' => 'draft',
-                'prepared_by' => auth()->id() ?? 1,
-                'purchase_order_id' => $purchaseOrder->id,
-                'plate_number' => $plateNumber,
-                'destination' => "Maintenance/Repair PO #{$purchaseOrder->po_number}",
+        // H-04: the status change, inventory increments and cash-budget creation must be atomic —
+        // a partial failure must not leave the PO 'approved' with half-applied inventory.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $purchaseOrder) {
+            $purchaseOrder->update([
+                'status'          => $request->approved ? 'approved' : 'rejected',
+                'approved_by'     => auth()->id(),
+                'approved_at'     => $request->approved ? now() : null,
+                'rejection_notes' => $request->approved ? null : $request->notes,
             ]);
-        }
+
+            if ($request->approved) {
+                foreach ($purchaseOrder->lineItems as $item) {
+                    // M-03: match inventory case-insensitively so "Brake Pad" and "brake pad"
+                    // don't create duplicate rows.
+                    $inventory = InventoryItem::whereRaw('LOWER(item_name) = ?', [strtolower(trim($item->item_name))])
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$inventory) {
+                        $inventory = InventoryItem::create([
+                            'item_name'     => $item->item_name,
+                            'category'      => 'General',
+                            'quantity'      => 0,
+                            'reorder_level' => 10,
+                            'unit'          => $item->unit_of_measure ?? 'pcs',
+                            'unit_cost'     => $item->unit_price,
+                        ]);
+                    }
+
+                    $inventory->quantity += $item->quantity;
+                    $inventory->unit_cost = $item->unit_price;
+                    $inventory->save();
+                }
+
+                // Automatically create a Cash Budget Request for the approved P.O.
+                $jo = \App\Models\JobOrder::where('purchase_order_id', $purchaseOrder->id)->first();
+                $plateNumber = $jo?->bus?->plate_number ?? $jo?->plate_no;
+
+                \App\Models\CashBudgetRequest::create([
+                    'date' => now()->toDateString(),
+                    'total_amount' => $purchaseOrder->total_amount,
+                    'status' => 'draft',
+                    'prepared_by' => auth()->id() ?? 1,
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'plate_number' => $plateNumber,
+                    'destination' => "Maintenance/Repair PO #{$purchaseOrder->po_number}",
+                ]);
+            }
+        });
 
         \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 

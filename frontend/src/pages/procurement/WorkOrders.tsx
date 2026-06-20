@@ -516,10 +516,10 @@ function WORow({
               icon: <Eye size={14} />, 
               onClick: () => onDetail(wo) 
             },
-            ...((wo.status === 'pending_approval' || wo.status === 'verified') && canApproveOrEdit ? [{ 
-              label: 'Review Order', 
-              icon: <ShieldCheck size={14} />, 
-              onClick: () => onReview(wo) 
+            ...((wo.status === 'pending_validation' || wo.status === 'pending_approval' || wo.status === 'verified') && canApproveOrEdit ? [{
+              label: 'Review Order',
+              icon: <ShieldCheck size={14} />,
+              onClick: () => onReview(wo)
             }] : []),
             ...(wo.status === 'open' ? [{ 
               label: 'Generate J.O.', 
@@ -595,7 +595,7 @@ export default function WorkOrders() {
 
   const wos = data?.data?.data ?? [];
   const meta = data?.data?.meta;
-  const pendingCount = wos.filter(w => w.status === 'pending_approval' || w.status === 'verified').length;
+  const pendingCount = wos.filter(w => w.status === 'pending_validation' || w.status === 'pending_approval' || w.status === 'verified').length;
 
   return (
     <div className="space-y-10 pb-12">

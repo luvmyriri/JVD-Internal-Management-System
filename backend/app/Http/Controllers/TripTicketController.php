@@ -145,6 +145,24 @@ class TripTicketController extends Controller
                     'message' => 'Drivers cannot approve trip tickets.'
                 ], 403);
             }
+
+            // D-01: Drivers may only submit their completion report (approved -> completed).
+            // They must not be able to revert to draft or mark non-approved trips as completed.
+            if ($request->has('status')) {
+                $requestedStatus = $request->input('status');
+                if ($requestedStatus !== 'completed') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Drivers can only mark an approved trip as completed.'
+                    ], 403);
+                }
+                if ($ticket->status !== 'approved') {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Only an approved trip can be marked as completed.'
+                    ], 422);
+                }
+            }
         }
 
         // 2. Enforce C-04: Block updates to allowance fields if CashBudgetRequest has been submitted/approved/disbursed

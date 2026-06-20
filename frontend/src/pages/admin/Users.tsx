@@ -267,7 +267,7 @@ export default function Users() {
         role: 'reservation_officer',
         department: 'Operations',
         send_invitation: true,
-        employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
+        employee_id: `JVD-EMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
       });
       setTags([]);
     }
@@ -280,8 +280,18 @@ export default function Users() {
     if (user) {
       const currentBus = allBuses.find((b: any) => b.driver?.id === user.id);
       setAssignedBusId(currentBus ? currentBus.id : '');
-      // Safely parse or cast custom_permissions
-      setCustomPermissions(user.custom_permissions ? (typeof user.custom_permissions === 'string' ? JSON.parse(user.custom_permissions) : user.custom_permissions) : {});
+      // Safely parse or cast custom_permissions — malformed JSON must not crash the panel.
+      setCustomPermissions((() => {
+        const raw = user.custom_permissions;
+        if (!raw) return {};
+        if (typeof raw !== 'string') return raw;
+        try {
+          return JSON.parse(raw);
+        } catch {
+          console.warn('Invalid custom_permissions JSON for user', user.id);
+          return {};
+        }
+      })());
     } else {
       setAssignedBusId('');
       setCustomPermissions({});
@@ -513,7 +523,7 @@ export default function Users() {
           email,
           role,
           department: matchedDept,
-          employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
+          employee_id: `JVD-EMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
         });
       });
 
@@ -1464,7 +1474,8 @@ export default function Users() {
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-500/20 shadow-sm">
               <LuMail size={14} className="text-blue-500" />
-              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Invitations Enabled</span>
+              {/* Bulk provisioning always generates temporary passwords (no invitation emails). */}
+              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Temp Passwords Generated</span>
             </div>
           </div>
 

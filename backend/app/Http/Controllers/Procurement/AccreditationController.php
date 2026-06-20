@@ -125,8 +125,41 @@ class AccreditationController extends Controller
 
             $validated['entity_id'] = $supplier->id;
         } else {
-            // Fallback for non-supplier entities (like driver, bus, client)
-            $validated['entity_id'] = random_int(1000, 9999);
+            // H-02: resolve the real database id for non-supplier entities instead of a random
+            // fake id that would corrupt the polymorphic entity() relationship. Reject if the
+            // referenced entity cannot be found.
+            $entityName  = trim($validated['entity_name'] ?? '');
+            $entityEmail = $validated['contact_email'] ?? null;
+            $resolvedId  = null;
+
+            switch ($validated['entity_type']) {
+                case 'driver':
+                    $resolvedId = \App\Models\User::where('role', 'driver')
+                        ->when($entityEmail, fn($q) => $q->where('email', $entityEmail))
+                        ->when(!$entityEmail && $entityName !== '', fn($q) => $q->whereRaw("LOWER(CONCAT(first_name, ' ', last_name)) = ?", [strtolower($entityName)]))
+                        ->value('id');
+                    break;
+                case 'bus':
+                    $resolvedId = \App\Models\Bus::where('plate_number', $entityName)
+                        ->orWhere('model', $entityName)
+                        ->value('id');
+                    break;
+                case 'client':
+                case 'customer':
+                    $resolvedId = \App\Models\Customer::when($entityEmail, fn($q) => $q->where('email', $entityEmail))
+                        ->when(!$entityEmail && $entityName !== '', fn($q) => $q->whereRaw("LOWER(CONCAT(first_name, ' ', last_name)) = ?", [strtolower($entityName)]))
+                        ->value('id');
+                    break;
+            }
+
+            if (!$resolvedId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Could not find a {$validated['entity_type']} matching '{$entityName}'. Please register the entity first.",
+                ], 422);
+            }
+
+            $validated['entity_id'] = $resolvedId;
         }
 
         $accreditation = Accreditation::create($validated);
@@ -315,11 +348,12 @@ class AccreditationController extends Controller
         if ($accreditation->entity_type === 'supplier' && $accreditation->entity_id) {
             $supplier = \App\Models\Supplier::find($accreditation->entity_id);
             if ($supplier) {
+                // H-01: do NOT auto-accredit/verify on document submission — that lets suppliers
+                // self-verify with dummy documents. Leave the supplier 'pending' so an authorized
+                // admin must manually review and verify via the suppliers/{id}/verify endpoint.
                 $supplier->update([
-                    'accreditation_status' => 'accredited',
-                    'is_verified'          => true,
-                    'verified_at'          => now(),
-                    'verified_by'          => 1, // System verified upon compliance upload
+                    'accreditation_status' => 'pending',
+                    'is_verified'          => false,
                 ]);
             }
         }

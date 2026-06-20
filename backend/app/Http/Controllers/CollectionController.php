@@ -207,6 +207,14 @@ class CollectionController extends Controller
             'amount' => 'required|numeric|min:0.01',
         ]);
 
+        // H-13: enforce the overpayment cap server-side (the frontend check is bypassable).
+        $remaining = (float) ($collection->remaining_balance ?? $collection->billing_amount ?? $collection->rate ?? 0);
+        if ((float) $validated['amount'] > $remaining + 0.01) {
+            return response()->json([
+                'message' => 'Payment amount cannot exceed the remaining balance of ₱' . number_format($remaining, 2) . '.',
+            ], 422);
+        }
+
         $collection->payments()->create($validated);
         
         $collection->recalculate();

@@ -177,8 +177,10 @@ class JobOrderService
     private function generateJONumber(): string
     {
         $year = now()->year;
+        // H-03: lock the latest row so concurrent create() transactions cannot read the same sequence.
         $latest = JobOrder::where('jo_number', 'like', "JO-{$year}-%")
             ->orderByDesc('id')
+            ->lockForUpdate()
             ->first();
 
         $sequence = 1;

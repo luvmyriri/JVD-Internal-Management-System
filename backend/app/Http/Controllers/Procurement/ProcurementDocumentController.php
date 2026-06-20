@@ -384,7 +384,7 @@ class ProcurementDocumentController extends Controller
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'document_type' => 'required|string|max:255',
-            'file' => 'nullable|file|max:10240', // Max 10MB standard file
+            'file' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx', // Max 10MB standard file (C-01: restrict types)
             'file_base64' => 'nullable|string',   // Or Base64 encoded payload
             'amount' => 'nullable|numeric|min:0',
             'supplier_id' => 'nullable|exists:suppliers,id',
@@ -430,7 +430,9 @@ class ProcurementDocumentController extends Controller
         // 1. Process Standard File Upload
         if ($request->hasFile('file')) {
             $file = $request->file('file');
-            $fileName = 'procurement/docs/' . Str::random(20) . '.' . $file->getClientOriginalExtension();
+            // C-01: use the server-resolved extension, not the client-supplied original name.
+            $extension = strtolower($file->extension() ?: $file->getClientOriginalExtension());
+            $fileName = 'procurement/docs/' . Str::random(20) . '.' . $extension;
             Storage::disk('public')->put($fileName, file_get_contents($file));
             $filePath = $fileName;
         } 
@@ -613,6 +615,23 @@ class ProcurementDocumentController extends Controller
     public function destroy($id)
     {
         if (is_string($id) && str_starts_with($id, 'doc_')) {
+            // C-02: confidential customer/compliance documents (KYC, passport, visa, accreditation)
+            // must only be deletable by roles that legitimately manage them — not any authenticated user.
+            $confidentialPrefixes = ['doc_kyc_', 'doc_passport_', 'doc_visa_', 'doc_accreditation_'];
+            foreach ($confidentialPrefixes as $prefix) {
+                if (str_starts_with($id, $prefix)) {
+                    $authUser = auth()->user();
+                    $allowedRoles = ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'corporate_secretary'];
+                    if (!$authUser || !in_array($authUser->role, $allowedRoles)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Unauthorized. You do not have permission to delete this document.'
+                        ], 403);
+                    }
+                    break;
+                }
+            }
+
             if (str_starts_with($id, 'doc_procurement_')) {
                 $realId = (int) str_replace('doc_procurement_', '', $id);
                 $document = ProcurementDocument::findOrFail($realId);

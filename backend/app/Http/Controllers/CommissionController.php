@@ -55,7 +55,16 @@ class CommissionController extends Controller
 
     public function show($id)
     {
-        return Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee'])->findOrFail($id);
+        $user = auth()->user();
+        $commission = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee'])->findOrFail($id);
+
+        // C-01: non-privileged staff/drivers may only view their own commission record.
+        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive')
+            && $commission->employee_id !== $user->id) {
+            return response()->json(['error' => 'Unauthorized access to this commission.'], 403);
+        }
+
+        return $commission;
     }
 
     public function update(Request $request, $id)
@@ -118,6 +127,12 @@ class CommissionController extends Controller
 
     public function destroy($id)
     {
+        // C-02: restrict deletion to privileged roles (route group still includes drivers/general staff).
+        $user = auth()->user();
+        if (!$user || !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive')) {
+            return response()->json(['error' => 'Unauthorized to delete commissions.'], 403);
+        }
+
         Commission::findOrFail($id)->delete();
         return response()->json(['message' => 'Commission deleted successfully.']);
     }

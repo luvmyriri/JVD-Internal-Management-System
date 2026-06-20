@@ -119,6 +119,17 @@ class WorkOrderController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
+        // C-09: validate all field input BEFORE performing any status transition, so a
+        // validation failure cannot leave an already-committed status change behind.
+        $validated = $request->validate([
+            'bus_id'     => ['sometimes', 'integer', 'exists:buses,id'],
+            'assigned_to'=> ['sometimes', 'nullable', 'integer', 'exists:users,id'],
+            'priority'   => ['sometimes', 'in:routine,urgent,critical'],
+            'description'=> ['sometimes', 'string', 'max:2000'],
+            'parts_used' => ['sometimes', 'nullable', 'string', 'max:1000'],
+            'cost'       => ['sometimes', 'nullable', 'numeric', 'min:0'],
+        ]);
+
         $wasCompleted = false;
 
         if ($request->filled('status')) {
@@ -129,15 +140,6 @@ class WorkOrderController extends Controller
                 return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
             }
         }
-
-        $validated = $request->validate([
-            'bus_id'     => ['sometimes', 'integer', 'exists:buses,id'],
-            'assigned_to'=> ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'priority'   => ['sometimes', 'in:routine,urgent,critical'],
-            'description'=> ['sometimes', 'string', 'max:2000'],
-            'parts_used' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'cost'       => ['sometimes', 'nullable', 'numeric', 'min:0'],
-        ]);
 
         $workOrder->update($validated);
 
@@ -409,23 +411,28 @@ class WorkOrderController extends Controller
         }
         $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
 
-        $jo = \App\Models\JobOrder::create([
-            'jo_number' => $joNumber,
-            'customer_id' => 1, // Walk-in / Internal Maintenance default customer
-            'bus_id' => $workOrder->bus_id,
-            'driver_id' => $workOrder->assigned_to,
-            'created_by' => $user->id,
-            'service_type' => 'maintenance',
-            'status' => 'created',
-            'service_date' => now()->toDateString(),
-            'destination' => 'Internal Shop',
-            'total_cost' => $workOrder->cost ?? 0,
-            'notes' => "Auto-generated from Work Order {$workOrder->wo_number}. Description: {$workOrder->description}",
-            'work_order_id' => $workOrder->id,
-        ]);
+        // C-07: create the Job Order and advance the Work Order status atomically.
+        $jo = \Illuminate\Support\Facades\DB::transaction(function () use ($workOrder, $joNumber, $user) {
+            $jo = \App\Models\JobOrder::create([
+                'jo_number' => $joNumber,
+                'customer_id' => 1, // Walk-in / Internal Maintenance default customer
+                'bus_id' => $workOrder->bus_id,
+                'driver_id' => $workOrder->assigned_to,
+                'created_by' => $user->id,
+                'service_type' => 'maintenance',
+                'status' => 'created',
+                'service_date' => now()->toDateString(),
+                'destination' => 'Internal Shop',
+                'total_cost' => $workOrder->cost ?? 0,
+                'notes' => "Auto-generated from Work Order {$workOrder->wo_number}. Description: {$workOrder->description}",
+                'work_order_id' => $workOrder->id,
+            ]);
 
-        // Advance WO to in_progress once a JO is linked
-        $workOrder->update(['status' => 'in_progress']);
+            // Advance WO to in_progress once a JO is linked
+            $workOrder->update(['status' => 'in_progress']);
+
+            return $jo;
+        });
 
         return response()->json([
             'success' => true,

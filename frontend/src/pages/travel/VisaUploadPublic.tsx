@@ -50,7 +50,7 @@ interface CaseData {
   documents?: {
     id: number;
     title: string;
-    file_path: string;
+    file_path?: string; // omitted from the unauthenticated public payload (C-04)
     created_at: string;
   }[];
 }
@@ -367,12 +367,15 @@ export default function VisaUploadPublic() {
                     <div className="md:shrink-0 w-full md:w-auto flex flex-wrap items-center gap-3">
                       {isUploaded ? (
                         <>
-                          {matchingDoc && (
+                          {/* C-04: previously uploaded files are no longer downloadable from the
+                              public portal. The preview/download buttons only render if the
+                              (authenticated) payload ever supplies a file_path. */}
+                          {matchingDoc?.file_path && (
                             <div className="flex items-center gap-2">
                               <button
                                 type="button"
                                 onClick={() => {
-                                  setPreviewUrl(getStorageUrl(matchingDoc.file_path));
+                                  setPreviewUrl(getStorageUrl(matchingDoc.file_path as string));
                                   setPreviewTitle(matchingDoc.title);
                                   setImgLoading(true);
                                   setImgError(false);
@@ -383,7 +386,7 @@ export default function VisaUploadPublic() {
                                 <span>Preview</span>
                               </button>
                               <a
-                                href={getStorageUrl(matchingDoc.file_path)}
+                                href={getStorageUrl(matchingDoc.file_path as string)}
                                 target="_blank"
                                 rel="noreferrer"
                                 className={`px-3 py-1.5 ${theme.downloadBtn} rounded-xl text-xs font-bold transition flex items-center gap-1.5 border`}

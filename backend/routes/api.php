@@ -74,22 +74,22 @@ Route::get('/public/buses', function () {
 });
 
 Route::get('/public/drivers', function () {
+    // H-01: do not expose personal email addresses on an unauthenticated endpoint (phishing/scraping risk).
     return response()->json([
         'success' => true,
-        'data' => \App\Models\User::where('role', 'driver')->orderBy('first_name')->get(['id', 'first_name', 'last_name', 'email'])
+        'data' => \App\Models\User::where('role', 'driver')->orderBy('first_name')->get(['id', 'first_name', 'last_name'])
     ]);
 });
 
 Route::get('/public/suppliers', function () {
     return response()->json([
         'success' => true,
-        'data' => \App\Models\Supplier::orderBy('company_name')->get(['id', 'company_name', 'accreditation_status', 'contact_person', 'email'])->map(function ($supplier) {
+        // H-01: omit supplier contact email from the unauthenticated payload (phishing/scraping risk).
+        'data' => \App\Models\Supplier::orderBy('company_name')->get(['id', 'company_name', 'accreditation_status'])->map(function ($supplier) {
             return [
                 'id' => $supplier->id,
                 'name' => $supplier->company_name,
                 'accreditation_status' => $supplier->accreditation_status,
-                'contact_person' => $supplier->contact_person,
-                'email' => $supplier->email
             ];
         })
     ]);
@@ -301,40 +301,68 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // OPERATIONS & TRAVEL — Customers, Passengers, Passport Cases
     // (dynamic permissions via operations / travel modules)
     // ──────────────────────────────────────
+    // C-03: travel read/write are split by permission action so a view-only role can no
+    // longer create/edit/delete. The hardcoded roles are retained in every group, so
+    // role-based access is unchanged — only the dynamic-permission bypass is closed.
+
+    // ── Travel READ (travel:view) ──
     Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,travel:view')->group(function () {
-        Route::apiResource('customers',      CustomerController::class)->except(['destroy']);
+        Route::get('/customers',             [CustomerController::class, 'index'])->name('customers.index');
+        Route::get('/customers/{customer}',  [CustomerController::class, 'show'])->name('customers.show');
         Route::get('/customers/{customer}/passports', [CustomerPassportController::class, 'index']);
-        Route::post('/customers/{customer}/passports', [CustomerPassportController::class, 'store']);
-        Route::delete('/customers/{customer}/passports/{passport}', [CustomerPassportController::class, 'destroy']);
-        
         Route::get('/customers/{customer}/visas', [CustomerVisaController::class, 'index']);
-        Route::post('/customers/{customer}/visas', [CustomerVisaController::class, 'store']);
-        Route::delete('/customers/{customer}/visas/{visa}', [CustomerVisaController::class, 'destroy']);
-        
         Route::get('/customers/{customer}/kycs', [CustomerKycController::class, 'index']);
-        Route::post('/customers/{customer}/kycs', [CustomerKycController::class, 'store']);
-        Route::delete('/customers/{customer}/kycs/{kyc}', [CustomerKycController::class, 'destroy']);
-        
         Route::get('/customers/{customer}/tasks', [AgentTaskController::class, 'index']);
-        Route::post('/customers/{customer}/tasks', [AgentTaskController::class, 'store']);
-        Route::put('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'update']);
-        Route::delete('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'destroy']);
 
-        Route::post('/customers/{customer}/send-email', [App\Http\Controllers\Travel\CustomerEmailController::class, 'send']);
+        Route::get('/passengers',                  [PassengerController::class, 'index'])->name('passengers.index');
+        Route::get('/passengers/{passenger}',      [PassengerController::class, 'show'])->name('passengers.show');
 
-        Route::apiResource('passengers',     PassengerController::class)->except(['destroy']);
-        Route::apiResource('passport-cases', PassportCaseController::class)->except(['destroy']);
-        Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');
-        Route::patch('/passport-cases/{passportCase}/checklist', [PassportCaseController::class, 'updateChecklist'])->name('passport-cases.checklist');
+        Route::get('/passport-cases',                  [PassportCaseController::class, 'index'])->name('passport-cases.index');
+        Route::get('/passport-cases/{passportCase}',   [PassportCaseController::class, 'show'])->name('passport-cases.show');
         Route::get('/passport-cases/{passportCase}/audit-logs',  [PassportCaseController::class, 'auditLogs'])->name('passport-cases.audit-logs');
         Route::get('/passport-cases/{passportCase}/documents',   [PassportCaseController::class, 'getDocuments'])->name('passport-cases.documents.index');
-        Route::post('/passport-cases/{passportCase}/documents',  [PassportCaseController::class, 'uploadDocument'])->name('passport-cases.documents.store');
-        Route::delete('/passport-cases/{passportCase}/documents/{documentId}', [PassportCaseController::class, 'deleteDocument'])->name('passport-cases.documents.destroy');
-        Route::post('/passport-cases/{passportCase}/request-documents', [PassportCaseController::class, 'sendDocumentRequest'])->name('passport-cases.request-documents');
+
+        // Read-only lookup of external visa requirements (POST for payload, but non-mutating).
         Route::post('/visa/requirements', [App\Http\Controllers\Travel\VisaRequirementController::class, 'getRequirements'])->name('visa.requirements');
-        // Legal Documents
+
         Route::get('/legal-documents',            [LegalDocumentController::class, 'index']);
-        Route::post('/legal-documents',           [LegalDocumentController::class, 'store']);
+    });
+
+    // ── Travel CREATE (travel:create) ──
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,travel:create')->group(function () {
+        Route::post('/customers',            [CustomerController::class, 'store'])->name('customers.store');
+        Route::post('/customers/{customer}/passports', [CustomerPassportController::class, 'store']);
+        Route::post('/customers/{customer}/visas', [CustomerVisaController::class, 'store']);
+        Route::post('/customers/{customer}/kycs', [CustomerKycController::class, 'store']);
+        Route::post('/customers/{customer}/tasks', [AgentTaskController::class, 'store']);
+        Route::post('/customers/{customer}/send-email', [App\Http\Controllers\Travel\CustomerEmailController::class, 'send']);
+
+        Route::post('/passengers',           [PassengerController::class, 'store'])->name('passengers.store');
+        Route::post('/passport-cases',       [PassportCaseController::class, 'store'])->name('passport-cases.store');
+        Route::post('/passport-cases/{passportCase}/documents',  [PassportCaseController::class, 'uploadDocument'])->name('passport-cases.documents.store');
+        Route::post('/passport-cases/{passportCase}/request-documents', [PassportCaseController::class, 'sendDocumentRequest'])->name('passport-cases.request-documents');
+
+        Route::post('/legal-documents',      [LegalDocumentController::class, 'store']);
+    });
+
+    // ── Travel EDIT (travel:edit) ──
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,travel:edit')->group(function () {
+        Route::match(['put', 'patch'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update');
+        Route::put('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'update']);
+
+        Route::match(['put', 'patch'], '/passengers/{passenger}', [PassengerController::class, 'update'])->name('passengers.update');
+        Route::match(['put', 'patch'], '/passport-cases/{passportCase}', [PassportCaseController::class, 'update'])->name('passport-cases.update');
+        Route::patch('/passport-cases/{passportCase}/status',    [PassportCaseController::class, 'updateStatus'])->name('passport-cases.status');
+        Route::patch('/passport-cases/{passportCase}/checklist', [PassportCaseController::class, 'updateChecklist'])->name('passport-cases.checklist');
+    });
+
+    // ── Travel DELETE (travel:delete) ──
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,reservation_officer,office_staff,corporate_secretary,travel:delete')->group(function () {
+        Route::delete('/customers/{customer}/passports/{passport}', [CustomerPassportController::class, 'destroy']);
+        Route::delete('/customers/{customer}/visas/{visa}', [CustomerVisaController::class, 'destroy']);
+        Route::delete('/customers/{customer}/kycs/{kyc}', [CustomerKycController::class, 'destroy']);
+        Route::delete('/customers/{customer}/tasks/{task}', [AgentTaskController::class, 'destroy']);
+        Route::delete('/passport-cases/{passportCase}/documents/{documentId}', [PassportCaseController::class, 'deleteDocument'])->name('passport-cases.documents.destroy');
         Route::delete('/legal-documents/{legalDocument}', [LegalDocumentController::class, 'destroy']);
     });
 
@@ -369,8 +397,18 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
     // ──────────────────────────────────────
     // INVENTORY (dynamic permissions)
     // ──────────────────────────────────────
+    // C-01: read endpoints gated by inventory:view; write endpoints require create/edit
+    // so a view-only role can no longer create or modify inventory items.
     Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,inventory:view')->group(function () {
-        Route::apiResource('inventory', InventoryController::class)->except(['destroy']);
+        Route::get('inventory',          [InventoryController::class, 'index'])->name('inventory.index');
+        Route::get('inventory/{inventory}', [InventoryController::class, 'show'])->name('inventory.show');
+    });
+    Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,inventory:create')->group(function () {
+        Route::post('inventory',         [InventoryController::class, 'store'])->name('inventory.store');
+    });
+    Route::middleware('role:super_admin,executive_vice_president,purchasing_manager,inventory:edit')->group(function () {
+        Route::put('inventory/{inventory}',   [InventoryController::class, 'update'])->name('inventory.update');
+        Route::patch('inventory/{inventory}', [InventoryController::class, 'update']);
     });
 
     // ──────────────────────────────────────

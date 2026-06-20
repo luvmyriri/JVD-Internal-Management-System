@@ -13,14 +13,20 @@ function printJournalVoucher(entry: any) {
   const win = window.open('', '_blank', 'width=800,height=800');
   if (!win) return;
 
+  // C-06: escape user-controlled values before interpolating into the print HTML (prevents XSS).
+  const esc = (value: unknown): string =>
+    String(value ?? '').replace(/[&<>"']/g, (c) => (
+      { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
+    ));
+
   const totalDebits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
   const totalCredits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
 
   const rows = entry.ledger_lines?.map((line: any) => `
     <tr>
-      <td>${line.account?.code || 'TBA'}</td>
-      <td>${line.account?.name || 'TBA'}</td>
-      <td>${line.description || ''}</td>
+      <td>${esc(line.account?.code || 'TBA')}</td>
+      <td>${esc(line.account?.name || 'TBA')}</td>
+      <td>${esc(line.description || '')}</td>
       <td class="amount">${parseFloat(line.debit) > 0 ? formatCurrency(line.debit) : ''}</td>
       <td class="amount">${parseFloat(line.credit) > 0 ? formatCurrency(line.credit) : ''}</td>
     </tr>
@@ -64,12 +70,12 @@ function printJournalVoucher(entry: any) {
   <div class="meta-grid">
     <div>
       <div class="meta-item"><span class="meta-label">Voucher No:</span> <span class="meta-val">JV-${entry.id}</span></div>
-      <div class="meta-item"><span class="meta-label">Posting Date:</span> <span class="meta-val">${entry.date}</span></div>
+      <div class="meta-item"><span class="meta-label">Posting Date:</span> <span class="meta-val">${esc(entry.date)}</span></div>
       <div class="meta-item"><span class="meta-label">Reference ID:</span> <span class="meta-val">${entry.reference_type ? `${entry.reference_type.split('\\').pop()} #${entry.reference_id}` : 'N/A'}</span></div>
     </div>
     <div>
-      <div class="meta-item"><span class="meta-label">Status:</span> <span class="meta-val" style="text-transform: uppercase; color: #10b981;">${entry.status}</span></div>
-      <div class="meta-item"><span class="meta-label">Notes:</span> <span class="meta-val">${entry.notes || 'No notes provided'}</span></div>
+      <div class="meta-item"><span class="meta-label">Status:</span> <span class="meta-val" style="text-transform: uppercase; color: #10b981;">${esc(entry.status)}</span></div>
+      <div class="meta-item"><span class="meta-label">Notes:</span> <span class="meta-val">${esc(entry.notes || 'No notes provided')}</span></div>
     </div>
   </div>
   <table>
@@ -105,7 +111,8 @@ function printJournalVoucher(entry: any) {
 function JournalEntryDetailModal({ entry, onClose }: { entry: any; onClose: () => void }) {
   const totalDebits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
   const totalCredits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
-  const isBalanced = Math.abs(totalDebits - totalCredits) < 0.01;
+  // C-09: an empty entry (0 === 0) must not count as balanced — require at least 2 lines and a non-zero total.
+  const isBalanced = (entry.ledger_lines?.length ?? 0) >= 2 && totalDebits > 0 && Math.abs(totalDebits - totalCredits) < 0.01;
 
   return (
     <Modal isOpen={true} onClose={onClose} title={`Journal Voucher detail: JV-${entry.id}`} size="xl">
@@ -298,7 +305,8 @@ export default function JournalEntries() {
                 entries.map((entry: any) => {
                   const debits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
                   const credits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
-                  const isBalanced = Math.abs(debits - credits) < 0.01;
+                  // C-09: empty entries must not display as balanced.
+                  const isBalanced = (entry.ledger_lines?.length ?? 0) >= 2 && debits > 0 && Math.abs(debits - credits) < 0.01;
 
                   return (
                     <tr key={entry.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">

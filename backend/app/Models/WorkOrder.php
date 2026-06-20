@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Support\Facades\DB;
 
 class WorkOrder extends Model
 {
@@ -134,24 +135,31 @@ class WorkOrder extends Model
                 $qty = (int)$matches[1];
             }
 
-            // Find matching inventory item (case-insensitive)
-            $item = \App\Models\InventoryItem::where('item_name', $itemName)->first();
-            if (!$item) {
-                $item = \App\Models\InventoryItem::get()->first(function ($i) use ($itemName) {
-                    return strtolower(trim($i->item_name)) === strtolower(trim($itemName));
-                });
-            }
-            if (!$item) {
-                // Try fuzzy lookup (item name is contained within the string)
-                $item = \App\Models\InventoryItem::get()->first(function ($i) use ($itemName) {
-                    return str_contains(strtolower($itemName), strtolower($i->item_name)) 
-                        || str_contains(strtolower($i->item_name), strtolower($itemName));
-                });
+            if ($qty < 1) {
+                $qty = 1;
             }
 
-            if ($item) {
-                $item->quantity = max(0, $item->quantity - $qty);
-                $item->save();
+            // C-02 / Ops C-08: resolve the item at the database level with an exact,
+            // case-insensitive match instead of hydrating the entire inventory table
+            // into memory. H-01: the previous fuzzy substring fallback is removed because
+            // it could silently deduct from the wrong item (e.g. "oil" -> "Coil Spring").
+            $normalized = strtolower(trim($itemName));
+
+            // H-04: lock the row and decrement atomically so concurrent work orders
+            // cannot clobber each other's quantity updates.
+            DB::transaction(function () use ($normalized, $qty) {
+                $item = \App\Models\InventoryItem::whereRaw('LOWER(TRIM(item_name)) = ?', [$normalized])
+                    ->lockForUpdate()
+                    ->first();
+
+                if (!$item) {
+                    return;
+                }
+
+                $deducted = min($qty, (int) $item->quantity);
+                if ($deducted > 0) {
+                    $item->decrement('quantity', $deducted);
+                }
 
                 if (class_exists(\App\Http\Services\AuditLogService::class)) {
                     \App\Http\Services\AuditLogService::log(
@@ -159,10 +167,10 @@ class WorkOrder extends Model
                         module: 'inventory',
                         entityType: 'inventory_item',
                         entityId: $item->id,
-                        new: ['quantity' => $item->quantity, 'deducted' => $qty, 'reason' => 'Used in Work Order']
+                        new: ['quantity' => $item->fresh()->quantity, 'deducted' => $deducted, 'reason' => 'Used in Work Order']
                     );
                 }
-            }
+            });
         }
     }
 }

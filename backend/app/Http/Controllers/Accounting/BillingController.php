@@ -649,9 +649,14 @@ class BillingController extends Controller
      */
     public function updateStatus(Request $request, $id)
     {
+        // C-04: only accept known invoice statuses — never persist an arbitrary string.
+        $validated = $request->validate([
+            'status' => 'required|in:pending_payment,partial,paid,voided,disbursed_budget',
+        ]);
+
         $invoice = Invoice::findOrFail($id);
         $invoice->update([
-            'status' => $request->status,
+            'status' => $validated['status'],
         ]);
 
         app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
@@ -678,7 +683,18 @@ class BillingController extends Controller
     public function handleWebhook(Request $request)
     {
         $signatureHeader = $request->header('paymongo-signature');
-        $secret = env('PAYMONGO_WEBHOOK_SECRET');
+        $secret = config('services.paymongo.webhook_secret') ?: env('PAYMONGO_WEBHOOK_SECRET');
+
+        // C-10: never process a payment webhook when the secret is unconfigured or the
+        // signature is missing — otherwise anyone can forge "paid" events.
+        if (!$secret) {
+            \Log::error('PayMongo webhook secret is not configured; rejecting webhook.');
+            return response()->json(['error' => 'Webhook processing is not configured.'], 503);
+        }
+
+        if (!$signatureHeader) {
+            return response()->json(['error' => 'Missing webhook signature'], 401);
+        }
 
         if ($secret && $signatureHeader) {
             $parsedSignature = [];

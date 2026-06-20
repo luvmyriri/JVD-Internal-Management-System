@@ -16,6 +16,13 @@ class CashBudgetRequestController extends Controller
 
     public function store(Request $request)
     {
+        // C-05: drivers must not create cash budget requests directly (these are spawned
+        // server-side from approved trip tickets / commissions).
+        $user = auth()->user();
+        if ($user && $user->hasRole('driver')) {
+            return response()->json(['error' => 'Drivers cannot create cash budget requests.'], 403);
+        }
+
         $validated = $request->validate([
             'date'                  => 'required|date',
             'travel_date'           => 'nullable|date',
@@ -99,6 +106,18 @@ class CashBudgetRequestController extends Controller
             'disbursed_amount'     => 'sometimes|numeric|nullable',
         ]);
 
+        // C-05: once disbursed, the financial fields are locked — no post-disbursement tampering.
+        if ($budget->status === 'disbursed') {
+            $lockedFields = ['diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary', 'disbursed_amount', 'total_amount'];
+            foreach ($lockedFields as $f) {
+                if ($request->has($f)) {
+                    return response()->json([
+                        'error' => 'Cannot modify amounts: this cash budget has already been disbursed.'
+                    ], 422);
+                }
+            }
+        }
+
         // Recalculate total if any amounts updated and it's a DTT flow
         $amounts = ['diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary'];
         $needsRecalculation = collect($amounts)->contains(fn($a) => $request->has($a));
@@ -168,6 +187,9 @@ class CashBudgetRequestController extends Controller
 
         // ── STEP 3: Cash budgets user disburses → create invoice in billing ─────────
         if ($request->has('status') && $request->status === 'disbursed') {
+            // C-07: make the disbursement side effects atomic — the budget update, liquidation,
+            // ledger entry, invoice and invoice items all persist together or roll back together.
+            \Illuminate\Support\Facades\DB::transaction(function () use ($request, $budget) {
             $disbursedAmount = $request->input('disbursed_amount') ?? $budget->total_amount;
             $budget->update([
                 'disbursed_by' => auth()->id(),
@@ -351,6 +373,7 @@ class CashBudgetRequestController extends Controller
                     ));
                 }
             }
+            });
         }
 
         return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
@@ -358,7 +381,19 @@ class CashBudgetRequestController extends Controller
 
     public function destroy($id)
     {
-        CashBudgetRequest::findOrFail($id)->delete();
+        // C-05: restrict deletion to managers/accounting; block deletion of disbursed records
+        // so financial history cannot be erased.
+        $user = auth()->user();
+        if (!$user || !$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+            return response()->json(['error' => 'Unauthorized to delete cash budget requests.'], 403);
+        }
+
+        $budget = CashBudgetRequest::findOrFail($id);
+        if ($budget->status === 'disbursed') {
+            return response()->json(['error' => 'Cannot delete a disbursed cash budget request.'], 422);
+        }
+
+        $budget->delete();
         return response()->json(['message' => 'Cash budget request deleted successfully.']);
     }
 }

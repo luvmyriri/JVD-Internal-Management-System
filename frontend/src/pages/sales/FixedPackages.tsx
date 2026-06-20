@@ -374,6 +374,12 @@ export default function FixedPackages() {
       });
     };
 
+    // Escape user-controlled values before interpolating into the print HTML (prevents XSS in the print window).
+    const esc = (value: unknown): string =>
+      String(value ?? '').replace(/[&<>"']/g, (c) => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
+      ));
+
     // Determine current selections and compute total price
     let pricingRowsHTML = '';
     let totalPrice = 0;
@@ -455,7 +461,7 @@ export default function FixedPackages() {
       const listItems = items.map(item => `
         <li style="margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px;">
           <span style="color: ${isExclusion ? '#e11d48' : '#16a34a'}; font-weight: bold; font-size: 12px; line-height: 1.2;">${isExclusion ? '✕' : '✓'}</span>
-          <span style="font-size: 12px;">${item}</span>
+          <span style="font-size: 12px;">${esc(item)}</span>
         </li>
       `).join('');
       return `
@@ -500,7 +506,7 @@ export default function FixedPackages() {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Quotation - ${service.name}</title>
+        <title>Quotation - ${esc(service.name)}</title>
         <meta charset="utf-8">
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
@@ -809,16 +815,16 @@ export default function FixedPackages() {
 
             <!-- Service Details -->
             <div class="service-section">
-              <span class="service-category">${service.category}</span>
-              <h2 class="service-title">${service.name}</h2>
-              
+              <span class="service-category">${esc(service.category)}</span>
+              <h2 class="service-title">${esc(service.name)}</h2>
+
               <div class="layout-grid">
                 <div class="image-col">
-                  <img class="service-image" src="${firstImage}" alt="${service.name}">
+                  <img class="service-image" src="${esc(firstImage)}" alt="${esc(service.name)}">
                 </div>
                 <div class="desc-col">
                   <div class="desc-label">Package Inclusions & Description</div>
-                  <p class="desc-text">${service.description}</p>
+                  <p class="desc-text">${esc(service.description)}</p>
                 </div>
               </div>
             </div>
@@ -857,7 +863,7 @@ export default function FixedPackages() {
               <div class="sign-col">
                 <div class="sign-title">Prepared By</div>
                 <div class="sign-line"></div>
-                <div class="sign-name">${agentName}</div>
+                <div class="sign-name">${esc(agentName)}</div>
                 <div style="font-size: 9px; color: #64748b; font-weight: 500;">Travel Agent / Coordinator</div>
               </div>
               <div class="sign-col">
