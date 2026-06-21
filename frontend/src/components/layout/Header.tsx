@@ -200,7 +200,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     }
   };
 
-  const playMessageSound = (isIncoming: boolean) => {
+  const playMessageSound = (isIncoming: boolean) => {   
     try {
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioContext) return;
@@ -705,7 +705,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
     const connectWs = () => {
       try {
-        ws = new WebSocket('ws://localhost:6001');
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const defaultWsUrl = `${protocol}//${window.location.host}/ws`;
+        const wsUrl = import.meta.env.VITE_WS_URL || defaultWsUrl;
+
+        ws = new WebSocket(wsUrl);
 
         ws.onopen = () => {
           setWsConnectedState(true);

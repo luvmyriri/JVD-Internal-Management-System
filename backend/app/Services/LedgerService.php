@@ -22,6 +22,11 @@ class LedgerService
      */
     public function recordEntry(string $date, string $notes, array $entries, $reference = null): JournalEntry
     {
+        // Defensive: guarantee the chart of accounts exists before any entry is recorded,
+        // regardless of which call site reaches this first (accounts aren't part of the
+        // default seeder chain, so a fresh deploy would otherwise have zero Account rows).
+        $this->seedDefaultAccounts();
+
         return DB::transaction(function () use ($date, $notes, $entries, $reference) {
             if (count($entries) < 2) {
                 throw new Exception("Journal entry must have at least 2 entries (debit and credit).");

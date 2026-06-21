@@ -200,7 +200,13 @@ class CollectionController extends Controller
     public function addPayment(Request $request, $id)
     {
         $collection = Collection::findOrFail($id);
-        
+
+        if ($collection->collection_status === 'completed') {
+            return response()->json([
+                'message' => 'This collection is already fully settled. No further payments can be recorded.',
+            ], 422);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',

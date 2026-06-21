@@ -290,7 +290,7 @@ class WorkOrderController extends Controller
         }
 
         $year = now()->year;
-        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
+        $latest = \App\Models\JobOrder::withTrashed()->where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
         $sequence = 1;
         if ($latest) {
             $parts = explode('-', $latest->jo_number);
@@ -401,18 +401,23 @@ class WorkOrderController extends Controller
             ], 422);
         }
 
-        // Create the Job Order in created state
-        $year = now()->year;
-        $latest = \App\Models\JobOrder::where('jo_number', 'like', "JO-{$year}-%")->orderByDesc('id')->first();
-        $sequence = 1;
-        if ($latest) {
-            $parts = explode('-', $latest->jo_number);
-            $sequence = (int) end($parts) + 1;
-        }
-        $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
+        // C-07: create the Job Order and advance the Work Order status atomically. The sequence
+        // number is generated inside the transaction under lockForUpdate so two concurrent
+        // requests can't read the same "latest" JO and produce duplicate jo_numbers.
+        $jo = \Illuminate\Support\Facades\DB::transaction(function () use ($workOrder, $user) {
+            $year = now()->year;
+            $latest = \App\Models\JobOrder::withTrashed()
+                ->where('jo_number', 'like', "JO-{$year}-%")
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+            $sequence = 1;
+            if ($latest) {
+                $parts = explode('-', $latest->jo_number);
+                $sequence = (int) end($parts) + 1;
+            }
+            $joNumber = sprintf('JO-%d-%04d', $year, $sequence);
 
-        // C-07: create the Job Order and advance the Work Order status atomically.
-        $jo = \Illuminate\Support\Facades\DB::transaction(function () use ($workOrder, $joNumber, $user) {
             $jo = \App\Models\JobOrder::create([
                 'jo_number' => $joNumber,
                 'customer_id' => 1, // Walk-in / Internal Maintenance default customer

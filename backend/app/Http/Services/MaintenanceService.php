@@ -105,7 +105,8 @@ class MaintenanceService
     private function generateWONumber(): string
     {
         $year   = now()->year;
-        $latest = WorkOrder::where('wo_number', 'like', "WO-{$year}-%")
+        $latest = WorkOrder::withTrashed()
+                           ->where('wo_number', 'like', "WO-{$year}-%")
                            ->orderByDesc('id')
                            ->first();
 

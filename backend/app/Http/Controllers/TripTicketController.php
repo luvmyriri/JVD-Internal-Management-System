@@ -76,19 +76,26 @@ class TripTicketController extends Controller
 
         $validated['requested_by'] = auth()->id();
         $validated['trip_type'] = $validated['trip_type'] ?? 'domestic';
-        
-        if (empty($validated['control_no'])) {
-            $year = now()->year;
-            $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")->orderByDesc('id')->first();
-            $sequence = 1;
-            if ($latest) {
-                $parts = explode('-', $latest->control_no);
-                $sequence = (int) end($parts) + 1;
+
+        $ticket = \Illuminate\Support\Facades\DB::transaction(function () use ($validated) {
+            if (empty($validated['control_no'])) {
+                // Lock the latest row so concurrent requests serialize and cannot read the same
+                // sequence number (mirrors PurchaseOrderService::generatePONumber()).
+                $year = now()->year;
+                $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")
+                    ->orderByDesc('id')
+                    ->lockForUpdate()
+                    ->first();
+                $sequence = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->control_no);
+                    $sequence = (int) end($parts) + 1;
+                }
+                $validated['control_no'] = sprintf('DTT-%d-%04d', $year, $sequence);
             }
-            $validated['control_no'] = sprintf('DTT-%d-%04d', $year, $sequence);
-        }
-        
-        $ticket = TripTicket::create(array_diff_key($validated, ['override_conflict' => '']));
+
+            return TripTicket::create(array_diff_key($validated, ['override_conflict' => '']));
+        });
 
         if ($ticket->bus_id) {
             $this->autoGeneratePreTripWorkOrder($ticket);

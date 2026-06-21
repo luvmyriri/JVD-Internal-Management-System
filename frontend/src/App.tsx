@@ -49,6 +49,7 @@ import DriverTrips from './pages/driver/Trips';
 import DriverBus from './pages/driver/Bus';
 import KycSubmission from './pages/KycSubmission';
 import VisaUploadPublic from './pages/travel/VisaUploadPublic';
+import CustomerPortal from './pages/portal/CustomerPortal';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
@@ -74,6 +75,21 @@ const DefaultRedirect = () => {
   return <Navigate to={defaultLandingPage} replace />;
 };
 
+/**
+ * Route-level access check for the Administration pages — these expose system config,
+ * RBAC management, and employee/audit data, so they're gated beyond AuthGuard's
+ * authenticated-only check. Reuses the same isPathAllowedForUser logic the sidebar/landing-page
+ * redirect already relies on, so it stays consistent with each role's actual permissions
+ * (including dynamic custom_permissions grants) instead of a separately-maintained role list.
+ */
+const AdminRoute = ({ path, children }: { path: string; children: React.ReactNode }) => {
+  const { user } = useAuth();
+  if (!isPathAllowedForUser(path, user, user?.effective_permissions)) {
+    return <Navigate to={getLandingPageForUser(user, user?.effective_permissions)} replace />;
+  }
+  return <>{children}</>;
+};
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -87,6 +103,7 @@ export default function App() {
               <Route path="/set-password" element={<SetPassword />} />
               <Route path="/kyc-submission" element={<KycSubmission />} />
               <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
+              <Route path="/portal/:token" element={<CustomerPortal />} />
 
               {/* Authenticated */}
               <Route
@@ -162,10 +179,10 @@ export default function App() {
                 <Route path="/hr/payroll" element={<Payroll />} />
 
                 {/* Admin */}
-                <Route path="/admin/users" element={<Users />} />
-                <Route path="/admin/audit-logs" element={<AuditLogs />} />
-                <Route path="/admin/settings" element={<Settings />} />
-                <Route path="/admin/role-permissions" element={<RolePermissions />} />
+                <Route path="/admin/users" element={<AdminRoute path="/admin/users"><Users /></AdminRoute>} />
+                <Route path="/admin/audit-logs" element={<AdminRoute path="/admin/audit-logs"><AuditLogs /></AdminRoute>} />
+                <Route path="/admin/settings" element={<AdminRoute path="/admin/settings"><Settings /></AdminRoute>} />
+                <Route path="/admin/role-permissions" element={<AdminRoute path="/admin/role-permissions"><RolePermissions /></AdminRoute>} />
 
                 {/* Driver */}
                 <Route path="/driver/overview" element={<DriverTrips />} />

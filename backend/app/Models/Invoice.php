@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Invoice extends Model
 {
@@ -30,6 +31,8 @@ class Invoice extends Model
         'balance',
         'due_date',
         'status',
+        'requires_contract',
+        'contract_gate_status',
         'created_by',
         'notes',
         'cash_budget_request_id',
@@ -48,6 +51,7 @@ class Invoice extends Model
     {
         return [
             'seat_map' => 'array',
+            'requires_contract' => 'boolean',
         ];
     }
 
@@ -69,6 +73,31 @@ class Invoice extends Model
     public function collection()
     {
         return $this->hasOne(Collection::class);
+    }
+
+    public function contract(): HasOne
+    {
+        return $this->hasOne(Contract::class);
+    }
+
+    public function paymentSchedules(): HasMany
+    {
+        return $this->hasMany(PaymentSchedule::class)->orderBy('installment_number');
+    }
+
+    public function itineraries(): HasMany
+    {
+        return $this->hasMany(Itinerary::class)->orderBy('day_number');
+    }
+
+    public function passengers(): HasMany
+    {
+        return $this->hasMany(InvoicePassenger::class);
+    }
+
+    public function customTransactionDetail(): HasOne
+    {
+        return $this->hasOne(CustomTransactionDetail::class);
     }
 
     public function cashBudgetRequest(): BelongsTo

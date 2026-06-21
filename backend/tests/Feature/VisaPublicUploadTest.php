@@ -71,14 +71,23 @@ class VisaPublicUploadTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('success', true);
 
-        // Verify token & requested docs are saved in database
+        // Requested docs are still recorded on the case for display purposes.
         $this->visaCase->refresh();
-        $this->assertNotNull($this->visaCase->upload_token);
         $this->assertEquals(['Valid Passport', 'Bank Statement'], $this->visaCase->upload_requested_docs);
         $this->assertNotNull($this->visaCase->upload_email_sent_at);
 
-        // Assert mail was sent to customer
-        Mail::assertSent(VisaDocumentRequestMail::class, function ($mail) {
+        // The unified CustomerPortalToken is now the source of truth for the signing/upload link
+        // (replaces the legacy upload_token column for newly-generated requests).
+        $portalToken = \App\Models\CustomerPortalToken::where('related_type', 'PassportCase')
+            ->where('related_id', $this->visaCase->id)
+            ->where('purpose', 'document_upload')
+            ->first();
+        $this->assertNotNull($portalToken);
+        $this->assertEquals(['Valid Passport', 'Bank Statement'], $portalToken->requested_docs);
+
+        // VisaDocumentRequestMail now implements ShouldQueue (Phase 3), so Mail::to()->send()
+        // is queued rather than sent synchronously — assert against the queue, not the send log.
+        Mail::assertQueued(VisaDocumentRequestMail::class, function ($mail) {
             return $mail->hasTo($this->customer->email) &&
                    $mail->passportCase->id === $this->visaCase->id &&
                    $mail->requestedDocs === ['Valid Passport', 'Bank Statement'];

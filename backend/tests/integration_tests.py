@@ -5,7 +5,7 @@ import sys
 import uuid
 import time
 
-BASE_URL = "http://127.0.0.1:8000/api"
+BASE_URL = "http://127.0.0.1:8001/api"
 EMAIL = "vjlamsenlamsen28@gmail.com"
 PASSWORD = "JVD@Admin2026!"
 

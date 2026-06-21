@@ -16,6 +16,8 @@ use App\Notifications\SystemAlert;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\TransactionNotificationMail;
 use App\Http\Resources\InvoiceResource;
+use App\Exceptions\MaxPaxExceededException;
+use App\Http\Services\InvoiceFinalizationService;
 
 class BillingController extends Controller
 {
@@ -338,134 +340,41 @@ class BillingController extends Controller
             ], 422);
         }
 
+        $finalizer = app(InvoiceFinalizationService::class);
+
         try {
             DB::beginTransaction();
 
-            $subtotal = 0;
-            $taxRate = 0.12; // 12% VAT
-
-            // Calculate totals and validate items
-            $processedItems = [];
-            foreach ($request->items as $item) {
-                $service = Service::find($item['service_id']);
-                
-                // Validate max_pax capacity if the service has a limit set
-                if ($service->max_pax && $request->travel_date) {
-                    $paxToAdd = 0;
-                    if (isset($item['adults']) || isset($item['children'])) {
-                        $paxToAdd = ($item['adults'] ?? 0) + ($item['children'] ?? 0);
-                    } else {
-                        $paxToAdd = $item['quantity'];
-                    }
-
-                    // Also consider pax_count from the request if set
-                    if ($request->pax_count && $request->pax_count > $paxToAdd) {
-                        $paxToAdd = $request->pax_count;
-                    }
-
-                    $alreadyBooked = DB::table('invoice_items')
-                        ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
-                        ->where('invoice_items.service_id', $service->id)
-                        ->where('invoices.travel_date', $request->travel_date)
-                        ->where('invoices.status', '!=', 'cancelled')
-                        ->sum(DB::raw('CASE WHEN invoice_items.adults IS NOT NULL OR invoice_items.children IS NOT NULL THEN COALESCE(invoice_items.adults, 0) + COALESCE(invoice_items.children, 0) ELSE invoice_items.quantity END'));
-
-                    $remaining = $service->max_pax - (int) $alreadyBooked;
-
-                    if ($paxToAdd > $remaining) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Cannot book {$paxToAdd} pax for \"{$service->name}\" on {$request->travel_date}. Only {$remaining} of {$service->max_pax} slots are available.",
-                            'errors' => [
-                                'max_pax' => ["Exceeds maximum passenger capacity. {$remaining} slots remaining out of {$service->max_pax}."]
-                            ]
-                        ], 422);
-                    }
-                }
-
-                // Allow custom unit price calculated by frontend for bookings (pax base)
-                $unitPrice = isset($item['unit_price']) ? (double)$item['unit_price'] : $service->price;
-                $itemTotal = $unitPrice * $item['quantity'];
-                $subtotal += $itemTotal;
- 
-                $processedItems[] = [
-                    'service_id' => $service->id,
-                    'quantity' => $item['quantity'],
-                    'unit_price' => $unitPrice,
-                    'total_price' => $itemTotal,
-                    'adults' => $item['adults'] ?? null,
-                    'children' => $item['children'] ?? null,
-                    'service_date' => $item['service_date'] ?? null,
-                    'destination' => $item['destination'] ?? null,
-                ];
+            try {
+                $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count);
+            } catch (MaxPaxExceededException $e) {
+                DB::rollBack();
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                    'errors' => [
+                        'max_pax' => ["Exceeds maximum passenger capacity. {$e->remainingSlots} slots remaining out of {$e->maxPax}."]
+                    ]
+                ], 422);
             }
 
-            $taxAmount = $subtotal * $taxRate;
-            $totalAmount = $subtotal + $taxAmount;
+            $processedItems = $calc['processedItems'];
+            $subtotal = $calc['subtotal'];
+            $taxAmount = $calc['taxAmount'];
+            $totalAmount = $calc['totalAmount'];
 
             $paymentType = $request->payment_type ?? 'full';
             $amountReceived = (double) $request->amount_received;
-            
-            $balance = 0;
-            $status = 'pending_payment';
 
-            if ($request->payment_method === 'Cash') {
-                if ($paymentType === 'downpayment') {
-                    $status = 'partial';
-                    $balance = $totalAmount - $amountReceived;
-                } else {
-                    $status = 'paid';
-                    $balance = 0;
-                }
-            } else {
-                // For GCash/Card, pending until callback
-                $status = 'pending_payment';
-                $balance = $totalAmount;
-            }
+            $customerId = $finalizer->resolveCustomerId(
+                $request->customer_id,
+                $request->customer_name,
+                $request->customer_email,
+                $request->customer_contact,
+                $request->customer_address
+            );
 
-            // Resolve or Auto-Register Customer
-            $customerId = $request->customer_id;
-            if (!$customerId && $request->customer_name) {
-                $existingCustomer = null;
-                if ($request->customer_email) {
-                    $existingCustomer = \App\Models\Customer::where('email', $request->customer_email)->first();
-                }
-                if (!$existingCustomer && $request->customer_contact) {
-                    $existingCustomer = \App\Models\Customer::where('phone', $request->customer_contact)->first();
-                }
-                
-                if ($existingCustomer) {
-                    $customerId = $existingCustomer->id;
-                    $updatedData = [];
-                    if (!$existingCustomer->address && $request->customer_address) {
-                        $updatedData['address'] = $request->customer_address;
-                    }
-                    if (!empty($updatedData)) {
-                        $existingCustomer->update($updatedData);
-                    }
-                } else {
-                    $parts = explode(' ', trim($request->customer_name));
-                    if (count($parts) > 1) {
-                        $lastName = array_pop($parts);
-                        $firstName = implode(' ', $parts);
-                    } else {
-                        $firstName = $request->customer_name;
-                        $lastName = '';
-                    }
-                    
-                    $newCustomer = \App\Models\Customer::create([
-                        'first_name' => $firstName,
-                        'last_name' => $lastName,
-                        'email' => $request->customer_email,
-                        'phone' => $request->customer_contact,
-                        'address' => $request->customer_address,
-                    ]);
-                    $customerId = $newCustomer->id;
-                }
-            }
-
-            // Create Invoice
+            // Create Invoice (status/balance set below by finalizeWithinTransaction)
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
                 'customer_id' => $customerId,
@@ -480,9 +389,9 @@ class BillingController extends Controller
                 'change' => $request->change ?? 0,
                 'payment_method' => $request->payment_method,
                 'payment_type' => $paymentType,
-                'balance' => max(0, $balance),
+                'balance' => 0,
                 'due_date' => $request->due_date ?? $request->travel_date,
-                'status'          => $status,
+                'status'          => 'pending_payment',
                 'created_by'      => auth()->id() ?? 1,
                 'notes'           => $request->notes,
                 'bus_id'          => $request->bus_id,
@@ -509,104 +418,13 @@ class BillingController extends Controller
                 ]);
             }
 
-
-
-            // PayMongo Logic "Abang"
-            if (in_array($request->payment_method, ['GCash', 'Card'])) {
-                $paymongo = new \App\Services\PayMongoService();
-                $payData = [
-                    'line_items' => array_map(function($item) {
-                        $service = Service::find($item['service_id']);
-                        $unitPrice = isset($item['unit_price']) ? (double)$item['unit_price'] : $service->price;
-                        
-                        $displayName = $service->name;
-                        if (isset($item['adults']) || isset($item['children'])) {
-                            $adultsCount = $item['adults'] ?? 0;
-                            $childrenCount = $item['children'] ?? 0;
-                            $displayName .= " ({$adultsCount} Adults, {$childrenCount} Children)";
-                        }
-
-                        return [
-                            'amount' => (int)($unitPrice * 100), // Convert to centavos
-                            'currency' => 'PHP',
-                            'name' => $displayName,
-                            'quantity' => $item['quantity'],
-                        ];
-                    }, $request->items),
-                    'description' => "JVD Order #{$invoice->invoice_number}",
-                    'payment_method_types' => $request->payment_method === 'GCash' ? ['gcash'] : ['card']
-                ];
-
-                $session = $paymongo->createCheckoutSession($payData);
-                if ($session['success']) {
-                    $invoice->update([
-                        'payment_url' => $session['checkout_url'],
-                        'payment_id' => $session['id']
-                    ]);
-                }
-            }
-            // Auto-generate Job Order for trips if it involves buses
-            $hasBusService = false;
-            $busServiceDescription = '';
-            $busServiceDate = null;
-            $busDestination = null;
-
-            foreach ($processedItems as $pItem) {
-                $service = Service::find($pItem['service_id']);
-                if ($service) {
-                    $cat = strtolower($service->category);
-                    $name = strtolower($service->name);
-                    if (in_array($cat, ['transport', 'package', 'bus rental', 'educational tour', 'tour package', 'joiners']) 
-                        || str_contains($cat, 'bus') 
-                        || str_contains($cat, 'tour') 
-                        || str_contains($name, 'bus') 
-                        || str_contains($name, 'tour')
-                    ) {
-                        $hasBusService = true;
-                        $busServiceDescription .= "- {$service->name} (Qty: {$pItem['quantity']})\n";
-                        if (!empty($pItem['service_date'])) $busServiceDate = $pItem['service_date'];
-                        if (!empty($pItem['destination'])) $busDestination = $pItem['destination'];
-                    }
-                }
-            }
-
-            if ($hasBusService) {
-                $jobOrderService = app(\App\Http\Services\JobOrderService::class);
-                $jo = $jobOrderService->create([
-                    'customer_id' => $invoice->customer_id ?? 1, // Use resolved customer ID
-                    'bus_id' => $request->bus_id,
-                    'service_type' => 'bus_rental', // Mapped generically for now
-                    'service_date' => $busServiceDate ?? $request->travel_date ?? date('Y-m-d', strtotime('+1 day')),
-                    'destination' => $busDestination ?? $request->tour_code ?? $request->pickup_location ?? 'Not Specified',
-                    'total_cost' => $totalAmount,
-                    'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nArrival: " . ($request->arrival_datetime ?? 'N/A') . "\nDeparture: " . ($request->departure_datetime ?? 'N/A') . "\nNotes: {$invoice->notes}",
-                    'invoice_id' => $invoice->id,
-                ], auth()->id() ?? 1);
-            }
+            // Status/balance recompute, PayMongo session, auto-JobOrder — must run inside this transaction.
+            $invoice = $finalizer->finalizeWithinTransaction($invoice, $processedItems);
 
             DB::commit();
 
-            // Synchronize outstanding balance with Collections Ledger
-            app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
-
-            // Dynamically dispatch Invoice / SOA Document to customer via automated email
-            if ($invoice->customer_email) {
-                try {
-                    @set_time_limit(120);
-                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
-                } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send POS transaction email to {$invoice->customer_email}: " . $mailEx->getMessage());
-                }
-            }
-
-            if ($request->user()) {
-                $request->user()->notify(new SystemAlert(
-                    'POS Transaction Completed',
-                    "Invoice #{$invoice->invoice_number} was successfully created for {$totalAmount} PHP.",
-                    'success',
-                    '/accounting/billing'
-                ));
-            }
+            // Collection sync, receipt email, in-app alert — must run after commit.
+            $finalizer->afterCommit($invoice, ['actor' => $request->user(), 'source' => 'pos']);
 
             return response()->json([
                 'success' => true,

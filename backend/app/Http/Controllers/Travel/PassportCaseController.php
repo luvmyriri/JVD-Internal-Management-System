@@ -418,66 +418,16 @@ class PassportCaseController extends Controller
         ]);
 
         $requestedDocs = $request->input('requested_docs');
-        $token = Str::random(32);
 
+        // Legacy columns kept in sync for any code still reading them directly, but the
+        // unified CustomerPortalToken is now the source of truth for new links going forward.
         $passportCase->update([
-            'upload_token'          => $token,
             'upload_requested_docs' => $requestedDocs,
             'upload_email_sent_at'  => now(),
         ]);
 
-        $baseUrl = null;
-
-        // 1. Try ngrok tunnel
-        try {
-            $ctx = stream_context_create(['http' => ['timeout' => 1.0]]);
-            $tunnelsJson = @file_get_contents('http://127.0.0.1:4040/api/tunnels', false, $ctx);
-            if ($tunnelsJson) {
-                $tunnelsData = json_decode($tunnelsJson, true);
-                if (isset($tunnelsData['tunnels']) && is_array($tunnelsData['tunnels'])) {
-                    foreach ($tunnelsData['tunnels'] as $tunnel) {
-                        if (isset($tunnel['public_url']) && str_starts_with($tunnel['public_url'], 'https://')) {
-                            $baseUrl = rtrim($tunnel['public_url'], '/');
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (\Throwable $e) {}
-
-        // 2. Referer header
-        if (!$baseUrl) {
-            $referer = $request->headers->get('referer');
-            if ($referer) {
-                $parsed = parse_url($referer);
-                if (isset($parsed['scheme']) && isset($parsed['host'])) {
-                    $baseUrl = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
-                }
-            }
-        }
-
-        // 3. Origin header
-        if (!$baseUrl) {
-            $origin = $request->headers->get('origin');
-            if ($origin) {
-                $baseUrl = rtrim($origin, '/');
-            }
-        }
-
-        // 4. Fallback to Env
-        if (!$baseUrl) {
-            $frontendUrls = explode(',', env('FRONTEND_URL', 'http://localhost:3000'));
-            $baseUrl = rtrim($frontendUrls[0], '/');
-            $requestHost = $request->getHost();
-            foreach ($frontendUrls as $url) {
-                if (str_contains($url, $requestHost)) {
-                    $baseUrl = rtrim($url, '/');
-                    break;
-                }
-            }
-        }
-
-        $link = $baseUrl . '/public/visa-upload/' . $token;
+        $portalToken = \App\Models\CustomerPortalToken::generateFor('PassportCase', $passportCase->id, 'document_upload', $requestedDocs);
+        $link = \App\Http\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
 
         // Dispatch Email
         $mailError = null;

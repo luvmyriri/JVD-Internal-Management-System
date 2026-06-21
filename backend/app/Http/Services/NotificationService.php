@@ -244,4 +244,43 @@ class NotificationService
             ));
         }
     }
+
+    /**
+     * Notify staff that all requested documents for a customer-portal token have been uploaded.
+     * Pairs with the customer-facing DocumentsCompleteMail (the customer previously got nothing).
+     */
+    public static function notifyDocumentsComplete(\App\Models\CustomerPortalToken $portalToken)
+    {
+        $related = $portalToken->related();
+        if (!$related) {
+            return;
+        }
+
+        if ($portalToken->related_type === 'PassportCase') {
+            $handler = User::find($related->handled_by);
+            if ($handler) {
+                $handler->notify(new SystemAlert(
+                    'All Documents Received',
+                    "All requested documents have been uploaded for Visa Case #{$related->id}.",
+                    'success',
+                    '/travel/visa-processing',
+                    'passport_case',
+                    $related->id
+                ));
+            }
+            return;
+        }
+
+        if ($portalToken->related_type === 'Accreditation') {
+            $admins = User::whereIn('role', ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'])->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new SystemAlert(
+                    'All Compliance Documents Received',
+                    "{$related->entity_name} has uploaded all requested compliance documents.",
+                    'success',
+                    '/procurement/accreditations'
+                ));
+            }
+        }
+    }
 }

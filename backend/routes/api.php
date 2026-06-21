@@ -61,9 +61,15 @@ Route::post('/accreditations/{accreditation}/submit-kyc/upload/{type}', [App\Htt
 // Public settings route
 Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettings'])->name('settings.public');
 
-// Public Visa Document Request upload routes
+// Public Visa Document Request upload routes (legacy — kept live for already-sent links;
+// new links are generated against /public/portal/{token} below)
 Route::get('/public/visa-requests/{token}', [PassportCaseController::class, 'verifyPublicToken'])->name('passport-cases.public.verify');
 Route::post('/public/visa-requests/{token}/upload', [PassportCaseController::class, 'uploadPublicDocument'])->name('passport-cases.public.upload');
+
+// Unified Customer Portal (document upload + contract e-signature)
+Route::get('/public/portal/{token}', [App\Http\Controllers\CustomerPortalController::class, 'verify'])->name('portal.verify');
+Route::post('/public/portal/{token}/upload', [App\Http\Controllers\CustomerPortalController::class, 'uploadDocument'])->name('portal.upload');
+Route::post('/public/portal/{token}/sign', [App\Http\Controllers\CustomerPortalController::class, 'signContract'])->name('portal.sign');
 
 // Public endpoints for presentation/showcase website connection
 Route::get('/public/buses', function () {
@@ -431,7 +437,20 @@ Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function (
             Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
         });
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
-        
+
+        // Sales Contracts (Custom Transactions contract gate)
+        Route::get('/contracts', [App\Http\Controllers\Sales\ContractController::class, 'index'])->name('contracts.index');
+        Route::get('/contracts/{contract}', [App\Http\Controllers\Sales\ContractController::class, 'show'])->name('contracts.show');
+        Route::post('/contracts/draft', [App\Http\Controllers\Sales\ContractController::class, 'draft'])->name('contracts.draft');
+        Route::patch('/contracts/{contract}', [App\Http\Controllers\Sales\ContractController::class, 'updateDraft'])->name('contracts.update-draft');
+        Route::post('/contracts/{contract}/payment-schedule', [App\Http\Controllers\Sales\ContractController::class, 'attachPaymentSchedule'])->name('contracts.payment-schedule');
+        Route::post('/contracts/{contract}/send', [App\Http\Controllers\Sales\ContractController::class, 'sendForSignature'])->name('contracts.send');
+        Route::post('/contracts/{contract}/sign', [App\Http\Controllers\Sales\ContractController::class, 'signAtCounter'])->name('contracts.sign-at-counter');
+        Route::post('/contracts/{contract}/void', [App\Http\Controllers\Sales\ContractController::class, 'void'])->name('contracts.void');
+        Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\Sales\ContractController::class, 'pdf'])->name('contracts.pdf');
+        Route::post('/contracts/{contract}/amendments', [App\Http\Controllers\Sales\ContractController::class, 'createAmendment'])->name('contracts.amendments.create');
+        Route::post('/contract-amendments/{amendment}/send', [App\Http\Controllers\Sales\ContractController::class, 'sendAmendmentForSignature'])->name('contract-amendments.send');
+
         // Ledger & Liquidations
         Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
         Route::get('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');

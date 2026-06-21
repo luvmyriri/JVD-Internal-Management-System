@@ -159,6 +159,13 @@ class UserController extends Controller
             abort(403, 'Unauthorized update of Super Admin user.');
         }
 
+        // Only super_admin can grant/modify custom module permissions — this field
+        // overrides role-based access in User::getAllPermissions(), so anyone else
+        // with hr:edit could otherwise self-escalate to any module permission.
+        if ($request->has('custom_permissions') && $request->user()->role !== 'super_admin') {
+            abort(403, 'Unauthorized. Only a Super Admin can modify custom permissions.');
+        }
+
         $validated = $request->validate([
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],

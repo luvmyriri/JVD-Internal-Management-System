@@ -53,7 +53,8 @@ class PurchaseOrderService
         $year = now()->year;
         // H-03: lock the latest row so concurrent transactions serialize and cannot read the
         // same sequence number (this method runs inside the create() DB::transaction).
-        $latest = PurchaseOrder::where('po_number', 'like', "PO-{$year}-%")
+        $latest = PurchaseOrder::withTrashed()
+            ->where('po_number', 'like', "PO-{$year}-%")
             ->orderByDesc('id')
             ->lockForUpdate()
             ->first();

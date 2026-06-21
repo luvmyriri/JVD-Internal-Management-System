@@ -10,7 +10,7 @@ use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
-class KycRequestMail extends Mailable
+class KycRequestMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

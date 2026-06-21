@@ -21,9 +21,14 @@ class CustomerEmailController extends Controller
             return response()->json(['message' => 'Customer has no email address.'], 400);
         }
 
-        Mail::to($customer->email)->send(
-            new CustomerOutreachMail($customer, $validated['subject'], $validated['message'])
-        );
+        try {
+            Mail::to($customer->email)->send(
+                new CustomerOutreachMail($customer, $validated['subject'], $validated['message'])
+            );
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Failed to send outreach email to {$customer->email}: " . $e->getMessage());
+            return response()->json(['message' => 'Failed to send email: ' . $e->getMessage()], 502);
+        }
 
         return response()->json(['message' => 'Email sent successfully.']);
     }

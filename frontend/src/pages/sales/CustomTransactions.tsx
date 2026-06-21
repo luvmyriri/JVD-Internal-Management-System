@@ -3,30 +3,44 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
   LuLoaderCircle,
-  LuCheck,
-  LuFileText
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
+import type { CustomTransactionDetailInput, ItineraryDayInput, PassengerInput } from '../../api/contracts';
 import { useTheme } from '../../context/ThemeContext';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
-import BusLayout from '../../components/ui/BusLayout';
 import client from '../../api/client';
 import { fleetApi } from '../../api/fleet';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import CategoryFormBusRental from './components/CategoryFormBusRental';
+import CategoryFormEducationalTour from './components/CategoryFormEducationalTour';
+import CategoryFormTourPackage from './components/CategoryFormTourPackage';
+import CategoryFormVisaProcessing from './components/CategoryFormVisaProcessing';
+import CategoryFormJoiners from './components/CategoryFormJoiners';
+import CategoryFormBooking from './components/CategoryFormBooking';
+import ItineraryBuilder from './components/ItineraryBuilder';
+import PassengerRosterEditor from './components/PassengerRosterEditor';
+import {
+  INITIAL_BUS_RENTAL, INITIAL_EDU_TOUR, INITIAL_TOUR_PACKAGE,
+  INITIAL_VISA_PROCESSING, INITIAL_JOINERS, INITIAL_BOOKING,
+} from './components/customTransactionTypes';
+
+const CATEGORIES = ['Bus Rental', 'Educational Tour', 'Tour Package', 'Visa Processing', 'Joiners', 'Booking', 'Other'];
+
+// Categories that get the optional structured itinerary / passenger roster builders.
+const ITINERARY_CATEGORIES = ['Tour Package', 'Educational Tour'];
+const PASSENGER_CATEGORIES = ['Tour Package', 'Visa Processing', 'Joiners', 'Booking'];
 
 export default function CustomTransactions() {
   const { theme } = useTheme();
   const queryClient = useQueryClient();
 
-  // Load buses list for selection
   const { data: busesRes } = useQuery({
     queryKey: ['buses-list'],
     queryFn: () => fleetApi.list({ per_page: 100 }),
   });
   const buses = busesRes?.data?.data ?? [];
 
-  // Load active drivers
   const { data: drivers = [] } = useQuery({
     queryKey: ['active-drivers'],
     queryFn: async () => {
@@ -36,7 +50,6 @@ export default function CustomTransactions() {
     },
   });
 
-  // State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isAddingCustom, setIsAddingCustom] = useState(false);
   const [customForm, setCustomForm] = useState({
@@ -48,23 +61,17 @@ export default function CustomTransactions() {
     description: '',
   });
 
-  // Category specific custom specifications states
-  // 1. Bus Rental Custom Data
-  const [busRental, setBusRental] = useState({
-    vehicleType: 'Bus',
-    route: '',
-    serviceDate: '',
-    days: '1',
-    plateNumber: '',
-    inclusions: { driver: true, fuel: true, toll: false, insurance: true } as Record<string, boolean>,
-    travelDate: '',
-    busId: null as number | null,
-    driverId: null as number | null,
-    driverName: '',
-    selectedSeats: [] as string[],
-    pickupLocation: '',
-    paxCount: '1'
-  });
+  // Category-specific structured data — one state object keyed by category name.
+  const [busRental, setBusRental] = useState(INITIAL_BUS_RENTAL);
+  const [eduTour, setEduTour] = useState(INITIAL_EDU_TOUR);
+  const [tourPackage, setTourPackage] = useState(INITIAL_TOUR_PACKAGE);
+  const [visaProcessing, setVisaProcessing] = useState(INITIAL_VISA_PROCESSING);
+  const [joiners, setJoiners] = useState(INITIAL_JOINERS);
+  const [booking, setBooking] = useState(INITIAL_BOOKING);
+
+  // Optional structured itinerary / passenger roster, shared across applicable categories.
+  const [itineraryRows, setItineraryRows] = useState<ItineraryDayInput[]>([]);
+  const [passengerRows, setPassengerRows] = useState<PassengerInput[]>([]);
 
   // Load calendar for selected bus to check seat occupancy on travel date
   const { data: busCalendarRes } = useQuery({
@@ -91,174 +98,85 @@ export default function CustomTransactions() {
     return seats;
   }, [busCalendarRes, busRental.travelDate]);
 
-  // 2. Educational Tour Custom Data
-  const [eduTour, setEduTour] = useState({
-    schoolName: '',
-    gradeLevel: '',
-    expectedPax: '50',
-    stops: '',
-    serviceDate: '',
-    busId: '',
-    inclusions: { meals: true, coordinator: true, insurance: true, tshirt: false } as Record<string, boolean>
-  });
-
-  // 3. Tour Package Custom Data
-  const [tourPackage, setTourPackage] = useState({
-    destination: '',
-    travelDates: '',
-    adults: '1',
-    children: '0',
-    accommodation: 'Hotel',
-    itinerary: ''
-  });
-
-  // 4. Visa Processing Custom Data
-  const [visaProcessing, setVisaProcessing] = useState({
-    country: 'Japan',
-    visaType: 'Tourist',
-    applicants: '',
-    requirements: { passport: true, photo: true, bankCert: false, itr: false, birthCert: false } as Record<string, boolean>
-  });
-
-  // 5. Joiners Custom Data
-  const [joiners, setJoiners] = useState({
-    tourCode: '',
-    travelDate: '',
-    paxCount: '1',
-    pickupLocation: ''
-  });
-
-  // 6. Booking Custom Data
-  const [booking, setBooking] = useState({
-    bookingType: 'Flight',
-    referenceCode: '',
-    details: '',
-    guests: ''
-  });
-
   const resetSubStates = () => {
-    setBusRental({
-      vehicleType: 'Bus',
-      route: '',
-      serviceDate: '',
-      days: '1',
-      plateNumber: '',
-      inclusions: { driver: true, fuel: true, toll: false, insurance: true },
-      travelDate: '',
-      busId: null,
-      driverId: null,
-      driverName: '',
-      selectedSeats: [],
-      pickupLocation: '',
-      paxCount: '1'
-    });
-    setEduTour({
-      schoolName: '',
-      gradeLevel: '',
-      expectedPax: '50',
-      stops: '',
-      serviceDate: '',
-      busId: '',
-      inclusions: { meals: true, coordinator: true, insurance: true, tshirt: false }
-    });
-    setTourPackage({
-      destination: '',
-      travelDates: '',
-      adults: '1',
-      children: '0',
-      accommodation: 'Hotel',
-      itinerary: ''
-    });
-    setVisaProcessing({
-      country: 'Japan',
-      visaType: 'Tourist',
-      applicants: '',
-      requirements: { passport: true, photo: true, bankCert: false, itr: false, birthCert: false }
-    });
-    setJoiners({
-      tourCode: '',
-      travelDate: '',
-      paxCount: '1',
-      pickupLocation: ''
-    });
-    setBooking({
-      bookingType: 'Flight',
-      referenceCode: '',
-      details: '',
-      guests: ''
-    });
+    setBusRental(INITIAL_BUS_RENTAL);
+    setEduTour(INITIAL_EDU_TOUR);
+    setTourPackage(INITIAL_TOUR_PACKAGE);
+    setVisaProcessing(INITIAL_VISA_PROCESSING);
+    setJoiners(INITIAL_JOINERS);
+    setBooking(INITIAL_BOOKING);
+    setItineraryRows([]);
+    setPassengerRows([]);
   };
 
-  const generateAutoDescription = (category: string) => {
+  /** Builds the structured custom_transaction_detail payload sent to the backend (Contract/Invoice). */
+  const buildCustomTransactionDetail = (category: string): CustomTransactionDetailInput => {
     switch (category) {
-      case 'Bus Rental': {
-        const incs = [];
-        if (busRental.inclusions.driver) incs.push('Driver Included');
-        if (busRental.inclusions.fuel) incs.push('Fuel Included');
-        if (busRental.inclusions.toll) incs.push('Toll Fees');
-        if (busRental.inclusions.insurance) incs.push('Passenger Insurance');
-        return `[Bus Rental Specifications]
-Vehicle Type: ${busRental.vehicleType}
-Route/Destination: ${busRental.route || 'Not Specified'}
-Service Date: ${busRental.serviceDate || 'Not Specified'}
-Duration: ${busRental.days} Day(s)
-Pax Count: ${busRental.paxCount} Pax
-Pickup Location: ${busRental.pickupLocation || 'Not Specified'}
-Assigned Bus ID: ${busRental.busId || 'To Be Determined'}
-Included in Rate: ${incs.join(', ') || 'Base Rental Only'}`;
-      }
-      case 'Educational Tour': {
-        const incs = [];
-        if (eduTour.inclusions.meals) incs.push('Student Meals');
-        if (eduTour.inclusions.coordinator) incs.push('Tour Coordinator');
-        if (eduTour.inclusions.insurance) incs.push('Travel Insurance');
-        if (eduTour.inclusions.tshirt) incs.push('Souvenir T-Shirt');
-        return `[Educational Tour Specifications]
-School/Institution: ${eduTour.schoolName || 'Not Specified'}
-Grade/Year Level: ${eduTour.gradeLevel || 'Not Specified'}
-Service Date: ${eduTour.serviceDate || 'Not Specified'}
-Expected Count: ${eduTour.expectedPax} Pax
-Itinerary Stops: ${eduTour.stops || 'Not Specified'}
-Assigned Bus ID: ${eduTour.busId || 'To Be Determined'}
-Included Package Items: ${incs.join(', ') || 'Transport Only'}`;
-      }
-      case 'Tour Package': {
-        return `[Tour Package Specifications]
-Destination: ${tourPackage.destination || 'Not Specified'}
-Travel Dates: ${tourPackage.travelDates || 'Not Specified'}
-Accommodation Type: ${tourPackage.accommodation}
-Guest Breakdown: ${tourPackage.adults} Adult(s), ${tourPackage.children} Child(ren)
-Proposed Itinerary/Details: ${tourPackage.itinerary || 'Not Specified'}`;
-      }
-      case 'Visa Processing': {
-        const reqs = [];
-        if (visaProcessing.requirements.passport) reqs.push('Original Passport');
-        if (visaProcessing.requirements.photo) reqs.push('Visa Photos');
-        if (visaProcessing.requirements.bankCert) reqs.push('Bank Certificate');
-        if (visaProcessing.requirements.itr) reqs.push('ITR (Income Tax Return)');
-        if (visaProcessing.requirements.birthCert) reqs.push('Birth Certificate');
-        return `[Visa Processing Specifications]
-Visa Destination Country: ${visaProcessing.country}
-Visa Type: ${visaProcessing.visaType}
-Applicant Name(s): ${visaProcessing.applicants || 'Not Specified'}
-Documents Submitted: ${reqs.join(', ') || 'Pending Submission'}`;
-      }
-      case 'Joiners': {
-        return `[Joiner Tour Specifications]
-Tour Destination/Code: ${joiners.tourCode || 'Not Specified'}
-Travel Date: ${joiners.travelDate || 'Not Specified'}
-Total Pax Count: ${joiners.paxCount} Pax
-Pickup Point & Time: ${joiners.pickupLocation || 'Not Specified'}`;
-      }
-      case 'Booking': {
-        return `[Booking Reservation Specifications]
-Booking Category: ${booking.bookingType}
-Confirmation Reference Code: ${booking.referenceCode || 'Not Specified'}
-Passenger/Guest Names: ${booking.guests || 'Not Specified'}
-Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
-      }
+      case 'Bus Rental':
+        return {
+          category,
+          vehicle_type: busRental.vehicleType,
+          route: busRental.route || undefined,
+          rental_days: Number(busRental.days || 1),
+          plate_number: busRental.plateNumber || undefined,
+          inclusion_driver: busRental.inclusions.driver,
+          inclusion_fuel: busRental.inclusions.fuel,
+          inclusion_toll: busRental.inclusions.toll,
+          inclusion_insurance: busRental.inclusions.insurance,
+          additional_remarks: customForm.description || undefined,
+        };
+      case 'Educational Tour':
+        return {
+          category,
+          school_name: eduTour.schoolName || undefined,
+          grade_level: eduTour.gradeLevel || undefined,
+          expected_pax: Number(eduTour.expectedPax || 0) || undefined,
+          itinerary_stops: eduTour.stops || undefined,
+          edu_inclusion_meals: eduTour.inclusions.meals,
+          edu_inclusion_coordinator: eduTour.inclusions.coordinator,
+          edu_inclusion_insurance: eduTour.inclusions.insurance,
+          edu_inclusion_tshirt: eduTour.inclusions.tshirt,
+          additional_remarks: customForm.description || undefined,
+        };
+      case 'Tour Package':
+        return {
+          category,
+          destination: tourPackage.destination || undefined,
+          accommodation_type: tourPackage.accommodation,
+          additional_remarks: customForm.description || undefined,
+        };
+      case 'Visa Processing':
+        return {
+          category,
+          visa_country: visaProcessing.country,
+          visa_type: visaProcessing.visaType,
+          visa_req_passport: visaProcessing.requirements.passport,
+          visa_req_photo: visaProcessing.requirements.photo,
+          visa_req_bank_cert: visaProcessing.requirements.bankCert,
+          visa_req_itr: visaProcessing.requirements.itr,
+          visa_req_birth_cert: visaProcessing.requirements.birthCert,
+          additional_remarks: customForm.description || undefined,
+        };
+      case 'Joiners':
+        return {
+          category,
+          joiner_tour_code: joiners.tourCode || undefined,
+          additional_remarks: customForm.description || undefined,
+        };
+      case 'Booking':
+        return {
+          category,
+          booking_type: booking.bookingType,
+          booking_reference_code: booking.referenceCode || undefined,
+          booking_details: booking.details || undefined,
+          additional_remarks: customForm.description || undefined,
+        };
       default:
-        return '';
+        return {
+          category,
+          category_meta: { otherCategory: customForm.otherCategory },
+          additional_remarks: customForm.description || undefined,
+        };
     }
   };
 
@@ -275,48 +193,31 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
     pickupLocation?: string,
     paxCount?: number,
     serviceDate?: string,
-    destination?: string
+    destination?: string,
+    customCategoryDetail?: CustomTransactionDetailInput,
+    itinerary?: ItineraryDayInput[],
+    passengers?: PassengerInput[]
   ) => {
-    setCart(prev => {
-      const existing = prev.find(item => item.service.id === service.id);
-      if (existing) {
-        return prev.map(item =>
-          item.service.id === service.id
-            ? {
-                ...item,
-                quantity: item.quantity + quantity,
-                busId,
-                selectedSeats,
-                driverId,
-                driverName,
-                travelDate,
-                tourCode,
-                pickupLocation,
-                paxCount,
-                serviceDate,
-                destination
-              }
-            : item
-        );
+    setCart(prev => [
+      ...prev,
+      {
+        service,
+        quantity,
+        busId,
+        selectedSeats,
+        driverId,
+        driverName,
+        travelDate,
+        tourCode,
+        pickupLocation,
+        paxCount,
+        serviceDate,
+        destination,
+        customCategoryDetail,
+        itinerary,
+        passengers,
       }
-      return [
-        ...prev,
-        {
-          service,
-          quantity,
-          busId,
-          selectedSeats,
-          driverId,
-          driverName,
-          travelDate,
-          tourCode,
-          pickupLocation,
-          paxCount,
-          serviceDate,
-          destination
-        }
-      ];
-    });
+    ]);
   };
 
   const handleAddCustomTransaction = async (e: React.FormEvent) => {
@@ -329,36 +230,34 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
 
     try {
       setIsAddingCustom(true);
-      
-      // Auto-compile specifications text from category form data
-      const autoDesc = generateAutoDescription(customForm.category);
-      const finalDescription = autoDesc 
-        ? `${autoDesc}${customForm.description ? `\n\n[Additional Remarks / Instructions]\n${customForm.description}` : ''}`
-        : customForm.description;
 
-      // Create service dynamically in the database
+      const category = customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category;
+      const customCategoryDetail = buildCustomTransactionDetail(customForm.category);
+
+      // Create service dynamically in the database (catalog/pricing role only — the structured
+      // data above, not this description, is the source of truth for tour/contract details).
       const res = await billingApi.createService({
         name: customForm.name,
-        category: customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category,
+        category,
         price: Number(cleanPrice || 0),
-        description: finalDescription || 'Custom service arrangement',
+        description: customForm.description || `Custom ${category} arrangement`,
         is_tour: false,
         has_booking_fields: false,
       });
 
       if (res?.data?.success || res?.data?.data) {
         const createdService = res.data.data;
-        
-        let busIdParam = undefined;
-        let driverIdParam = undefined;
-        let selectedSeatsParam = undefined;
-        let driverNameParam = undefined;
-        let travelDateParam = undefined;
-        let tourCodeParam = undefined;
-        let pickupLocationParam = undefined;
-        let paxCountParam = undefined;
-        let serviceDateParam = undefined;
-        let destinationParam = undefined;
+
+        let busIdParam: number | undefined;
+        let driverIdParam: number | undefined;
+        let selectedSeatsParam: string[] | undefined;
+        let driverNameParam: string | undefined;
+        let travelDateParam: string | undefined;
+        let tourCodeParam: string | undefined;
+        let pickupLocationParam: string | undefined;
+        let paxCountParam: number | undefined;
+        let serviceDateParam: string | undefined;
+        let destinationParam: string | undefined;
 
         if (customForm.category === 'Bus Rental') {
           busIdParam = busRental.busId || undefined;
@@ -391,7 +290,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           busIdParam = eduTour.busId ? Number(eduTour.busId) : undefined;
         }
 
-        // Add to order
         addToCart(
           createdService,
           1,
@@ -404,12 +302,14 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
           pickupLocationParam,
           paxCountParam,
           serviceDateParam,
-          destinationParam
+          destinationParam,
+          customCategoryDetail,
+          itineraryRows.length > 0 ? itineraryRows : undefined,
+          passengerRows.length > 0 ? passengerRows : undefined
         );
 
         toast.success('Customized transaction registered & added to order!');
-        
-        // Reset forms
+
         setCustomForm({
           name: '',
           category: 'Bus Rental',
@@ -420,7 +320,6 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
         });
         resetSubStates();
 
-        // Invalidate queries so it shows in catalog if they look for it
         queryClient.invalidateQueries({ queryKey: ['billing-services'] });
       } else {
         toast.error('Failed to register customized service');
@@ -454,614 +353,57 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
     switch (customForm.category) {
       case 'Bus Rental':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Bus Rental Custom Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Vehicle Type</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.vehicleType}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, vehicleType: e.target.value }))}
-                >
-                  {['Bus', 'Coaster', 'Van', 'Sedan', 'SUV'].map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Number of Days</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.days}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setBusRental(prev => ({ ...prev, days: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
-                  value={busRental.travelDate}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, travelDate: e.target.value, selectedSeats: [] }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Bus</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
-                  value={busRental.busId || ''}
-                  onChange={(e) => {
-                    const id = e.target.value ? Number(e.target.value) : null;
-                    const selectedBusObj = buses.find((b: any) => b.id === id);
-                    let driverIdVal = null;
-                    let driverNameVal = '';
-                    if (selectedBusObj && selectedBusObj.driver) {
-                      driverIdVal = selectedBusObj.driver.id;
-                      driverNameVal = `${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`;
-                    }
-                    setBusRental(prev => ({
-                      ...prev,
-                      busId: id,
-                      selectedSeats: [],
-                      driverId: driverIdVal,
-                      driverName: driverNameVal
-                    }));
-                  }}
-                >
-                  <option value="">Select a Bus...</option>
-                  {buses.filter((b: any) => b.status?.toLowerCase() === 'available').map((b: any) => (
-                    <option key={b.id} value={b.id}>
-                      {b.plate_number} - {b.model} ({b.seating_capacity} Seaters)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assign Driver</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white focus:outline-none"
-                  value={busRental.driverId || ''}
-                  onChange={(e) => {
-                    const id = e.target.value ? Number(e.target.value) : null;
-                    const d = drivers.find((x: any) => x.id === id);
-                    const name = d ? `${d.first_name} ${d.last_name}` : '';
-                    setBusRental(prev => ({ ...prev, driverId: id, driverName: name }));
-                  }}
-                >
-                  <option value="">Select a Driver...</option>
-                  {drivers.map((d: any) => (
-                    <option key={d.id} value={d.id}>
-                      {d.first_name} {d.last_name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                {/* Space holder */}
-              </div>
-            </div>
-
-            {/* Seat Selector Layout */}
-            {busRental.busId && busRental.travelDate && (
-              <div className="space-y-3">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
-                <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800">
-                  <BusLayout
-                    hasRestroom={buses.find((b: any) => b.id === busRental.busId)?.bus_category === 'VIP'}
-                    seats={buses.find((b: any) => b.id === busRental.busId)?.custom_seats || []}
-                    totalSeats={buses.find((b: any) => b.id === busRental.busId)?.seating_capacity || 49}
-
-                    selectedSeats={busRental.selectedSeats}
-                    occupiedSeats={occupiedSeats}
-                    onSeatToggle={(seatNum) => {
-                      setBusRental(prev => ({
-                        ...prev,
-                        selectedSeats: prev.selectedSeats.includes(seatNum)
-                          ? prev.selectedSeats.filter(s => s !== seatNum)
-                          : [...prev.selectedSeats, seatNum]
-                      }));
-                    }}
-                  />
-                </div>
-                {busRental.selectedSeats.length > 0 && (
-                  <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">
-                    Selected: {busRental.selectedSeats.join(', ')} ({busRental.selectedSeats.length} seats selected)
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Route / Destination</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Caloocan to Baguio City"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.route}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, route: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2 col-span-2 md:col-span-1">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Date</label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.serviceDate}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, serviceDate: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.paxCount}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    const selectedBusObj = buses.find((b: any) => b.id === busRental.busId);
-                    const maxCap = selectedBusObj?.seating_capacity || 49;
-                    const num = val === '' ? '' : Math.min(maxCap, Number(val));
-                    setBusRental(prev => ({
-                      ...prev,
-                      paxCount: num === '' ? '' : String(num)
-                    }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pickup Location</label>
-                <input
-                  type="text"
-                  placeholder="e.g. SM North EDSA"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={busRental.pickupLocation}
-                  onChange={(e) => setBusRental(prev => ({ ...prev, pickupLocation: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Rental Inclusions</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(busRental.inclusions).map(([key, val]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setBusRental(prev => ({
-                      ...prev,
-                      inclusions: { ...prev.inclusions, [key]: !val }
-                    }))}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-left text-xs font-bold transition-all ${
-                      val
-                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
-                        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-205'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded flex items-center justify-center border ${val ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
-                      {val && <LuCheck className="w-3 h-3" />}
-                    </div>
-                    <span className="capitalize">{key === 'driver' ? 'Driver Included' : key === 'fuel' ? 'Fuel Included' : key === 'toll' ? 'Toll Fees' : 'Insurance'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CategoryFormBusRental
+            value={busRental}
+            onChange={(patch) => setBusRental(prev => ({ ...prev, ...patch }))}
+            buses={buses}
+            drivers={drivers}
+            occupiedSeats={occupiedSeats}
+          />
         );
-
       case 'Educational Tour':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Educational Tour Custom Specifications</p>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">School / Institution Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Camarin High School"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                value={eduTour.schoolName}
-                onChange={(e) => setEduTour(prev => ({ ...prev, schoolName: e.target.value }))}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Grade / Year Level</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Grade 10 & 11"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={eduTour.gradeLevel}
-                  onChange={(e) => setEduTour(prev => ({ ...prev, gradeLevel: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Expected Headcount</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={eduTour.expectedPax}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setEduTour(prev => ({ ...prev, expectedPax: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Service Date</label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={eduTour.serviceDate}
-                  onChange={(e) => setEduTour(prev => ({ ...prev, serviceDate: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Assigned Bus Unit (Optional)</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={eduTour.busId}
-                  onChange={(e) => setEduTour(prev => ({ ...prev, busId: e.target.value }))}
-                >
-                  <option value="">-- Let Dispatch Assign Later --</option>
-                  {buses.map((b: any) => (
-                    <option key={b.id} value={b.id}>
-                      {b.bus_number} - {b.plate_number} ({b.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Itinerary Stops</label>
-              <textarea
-                placeholder="e.g. Science Centrum, Planetarium, Ocean Park..."
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[60px] dark:text-white"
-                value={eduTour.stops}
-                onChange={(e) => setEduTour(prev => ({ ...prev, stops: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Package Inclusions</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(eduTour.inclusions).map(([key, val]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setEduTour(prev => ({
-                      ...prev,
-                      inclusions: { ...prev.inclusions, [key]: !val }
-                    }))}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-left text-xs font-bold transition-all ${
-                      val
-                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
-                        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-205'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded flex items-center justify-center border ${val ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
-                      {val && <LuCheck className="w-3 h-3" />}
-                    </div>
-                    <span className="capitalize">{key === 'meals' ? 'Student Meals' : key === 'coordinator' ? 'Tour Coordinator' : key === 'insurance' ? 'Travel Insurance' : 'Souvenir T-Shirt'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CategoryFormEducationalTour
+            value={eduTour}
+            onChange={(patch) => setEduTour(prev => ({ ...prev, ...patch }))}
+            buses={buses}
+          />
         );
-
       case 'Tour Package':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Tour Package Custom Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Destination</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Boracay 3D2N"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={tourPackage.destination}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, destination: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Dates</label>
-                <input
-                  type="text"
-                  placeholder="e.g. June 15-18, 2026"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={tourPackage.travelDates}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, travelDates: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Adults</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={tourPackage.adults}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setTourPackage(prev => ({ ...prev, adults: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Children</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={tourPackage.children}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setTourPackage(prev => ({ ...prev, children: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Accommodation</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={tourPackage.accommodation}
-                  onChange={(e) => setTourPackage(prev => ({ ...prev, accommodation: e.target.value }))}
-                >
-                  {['Hotel', 'Resort', 'Transient', 'Hostel', 'None'].map(acc => (
-                    <option key={acc} value={acc}>{acc}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Itinerary / Specifics</label>
-              <textarea
-                placeholder="Include flight detail, preferred hotels, or tours list..."
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[80px] dark:text-white"
-                value={tourPackage.itinerary}
-                onChange={(e) => setTourPackage(prev => ({ ...prev, itinerary: e.target.value }))}
-              />
-            </div>
-          </div>
+          <CategoryFormTourPackage
+            value={tourPackage}
+            onChange={(patch) => setTourPackage(prev => ({ ...prev, ...patch }))}
+          />
         );
-
       case 'Visa Processing':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Visa Processing Custom Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Destination Country</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={visaProcessing.country}
-                  onChange={(e) => setVisaProcessing(prev => ({ ...prev, country: e.target.value }))}
-                >
-                  {['Japan', 'South Korea', 'USA', 'Canada', 'Schengen', 'Australia', 'United Kingdom', 'Others'].map(country => (
-                    <option key={country} value={country}>{country}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Visa Type</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={visaProcessing.visaType}
-                  onChange={(e) => setVisaProcessing(prev => ({ ...prev, visaType: e.target.value }))}
-                >
-                  {['Tourist', 'Business', 'Student', 'Sponsorship / Family Visit'].map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Applicant Name(s)</label>
-              <textarea
-                placeholder="e.g. Juan dela Cruz, Maria dela Cruz (one name per line or separated by comma)"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[60px] dark:text-white"
-                value={visaProcessing.applicants}
-                onChange={(e) => setVisaProcessing(prev => ({ ...prev, applicants: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Requirements Submitted</label>
-              <div className="grid grid-cols-2 gap-2">
-                {Object.entries(visaProcessing.requirements).map(([key, val]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setVisaProcessing(prev => ({
-                      ...prev,
-                      requirements: { ...prev.requirements, [key]: !val }
-                    }))}
-                    className={`flex items-center gap-2 p-3 rounded-xl border text-left text-xs font-bold transition-all ${
-                      val
-                        ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400'
-                        : 'bg-white dark:bg-gray-900 border-gray-100 dark:border-gray-700 text-gray-400 hover:border-gray-205'
-                    }`}
-                  >
-                    <div className={`w-4 h-4 rounded flex items-center justify-center border ${val ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-300'}`}>
-                      {val && <LuCheck className="w-3 h-3" />}
-                    </div>
-                    <span className="capitalize">{key === 'passport' ? 'Original Passport' : key === 'photo' ? 'Photos' : key === 'bankCert' ? 'Bank Certificate' : key === 'itr' ? 'ITR' : 'Birth Certificate'}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          <CategoryFormVisaProcessing
+            value={visaProcessing}
+            onChange={(patch) => setVisaProcessing(prev => ({ ...prev, ...patch }))}
+          />
         );
-
       case 'Joiners':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Joiner Tour Custom Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Tour Destination / Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Sagada Weekend Joiners"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={joiners.tourCode}
-                  onChange={(e) => setJoiners(prev => ({ ...prev, tourCode: e.target.value }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                <input
-                  type="text"
-                  placeholder="e.g. June 19, 2026"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={joiners.travelDate}
-                  onChange={(e) => setJoiners(prev => ({ ...prev, travelDate: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pax Count</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={joiners.paxCount}
-                  onChange={(e) => {
-                    const val = e.target.value.replace(/[^0-9]/g, '');
-                    setJoiners(prev => ({ ...prev, paxCount: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Pickup Location & Time</label>
-                <input
-                  type="text"
-                  placeholder="e.g. MoA Globe, 10:00 PM"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={joiners.pickupLocation}
-                  onChange={(e) => setJoiners(prev => ({ ...prev, pickupLocation: e.target.value }))}
-                />
-              </div>
-            </div>
-          </div>
+          <CategoryFormJoiners
+            value={joiners}
+            onChange={(patch) => setJoiners(prev => ({ ...prev, ...patch }))}
+          />
         );
-
       case 'Booking':
         return (
-          <div className="space-y-4 p-5 rounded-3xl bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800/70">
-            <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1 mb-2">Booking Reservation Custom Specifications</p>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Booking Type</label>
-                <select
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={booking.bookingType}
-                  onChange={(e) => setBooking(prev => ({ ...prev, bookingType: e.target.value }))}
-                >
-                  {['Flight', 'Hotel', 'Activities / Attractions', 'Ferry', 'Bus Ticket', 'Others'].map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Reference / Confirmation Code</label>
-                <input
-                  type="text"
-                  placeholder="e.g. PNR A1B2C3"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={booking.referenceCode}
-                  onChange={(e) => setBooking(prev => ({ ...prev, referenceCode: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Passenger / Guest Name(s)</label>
-              <textarea
-                placeholder="e.g. John Doe, Jane Doe"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[60px] dark:text-white"
-                value={booking.guests}
-                onChange={(e) => setBooking(prev => ({ ...prev, guests: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Flight / Hotel / Reservation Details</label>
-              <textarea
-                placeholder="e.g. MNL-MPH PR2039 / Shangri-La Deluxe Room"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[60px] dark:text-white"
-                value={booking.details}
-                onChange={(e) => setBooking(prev => ({ ...prev, details: e.target.value }))}
-              />
-            </div>
-          </div>
+          <CategoryFormBooking
+            value={booking}
+            onChange={(patch) => setBooking(prev => ({ ...prev, ...patch }))}
+          />
         );
-
       default:
         return null;
     }
   };
 
-  const autoDesc = generateAutoDescription(customForm.category);
+  const showItineraryBuilder = ITINERARY_CATEGORIES.includes(customForm.category);
+  const showPassengerRoster = PASSENGER_CATEGORIES.includes(customForm.category);
 
   return (
     <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
@@ -1105,7 +447,7 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
                       setCustomForm(prev => ({ ...prev, category: e.target.value, otherCategory: '' }));
                     }}
                   >
-                    {['Bus Rental', 'Educational Tour', 'Tour Package', 'Visa Processing', 'Joiners', 'Booking', 'Other'].map(cat => (
+                    {CATEGORIES.map(cat => (
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
@@ -1156,16 +498,12 @@ Flight/Hotel/Itinerary Info: ${booking.details || 'Not Specified'}`;
               {/* Customized category specifications fields */}
               {renderCategoryFields()}
 
-              {/* Dynamic specifications compiled preview */}
-              {autoDesc && (
-                <div className="p-5 rounded-[2rem] bg-blue-50/30 dark:bg-blue-950/10 border border-blue-100/50 dark:border-blue-900/30 space-y-2 animate-in fade-in duration-300">
-                  <p className="text-[10px] font-black text-blue-600 dark:text-blue-450 uppercase tracking-widest pl-0.5 flex items-center gap-1.5">
-                    <LuFileText className="w-3.5 h-3.5" /> Live Specifications Preview
-                  </p>
-                  <pre className="text-[11px] font-mono text-gray-600 dark:text-gray-300 whitespace-pre-wrap leading-relaxed">
-                    {autoDesc}
-                  </pre>
-                </div>
+              {showItineraryBuilder && (
+                <ItineraryBuilder value={itineraryRows} onChange={setItineraryRows} />
+              )}
+
+              {showPassengerRoster && (
+                <PassengerRosterEditor value={passengerRows} onChange={setPassengerRows} />
               )}
 
               <div className="space-y-2">

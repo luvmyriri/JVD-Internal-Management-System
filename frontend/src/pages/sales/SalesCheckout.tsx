@@ -18,7 +18,9 @@ import {
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
+import { contractsApi, type CustomTransactionDetailInput, type ItineraryDayInput, type PassengerInput } from '../../api/contracts';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import ContractReviewPanel from './components/ContractReviewPanel';
 
 export interface CartItem {
   cartId?: string;
@@ -42,7 +44,16 @@ export interface CartItem {
   destination?: string;
   arrivalDate?: string;
   departureDate?: string;
+  // Custom Transactions contract-gate fields (Phase 4) — set only by CustomTransactions.tsx.
+  customCategoryDetail?: CustomTransactionDetailInput;
+  itinerary?: ItineraryDayInput[];
+  passengers?: PassengerInput[];
 }
+
+// Mirrors the seeded SystemSetting 'sales.contract_required_threshold' default. A soft,
+// client-side hint only — ContractController::draft is the actual decision point; this just
+// decides whether the frontend routes checkout through the contract flow at all.
+const CONTRACT_REQUIRED_THRESHOLD = 20000;
 
 interface SalesCheckoutProps {
   cart: CartItem[];
@@ -72,6 +83,10 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Contract-gated checkout (Custom Transactions only — see evaluateContractGate below).
+  const [draftContract, setDraftContract] = useState<any>(null);
+  const [showContractReview, setShowContractReview] = useState(false);
 
   // Auto-search customers as user types
   useEffect(() => {
@@ -161,6 +176,28 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
   const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
 
+  // Soft client-side mirror of ContractController::draft's server-authoritative gate rule:
+  // a contract is needed when the cart has a Custom Transaction item AND (downpayment OR
+  // total exceeds the threshold). The server may still override this (requires_contract: false).
+  const evaluateContractGate = () => {
+    const hasCustomItem = cart.some(item => !!item.customCategoryDetail);
+    if (!hasCustomItem) return false;
+    return paymentType === 'downpayment' || total > CONTRACT_REQUIRED_THRESHOLD;
+  };
+
+  const resetCheckoutForm = () => {
+    clearCart();
+    setCustomerName('');
+    setCustomerAddress('');
+    setCustomerEmail('');
+    setCustomerContact('');
+    setAmountReceived('');
+    setPaymentMethod('Cash');
+    setPaymentType('full');
+    setSelectedCustomerId(null);
+    setSearchResults([]);
+  };
+
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (!isContactValid || !isEmailValid) {
@@ -170,6 +207,45 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
     setIsProcessing(true);
     try {
+      if (evaluateContractGate()) {
+        const customCategoryItem = cart.find(item => !!item.customCategoryDetail);
+        const response = await contractsApi.draft({
+          customer_id: selectedCustomerId || undefined,
+          customer_name: customerName || undefined,
+          customer_address: customerAddress || undefined,
+          customer_email: customerEmail || undefined,
+          customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
+          payment_method: paymentMethod,
+          payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
+          amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
+          travel_date: cart.find(item => item.travelDate)?.travelDate,
+          pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation,
+          tour_code: cart.find(item => item.tourCode)?.tourCode,
+          pax_count: cart.find(item => item.paxCount)?.paxCount,
+          bus_id: cart.find(item => item.busId)?.busId || null,
+          driver_id: cart.find(item => item.driverId)?.driverId || null,
+          seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
+          items: cart.map(item => ({
+            service_id: item.service.id,
+            quantity: item.quantity,
+            unit_price: item.customPrice ?? item.service.price,
+            adults: item.adults,
+            children: item.childrenCount,
+            service_date: item.serviceDate,
+            destination: item.destination
+          })),
+          custom_transaction_detail: customCategoryItem!.customCategoryDetail!,
+          itinerary: customCategoryItem!.itinerary,
+          passengers: customCategoryItem!.passengers,
+        });
+
+        setDraftContract(response.data.data);
+        setShowContractReview(true);
+        resetCheckoutForm();
+        setIsProcessing(false);
+        return;
+      }
+
       const response = await billingApi.createInvoice({
         customer_id: selectedCustomerId || undefined,
         customer_name: customerName || undefined,
@@ -209,16 +285,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         window.open(response.data.data.payment_url, '_blank');
       }
 
-      clearCart();
-      setCustomerName('');
-      setCustomerAddress('');
-      setCustomerEmail('');
-      setCustomerContact('');
-      setAmountReceived('');
-      setPaymentMethod('Cash');
-      setPaymentType('full');
-      setSelectedCustomerId(null);
-      setSearchResults([]);
+      resetCheckoutForm();
     } catch (err) {
       alert('Checkout failed. Please try again.');
       console.error(err);
@@ -848,6 +915,13 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             </div>
           </div>
         </div>
+      )}
+
+      {showContractReview && draftContract && (
+        <ContractReviewPanel
+          contract={draftContract}
+          onClose={() => { setShowContractReview(false); setDraftContract(null); }}
+        />
       )}
 
       {/* Print Styles */}

@@ -88,7 +88,7 @@ class JobOrderService
                 // Maintenance Track: Auto-generate Work Order from Job Order
                 if (!$jo->work_order_id) {
                     $year = now()->year;
-                    $latestWo = \App\Models\WorkOrder::where('wo_number', 'like', "WO-{$year}-%")->orderByDesc('id')->first();
+                    $latestWo = \App\Models\WorkOrder::withTrashed()->where('wo_number', 'like', "WO-{$year}-%")->orderByDesc('id')->first();
                     $sequence = 1;
                     if ($latestWo) {
                         $parts = explode('-', $latestWo->wo_number);
@@ -178,7 +178,8 @@ class JobOrderService
     {
         $year = now()->year;
         // H-03: lock the latest row so concurrent create() transactions cannot read the same sequence.
-        $latest = JobOrder::where('jo_number', 'like', "JO-{$year}-%")
+        $latest = JobOrder::withTrashed()
+            ->where('jo_number', 'like', "JO-{$year}-%")
             ->orderByDesc('id')
             ->lockForUpdate()
             ->first();

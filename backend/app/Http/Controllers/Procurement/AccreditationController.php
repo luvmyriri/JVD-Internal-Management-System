@@ -230,71 +230,28 @@ class AccreditationController extends Controller
     public function generateKycLink(Request $request, Accreditation $accreditation)
     {
         // Business Requirement: "System generates a Gmail-accessible submission link/form for the supplier/partner/client to upload their KYC documents."
+        // Legacy column kept in sync for any code still reading it directly, but the unified
+        // CustomerPortalToken is now the source of truth for new links going forward.
         $token = Str::random(32);
-        
-        $baseUrl = null;
-
-        // 1. Try to query the local ngrok API to get the public HTTPS tunnel (for external supplier emails)
-        try {
-            $ctx = stream_context_create(['http' => ['timeout' => 1.0]]);
-            $tunnelsJson = @file_get_contents('http://127.0.0.1:4040/api/tunnels', false, $ctx);
-            if ($tunnelsJson) {
-                $tunnelsData = json_decode($tunnelsJson, true);
-                if (isset($tunnelsData['tunnels']) && is_array($tunnelsData['tunnels'])) {
-                    foreach ($tunnelsData['tunnels'] as $tunnel) {
-                        if (isset($tunnel['public_url']) && str_starts_with($tunnel['public_url'], 'https://')) {
-                            $baseUrl = rtrim($tunnel['public_url'], '/');
-                            break;
-                        }
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            // Unreachable or offline - fall back quietly
-        }
-        
-        // 2. Dynamically detect base URL from request referer or origin to handle ngrok headers
-        if (!$baseUrl) {
-            $referer = $request->headers->get('referer');
-            if ($referer) {
-                $parsed = parse_url($referer);
-                if (isset($parsed['scheme']) && isset($parsed['host'])) {
-                    $baseUrl = $parsed['scheme'] . '://' . $parsed['host'] . (isset($parsed['port']) ? ':' . $parsed['port'] : '');
-                }
-            }
-        }
-        
-        if (!$baseUrl) {
-            $origin = $request->headers->get('origin');
-            if ($origin) {
-                $baseUrl = rtrim($origin, '/');
-            }
-        }
-        
-        if (!$baseUrl) {
-            // Fallback to configured frontend url matching current request host or default
-            $frontendUrls = explode(',', env('FRONTEND_URL', 'http://localhost:3000'));
-            $baseUrl = rtrim($frontendUrls[0], '/');
-            
-            $requestHost = $request->getHost();
-            foreach ($frontendUrls as $url) {
-                if (str_contains($url, $requestHost)) {
-                    $baseUrl = rtrim($url, '/');
-                    break;
-                }
-            }
-        }
-        
         $accreditation->update(['kyc_token' => $token]);
-        $link = $baseUrl . '/kyc-submission?token=' . $token . '&ref=' . $accreditation->id;
 
-        // Send the actual email
-        Mail::to($accreditation->contact_email)->send(new KycRequestMail($link, $accreditation));
+        $portalToken = \App\Models\CustomerPortalToken::generateFor('Accreditation', $accreditation->id, 'document_upload');
+        $link = \App\Http\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
+
+        // C-10/Phase 3: never let an SMTP failure crash this request — log and report instead.
+        $mailError = null;
+        try {
+            Mail::to($accreditation->contact_email)->send(new KycRequestMail($link, $accreditation));
+        } catch (\Throwable $e) {
+            $mailError = $e->getMessage();
+            \Illuminate\Support\Facades\Log::error('Failed to send KYC request email to ' . $accreditation->contact_email . ': ' . $mailError);
+        }
 
         return response()->json([
             'message' => 'KYC request link generated successfully.',
             'link' => $link,
             'email_sent_to' => $accreditation->contact_email,
+            'mail_error' => $mailError,
         ]);
     }
 

@@ -206,41 +206,51 @@ class JobOrderController extends Controller
             'items' => ['required', 'array', 'min:1'],
             'items.*.item_name' => ['required', 'string', 'max:255'],
             'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
         ]);
 
-        $year = now()->year;
-        $latest = \App\Models\PurchaseOrder::where('po_number', 'like', "PO-{$year}-%")->orderByDesc('id')->first();
-        $sequence = 1;
-        if ($latest) {
-            $parts = explode('-', $latest->po_number);
-            $sequence = (int) end($parts) + 1;
-        }
-        $poNumber = sprintf('PO-%d-%04d', $year, $sequence);
+        $po = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $jobOrder) {
+            $year = now()->year;
+            // Lock the latest row so concurrent requests serialize and cannot read the same
+            // sequence number (mirrors PurchaseOrderService::generatePONumber()).
+            $latest = \App\Models\PurchaseOrder::withTrashed()
+                ->where('po_number', 'like', "PO-{$year}-%")
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+            $sequence = 1;
+            if ($latest) {
+                $parts = explode('-', $latest->po_number);
+                $sequence = (int) end($parts) + 1;
+            }
+            $poNumber = sprintf('PO-%d-%04d', $year, $sequence);
 
-        $total = 0;
-        foreach ($validated['items'] as $item) {
-            $total += $item['quantity'] * $item['unit_price'];
-        }
+            $total = 0;
+            foreach ($validated['items'] as $item) {
+                $total += $item['quantity'] * $item['unit_price'];
+            }
 
-        $po = \App\Models\PurchaseOrder::create([
-            'po_number' => $poNumber,
-            'supplier_id' => $validated['supplier_id'],
-            'created_by' => $request->user()->id,
-            'status' => 'draft',
-            'total_amount' => $total,
-        ]);
-
-        foreach ($validated['items'] as $item) {
-            $po->lineItems()->create([
-                'item_name' => $item['item_name'],
-                'quantity' => $item['quantity'],
-                'unit_price' => $item['unit_price'],
-                'total_price' => $item['quantity'] * $item['unit_price'],
+            $po = \App\Models\PurchaseOrder::create([
+                'po_number' => $poNumber,
+                'supplier_id' => $validated['supplier_id'],
+                'created_by' => $request->user()->id,
+                'status' => 'draft',
+                'total_amount' => $total,
             ]);
-        }
 
-        $jobOrder->update(['purchase_order_id' => $po->id]);
+            foreach ($validated['items'] as $item) {
+                $po->lineItems()->create([
+                    'item_name' => $item['item_name'],
+                    'quantity' => $item['quantity'],
+                    'unit_price' => $item['unit_price'],
+                    'total_price' => $item['quantity'] * $item['unit_price'],
+                ]);
+            }
+
+            $jobOrder->update(['purchase_order_id' => $po->id]);
+
+            return $po;
+        });
 
         return response()->json([
             'success' => true,
