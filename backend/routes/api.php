@@ -190,9 +190,9 @@ Route::get('/public/conflict-check', function (\Illuminate\Http\Request $request
 });
 
 // ──────────────────────────────────────────
-// AUTHENTICATED routes (Sanctum + password-change enforcement)
+// AUTHENTICATED routes (Sanctum + password-change enforcement + 2FA verification)
 // ──────────────────────────────────────────
-Route::middleware(['auth:sanctum', 'enforce.password.change'])->group(function () {
+Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->group(function () {
 
     // Auth session management
     // NOTE: change-password and logout bypass EnforcePasswordChange middleware by route name

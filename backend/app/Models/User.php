@@ -31,6 +31,7 @@ class User extends Authenticatable
         'last_login',
         'created_by',
         'must_change_password',
+        'two_factor_verified_at',
     ];
 
     /**
@@ -50,6 +51,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'last_login' => 'datetime',
+            'two_factor_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',

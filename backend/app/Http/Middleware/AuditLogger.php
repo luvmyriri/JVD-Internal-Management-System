@@ -29,7 +29,10 @@ class AuditLogger
                     'entity_type' => $this->extractEntityType($request->path()),
                     'entity_id' => $this->extractEntityId($request->path()),
                     'old_values' => null, // Set in individual controllers/services
-                    'new_values' => json_encode($request->except(['password', '_token'])),
+                    'new_values' => json_encode($request->except([
+                        'password', 'password_confirmation', 'new_password', 
+                        'new_password_confirmation', 'current_password', '_token'
+                    ])),
                     'ip_address' => $request->ip(),
                     'created_at' => now(),
                 ]);

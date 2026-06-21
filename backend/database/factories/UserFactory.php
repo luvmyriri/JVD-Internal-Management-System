@@ -28,6 +28,7 @@ class UserFactory extends Factory
             'is_active'            => true,
             'must_change_password' => false,
             'totp_secret'          => null,
+            'two_factor_verified_at' => now(),
             'remember_token'       => Str::random(10),
         ];
     }

@@ -46,6 +46,14 @@ class ProfileController extends Controller
             'avatar' => 'required|string', // Expecting base64 string from cropper
         ]);
 
+        $approxSize = (strlen($request->avatar) * 3) / 4;
+        if ($approxSize > 5 * 1024 * 1024) {
+            return response()->json([
+                'success' => false,
+                'message' => 'File size exceeds 5MB limit.',
+            ], 422);
+        }
+
         try {
             $base64Image = $request->avatar;
             
@@ -96,33 +104,5 @@ class ProfileController extends Controller
         }
     }
 
-    /**
-     * Update user password.
-     */
-    public function updatePassword(Request $request): JsonResponse
-    {
-        $user = auth()->user();
 
-        $request->validate([
-            'current_password' => 'required|current_password',
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8)
-                    ->letters()
-                    ->mixedCase()
-                    ->numbers()
-                    ->symbols()
-            ],
-        ]);
-
-        $user->update([
-            'password' => Hash::make($request->password),
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password updated successfully.',
-        ]);
-    }
 }

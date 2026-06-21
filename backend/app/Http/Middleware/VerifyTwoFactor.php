@@ -14,6 +14,11 @@ class VerifyTwoFactor
      */
     public function handle(Request $request, Closure $next): Response
     {
+        // If 2FA is globally disabled, bypass the check
+        if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
+            return $next($request);
+        }
+
         $user = $request->user();
 
         if ($user && !$user->two_factor_verified_at) {

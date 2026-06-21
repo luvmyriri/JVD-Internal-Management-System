@@ -65,7 +65,10 @@ class AuthController extends Controller
         // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
         if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
             $token = $user->createToken('auth-token')->plainTextToken;
-            $user->update(['last_login' => now()]);
+            $user->update([
+                'last_login' => now(),
+                'two_factor_verified_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -157,7 +160,10 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
         $token = $user->createToken('auth-token')->plainTextToken;
-        $user->update(['last_login' => now()]);
+        $user->update([
+            'last_login' => now(),
+            'two_factor_verified_at' => now(),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -195,7 +201,8 @@ class AuthController extends Controller
         // Save the secret permanently now that we know it works
         $user->update([
             'totp_secret' => $secret,
-            'last_login' => now()
+            'last_login' => now(),
+            'two_factor_verified_at' => now(),
         ]);
 
         $token = $user->createToken('auth-token')->plainTextToken;

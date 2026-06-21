@@ -270,6 +270,7 @@ class EmployeeSeeder extends Seeder
         ];
 
         foreach ($employees as $employee) {
+            $employee['two_factor_verified_at'] = now();
             \App\Models\User::updateOrCreate(
                 ['email' => $employee['email']],
                 $employee

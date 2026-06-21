@@ -92,8 +92,15 @@ class UserController extends Controller
         $sendInvitation = $request->boolean('send_invitation');
         $tempPassword = null;
 
+        $employeeId = $request->employee_id;
+        if (!$employeeId) {
+            $latest = User::withTrashed()->orderBy('id', 'desc')->first();
+            $nextId = $latest ? ($latest->id + 1001) : 1001;
+            $employeeId = 'JVD-EMP-' . $nextId;
+        }
+
         $userData = [
-            'employee_id' => $request->employee_id,
+            'employee_id' => $employeeId,
             'email' => $request->email,
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,

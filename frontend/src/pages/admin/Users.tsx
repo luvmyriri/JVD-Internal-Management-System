@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { 
   LuSearch, 
@@ -168,8 +168,18 @@ const DEPARTMENTS = [
 
 
 export default function Users() {
+  const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+
+  // Debounce search input to avoid redundant API queries
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1); // Reset page on search change
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -266,8 +276,7 @@ export default function Users() {
       reset({
         role: 'reservation_officer',
         department: 'Operations',
-        send_invitation: true,
-        employee_id: `JVD-EMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
+        send_invitation: true
       });
       setTags([]);
     }
@@ -301,6 +310,18 @@ export default function Users() {
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
+    // Initialize customPermissions state safely from the user being viewed to avoid leakage
+    setCustomPermissions((() => {
+      const raw = user.custom_permissions;
+      if (!raw) return {};
+      if (typeof raw !== 'string') return raw;
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        console.error('Invalid custom_permissions JSON for user', user.id, e);
+        return {};
+      }
+    })());
     setIsViewModalOpen(true);
   };
 
@@ -523,7 +544,6 @@ export default function Users() {
           email,
           role,
           department: matchedDept,
-          employee_id: `JVD-EMP-${Date.now().toString(36).toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`
         });
       });
 
@@ -676,8 +696,8 @@ export default function Users() {
               type="text"
               placeholder="Search by name, ID or email..."
               className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium text-gray-700 dark:text-gray-200"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
           <select 
@@ -772,7 +792,7 @@ export default function Users() {
                           })}>
                             {getRoleIcon(user.role)}
                           </div>
-                          <span className="text-sm font-bold text-gray-700 dark:text-gray-200 capitalize">{user.role.replace('_', ' ')}</span>
+                          <span className="text-sm font-bold text-gray-700 dark:text-gray-200 capitalize">{user.role.replace(/_/g, ' ')}</span>
                         </div>
                       </td>
                       <td className="px-8 py-6">
@@ -1148,7 +1168,7 @@ export default function Users() {
                          });
                      };
 
-                     const moduleName = configData?.meta?.modules?.[module] || module.replace('_', ' ');
+                     const moduleName = configData?.meta?.modules?.[module] || module.replace(/_/g, ' ');
 
                      return (
                          <div key={module} className={cn(
@@ -1309,7 +1329,7 @@ export default function Users() {
                 <div className="space-y-4">
                   <div className="flex justify-between items-center p-3 bg-emerald-50/50 dark:bg-emerald-500/10 rounded-2xl border border-emerald-100 dark:border-emerald-500/20">
                     <span className="text-xs font-bold text-emerald-600 dark:text-emerald-500">Access Tier</span>
-                    <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 capitalize">{selectedUser.role.replace('_', ' ')}</span>
+                    <span className="text-sm font-black text-emerald-700 dark:text-emerald-400 capitalize">{selectedUser.role.replace(/_/g, ' ')}</span>
                   </div>
                   <div className="flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-800/50 rounded-2xl">
                     <span className="text-xs font-bold text-gray-500 dark:text-gray-400">System Origin</span>
@@ -1367,28 +1387,13 @@ export default function Users() {
                                return (
                                  <div key={module} className="p-3 bg-gray-50/50 dark:bg-gray-800/30 rounded-xl border border-gray-100 dark:border-gray-800 flex flex-col gap-2">
                                      <div className="flex items-center gap-2">
-                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-300 capitalize">{module.replace('_', ' ')}</span>
+                                         <span className="text-xs font-bold text-gray-700 dark:text-gray-300 capitalize">{module.replace(/_/g, ' ')}</span>
                                          <span className="ml-auto text-[9px] font-black text-gray-400 uppercase tracking-widest">Base: {baseAccessLevel}</span>
                                      </div>
                                      <select
+                                         disabled
                                          value={accessLevel}
-                                         onChange={(e) => {
-                                             const val = e.target.value;
-                                             if (val === 'default') {
-                                                 const newPerms = { ...customPermissions };
-                                                 delete newPerms[module];
-                                                 setCustomPermissions(newPerms);
-                                             } else {
-                                                 const newModulePerms = {
-                                                     can_view: val !== 'none',
-                                                     can_create: val === 'full',
-                                                     can_edit: val === 'full',
-                                                     can_delete: val === 'full',
-                                                 };
-                                                 setCustomPermissions({ ...customPermissions, [module]: newModulePerms });
-                                             }
-                                         }}
-                                         className="w-full px-2 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 uppercase tracking-wider"
+                                         className="w-full px-2 py-1.5 rounded-lg border border-gray-100 dark:border-gray-800 text-[10px] font-bold bg-gray-50/50 dark:bg-gray-800/30 text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-not-allowed"
                                      >
                                          <option value="default">Use Role Default</option>
                                          <option value="none">No Access</option>
@@ -1416,7 +1421,7 @@ export default function Users() {
                                    
                                    return (
                                      <div key={mod} className="px-2 py-1 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-[10px] font-bold text-gray-700 dark:text-gray-300 capitalize flex items-center gap-1">
-                                       {mod.replace('_', ' ')} 
+                                       {mod.replace(/_/g, ' ')} 
                                        <span className={cn(
                                          "text-[9px] px-1 rounded-sm",
                                          level === 'Full' ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400" :
@@ -1494,7 +1499,7 @@ export default function Users() {
                     <tr key={i} className="hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800/50 transition">
                       <td className="px-6 py-4">
                         <p className="text-sm font-black text-gray-900 dark:text-white">{u.first_name} {u.last_name}</p>
-                        <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{u.employee_id}</p>
+                        <p className="text-[10px] font-mono text-gray-400 uppercase tracking-tighter">{u.employee_id || '[Generated sequentially by Backend]'}</p>
                       </td>
                       <td className="px-6 py-4">
                         <p className="text-sm font-bold text-gray-600 dark:text-gray-300">{u.email}</p>

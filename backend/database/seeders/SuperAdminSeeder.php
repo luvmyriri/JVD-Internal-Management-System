@@ -25,6 +25,7 @@ class SuperAdminSeeder extends Seeder
                 'avatar_url' => 'https://ui-avatars.com/api/?name=Val+Lamsen&background=0D8ABC&color=fff&size=512',
                 'is_active' => true,
                 'must_change_password' => false,
+                'two_factor_verified_at' => now(),
             ],
             [
                 'email' => 'vjlamsenlamsen28@gmail.com',
@@ -37,6 +38,7 @@ class SuperAdminSeeder extends Seeder
                 'avatar_url' => 'https://ui-avatars.com/api/?name=VJ+Lamsen&background=ec4899&color=fff&size=512',
                 'is_active' => true,
                 'must_change_password' => false,
+                'two_factor_verified_at' => now(),
             ],
         ];
 

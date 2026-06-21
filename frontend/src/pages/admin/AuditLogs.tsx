@@ -192,7 +192,7 @@ export default function AuditLogs() {
                     </td>
                     <td className="px-8 py-6">
                       <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-700">
-                        {log.module.replace('-', ' ')}
+                        {log.module.replace(/-/g, ' ')}
                       </span>
                     </td>
                     <td className="px-8 py-6 text-right">
@@ -247,7 +247,7 @@ export default function AuditLogs() {
                     variant={getActionVariant(selectedLog.action)}
                   />
                   <div className="text-xl font-black text-gray-900 dark:text-white capitalize tracking-tight">
-                    {selectedLog.module.replace('-', ' ')}
+                    {selectedLog.module.replace(/-/g, ' ')}
                   </div>
                 </div>
               </div>
