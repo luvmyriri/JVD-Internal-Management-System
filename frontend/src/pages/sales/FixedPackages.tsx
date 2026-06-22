@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
 import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
   LuSearch,
