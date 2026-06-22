@@ -10,7 +10,6 @@ import { fleetApi } from '../../api/fleet';
 import { dashboardApi } from '../../api/dashboards';
 import {
   LuUsers,
-  LuBanknote,
   LuGlobe,
   LuArrowUpRight,
   LuFileText,
@@ -107,13 +106,7 @@ const detailedEmployeeData = [
   { 'Employee ID': 'EMP-005', Name: 'Eva Davis', Department: 'Travel', Position: 'Agent', Status: 'Active', 'Hire Date': '2026-02-15' },
 ];
 
-const detailedRevenueData = [
-  { Month: 'January', 'Gross Revenue': 'PHP 1,050,000', Expenses: 'PHP 600,000', 'Net Profit': 'PHP 450,000', Status: 'Audited' },
-  { Month: 'February', 'Gross Revenue': 'PHP 1,280,000', Expenses: 'PHP 700,000', 'Net Profit': 'PHP 580,000', Status: 'Audited' },
-  { Month: 'March', 'Gross Revenue': 'PHP 1,520,000', Expenses: 'PHP 800,000', 'Net Profit': 'PHP 720,000', Status: 'Audited' },
-  { Month: 'April', 'Gross Revenue': 'PHP 1,850,000', Expenses: 'PHP 900,000', 'Net Profit': 'PHP 950,000', Status: 'Audited' },
-  { Month: 'May', 'Gross Revenue': 'PHP 2,210,000', Expenses: 'PHP 1,000,000', 'Net Profit': 'PHP 1,210,000', Status: 'Estimated' },
-];
+
 
 
 
@@ -687,13 +680,13 @@ export default function HRDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col gap-4 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
 
       {/* ── Top KPI Row ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
 
         {/* KPI 1: Total Employees */}
-        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default min-h-[72px]">
           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
             <LuUsers className="w-4.5 h-4.5 text-white" />
           </div>
@@ -713,7 +706,7 @@ export default function HRDashboard() {
         </div>
 
         {/* KPI 2: Inactive Staff */}
-        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default min-h-[72px]">
           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
             <LuUsers className="w-4.5 h-4.5 text-white" />
           </div>
@@ -729,7 +722,7 @@ export default function HRDashboard() {
         </div>
 
         {/* KPI 3: Open Applications */}
-        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-violet-500 to-purple-700 text-white shadow-lg shadow-violet-300/30 dark:shadow-violet-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default min-h-[72px]">
           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
             <LuGlobe className="w-4.5 h-4.5 text-white" />
           </div>
@@ -749,9 +742,9 @@ export default function HRDashboard() {
         </div>
 
         {/* KPI 4: Interns Active */}
-        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default h-[72px]">
+        <div className="relative rounded-2xl p-3.5 bg-gradient-to-br from-emerald-400 to-emerald-600 text-white shadow-lg shadow-emerald-300/30 dark:shadow-emerald-900/30 flex items-center gap-3.5 group hover:scale-[1.01] transition-all cursor-default min-h-[72px]">
           <div className="w-9 h-9 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors shrink-0">
-            <LuBanknote className="w-4.5 h-4.5 text-white" />
+            <LuUsers className="w-4.5 h-4.5 text-white" />
           </div>
           <div className="flex-1 min-w-0 flex flex-col justify-center">
             <p className="text-[9px] font-black uppercase tracking-widest opacity-70 truncate">Interns Active</p>
@@ -759,27 +752,22 @@ export default function HRDashboard() {
               <span className="text-xl font-black leading-none">{activeInternsCount}</span>
             </div>
           </div>
-          <div className="shrink-0 flex items-center gap-2">
-            <select className="bg-white/20 text-white text-[8px] font-black border-none rounded-lg px-1.5 py-0.5 outline-none cursor-pointer hover:bg-white/30 transition-colors uppercase tracking-wider">
-              <option value="monthly" className="text-gray-800">Monthly</option>
-              <option value="weekly" className="text-gray-800">Weekly</option>
-              <option value="yearly" className="text-gray-800">Yearly</option>
-            </select>
-            <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
+          <div className="shrink-0 flex items-center">
+            <DownloadActions variant="light" title="Active Interns" data={internships} />
           </div>
         </div>
       </div>
 
       {/* ── 3-Column Analytics Grid ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 relative z-10">
 
         {/* Column 1: Fleet Calendar */}
-        <div className="h-full min-h-[500px] min-w-0">
+        <div className="min-h-[500px] min-w-0">
           <CalendarFleetAvailability tickets={tickets} buses={buses} />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
-        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
+        <div className="flex flex-col gap-4 min-w-0">
 
           {/* Employee Distribution */}
           <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
@@ -878,7 +866,7 @@ export default function HRDashboard() {
         </div>
 
         {/* Column 3: Performers + Charts */}
-        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
+        <div className="flex flex-col gap-4 min-w-0">
 
           {/* Top Performers */}
           <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">

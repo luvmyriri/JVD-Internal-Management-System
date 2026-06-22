@@ -271,6 +271,36 @@ class EmployeeSeeder extends Seeder
 
         foreach ($employees as $employee) {
             $employee['two_factor_verified_at'] = now();
+            
+            $role = $employee['role'];
+            $tags = [];
+            
+            if ($role === 'executive_vice_president') {
+                $tags = [
+                    'process:approve_commission',
+                    'process:approve_cash_budget',
+                    'process:disburse_cash_budget',
+                    'process:settle_liquidation'
+                ];
+            } elseif ($role === 'operations_manager') {
+                $tags = [
+                    'process:approve_commission',
+                    'process:approve_cash_budget',
+                    'process:disburse_cash_budget'
+                ];
+            } elseif ($role === 'accounting_executive') {
+                $tags = [
+                    'process:disburse_cash_budget',
+                    'process:settle_liquidation'
+                ];
+            } elseif (in_array($role, ['logistics_in_charge', 'dispatcher'])) {
+                $tags = [
+                    'process:disburse_cash_budget'
+                ];
+            }
+            
+            $employee['tags'] = $tags;
+
             \App\Models\User::updateOrCreate(
                 ['email' => $employee['email']],
                 $employee

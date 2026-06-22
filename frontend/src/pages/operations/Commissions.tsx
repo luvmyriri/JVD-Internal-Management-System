@@ -142,12 +142,23 @@ interface NewCommissionItem {
   quantity: number;
   amount: number;
 }
+export interface CreateCommissionFormProps {
+  inline?: boolean;
+  onClose?: () => void;
+}
 
-function CreateCommissionModal({ onClose }: { onClose: () => void }) {
+export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormProps) {
   const { user } = useAuth();
   const qc = useQueryClient();
 
-  const isAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+  const isAdmin = !!(
+    user?.role === 'super_admin' ||
+    user?.role === 'executive_vice_president' ||
+    user?.role === 'operations_manager' ||
+    user?.role === 'accounting_executive' ||
+    user?.tags?.includes('access:general') ||
+    user?.tags?.includes('access:commissions:general')
+  );
 
   // Fetch users for selection if admin
   const { data: usersRes } = useQuery({
@@ -178,7 +189,24 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
     onSuccess: () => {
       toast.success('Commission request submitted successfully');
       qc.invalidateQueries({ queryKey: ['commissions'] });
-      onClose();
+      if (inline) {
+        // Reset states for inline form
+        setForm({
+          commissioner_name: isAdmin ? '' : `${user?.first_name || ''} ${user?.last_name || ''}`,
+          employee_id: isAdmin ? '' : String(user?.id || ''),
+          serial_no: '',
+          date: new Date().toISOString().split('T')[0],
+        });
+        setItems([]);
+        setNewItem({
+          travel_date: new Date().toISOString().split('T')[0],
+          destination: '',
+          quantity: '1',
+          amount: '0',
+        });
+      } else {
+        onClose?.();
+      }
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to create commission');
@@ -240,207 +268,224 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
     mutation.mutate(payload);
   };
 
-  return (
-    <Modal isOpen={true} onClose={onClose} title="Request Commission" size="xl">
-      <form onSubmit={handleSubmit} className="space-y-8 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
-        {/* Section 1: Commissioner Details */}
-        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuSignature size={14} /> Commissioner Information</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
-          </summary>
-          <div className="p-4 pt-0 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {isAdmin ? (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Employee</label>
-                  <select
-                    required
-                    value={form.employee_id}
-                    onChange={e => {
-                      const selectedUser = users.find((u: any) => String(u.id) === e.target.value);
-                      setForm(p => ({
-                        ...p,
-                        employee_id: e.target.value,
-                        commissioner_name: selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : ''
-                      }));
-                    }}
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">-- Select Employee --</option>
-                    {users.map((u: any) => (
-                      <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role.replace('_', ' ')})</option>
-                    ))}
-                  </select>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
-                  <input
-                    type="text"
-                    readOnly
-                    value={form.commissioner_name}
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-750 text-gray-450 dark:text-gray-400 rounded-2xl text-sm font-bold cursor-not-allowed focus:outline-none"
-                  />
-                </div>
-              )}
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-8 p-2">
+      {/* Section 1: Commissioner Details */}
+      <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
+        <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+          <span className="flex items-center gap-2"><LuSignature size={14} /> Commissioner Information</span>
+          <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+        </summary>
+        <div className="p-4 pt-0 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {isAdmin ? (
               <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Employee</label>
+                <select
+                  required
+                  value={form.employee_id}
+                  onChange={e => {
+                    const selectedUser = users.find((u: any) => String(u.id) === e.target.value);
+                    setForm(p => ({
+                      ...p,
+                      employee_id: e.target.value,
+                      commissioner_name: selectedUser ? `${selectedUser.first_name} ${selectedUser.last_name}` : ''
+                    }));
+                  }}
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">-- Select Employee --</option>
+                  {users.map((u: any) => (
+                    <option key={u.id} value={u.id}>{u.first_name} {u.last_name} ({u.role.replace('_', ' ')})</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commissioner Name</label>
                 <input
                   type="text"
                   readOnly
-                  value={form.serial_no}
-                  className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 cursor-not-allowed focus:outline-none"
-                  placeholder="Auto-generated"
+                  value={form.commissioner_name}
+                  className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-200 dark:border-gray-750 text-gray-450 dark:text-gray-400 rounded-2xl text-sm font-bold cursor-not-allowed focus:outline-none"
                 />
               </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commission Date</label>
-                <input
-                  type="date"
-                  required
-                  value={form.date}
-                  onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            )}
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Serial Number</label>
+              <input
+                type="text"
+                readOnly
+                value={form.serial_no}
+                className="w-full px-4 py-3 bg-gray-55 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-bold text-gray-500 dark:text-gray-400 cursor-not-allowed focus:outline-none"
+                placeholder="Auto-generated"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Commission Date</label>
+              <input
+                type="date"
+                required
+                value={form.date}
+                onChange={e => setForm(p => ({ ...p, date: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
           </div>
-        </details>
-        {/* Section 2: Items Dynamic Form */}
-        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
-          <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
-            <span className="flex items-center gap-2"><LuNavigation size={14} /> Add Travel Items</span>
-            <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
-          </summary>
-          
-          <div className="p-4 pt-0 space-y-4">
-            <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
-                <input
-                  type="date"
-                  value={newItem.travel_date}
-                  onChange={e => setNewItem((p: any) => ({ ...p, travel_date: e.target.value }))}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+        </div>
+      </details>
+      {/* Section 2: Travel Items Details */}
+      <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
+        <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
+          <span className="flex items-center gap-2"><LuNavigation size={14} /> Add Travel Items</span>
+          <LuChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-gray-400" />
+        </summary>
+        
+        <div className="p-4 pt-0 space-y-4">
+          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+              <input
+                type="date"
+                value={newItem.travel_date}
+                onChange={e => setNewItem((p: any) => ({ ...p, travel_date: e.target.value }))}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+              <input
+                type="text"
+                value={newItem.destination}
+                onChange={e => setNewItem((p: any) => ({ ...p, destination: e.target.value }))}
+                placeholder="e.g. San Fernando, Pampanga"
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={newItem.quantity}
+                onChange={e => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  setNewItem((p: any) => ({ ...p, quantity: val }));
+                }}
+                onKeyDown={(e) => {
+                  if (e.ctrlKey || e.metaKey) return;
+                  if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                  }
+                }}
+                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="space-y-2 flex gap-2 items-center">
+              <div className="flex-1 space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
                 <input
                   type="text"
-                  value={newItem.destination}
-                  onChange={e => setNewItem((p: any) => ({ ...p, destination: e.target.value }))}
-                  placeholder="e.g. San Fernando, Pampanga"
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={newItem.quantity}
+                  inputMode="decimal"
+                  value={newItem.amount}
                   onChange={e => {
-                    const val = e.target.value.replace(/\D/g, '');
-                    setNewItem((p: any) => ({ ...p, quantity: val }));
+                    const clean = parseMoneyInput(e.target.value);
+                    if ((clean.split('.').length - 1) > 1) return;
+                    const formatted = formatMoneyInput(e.target.value);
+                    setNewItem((p: any) => ({ ...p, amount: formatted }));
                   }}
                   onKeyDown={(e) => {
                     if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                       e.preventDefault();
                     }
                   }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="space-y-2 flex gap-2 items-center">
-                <div className="flex-1 space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Amount (₱)</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    value={newItem.amount}
-                    onChange={e => {
-                      const clean = parseMoneyInput(e.target.value);
-                      if ((clean.split('.').length - 1) > 1) return;
-                      const formatted = formatMoneyInput(e.target.value);
-                      setNewItem((p: any) => ({ ...p, amount: formatted }));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.ctrlKey || e.metaKey) return;
-                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={handleAddItem}
-                  className="p-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer mt-7"
-                >
-                  <LuPlus size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Current Items List Table */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
-              <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-                <table className="w-full text-sm text-left">
-                  <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
-                    <tr>
-                      <th className="px-6 py-4">Travel Date</th>
-                      <th className="px-6 py-4">Destination</th>
-                      <th className="px-6 py-4 text-right">Quantity</th>
-                      <th className="px-6 py-4 text-right">Amount</th>
-                      <th className="px-6 py-4 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
-                    {items.map((item, index) => (
-                      <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
-                        <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
-                        <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
-                        <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
-                        <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
-                        <td className="px-6 py-4.5 text-right">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(index)}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
-                          >
-                            <LuTrash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {items.length === 0 && (
-                      <tr>
-                        <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                          No travel items added yet. Enter item details above and click the (+) button.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="p-3.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl flex items-center justify-center transition-all shadow-md active:scale-95 cursor-pointer mt-7"
+              >
+                <LuPlus size={20} />
+              </button>
             </div>
           </div>
-        </details>
 
-        <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+          {/* Current Items List Table */}
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
+            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-55 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
+                  <tr>
+                    <th className="px-6 py-4">Travel Date</th>
+                    <th className="px-6 py-4">Destination</th>
+                    <th className="px-6 py-4 text-right">Quantity</th>
+                    <th className="px-6 py-4 text-right">Amount</th>
+                    <th className="px-6 py-4 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
+                  {items.map((item, index) => (
+                    <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
+                      <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
+                      <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
+                      <td className="px-6 py-4.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
+                        >
+                          <LuTrash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {items.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
+                        No travel items added yet. Enter item details above and click the (+) button.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+        {!inline && (
           <Button variant="secondary" onClick={onClose} type="button">
             Cancel
           </Button>
-          <Button type="submit" isLoading={mutation.isPending} disabled={items.length === 0}>
-            Create Commission
-          </Button>
-        </div>
-      </form>
+        )}
+        <Button type="submit" isLoading={mutation.isPending} disabled={items.length === 0}>
+          {inline ? 'Submit Request' : 'Create Commission'}
+        </Button>
+      </div>
+    </form>
+  );
+
+  if (inline) {
+    return (
+      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-150 dark:border-gray-800/80 shadow-md p-6 sm:p-8 space-y-6">
+        <h2 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight">New Commission Request</h2>
+        {formContent}
+      </div>
+    );
+  }
+
+  return (
+    <Modal isOpen={true} onClose={onClose || (() => {})} title="Request Commission" size="xl">
+      <div className="max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {formContent}
+      </div>
     </Modal>
   );
 }
@@ -462,8 +507,28 @@ export default function Commissions() {
   // Handle ApiResponse structure where data is inside response.data
   const commissions: Commission[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:commissions:general'));
+  const hasGeneralAccess = !!(
+    user?.role === 'super_admin' ||
+    user?.role === 'executive_vice_president' ||
+    user?.role === 'operations_manager' ||
+    user?.role === 'accounting_executive' ||
+    user?.tags?.includes('access:general') ||
+    user?.tags?.includes('access:commissions:general')
+  );
   const isGeneralEmployee = !hasGeneralAccess;
+
+  if (isGeneralEmployee) {
+    return (
+      <div className="space-y-8 pb-12">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+            Request Commission
+          </h1>
+        </div>
+        <CreateCommissionForm inline />
+      </div>
+    );
+  }
 
   const filtered = commissions.filter((c) => {
     // General employees only see their own requests
@@ -495,12 +560,14 @@ export default function Commissions() {
   return (
     <div className="space-y-8 pb-12">
       <div className="flex justify-between items-center no-print">
-        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Commissions</h1>
+        <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">
+          {isGeneralEmployee ? 'Request Commission' : 'Commissions'}
+        </h1>
         <button
           onClick={() => setShowCreate(true)}
           className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
         >
-          <LuPlus className="w-4 h-4" /> New Commission
+          <LuPlus className="w-4 h-4" /> {isGeneralEmployee ? 'Request Commission' : 'New Commission'}
         </button>
       </div>
 
@@ -692,7 +759,7 @@ export default function Commissions() {
       )}
 
       {showCreate && (
-        <CreateCommissionModal onClose={() => setShowCreate(false)} />
+        <CreateCommissionForm onClose={() => setShowCreate(false)} />
       )}
     </div>
   );

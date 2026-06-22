@@ -28,9 +28,11 @@ import {
   LuPaperclip,
   LuFileText,
   LuDownload,
-  LuMenu
+  LuMenu,
+  LuSignature
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
+import { CreateCommissionForm } from '../../pages/operations/Commissions';
 
 interface NotificationItem {
   id: string;
@@ -150,8 +152,18 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const [activeImagePreview, setActiveImagePreview] = useState<{ path: string; name: string } | null>(null);
   const [showExtraMenu, setShowExtraMenu] = useState(false);
   const [wsConnectedState, setWsConnectedState] = useState(false);
+  const [showRequestCommission, setShowRequestCommission] = useState(false);
 
   const unreadMessagesCount = messages.filter(m => !m.read).length;
+
+  const hasGeneralAccess = !!(
+    user?.role === 'super_admin' ||
+    user?.role === 'executive_vice_president' ||
+    user?.role === 'operations_manager' ||
+    user?.role === 'accounting_executive' ||
+    user?.tags?.includes('access:general') ||
+    user?.tags?.includes('access:commissions:general')
+  );
 
 
   const handleMarkAllMessagesRead = async () => {
@@ -952,17 +964,31 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
     const format = (s: string) => s.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     
-    return {
-      title: format(segments[segments.length - 1]),
-      subtitle: segments.length > 1 ? `Management / ${format(segments[0])}` : 'Internal Management System'
-    };
+    let title = format(segments[segments.length - 1]);
+    let subtitle = segments.length > 1 ? `Management / ${format(segments[0])}` : 'Internal Management System';
+
+    const hasGeneralAccess = !!(
+      user.role === 'super_admin' ||
+      user.role === 'executive_vice_president' ||
+      user.role === 'operations_manager' ||
+      user.role === 'accounting_executive' ||
+      user.tags?.includes('access:general') ||
+      user.tags?.includes('access:commissions:general')
+    );
+
+    if (path === '/accounting/commissions' && !hasGeneralAccess) {
+      title = 'Request Commission';
+      subtitle = 'Self-Service / Accounting';
+    }
+
+    return { title, subtitle };
   };
 
   const { title, subtitle } = getPageContext();
 
   return (
     <>
-    <header className={`h-16 border-b flex items-center justify-between px-4 md:px-8 md:ml-64 fixed top-0 right-0 left-0 z-40 transition-colors ${
+    <header className={`h-16 border-b flex items-center justify-between px-4 md:px-8 fixed top-0 right-0 left-0 md:left-64 z-40 transition-colors ${
       theme === 'dark' 
         ? 'bg-gray-900 border-gray-800' 
         : 'bg-white border-gray-200'
@@ -998,6 +1024,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
       {/* Right: Notifications + User */}
       <div className="flex items-center gap-3">
+        {/* Quick Action: Request Commission (For General Employees only) */}
+        {!hasGeneralAccess && (
+          <button
+            onClick={() => setShowRequestCommission(true)}
+            className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer shrink-0"
+          >
+            <LuSignature className="w-3.5 h-3.5" /> Request Commission
+          </button>
+        )}
         {/* Messages Dropdown */}
         <div className="relative">
           <button
@@ -1585,6 +1620,11 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
     </header>
+
+    {/* Request Commission Modal (Quick Action) */}
+    {showRequestCommission && (
+      <CreateCommissionForm onClose={() => setShowRequestCommission(false)} />
+    )}
 
     {/* Notification Detail Modal */}
     {selectedNotification && (

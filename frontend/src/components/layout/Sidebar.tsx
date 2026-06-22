@@ -185,22 +185,37 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   if (!user) return null;
 
+  const hasGeneralAccess = !!(
+    user.role === 'super_admin' ||
+    user.role === 'executive_vice_president' ||
+    user.role === 'operations_manager' ||
+    user.role === 'accounting_executive' ||
+    user.tags?.includes('access:general') ||
+    user.tags?.includes('access:commissions:general')
+  );
+
   const filteredNavigation = navigation
     .map((section) => ({
       ...section,
-      items: section.items.filter((item) => {
-        // Super admin always bypasses all permission checks
-        if (user.role === 'super_admin') return true;
+      items: section.items
+        .filter((item) => {
+          // Hide commissions routes completely from sidebar for general employees
+          if (!hasGeneralAccess && (item.path === '/accounting/commissions' || item.path === '/driver/commissions')) {
+            return false;
+          }
 
-        // Use page-level key if available, fall back to module key
-        const permKey = item.pageKey ?? item.module;
-        if (permKey) {
-          return hasPermission(permKey, 'can_view');
-        }
+          // Super admin always bypasses all permission checks
+          if (user.role === 'super_admin') return true;
 
-        // Fallback to static role list check if no permission key is defined
-        return item.roles.includes(user.role as UserRole);
-      }),
+          // Use page-level key if available, fall back to module key
+          const permKey = item.pageKey ?? item.module;
+          if (permKey) {
+            return hasPermission(permKey, 'can_view');
+          }
+
+          // Fallback to static role list check if no permission key is defined
+          return item.roles.includes(user.role as UserRole);
+        }),
     }))
     .filter((section) => section.items.length > 0);
 

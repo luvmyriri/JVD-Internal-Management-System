@@ -23,23 +23,30 @@ return new class extends Migration
                     $tags = [];
                     $role = $user->role;
 
-                    if (in_array($role, ['super_admin', 'executive_vice_president', 'accounting_executive'])) {
+                    if ($role === 'executive_vice_president') {
                         $tags = [
-                            'access:general',
                             'process:approve_commission',
                             'process:approve_cash_budget',
                             'process:disburse_cash_budget',
                             'process:settle_liquidation'
                         ];
-                    } elseif (in_array($role, ['operations_manager', 'logistics_in_charge', 'dispatcher'])) {
+                    } elseif ($role === 'operations_manager') {
                         $tags = [
-                            'access:general',
+                            'process:approve_commission',
+                            'process:approve_cash_budget',
+                            'process:disburse_cash_budget'
+                        ];
+                    } elseif ($role === 'accounting_executive') {
+                        $tags = [
+                            'process:disburse_cash_budget',
+                            'process:settle_liquidation'
+                        ];
+                    } elseif (in_array($role, ['logistics_in_charge', 'dispatcher'])) {
+                        $tags = [
                             'process:disburse_cash_budget'
                         ];
                     } else {
-                        $tags = [
-                            'access:personalized'
-                        ];
+                        $tags = [];
                     }
 
                     $user->update(['tags' => $tags]);
