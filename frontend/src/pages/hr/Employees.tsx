@@ -182,7 +182,7 @@ export default function Employees() {
         role: 'reservation_officer',
         department: 'Operations',
         send_invitation: true,
-        employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
+        employee_id: ''
       });
     }
     setIsModalOpen(true);
@@ -402,7 +402,7 @@ export default function Employees() {
           email,
           role,
           department: matchedDept,
-          employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`
+          employee_id: ''
         });
       });
 
@@ -944,15 +944,11 @@ export default function Employees() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee Reference ID</label>
                   <input
-                    {...register('employee_id', { required: 'Employee ID is required' })}
+                    {...register('employee_id')}
                     readOnly
-                    className={cn(
-                      "w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono",
-                      errors.employee_id && "border-red-300 bg-red-50/30"
-                    )}
-                    placeholder="JVD-EMP-000"
+                    className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono"
+                    placeholder="[Auto-generated]"
                   />
-                  {errors.employee_id && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.employee_id.message as string}</p>}
                 </div>
               </div>
             </details>

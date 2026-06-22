@@ -202,7 +202,7 @@ class JobApplicationController extends Controller
         }
 
         $validated = $request->validate([
-            'employee_id'     => ['required', 'string', 'unique:users,employee_id'],
+            'employee_id'     => ['nullable', 'string', 'unique:users,employee_id'],
             'role'            => ['required', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],
             'department'      => ['required', 'string', 'max:100'],
             'send_invitation' => ['required', 'boolean'],
@@ -216,11 +216,18 @@ class JobApplicationController extends Controller
             ], 422);
         }
 
+        $employeeId = $validated['employee_id'] ?? $request->input('employee_id');
+        if (!$employeeId) {
+            $latest = \App\Models\User::withTrashed()->orderBy('id', 'desc')->first();
+            $nextId = $latest ? ($latest->id + 1001) : 1001;
+            $employeeId = 'JVD-EMP-' . $nextId;
+        }
+
         $sendInvitation = (bool) $validated['send_invitation'];
         $tempPassword = null;
 
         $userData = [
-            'employee_id'          => $validated['employee_id'],
+            'employee_id'          => $employeeId,
             'email'                => $jobApplication->email,
             'first_name'           => $jobApplication->first_name,
             'last_name'            => $jobApplication->last_name,

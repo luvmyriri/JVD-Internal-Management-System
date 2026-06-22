@@ -121,7 +121,7 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
 
   const { register, handleSubmit, formState: { errors } } = useForm<ConvertToEmployeePayload>({
     defaultValues: {
-      employee_id: `JVD-EMP-${Math.floor(1000 + Math.random() * 9000)}`,
+      employee_id: '',
       role: 'reservation_officer',
       department: 'Operations',
       send_invitation: true,
@@ -204,11 +204,11 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
         <div>
           <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1 mb-1">Employee ID</label>
           <input
-            {...register('employee_id', { required: 'Employee ID is required' })}
-            className="w-full px-4 py-2 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500/20 text-sm font-medium font-mono"
-            placeholder="JVD-EMP-0000"
+            {...register('employee_id')}
+            readOnly
+            className="w-full px-4 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono"
+            placeholder="[Auto-generated]"
           />
-          {errors.employee_id && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.employee_id.message}</p>}
         </div>
 
         {/* Role */}

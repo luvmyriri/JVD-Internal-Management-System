@@ -26,7 +26,7 @@ class CommissionController extends Controller
         $validated = $request->validate([
             'commissioner_name' => 'required|string|max:255',
             'employee_id' => 'nullable|exists:users,id',
-            'serial_no' => 'required|string|unique:commissions,serial_no',
+            'serial_no' => 'nullable|string|unique:commissions,serial_no',
             'date' => 'required|date',
             'items' => 'required|array|min:1',
             'items.*.travel_date' => 'required|date',
@@ -36,10 +36,29 @@ class CommissionController extends Controller
         ]);
 
         return DB::transaction(function () use ($validated, $request) {
+            $serialNo = $validated['serial_no'] ?? $request->input('serial_no');
+            if (!$serialNo) {
+                $year = now()->year;
+                // Check both seeded prefixes (COM- & CMS-) to avoid collision
+                $latest = Commission::where(function ($q) use ($year) {
+                    $q->where('serial_no', 'like', "COM-{$year}-%")
+                      ->orWhere('serial_no', 'like', "CMS-{$year}-%");
+                })
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+                $sequence = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->serial_no);
+                    $sequence = (int) end($parts) + 1;
+                }
+                $serialNo = sprintf('COM-%d-%04d', $year, $sequence);
+            }
+
             $commission = Commission::create([
                 'commissioner_name' => $validated['commissioner_name'],
                 'employee_id' => $validated['employee_id'] ?? $request->input('employee_id') ?? auth()->id(),
-                'serial_no' => $validated['serial_no'],
+                'serial_no' => $serialNo,
                 'date' => $validated['date'],
                 'status' => 'draft',
                 'received_by' => auth()->user()?->hasRole('driver') ? auth()->id() : null,

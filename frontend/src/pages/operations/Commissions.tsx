@@ -161,7 +161,7 @@ function CreateCommissionModal({ onClose }: { onClose: () => void }) {
   const [form, setForm] = useState({
     commissioner_name: isAdmin ? '' : `${user?.first_name || ''} ${user?.last_name || ''}`,
     employee_id: isAdmin ? '' : String(user?.id || ''),
-    serial_no: `CMS-${new Date().getFullYear()}${(Math.floor(Math.random() * 100000)).toString().padStart(5, '0')}`,
+    serial_no: '',
     date: new Date().toISOString().split('T')[0],
   });
 
