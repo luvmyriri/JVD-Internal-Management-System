@@ -3,6 +3,12 @@ import client from './client';
 export interface RunPayrollData {
   start_date: string;
   end_date: string;
+  adjustments?: {
+    user_id: number;
+    commission_pay: number;
+    overtime_pay: number;
+    half_day_deductions: number;
+  }[];
 }
 
 export interface UpdateSalaryData {
@@ -32,4 +38,7 @@ export const payrollApi = {
 
   updateEmployeeSalary: (id: number, data: UpdateSalaryData) =>
     client.put(`/payroll/employees/${id}`, data),
+
+  updatePayslip: (id: number, data: any) =>
+    client.put(`/payroll/payslips/${id}`, data),
 };

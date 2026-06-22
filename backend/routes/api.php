@@ -460,6 +460,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         // Ledger & Liquidations
         Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
         Route::get('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');
+
         Route::get('/accounting/journal-entries/{id}', [App\Http\Controllers\Accounting\JournalEntryController::class, 'show'])->name('accounting.journal-entries.show');
         Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
         Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');
@@ -514,6 +515,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         
         Route::post('/payroll/cycles/{id}/release', [PayrollController::class, 'releasePayroll']);
         Route::put('/payroll/employees/{id}', [PayrollController::class, 'updateEmployeeSalary']);
+        Route::put('/payroll/payslips/{id}', [PayrollController::class, 'updatePayslip']);
     });
 
     // HR Dynamic Permissions - Delete (DELETE) Routes

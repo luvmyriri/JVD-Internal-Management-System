@@ -44,6 +44,15 @@ export default function Payroll() {
   const [baseSalary, setBaseSalary] = useState<string>('0');
   const [allowances, setAllowances] = useState<string>('0');
   const [deductions, setDeductions] = useState<string>('0');
+
+  // Adjust Payslip Form State
+  const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
+  const [adjustCommissionPay, setAdjustCommissionPay] = useState('0');
+  const [adjustOvertimePay, setAdjustOvertimePay] = useState('0');
+  const [adjustHalfDayDeductions, setAdjustHalfDayDeductions] = useState('0');
+
+  // Pre-Payroll Timesheet State
+  const [prePayrollAdjustments, setPrePayrollAdjustments] = useState<Record<number, { commission_pay: string; overtime_pay: string; half_day_deductions: string }>>({});
   
   // Sub-modal Search
   const [payslipSearchTerm, setPayslipSearchTerm] = useState('');
@@ -116,6 +125,20 @@ export default function Payroll() {
     }
   });
 
+  const adjustPayslipMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => payrollApi.updatePayslip(id, data),
+    onSuccess: () => {
+      if (selectedCycleId) {
+        queryClient.invalidateQueries({ queryKey: ['payroll-cycle-details', selectedCycleId] });
+      }
+      toast.success('Payslip adjusted successfully.');
+      setIsAdjustModalOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.message || 'Failed to adjust payslip.');
+    }
+  });
+
   const deletePayrollMutation = useMutation({
     mutationFn: payrollApi.deleteCycle,
     onSuccess: () => {
@@ -148,11 +171,19 @@ export default function Payroll() {
 
   const handleRunPayrollSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!startDate || !endDate) {
-      toast.error('Please select both start and end dates.');
-      return;
-    }
-    runPayrollMutation.mutate({ start_date: startDate, end_date: endDate });
+
+    const adjustmentsPayload = Object.entries(prePayrollAdjustments).map(([userId, adj]) => ({
+      user_id: parseInt(userId),
+      commission_pay: parseFloat(parseMoneyInput(adj.commission_pay)) || 0,
+      overtime_pay: parseFloat(parseMoneyInput(adj.overtime_pay)) || 0,
+      half_day_deductions: parseFloat(parseMoneyInput(adj.half_day_deductions)) || 0,
+    })).filter(adj => adj.commission_pay > 0 || adj.overtime_pay > 0 || adj.half_day_deductions > 0);
+
+    runPayrollMutation.mutate({
+      start_date: startDate,
+      end_date: endDate,
+      adjustments: adjustmentsPayload
+    });
   };
 
   // Open edit salary modal
@@ -173,6 +204,28 @@ export default function Payroll() {
           base_salary: parseFloat(parseMoneyInput(baseSalary)) || 0,
           allowances: parseFloat(parseMoneyInput(allowances)) || 0,
           deductions: parseFloat(parseMoneyInput(deductions)) || 0
+        }
+      });
+    }
+  };
+
+  const handleOpenAdjustModal = (slip: any) => {
+    setSelectedPayslip(slip);
+    setAdjustCommissionPay(formatMoneyInput(parseFloat(slip.commission_pay || 0).toString()));
+    setAdjustOvertimePay(formatMoneyInput(parseFloat(slip.overtime_pay || 0).toString()));
+    setAdjustHalfDayDeductions(formatMoneyInput(parseFloat(slip.half_day_deductions || 0).toString()));
+    setIsAdjustModalOpen(true);
+  };
+
+  const handleAdjustPayslipSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (selectedPayslip) {
+      adjustPayslipMutation.mutate({
+        id: selectedPayslip.id,
+        data: {
+          commission_pay: parseFloat(parseMoneyInput(adjustCommissionPay)) || 0,
+          overtime_pay: parseFloat(parseMoneyInput(adjustOvertimePay)) || 0,
+          half_day_deductions: parseFloat(parseMoneyInput(adjustHalfDayDeductions)) || 0
         }
       });
     }
@@ -472,18 +525,10 @@ export default function Payroll() {
         )}
       </div>
 
-      {/* MODAL 1: Run Payroll */}
-      <Modal isOpen={isRunModalOpen} onClose={() => setIsRunModalOpen(false)} title="Run New Payroll" size="md">
+      {/* MODAL 1: Run Payroll (Pre-Payroll Timesheet) */}
+      <Modal isOpen={isRunModalOpen} onClose={() => setIsRunModalOpen(false)} title="Pre-Payroll Timesheet Worksheet" size="full">
         <form onSubmit={handleRunPayrollSubmit} className="space-y-6">
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/30 rounded-2xl flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-            <div className="text-xs text-amber-700 dark:text-amber-400">
-              <span className="font-bold uppercase tracking-wider block mb-1">Semi-Monthly Run Confirmation</span>
-              This operation will scan all active employees, pro-rate their monthly salary based on the selected date range, apply BIR TRAIN Law progressive withholding tax, and create a draft cycle with payslips.
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 bg-gray-50 dark:bg-gray-800 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
             <div className="space-y-2">
               <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">Start Date</label>
               <input
@@ -491,7 +536,7 @@ export default function Payroll() {
                 required
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                className="w-full px-4 h-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
               />
             </div>
             <div className="space-y-2">
@@ -501,18 +546,115 @@ export default function Payroll() {
                 required
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+                className="w-full px-4 h-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
-            <Button type="button" variant="secondary" onClick={() => setIsRunModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={runPayrollMutation.isPending}>
-              Generate Payroll
-            </Button>
+          <div className="overflow-hidden border border-gray-200 dark:border-gray-700 rounded-2xl">
+            <div className="max-h-[50vh] overflow-y-auto">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 z-10">
+                  <tr>
+                    <th className="py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest w-64">Employee</th>
+                    <th className="py-3 px-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Base/Mo</th>
+                    <th className="py-3 px-4 text-[10px] font-black text-emerald-600 uppercase tracking-widest">Commission (+)</th>
+                    <th className="py-3 px-4 text-[10px] font-black text-emerald-600 uppercase tracking-widest">Overtime (+)</th>
+                    <th className="py-3 px-4 text-[10px] font-black text-rose-500 uppercase tracking-widest">Lates / Half Days (-)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {employees.map((emp: any) => {
+                    const adj = prePayrollAdjustments[emp.id] || { commission_pay: '', overtime_pay: '', half_day_deductions: '' };
+                    return (
+                      <tr key={emp.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/10">
+                        <td className="py-3 px-4">
+                          <div className="font-black text-xs text-gray-900 dark:text-white">{emp.first_name} {emp.last_name}</div>
+                          <div className="text-[9px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{emp.role?.replace(/_/g, ' ')}</div>
+                        </td>
+                        <td className="py-3 px-4 text-xs font-semibold text-gray-500">
+                          {formatCurrency(parseFloat(emp.salary?.base_salary || 0))}
+                        </td>
+                        <td className="py-2 px-4">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600/50 text-[10px] font-black">₱</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={adj.commission_pay}
+                              onChange={(e) => {
+                                const clean = parseMoneyInput(e.target.value);
+                                if ((clean.split('.').length - 1) > 1) return;
+                                setPrePayrollAdjustments(prev => ({
+                                  ...prev,
+                                  [emp.id]: { ...prev[emp.id], commission_pay: formatMoneyInput(e.target.value) }
+                                }));
+                              }}
+                              className="w-full pl-6 pr-3 h-9 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 transition-all dark:text-emerald-400 placeholder-emerald-600/30"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-2 px-4">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-emerald-600/50 text-[10px] font-black">₱</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={adj.overtime_pay}
+                              onChange={(e) => {
+                                const clean = parseMoneyInput(e.target.value);
+                                if ((clean.split('.').length - 1) > 1) return;
+                                setPrePayrollAdjustments(prev => ({
+                                  ...prev,
+                                  [emp.id]: { ...prev[emp.id], overtime_pay: formatMoneyInput(e.target.value) }
+                                }));
+                              }}
+                              className="w-full pl-6 pr-3 h-9 bg-emerald-50/30 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-800/30 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-emerald-500 transition-all dark:text-emerald-400 placeholder-emerald-600/30"
+                            />
+                          </div>
+                        </td>
+                        <td className="py-2 px-4">
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-500/50 text-[10px] font-black">₱</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              placeholder="0.00"
+                              value={adj.half_day_deductions}
+                              onChange={(e) => {
+                                const clean = parseMoneyInput(e.target.value);
+                                if ((clean.split('.').length - 1) > 1) return;
+                                setPrePayrollAdjustments(prev => ({
+                                  ...prev,
+                                  [emp.id]: { ...prev[emp.id], half_day_deductions: formatMoneyInput(e.target.value) }
+                                }));
+                              }}
+                              className="w-full pl-6 pr-3 h-9 bg-rose-50/30 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-800/30 rounded-lg text-xs font-semibold focus:ring-2 focus:ring-rose-500 transition-all dark:text-rose-400 placeholder-rose-500/30 text-rose-600"
+                            />
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t border-gray-100 dark:border-gray-800">
+            <div className="text-[10px] font-bold text-gray-400">
+              Leave inputs blank or at 0.00 for employees with no adjustments.
+            </div>
+            <div className="flex gap-3">
+              <Button type="button" variant="secondary" onClick={() => setIsRunModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={runPayrollMutation.isPending}>
+                Generate Payroll
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>
@@ -743,15 +885,25 @@ export default function Payroll() {
                           <td className="py-3 px-4 text-xs font-medium text-rose-500">{formatCurrency(slip.deductions)}</td>
                           <td className="py-3 px-4 text-xs font-black text-blue-600 dark:text-blue-400">{formatCurrency(slip.net_salary)}</td>
                           <td className="py-3 px-4 text-right">
-                            <button
-                              onClick={() => {
-                                setSelectedPayslip({ ...slip, cycle: cycleDetails });
-                                setIsPayslipModalOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
-                            >
-                              <FileText className="w-3 h-3" /> Statement
-                            </button>
+                            <div className="flex items-center justify-end gap-1.5">
+                              {cycleDetails?.status === 'draft' && (
+                                <button
+                                  onClick={() => handleOpenAdjustModal(slip)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all"
+                                >
+                                  Adjust
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  setSelectedPayslip({ ...slip, cycle: cycleDetails });
+                                  setIsPayslipModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-1 px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 text-[9px] font-black uppercase tracking-widest rounded-lg hover:bg-blue-600 hover:text-white hover:border-blue-600 transition-all"
+                              >
+                                <FileText className="w-3 h-3" /> Statement
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -834,9 +986,21 @@ export default function Payroll() {
                       <span className="text-gray-500 font-medium">Allowances</span>
                       <span className="font-bold text-emerald-600">{formatCurrency(selectedPayslip.allowances)}</span>
                     </div>
+                    {parseFloat(selectedPayslip.commission_pay) > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500 font-medium">Commissions</span>
+                        <span className="font-bold text-emerald-600">{formatCurrency(selectedPayslip.commission_pay)}</span>
+                      </div>
+                    )}
+                    {parseFloat(selectedPayslip.overtime_pay) > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500 font-medium">Overtime Pay</span>
+                        <span className="font-bold text-emerald-600">{formatCurrency(selectedPayslip.overtime_pay)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-300 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
                       <span>Total Earnings (Gross)</span>
-                      <span>{formatCurrency(parseFloat(selectedPayslip.base_salary) + parseFloat(selectedPayslip.allowances))}</span>
+                      <span>{formatCurrency(parseFloat(selectedPayslip.base_salary) + parseFloat(selectedPayslip.allowances) + parseFloat(selectedPayslip.commission_pay || 0) + parseFloat(selectedPayslip.overtime_pay || 0))}</span>
                     </div>
                   </div>
                 </div>
@@ -852,12 +1016,18 @@ export default function Payroll() {
                       <span className="font-bold text-rose-500">{formatCurrency(selectedPayslip.tax_amount)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-gray-500 font-medium">Other Deductions</span>
+                      <span className="text-gray-500 font-medium">Fixed Deductions</span>
                       <span className="font-bold text-rose-500">{formatCurrency(selectedPayslip.deductions)}</span>
                     </div>
+                    {parseFloat(selectedPayslip.half_day_deductions) > 0 && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-gray-500 font-medium">Lates / Half Days</span>
+                        <span className="font-bold text-rose-500">{formatCurrency(selectedPayslip.half_day_deductions)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between text-xs pt-3 border-t border-dashed border-gray-300 dark:border-gray-800 font-bold text-gray-900 dark:text-white">
                       <span>Total Deductions</span>
-                      <span>{formatCurrency(parseFloat(selectedPayslip.tax_amount) + parseFloat(selectedPayslip.deductions))}</span>
+                      <span>{formatCurrency(parseFloat(selectedPayslip.tax_amount) + parseFloat(selectedPayslip.deductions) + parseFloat(selectedPayslip.half_day_deductions || 0))}</span>
                     </div>
                   </div>
                 </div>
@@ -963,6 +1133,105 @@ export default function Payroll() {
           </div>
         )}
       </Modal>
+      {/* MODAL 5: Adjust Payslip */}
+      <Modal isOpen={isAdjustModalOpen} onClose={() => setIsAdjustModalOpen(false)} title="Adjust Draft Payslip" size="md">
+        {selectedPayslip && (
+          <form onSubmit={handleAdjustPayslipSubmit} className="space-y-6">
+            <div className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center font-black text-amber-600 text-lg">
+                {selectedPayslip.user?.first_name?.[0]}{selectedPayslip.user?.last_name?.[0]}
+              </div>
+              <div>
+                <h4 className="text-sm font-black text-gray-900 dark:text-white">{selectedPayslip.user?.first_name} {selectedPayslip.user?.last_name}</h4>
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mt-0.5">{selectedPayslip.user?.employee_id} • {selectedPayslip.user?.role?.replace(/_/g, ' ')}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">Commission Pay (+)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">₱</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={adjustCommissionPay}
+                      onChange={(e) => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        setAdjustCommissionPay(formatMoneyInput(e.target.value));
+                      }}
+                      className="w-full pl-8 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-amber-600/5 transition-all dark:text-white"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">Overtime Pay (+)</label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">₱</span>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={adjustOvertimePay}
+                      onChange={(e) => {
+                        const clean = parseMoneyInput(e.target.value);
+                        if ((clean.split('.').length - 1) > 1) return;
+                        setAdjustOvertimePay(formatMoneyInput(e.target.value));
+                      }}
+                      className="w-full pl-8 pr-4 h-12 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-amber-600/5 transition-all dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-rose-400 block">Lates / Half Days Deduction (-)</label>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400 text-xs font-black">₱</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={adjustHalfDayDeductions}
+                    onChange={(e) => {
+                      const clean = parseMoneyInput(e.target.value);
+                      if ((clean.split('.').length - 1) > 1) return;
+                      setAdjustHalfDayDeductions(formatMoneyInput(e.target.value));
+                    }}
+                    className="w-full pl-8 pr-4 h-12 bg-rose-50 dark:bg-rose-950/20 border border-rose-100 dark:border-rose-900/30 rounded-xl text-xs font-semibold focus:ring-4 focus:ring-rose-600/5 transition-all dark:text-white text-rose-600 dark:text-rose-400"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900/30 rounded-2xl flex items-center justify-between">
+              <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Preview Adjusted Net Pay</span>
+              <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(Math.max(0, 
+                  parseFloat(selectedPayslip.base_salary) + 
+                  parseFloat(selectedPayslip.allowances) + 
+                  (parseFloat(parseMoneyInput(adjustCommissionPay)) || 0) + 
+                  (parseFloat(parseMoneyInput(adjustOvertimePay)) || 0) - 
+                  parseFloat(selectedPayslip.tax_amount) - 
+                  parseFloat(selectedPayslip.deductions) - 
+                  (parseFloat(parseMoneyInput(adjustHalfDayDeductions)) || 0)
+                ))}
+              </span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+              <Button type="button" variant="secondary" onClick={() => setIsAdjustModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={adjustPayslipMutation.isPending} className="bg-amber-500 hover:bg-amber-600">
+                Save Adjustments
+              </Button>
+            </div>
+          </form>
+        )}
+      </Modal>
+
     </div>
   );
 }
