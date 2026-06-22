@@ -14,7 +14,10 @@ class Payslip extends Model
         'user_id',
         'base_salary',
         'allowances',
+        'commission_pay',
+        'overtime_pay',
         'deductions',
+        'half_day_deductions',
         'tax_amount',
         'net_salary',
         'status',
@@ -23,7 +26,10 @@ class Payslip extends Model
     protected $casts = [
         'base_salary' => 'decimal:2',
         'allowances' => 'decimal:2',
+        'commission_pay' => 'decimal:2',
+        'overtime_pay' => 'decimal:2',
         'deductions' => 'decimal:2',
+        'half_day_deductions' => 'decimal:2',
         'tax_amount' => 'decimal:2',
         'net_salary' => 'decimal:2',
     ];

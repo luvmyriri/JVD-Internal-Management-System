@@ -48,6 +48,89 @@ class PayrollController extends Controller
     }
 
     /**
+     * Update a specific draft payslip with variable pay adjustments (OT, Commissions, Half Days).
+     */
+    public function updatePayslip(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'commission_pay' => 'nullable|numeric|min:0',
+            'overtime_pay' => 'nullable|numeric|min:0',
+            'half_day_deductions' => 'nullable|numeric|min:0',
+        ]);
+
+        $payslip = Payslip::with('payrollCycle')->find($id);
+
+        if (!$payslip) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Payslip not found.'
+            ], 404);
+        }
+
+        if ($payslip->payrollCycle->status !== 'draft') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot modify a payslip in a released cycle.'
+            ], 422);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $payslip->commission_pay = $validated['commission_pay'] ?? $payslip->commission_pay;
+            $payslip->overtime_pay = $validated['overtime_pay'] ?? $payslip->overtime_pay;
+            $payslip->half_day_deductions = $validated['half_day_deductions'] ?? $payslip->half_day_deductions;
+
+            // Recalculate net salary: (Base + Allowances + Commission + OT) - (Tax + Deductions + Half Day Deductions)
+            $payslip->net_salary = max(0.00, round(
+                $payslip->base_salary + 
+                $payslip->allowances + 
+                $payslip->commission_pay + 
+                $payslip->overtime_pay - 
+                $payslip->tax_amount - 
+                $payslip->deductions - 
+                $payslip->half_day_deductions, 
+            2));
+
+            $payslip->save();
+
+            // Recalculate Cycle Totals
+            $cycle = $payslip->payrollCycle;
+            $allPayslips = Payslip::where('payroll_cycle_id', $cycle->id)->get();
+            
+            $totalGross = 0;
+            $totalTax = 0;
+            $totalNet = 0;
+
+            foreach ($allPayslips as $slip) {
+                $totalGross += ($slip->base_salary + $slip->allowances + $slip->commission_pay + $slip->overtime_pay);
+                $totalTax += $slip->tax_amount;
+                $totalNet += $slip->net_salary;
+            }
+
+            $cycle->update([
+                'gross_amount' => $totalGross,
+                'tax_amount' => $totalTax,
+                'net_amount' => $totalNet,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payslip adjusted successfully.',
+                'data' => $payslip
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to adjust payslip: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * List all active employee salary configurations.
      */
     public function indexEmployeeSalaries(Request $request)
@@ -143,6 +226,11 @@ class PayrollController extends Controller
         $validated = $request->validate([
             'start_date' => 'required|date',
             'end_date' => 'required|date|after_or_equal:start_date',
+            'adjustments' => 'sometimes|array',
+            'adjustments.*.user_id' => 'required|exists:users,id',
+            'adjustments.*.commission_pay' => 'nullable|numeric|min:0',
+            'adjustments.*.overtime_pay' => 'nullable|numeric|min:0',
+            'adjustments.*.half_day_deductions' => 'nullable|numeric|min:0',
         ]);
 
         $startDate = Carbon::parse($validated['start_date'])->startOfDay();
@@ -195,6 +283,8 @@ class PayrollController extends Controller
             $cycleDays    = $startDate->copy()->startOfDay()->diffInDays($endDate->copy()->startOfDay()) + 1;
             $monthDays    = $startDate->daysInMonth; // days in the pay period's month
 
+            $adjustments = collect($validated['adjustments'] ?? []);
+
             foreach ($activeEmployees as $employee) {
                 // Get monthly salary profile or use default zeroes
                 $salaryProfile    = $employee->salary;
@@ -208,25 +298,34 @@ class PayrollController extends Controller
                 $cycleAllowances  = round($monthlyAllowances * $ratio, 2);
                 $cycleDeductions  = round($monthlyDeductions * $ratio, 2);
 
+                // Check for user-provided adjustments for this cycle
+                $adj = $adjustments->firstWhere('user_id', $employee->id);
+                $comm = isset($adj['commission_pay']) ? (float) $adj['commission_pay'] : 0.00;
+                $ot = isset($adj['overtime_pay']) ? (float) $adj['overtime_pay'] : 0.00;
+                $hdd = isset($adj['half_day_deductions']) ? (float) $adj['half_day_deductions'] : 0.00;
+
                 // M-02: BIR progressive withholding tax (semi-monthly share)
                 $cycleTax = $this->computeBirTax($monthlyBase);
 
                 // M-02: Floor net salary at 0 — never pay a negative amount
-                $cycleNet = max(0.00, round($cycleBase + $cycleAllowances - $cycleTax - $cycleDeductions, 2));
+                $cycleNet = max(0.00, round($cycleBase + $cycleAllowances + $comm + $ot - $cycleTax - $cycleDeductions - $hdd, 2));
 
                 // Create payslip record
                 Payslip::create([
-                    'payroll_cycle_id' => $cycle->id,
-                    'user_id'          => $employee->id,
-                    'base_salary'      => $cycleBase,
-                    'allowances'       => $cycleAllowances,
-                    'deductions'       => $cycleDeductions,
-                    'tax_amount'       => $cycleTax,
-                    'net_salary'       => $cycleNet,
-                    'status'           => 'draft',
+                    'payroll_cycle_id'    => $cycle->id,
+                    'user_id'             => $employee->id,
+                    'base_salary'         => $cycleBase,
+                    'allowances'          => $cycleAllowances,
+                    'commission_pay'      => $comm,
+                    'overtime_pay'        => $ot,
+                    'deductions'          => $cycleDeductions,
+                    'half_day_deductions' => $hdd,
+                    'tax_amount'          => $cycleTax,
+                    'net_salary'          => $cycleNet,
+                    'status'              => 'draft',
                 ]);
 
-                $totalGross += ($cycleBase + $cycleAllowances);
+                $totalGross += ($cycleBase + $cycleAllowances + $comm + $ot);
                 $totalTax   += $cycleTax;
                 $totalNet   += $cycleNet;
             }
