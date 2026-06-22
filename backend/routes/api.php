@@ -271,9 +271,15 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::post('/job-orders/{jobOrder}/generate-purchase-order', [JobOrderController::class, 'generatePurchaseOrder'])->name('job-orders.generate-po');
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
         Route::apiResource('commissions', CommissionController::class);
-        Route::get('/trip-tickets/check-conflict', [TripTicketController::class, 'checkConflict'])->name('trip-tickets.check-conflict');
-        Route::apiResource('trip-tickets', TripTicketController::class);
+        Route::apiResource('trip-tickets', TripTicketController::class)->except(['index', 'show']);
         Route::apiResource('cash-budgets', CashBudgetRequestController::class);
+    });
+
+    // Read trip tickets & check conflict (accessible to all authenticated roles for dashboards and calendars)
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,dispatcher,service_adviser,logistics_in_charge,purchasing_manager,accounting_executive,driver,reservation_officer,office_staff,corporate_secretary')->group(function () {
+        Route::get('/trip-tickets/check-conflict', [TripTicketController::class, 'checkConflict'])->name('trip-tickets.check-conflict');
+        Route::get('/trip-tickets', [TripTicketController::class, 'index'])->name('trip-tickets.index');
+        Route::get('/trip-tickets/{trip_ticket}', [TripTicketController::class, 'show'])->name('trip-tickets.show');
     });
 
     // ──────────────────────────────────────
@@ -376,7 +382,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // FLEET (now under Logistics)
     // ──────────────────────────────────────
     // Drivers can read buses (for My Fleet page)
-    Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge,dispatcher,purchasing_manager,head_mechanic,service_adviser,driver,logistics:view')->group(function () {
+    Route::middleware('role:super_admin,executive_vice_president,operations_manager,logistics_in_charge,dispatcher,purchasing_manager,head_mechanic,service_adviser,driver,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics:view')->group(function () {
         Route::get('buses',               [BusController::class, 'index'])->name('buses.index');
         Route::get('buses/{bus}',          [BusController::class, 'show'])->name('buses.show');
         Route::get('buses/{bus}/calendar', [BusController::class, 'calendar'])->name('buses.calendar');
@@ -542,7 +548,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // ──────────────────────────────────────
     Route::prefix('dashboards')->group(function () {
         Route::get('/admin',      [DashboardController::class, 'admin'])
-            ->middleware('role:super_admin,executive_vice_president,operations_manager')->name('dashboards.admin');
+            ->middleware('role:super_admin,executive_vice_president,operations_manager,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic')->name('dashboards.admin');
         Route::get('/accounting', [DashboardController::class, 'accounting'])
             ->middleware('role:super_admin,executive_vice_president,accounting_executive')->name('dashboards.accounting');
         Route::get('/agent',      [DashboardController::class, 'agent'])
