@@ -104,6 +104,10 @@ export default function FixedPackages() {
   const [bookingDriverName, setBookingDriverName] = useState<string>('');
   const [bookingSeats, setBookingSeats] = useState<string[]>([]);
 
+  // Helper variables for selected service category
+  const selectedServiceCategory = (selectedServiceForDetail?.category || '').trim().toLowerCase();
+  const isBusRentalCategory = selectedServiceCategory === 'bus rental' || selectedServiceCategory === 'transport';
+
   // Joiner specifications states
   const [joinerTourCode, setJoinerTourCode] = useState<string>('');
   const [joinerPickup, setJoinerPickup] = useState<string>('');
@@ -1177,7 +1181,8 @@ export default function FixedPackages() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (service.has_booking_fields || service.is_tour || service.category === 'Bus Rental' || ['Package', 'Joiners', 'Transport', 'Other'].includes(service.category)) {
+                      const sc = (service.category || '').trim().toLowerCase();
+                      if (service.has_booking_fields || service.is_tour || sc === 'bus rental' || ['package', 'joiners', 'transport', 'other'].includes(sc)) {
                         setSelectedServiceForDetail(service);
                         setDetailImageIndex(0);
                         setBookingAdults(1);
@@ -1949,7 +1954,7 @@ export default function FixedPackages() {
               {/* Scrollable Form Container */}
               <div className="flex-1 overflow-y-auto space-y-6 mb-8 pr-2 custom-scrollbar">
                 {/* Bus Rental & Seating Options (Conditional for Bus Rental or Tour with Bus) */}
-                {(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                {((['package', 'joiners', 'joiner'].includes(selectedServiceCategory) || isBusRentalCategory) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Bus Rental & Seating Options</p>
 
@@ -1965,7 +1970,19 @@ export default function FixedPackages() {
                             } else {
                               setBookingDate('');
                             }
-                            setBookingSeats([]);
+                            if (bookingBusId) {
+                              const selectedBusObj = buses.find((b: any) => b.id === bookingBusId);
+                              const isBusRental = isBusRentalCategory;
+                              if (isBusRental && selectedBusObj) {
+                                const capacity = selectedBusObj.seating_capacity || 49;
+                                const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
+                                setBookingSeats(allSeats);
+                              } else {
+                                setBookingSeats([]);
+                              }
+                            } else {
+                              setBookingSeats([]);
+                            }
                           }}
                           minDate={new Date()}
                           className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
@@ -2036,13 +2053,27 @@ export default function FixedPackages() {
                         onChange={(e) => {
                           const id = e.target.value ? Number(e.target.value) : null;
                           setBookingBusId(id);
-                          setBookingSeats([]);
-
+                          
                           const selectedBusObj = buses.find((b: any) => b.id === id);
-                          if (selectedBusObj && selectedBusObj.driver) {
-                            setBookingDriverId(selectedBusObj.driver.id);
-                            setBookingDriverName(`${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`);
+                          if (selectedBusObj) {
+                            const isBusRental = isBusRentalCategory;
+                            if (isBusRental) {
+                              const capacity = selectedBusObj.seating_capacity || 49;
+                              const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
+                              setBookingSeats(allSeats);
+                            } else {
+                              setBookingSeats([]);
+                            }
+
+                            if (selectedBusObj.driver) {
+                              setBookingDriverId(selectedBusObj.driver.id);
+                              setBookingDriverName(`${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`);
+                            } else {
+                              setBookingDriverId(null);
+                              setBookingDriverName('');
+                            }
                           } else {
+                            setBookingSeats([]);
                             setBookingDriverId(null);
                             setBookingDriverName('');
                           }
@@ -2093,6 +2124,13 @@ export default function FixedPackages() {
                             const allSeatNums = Array.from({ length: totalSeats }, (_, i) => String(i + 1));
                             const availableSeats = allSeatNums.filter(s => !occupiedSeats.includes(s));
                             const allSelected = availableSeats.length > 0 && availableSeats.every(s => bookingSeats.includes(s));
+                            if (isBusRentalCategory) {
+                              return (
+                                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900">
+                                  Entire Bus Reserved
+                                </span>
+                              );
+                            }
                             return (
                               <button
                                 type="button"
@@ -2131,6 +2169,9 @@ export default function FixedPackages() {
                             selectedSeats={bookingSeats}
                             occupiedSeats={occupiedSeats}
                             onSeatToggle={(seatNum) => {
+                              if (isBusRentalCategory) {
+                                return;
+                              }
                               setBookingSeats(prev =>
                                 prev.includes(seatNum)
                                   ? prev.filter(s => s !== seatNum)
@@ -2269,12 +2310,12 @@ export default function FixedPackages() {
                 )}
 
                 {/* Joiner Specifications Block */}
-                {(['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                {((['package', 'joiners', 'other'].includes(selectedServiceCategory) || isBusRentalCategory) || selectedServiceForDetail.is_tour) && (
                   <div className="space-y-4 bg-gray-50 dark:bg-gray-800/40 p-5 rounded-[2rem] border border-gray-100 dark:border-gray-800">
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner &amp; Travel Specifications</p>
 
                     {/* Travel Date (Hide here if Bus Rental block will show it) */}
-                    {!(['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour) && (
+                    {!((['package', 'joiners', 'joiner'].includes(selectedServiceCategory) || isBusRentalCategory) || selectedServiceForDetail.is_tour) && (
                       <div className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
@@ -2373,8 +2414,7 @@ export default function FixedPackages() {
                             if (val === '') {
                               setJoinerPaxCount('');
                             } else {
-                              const maxCap = (bookingBusId ? buses.find((b: any) => b.id === bookingBusId)?.seating_capacity : 49) || 49;
-                              setJoinerPaxCount(Math.min(maxCap, Math.max(1, Number(val))));
+                              setJoinerPaxCount(Math.max(1, Number(val)));
                             }
                           }}
                           onKeyDown={(e) => {
@@ -2451,7 +2491,7 @@ export default function FixedPackages() {
 
               <div className="space-y-3 font-black">
                 {(() => {
-                  const isBusAssigned = ['Bus Rental', 'Transport', 'Package', 'Joiners', 'Joiner'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
+                  const isBusAssigned = ['package', 'joiners', 'joiner'].includes(selectedServiceCategory) || isBusRentalCategory || selectedServiceForDetail.is_tour;
                   const selectedBus = bookingBusId ? buses.find((b: any) => b.id === bookingBusId) : null;
                   const isVipBus = selectedBus?.model?.toLowerCase().includes('vip');
                   const isVipPackage = selectedServiceForDetail.name.toLowerCase().includes('vip');
@@ -2467,8 +2507,8 @@ export default function FixedPackages() {
                   // Pax count exceeds capacity — warning only, not blocking
                   const isPaxExceedingCapacity = selectedBus && totalPax > selectedBus.seating_capacity;
 
-                  // Seat selection mismatch — warning only, not blocking
-                  const isSeatSelectionMismatch = isBusAssigned && bookingBusId && bookingSeats.length > 0 && bookingSeats.length !== totalPax;
+                  // Seat selection mismatch — warning only, not blocking (skip for whole-bus rentals)
+                  const isSeatSelectionMismatch = isBusAssigned && !isBusRentalCategory && bookingBusId && bookingSeats.length > 0 && bookingSeats.length !== totalPax;
 
                   const isBusSelectionInvalid = isBusAssigned && (
                     !bookingDate ||
@@ -2519,7 +2559,7 @@ export default function FixedPackages() {
                       <button
                         disabled={!!isBusSelectionInvalid}
                         onClick={() => {
-                          const isJoinerCategory = ['Package', 'Joiners', 'Transport', 'Other', 'Bus Rental'].includes(selectedServiceForDetail.category) || selectedServiceForDetail.is_tour;
+                          const isJoinerCategory = ['package', 'joiners', 'other'].includes(selectedServiceCategory) || isBusRentalCategory || selectedServiceForDetail.is_tour;
                           const travelDateParam = bookingDate || undefined;
                           const arrivalDateParam = bookingArrivalDate || undefined;
                           const departureDateParam = bookingDepartureDate || undefined;

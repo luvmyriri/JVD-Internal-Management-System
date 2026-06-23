@@ -51,7 +51,12 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
             type="date"
             className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
             value={value.travelDate}
-            onChange={(e) => onChange({ travelDate: e.target.value, selectedSeats: [] })}
+            onChange={(e) => {
+              const selectedBusObj = buses.find((b: any) => b.id === value.busId);
+              const capacity = selectedBusObj?.seating_capacity || 49;
+              const allSeats = value.busId ? Array.from({ length: capacity }, (_, i) => String(i + 1)) : [];
+              onChange({ travelDate: e.target.value, selectedSeats: allSeats });
+            }}
           />
         </div>
         <div className="space-y-2">
@@ -64,11 +69,16 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
               const selectedBusObj = buses.find((b: any) => b.id === id);
               let driverIdVal = null;
               let driverNameVal = '';
-              if (selectedBusObj && selectedBusObj.driver) {
-                driverIdVal = selectedBusObj.driver.id;
-                driverNameVal = `${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`;
+              let allSeats: string[] = [];
+              if (selectedBusObj) {
+                const capacity = selectedBusObj.seating_capacity || 49;
+                allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
+                if (selectedBusObj.driver) {
+                  driverIdVal = selectedBusObj.driver.id;
+                  driverNameVal = `${selectedBusObj.driver.first_name} ${selectedBusObj.driver.last_name}`;
+                }
               }
-              onChange({ busId: id, selectedSeats: [], driverId: driverIdVal, driverName: driverNameVal });
+              onChange({ busId: id, selectedSeats: allSeats, driverId: driverIdVal, driverName: driverNameVal });
             }}
           >
             <option value="">Select a Bus...</option>
@@ -118,11 +128,8 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
               selectedSeats={value.selectedSeats}
               occupiedSeats={occupiedSeats}
               onSeatToggle={(seatNum) => {
-                onChange({
-                  selectedSeats: value.selectedSeats.includes(seatNum)
-                    ? value.selectedSeats.filter(s => s !== seatNum)
-                    : [...value.selectedSeats, seatNum],
-                });
+                // Read-only for custom Bus Rentals
+                return;
               }}
             />
           </div>
@@ -165,10 +172,7 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
             value={value.paxCount}
             onChange={(e) => {
               const val = e.target.value.replace(/[^0-9]/g, '');
-              const selectedBusObj = buses.find((b: any) => b.id === value.busId);
-              const maxCap = selectedBusObj?.seating_capacity || 49;
-              const num = val === '' ? '' : Math.min(maxCap, Number(val));
-              onChange({ paxCount: num === '' ? '' : String(num) });
+              onChange({ paxCount: val });
             }}
             onKeyDown={(e) => {
               if (e.ctrlKey || e.metaKey) return;

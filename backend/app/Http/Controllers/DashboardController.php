@@ -514,18 +514,21 @@ class DashboardController extends Controller
 
         $myActiveBookings    = JobOrder::where('created_by', $user->id)
             ->whereNotIn('status', ['completed', 'cancelled'])->count();
-        $myMonthlyCommission = Invoice::where('created_by', $user->id)
-            ->whereIn('status', ['paid', 'partial'])
-            ->where('created_at', '>=', $month)->sum('commission_amount');
+        $myMonthlyCommission = \App\Models\CommissionItem::whereHas('commission', function ($q) use ($user, $month) {
+            $q->where('employee_id', $user->id)
+              ->where('date', '>=', $month->toDateString());
+        })->sum(DB::raw('amount * quantity'));
 
-        // Visa & passport counts for this agent (customer tasks)
-        $myPassportsThisMonth = \App\Models\CustomerPassport::whereHas('customer', function ($q) use ($user) {
-            $q->where('created_by', $user->id);
-        })->where('created_at', '>=', $month)->count();
+        // Visa & passport counts for this agent (using PassportCase)
+        $myPassportsThisMonth = \App\Models\PassportCase::where('handled_by', $user->id)
+            ->where('case_type', 'passport')
+            ->where('created_at', '>=', $month)
+            ->count();
 
-        $myVisasThisMonth = \App\Models\CustomerVisa::whereHas('customer', function ($q) use ($user) {
-            $q->where('created_by', $user->id);
-        })->where('created_at', '>=', $month)->count();
+        $myVisasThisMonth = \App\Models\PassportCase::where('handled_by', $user->id)
+            ->where('case_type', 'visa')
+            ->where('created_at', '>=', $month)
+            ->count();
 
         return response()->json([
             'success' => true,
