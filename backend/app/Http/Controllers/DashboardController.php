@@ -16,6 +16,18 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
+// Philippine provinces / destinations treated as LOCAL (case-insensitive keyword matching)
+define('LOCAL_DESTINATION_KEYWORDS', [
+    'boracay', 'palawan', 'el nido', 'cebu', 'siargao', 'bohol', 'iloilo', 'davao',
+    'manila', 'makati', 'pasig', 'quezon', 'taguig', 'caloocan', 'pasay', 'mandaluyong',
+    'batangas', 'cavite', 'laguna', 'pampanga', 'bulacan', 'rizal', 'bicol', 'legazpi',
+    'cagayan', 'zamboanga', 'general santos', 'iligan', 'bacolod', 'iloilo', 'tacloban',
+    'dumaguete', 'tagaytay', 'baguio', 'subic', 'clark', 'bataan', 'camiguin', 'samar',
+    'leyte', 'albay', 'antique', 'capiz', 'negros', 'benguet', 'pangasinan', 'tarlac',
+    'nueva ecija', 'isabela', 'cagayan de oro', 'cotabato', 'maguindanao', 'lanao',
+    'philippines', 'ph', 'local', 'domestic', 'provincial',
+]);
+
 class DashboardController extends Controller
 {
     // ─── Shared helpers ──────────────────────────────────────────────────────────
@@ -223,6 +235,168 @@ class DashboardController extends Controller
         };
     }
 
+    /** Determine if a destination string is local (Philippine). */
+    private function isLocalDestination(string $destination): bool
+    {
+        $lower = strtolower($destination);
+        foreach (LOCAL_DESTINATION_KEYWORDS as $kw) {
+            if (str_contains($lower, $kw)) return true;
+        }
+        return false;
+    }
+
+    /** Local (domestic PH) job orders, formatted for the booking list widget. */
+    private function localTravelBookings(int $limit = 6): array
+    {
+        return JobOrder::with(['customer:id,first_name,last_name'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->filter(fn($jo) => $this->isLocalDestination($jo->destination ?? ''))
+            ->take($limit)
+            ->values()
+            ->map(function ($jo, $idx) {
+                $customer = $jo->customer
+                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
+                    : 'N/A';
+                $status = $this->mapJobOrderStatus($jo->status ?? 'created');
+                return [
+                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'customer'    => $customer,
+                    'destination' => $jo->destination ?? 'N/A',
+                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'status'      => $status,
+                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                ];
+            })
+            ->toArray();
+    }
+
+    /** International (non-PH) job orders, formatted for the booking list widget. */
+    private function internationalTravelBookings(int $limit = 5): array
+    {
+        return JobOrder::with(['customer:id,first_name,last_name'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->filter(fn($jo) => !$this->isLocalDestination($jo->destination ?? ''))
+            ->take($limit)
+            ->values()
+            ->map(function ($jo, $idx) {
+                $customer = $jo->customer
+                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
+                    : 'N/A';
+                $status = $this->mapJobOrderStatus($jo->status ?? 'created');
+                return [
+                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'customer'    => $customer,
+                    'destination' => $jo->destination ?? 'N/A',
+                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'status'      => $status,
+                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                ];
+            })
+            ->toArray();
+    }
+
+    /** Pending and reserved (non-completed, non-cancelled) job orders. */
+    private function pendingReservedBookings(int $limit = 6): array
+    {
+        return JobOrder::with(['customer:id,first_name,last_name'])
+            ->whereNotIn('status', ['completed', 'cancelled'])
+            ->orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(function ($jo) {
+                $customer = $jo->customer
+                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
+                    : 'N/A';
+                $isLocal = $this->isLocalDestination($jo->destination ?? '');
+                $rawStatus = $jo->status ?? 'created';
+                $status = in_array($rawStatus, ['confirmed', 'in_progress']) ? 'Reserved' : 'Pending';
+                return [
+                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'customer'    => $customer,
+                    'destination' => $jo->destination ?? 'N/A',
+                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'status'      => $status,
+                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                    'type'        => $isLocal ? 'Local' : 'International',
+                ];
+            })
+            ->toArray();
+    }
+
+    /** List of customers for export widgets. */
+    private function customerListExport(int $limit = 50): array
+    {
+        return Customer::orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn($c) => [
+                'Customer ID' => "CUST-{$c->id}",
+                'Name'        => trim("{$c->first_name} {$c->last_name}"),
+                'Email'       => $c->email ?? 'N/A',
+                'Plan Type'   => $c->plan_type ?? $c->type ?? 'Standard',
+                'Status'      => $c->is_active ? 'Active' : 'Inactive',
+                'Join Date'   => optional($c->created_at)->format('Y-m-d') ?? 'N/A',
+            ])
+            ->toArray();
+    }
+
+    /** List of employees/users for export widgets. */
+    private function employeeListExport(int $limit = 50): array
+    {
+        return User::orderByDesc('created_at')
+            ->limit($limit)
+            ->get()
+            ->map(fn($u) => [
+                'Employee ID' => "EMP-{$u->id}",
+                'Name'        => trim("{$u->first_name} {$u->last_name}"),
+                'Department'  => $u->department ?? ucfirst(str_replace('_', ' ', $u->role ?? 'N/A')),
+                'Position'    => $u->position ?? ucfirst(str_replace('_', ' ', $u->role ?? 'N/A')),
+                'Status'      => $u->is_active ? 'Active' : 'Inactive',
+                'Hire Date'   => optional($u->created_at)->format('Y-m-d') ?? 'N/A',
+            ])
+            ->toArray();
+    }
+
+    /** Revenue export data from invoices. */
+    private function revenueExportData(): array
+    {
+        $months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+        $year = Carbon::now()->year;
+        $driver = DB::connection()->getDriverName();
+        $monthExpr = match ($driver) {
+            'sqlite' => "strftime('%m', created_at)",
+            'mysql'  => "DATE_FORMAT(created_at, '%m')",
+            default  => "to_char(created_at, 'MM')"
+        };
+        $rows = Invoice::select(
+                DB::raw("{$monthExpr} as month_num"),
+                DB::raw('SUM(total_amount) as gross'),
+                DB::raw('SUM(COALESCE(tax_amount, 0)) as expenses')
+            )
+            ->whereYear('created_at', $year)
+            ->groupBy(DB::raw($monthExpr))
+            ->get()
+            ->keyBy('month_num');
+
+        $result = [];
+        foreach ($months as $i => $label) {
+            $num = str_pad($i + 1, 2, '0', STR_PAD_LEFT);
+            $row = $rows->get($num);
+            $gross = $row ? (float) $row->gross : 0;
+            $expenses = $row ? (float) $row->expenses : 0;
+            $result[] = [
+                'Month'         => $label,
+                'Gross Revenue' => '₱' . number_format($gross, 0),
+                'Expenses'      => '₱' . number_format($expenses, 0),
+                'Net Profit'    => '₱' . number_format($gross - $expenses, 0),
+                'Status'        => Carbon::now()->month > ($i + 1) ? 'Audited' : 'Estimated',
+            ];
+        }
+        return $result;
+    }
+
     // ─── Admin Dashboard ─────────────────────────────────────────────────────────
 
     public function admin(Request $request)
@@ -251,12 +425,18 @@ class DashboardController extends Controller
                     'monthly_revenue'  => (float) $monthlyRevenue,
                     'user_role_count'  => $roleGroups->count(),
                 ],
-                'user_distribution' => $roleGroups,
-                'monthly_chart'     => $this->monthlyChartData(),
-                'top_agents'        => $this->topAgents(),
-                'top_drivers'       => $this->topDrivers(),
-                'recent_bookings'   => $this->recentTravelBookings(),
-                'peak_client_activity' => $this->peakClientActivityData(),
+                'user_distribution'         => $roleGroups,
+                'monthly_chart'             => $this->monthlyChartData(),
+                'top_agents'                => $this->topAgents(),
+                'top_drivers'               => $this->topDrivers(),
+                'recent_bookings'           => $this->recentTravelBookings(),
+                'local_bookings'            => $this->localTravelBookings(),
+                'international_bookings'    => $this->internationalTravelBookings(),
+                'pending_reserved_bookings' => $this->pendingReservedBookings(),
+                'customer_list'             => $this->customerListExport(),
+                'employee_list'             => $this->employeeListExport(),
+                'revenue_export'            => $this->revenueExportData(),
+                'peak_client_activity'      => $this->peakClientActivityData(),
             ],
         ]);
     }
@@ -299,11 +479,17 @@ class DashboardController extends Controller
                     'processed_collections' => $processedCollections,
                     'monthly_revenue'       => (float) $monthlyRevenue,
                 ],
-                'monthly_chart'   => $this->monthlyChartData(),
-                'top_agents'      => $this->topAgents(),
-                'top_drivers'     => $this->topDrivers(),
-                'recent_bookings' => $recentInvoices,
-                'peak_client_activity' => $this->peakClientActivityData(),
+                'monthly_chart'             => $this->monthlyChartData(),
+                'top_agents'                => $this->topAgents(),
+                'top_drivers'               => $this->topDrivers(),
+                'recent_bookings'           => $recentInvoices,
+                'local_bookings'            => $this->localTravelBookings(),
+                'international_bookings'    => $this->internationalTravelBookings(),
+                'pending_reserved_bookings' => $this->pendingReservedBookings(),
+                'customer_list'             => $this->customerListExport(),
+                'employee_list'             => $this->employeeListExport(),
+                'revenue_export'            => $this->revenueExportData(),
+                'peak_client_activity'      => $this->peakClientActivityData(),
             ],
         ]);
     }
@@ -350,11 +536,17 @@ class DashboardController extends Controller
                     'processed_visas'     => $myVisasThisMonth,
                     'monthly_commission'  => (float) $myMonthlyCommission,
                 ],
-                'monthly_chart'   => $this->monthlyChartData(),
-                'top_agents'      => $this->topAgents(),
-                'top_drivers'     => $this->topDrivers(),
-                'recent_bookings' => $this->recentTravelBookings(),
-                'peak_client_activity' => $this->peakClientActivityData(),
+                'monthly_chart'             => $this->monthlyChartData(),
+                'top_agents'                => $this->topAgents(),
+                'top_drivers'               => $this->topDrivers(),
+                'recent_bookings'           => $this->recentTravelBookings(),
+                'local_bookings'            => $this->localTravelBookings(),
+                'international_bookings'    => $this->internationalTravelBookings(),
+                'pending_reserved_bookings' => $this->pendingReservedBookings(),
+                'customer_list'             => $this->customerListExport(),
+                'employee_list'             => $this->employeeListExport(),
+                'revenue_export'            => $this->revenueExportData(),
+                'peak_client_activity'      => $this->peakClientActivityData(),
             ],
         ]);
     }
@@ -392,11 +584,16 @@ class DashboardController extends Controller
                     'driver_rating'    => 4.9,
                     'assigned_vehicle' => $assignedVehicle,
                 ],
-                'monthly_chart'   => $this->monthlyChartData(),
-                'top_agents'      => $this->topAgents(),
-                'top_drivers'     => $this->topDrivers(),
-                'recent_bookings' => $this->recentTravelBookings(),
-                'peak_client_activity' => $this->peakClientActivityData(),
+                'monthly_chart'             => $this->monthlyChartData(),
+                'top_agents'                => $this->topAgents(),
+                'top_drivers'               => $this->topDrivers(),
+                'recent_bookings'           => $this->recentTravelBookings(),
+                'local_bookings'            => $this->localTravelBookings(),
+                'international_bookings'    => $this->internationalTravelBookings(),
+                'pending_reserved_bookings' => $this->pendingReservedBookings(),
+                'employee_list'             => $this->employeeListExport(),
+                'revenue_export'            => $this->revenueExportData(),
+                'peak_client_activity'      => $this->peakClientActivityData(),
             ],
         ]);
     }
@@ -422,11 +619,17 @@ class DashboardController extends Controller
                     'open_applications'=> $openApplications,
                     'active_interns'   => $activeInterns,
                 ],
-                'monthly_chart'   => $this->monthlyChartData(),
-                'top_agents'      => $this->topAgents(),
-                'top_drivers'     => $this->topDrivers(),
-                'recent_bookings' => $this->recentTravelBookings(),
-                'peak_client_activity' => $this->peakClientActivityData(),
+                'monthly_chart'             => $this->monthlyChartData(),
+                'top_agents'                => $this->topAgents(),
+                'top_drivers'               => $this->topDrivers(),
+                'recent_bookings'           => $this->recentTravelBookings(),
+                'local_bookings'            => $this->localTravelBookings(),
+                'international_bookings'    => $this->internationalTravelBookings(),
+                'pending_reserved_bookings' => $this->pendingReservedBookings(),
+                'customer_list'             => $this->customerListExport(),
+                'employee_list'             => $this->employeeListExport(),
+                'revenue_export'            => $this->revenueExportData(),
+                'peak_client_activity'      => $this->peakClientActivityData(),
             ],
         ]);
     }

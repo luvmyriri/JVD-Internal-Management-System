@@ -9,7 +9,6 @@ import {
   FileText,
   Search,
   CheckCircle,
-  AlertCircle,
   Printer,
   Trash2
 } from 'lucide-react';

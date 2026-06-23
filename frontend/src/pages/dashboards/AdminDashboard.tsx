@@ -12,14 +12,11 @@ import {
   LuFileSpreadsheet,
   LuChevronLeft,
   LuChevronRight,
-  LuTrophy,
-  LuFlame,
   LuTicket,
-  LuTrendingUp,
   LuActivity
 } from 'react-icons/lu';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from 'recharts';
 
@@ -33,152 +30,15 @@ import { fleetApi } from '../../api/fleet';
 import toast from 'react-hot-toast';
 import { LoadingScreen } from '../../components/ui';
 
-// Donut â€“ user distribution
-const userDistributionData = [
-  { name: 'Drivers',      value: 34, color: '#3b82f6' },
-  { name: 'Agents',       value: 24, color: '#8b5cf6' },
-  { name: 'Accounting',   value: 16, color: '#10b981' },
-  { name: 'Procurement',  value: 13, color: '#f59e0b' },
-  { name: 'HR',           value:  8, color: '#ec4899' },
-  { name: 'Admin',        value:  5, color: '#6366f1' },
-];
 
-const detailedBranchData = {
-  accounting: [
-    { Date: '2026-05-18', 'Invoice ID': 'INV-001', Client: 'Acme Corp', Amount: 'PHP 150,000', Status: 'Paid' },
-    { Date: '2026-05-17', 'Invoice ID': 'INV-002', Client: 'Globex', Amount: 'PHP 200,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'Invoice ID': 'INV-003', Client: 'Soylent Corp', Amount: 'PHP 50,000', Status: 'Paid' },
-    { Date: '2026-05-15', 'Invoice ID': 'INV-004', Client: 'Initech', Amount: 'PHP 120,000', Status: 'Cancelled' },
-    { Date: '2026-05-14', 'Invoice ID': 'INV-005', Client: 'Umbrella Corp', Amount: 'PHP 300,000', Status: 'Paid' },
-  ],
-  procurement: [
-    { Date: '2026-05-18', 'PO ID': 'PO-1001', Supplier: 'Office Depot', Item: 'Laptops', Amount: 'PHP 250,000', Status: 'Approved' },
-    { Date: '2026-05-17', 'PO ID': 'PO-1002', Supplier: 'Dell', Item: 'Monitors', Amount: 'PHP 80,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'PO ID': 'PO-1003', Supplier: 'Furniture Inc', Item: 'Desks', Amount: 'PHP 45,000', Status: 'Delivered' },
-    { Date: '2026-05-15', 'PO ID': 'PO-1004', Supplier: 'Stationery Pro', Item: 'Paper', Amount: 'PHP 5,000', Status: 'Approved' },
-  ],
-  inventory: [
-    { 'Item Code': 'ITEM-001', 'Item Name': 'MacBook Pro 14"', Category: 'Electronics', 'Stock Level': '45 pcs', Status: 'In Stock' },
-    { 'Item Code': 'ITEM-002', 'Item Name': 'Dell 24" Monitor', Category: 'Electronics', 'Stock Level': '12 pcs', Status: 'Low Stock' },
-    { 'Item Code': 'ITEM-003', 'Item Name': 'Ergonomic Chair', Category: 'Furniture', 'Stock Level': '0 pcs', Status: 'Out of Stock' },
-    { 'Item Code': 'ITEM-004', 'Item Name': 'A4 Paper Ream', Category: 'Supplies', 'Stock Level': '150 pcs', Status: 'In Stock' },
-  ],
-  travel: [
-    { Date: '2026-05-18', 'Booking ID': 'BK-9001', Customer: 'John Doe', Destination: 'Boracay', Amount: 'PHP 12,000', Status: 'Confirmed' },
-    { Date: '2026-05-17', 'Booking ID': 'BK-9002', Customer: 'Jane Smith', Destination: 'Palawan', Amount: 'PHP 18,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'Booking ID': 'BK-9003', Customer: 'Bob Johnson', Destination: 'Cebu', Amount: 'PHP 8,500', Status: 'Confirmed' },
-    { Date: '2026-05-15', 'Booking ID': 'BK-9004', Customer: 'Alice Brown', Destination: 'Siargao', Amount: 'PHP 25,000', Status: 'Cancelled' },
-    { Date: '2026-05-14', 'Booking ID': 'BK-9005', Customer: 'Charlie Green', Destination: 'Bohol', Amount: 'PHP 14,500', Status: 'Confirmed' },
-    { Date: '2026-05-13', 'Booking ID': 'BK-9006', Customer: 'David Wilson', Destination: 'Iloilo', Amount: 'PHP 9,200', Status: 'Confirmed' },
-  ],
-};
+// topDrivers removed
 
-const detailedCustomerData = [
-  { 'Customer ID': 'CUST-001', Name: 'John Doe', Email: 'john.doe@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-01-15' },
-  { 'Customer ID': 'CUST-002', Name: 'Jane Smith', Email: 'jane.smith@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-02-20' },
-  { 'Customer ID': 'CUST-003', Name: 'Bob Johnson', Email: 'bob.j@example.com', 'Plan Type': 'Enterprise', Status: 'Inactive', 'Join Date': '2025-11-10' },
-  { 'Customer ID': 'CUST-004', Name: 'Alice Brown', Email: 'alice.b@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-03-05' },
-  { 'Customer ID': 'CUST-005', Name: 'Charlie Green', Email: 'charlie.g@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-04-12' },
-];
 
-const detailedEmployeeData = [
-  { 'Employee ID': 'EMP-001', Name: 'Alice Smith', Department: 'HR', Position: 'Manager', Status: 'Active', 'Hire Date': '2024-05-10' },
-  { 'Employee ID': 'EMP-002', Name: 'Bob Jones', Department: 'Accounting', Position: 'Accountant', Status: 'Active', 'Hire Date': '2025-01-15' },
-  { 'Employee ID': 'EMP-003', Name: 'Charlie Brown', Department: 'IT', Position: 'Developer', Status: 'Active', 'Hire Date': '2025-06-01' },
-  { 'Employee ID': 'EMP-004', Name: 'David Wilson', Department: 'Procurement', Position: 'Officer', Status: 'On Leave', 'Hire Date': '2024-11-20' },
-  { 'Employee ID': 'EMP-005', Name: 'Eva Davis', Department: 'Travel', Position: 'Agent', Status: 'Active', 'Hire Date': '2026-02-15' },
-];
 
-const detailedRevenueData = [
-  { Month: 'January', 'Gross Revenue': 'PHP 1,050,000', Expenses: 'PHP 600,000', 'Net Profit': 'PHP 450,000', Status: 'Audited' },
-  { Month: 'February', 'Gross Revenue': 'PHP 1,280,000', Expenses: 'PHP 700,000', 'Net Profit': 'PHP 580,000', Status: 'Audited' },
-  { Month: 'March', 'Gross Revenue': 'PHP 1,520,000', Expenses: 'PHP 800,000', 'Net Profit': 'PHP 720,000', Status: 'Audited' },
-  { Month: 'April', 'Gross Revenue': 'PHP 1,850,000', Expenses: 'PHP 900,000', 'Net Profit': 'PHP 950,000', Status: 'Audited' },
-  { Month: 'May', 'Gross Revenue': 'PHP 2,210,000', Expenses: 'PHP 1,000,000', 'Net Profit': 'PHP 1,210,000', Status: 'Estimated' },
-];
 
-const topAgents = [
-  {
-    rank: 1,
-    name: 'Lara Croft',
-    sales: 'PHP 1,250,000',
-    bookings: 145,
-    rating: 4.9,
-    image: 'https://ui-avatars.com/api/?name=Lara+Croft&background=f43f5e&color=fff'
-  },
-  {
-    rank: 2,
-    name: 'Maria Santos',
-    sales: 'PHP 980,000',
-    bookings: 120,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Maria+Santos&background=8b5cf6&color=fff'
-  },
-  {
-    rank: 3,
-    name: 'Rosa Garcia',
-    sales: 'PHP 850,000',
-    bookings: 112,
-    rating: 4.7,
-    image: 'https://ui-avatars.com/api/?name=Rosa+Garcia&background=10b981&color=fff'
-  }
-];
-
-const topDrivers = [
-  {
-    rank: 1,
-    name: 'Juan dela Cruz',
-    trips: 42,
-    hours: 180,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Juan+dela+Cruz&background=3b82f6&color=fff'
-  },
-  {
-    rank: 2,
-    name: 'Emmanuel Nalang',
-    trips: 39,
-    hours: 165,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Emmanuel+Nalang&background=f59e0b&color=fff'
-  },
-  {
-    rank: 3,
-    name: 'Pedro Reyes',
-    trips: 35,
-    hours: 150,
-    rating: 4.6,
-    image: 'https://ui-avatars.com/api/?name=Pedro+Reyes&background=6366f1&color=fff'
-  }
-];
-
-const heatmapGridData = [
-  [15, 20, 25, 45, 60, 65, 75, 85, 95, 90, 80, 45], // Mon
-  [20, 15, 20, 35, 55, 68, 72, 88, 98, 92, 85, 50], // Tue
-  [18, 12, 15, 30, 50, 60, 70, 80, 95, 90, 78, 40], // Wed
-  [15, 10, 18, 32, 48, 62, 75, 82, 92, 88, 75, 35], // Thu
-  [22, 18, 25, 40, 65, 75, 85, 95, 100, 96, 88, 60], // Fri
-  [30, 25, 22, 35, 50, 65, 80, 90, 98, 95, 90, 70], // Sat
-  [25, 20, 15, 25, 40, 55, 68, 78, 88, 85, 80, 65], // Sun
-];
-
-const getHeatmapColor = (value: number, theme: string) => {
-  if (theme === 'dark') {
-    if (value <= 20) return 'bg-purple-950/20 border border-purple-900/10';
-    if (value <= 40) return 'bg-purple-900/40 border border-purple-800/20';
-    if (value <= 60) return 'bg-purple-800/60 border border-purple-700/30';
-    if (value <= 80) return 'bg-violet-600/80 border border-violet-500/40 shadow-sm';
-    return 'bg-fuchsia-500 border border-fuchsia-400 shadow-md shadow-fuchsia-500/20';
-  } else {
-    if (value <= 20) return 'bg-purple-50 border border-purple-100/50';
-    if (value <= 40) return 'bg-purple-100 border border-purple-200/50';
-    if (value <= 60) return 'bg-purple-200 border border-purple-300/50';
-    if (value <= 80) return 'bg-violet-400 border border-violet-400/50 shadow-sm';
-    return 'bg-fuchsia-600 border border-fuchsia-500 shadow-md shadow-fuchsia-600/20';
-  }
-};
 
 const monthlyChartData = [
-  { month: 'Jan', bookings: 95,  revenue: 1280, utilization: 72 },
+  { month: 'Jan', bookings: 95, revenue: 1280, utilization: 72 },
   { month: 'Feb', bookings: 108, revenue: 1520, utilization: 75 },
   { month: 'Mar', bookings: 134, revenue: 1850, utilization: 82 },
   { month: 'Apr', bookings: 119, revenue: 2100, utilization: 78 },
@@ -189,7 +49,7 @@ const monthlyChartData = [
   { month: 'Sep', bookings: 143, revenue: 2210, utilization: 84 },
   { month: 'Oct', bookings: 128, revenue: 1980, utilization: 79 },
   { month: 'Nov', bookings: 112, revenue: 1740, utilization: 76 },
-  { month: 'Dec', bookings: 98,  revenue: 1350, utilization: 70 },
+  { month: 'Dec', bookings: 98, revenue: 1350, utilization: 70 },
 ];
 
 
@@ -226,7 +86,7 @@ export default function AdminDashboard() {
   });
 
   const tickets = (ticketsRaw as any[]) ?? [];
-  const buses   = (busesRaw as any)?.data ?? [];
+  const buses = (busesRaw as any)?.data ?? [];
 
   const isApprover = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role);
 
@@ -284,8 +144,8 @@ export default function AdminDashboard() {
       // Main Data Table
       autoTable(doc, {
         head: [Object.keys(data[0]).map(k => k.toUpperCase())],
-        body: data.map(obj => 
-          Object.values(obj).map(val => 
+        body: data.map(obj =>
+          Object.values(obj).map(val =>
             typeof val === 'string' ? val.replace(/PHP /g, 'PHP ').replace(/₱/g, 'PHP ') : val
           )
         ) as any,
@@ -484,8 +344,8 @@ export default function AdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[400px] text-gray-500 gap-4">
         <p className="text-sm font-bold text-red-500 uppercase tracking-widest">Failed to load dashboard data</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => window.location.reload()}
           className="px-4 py-2 bg-blue-600 text-white rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-700 transition-all"
         >
           Retry
@@ -496,20 +356,28 @@ export default function AdminDashboard() {
 
   const kpis = dashboardData?.kpis ?? {};
   const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : monthlyChartData;
-  const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : topAgents;
-  const drivers = dashboardData?.top_drivers && dashboardData.top_drivers.length > 0 ? dashboardData.top_drivers : topDrivers;
-  const recentBookings = dashboardData?.recent_bookings && dashboardData.recent_bookings.length > 0 ? dashboardData.recent_bookings : detailedBranchData.travel;
-  const heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
   const userDist = dashboardData?.user_distribution && dashboardData.user_distribution.length > 0
     ? dashboardData.user_distribution.map((d: any) => ({
-        ...d,
-        color: d.name === 'Drivers' ? '#3b82f6' :
-               d.name === 'Agents' ? '#8b5cf6' :
-               d.name === 'Accounting' ? '#10b981' :
-               d.name === 'Procurement' ? '#f59e0b' :
-               d.name === 'HR' ? '#ec4899' : '#6366f1'
-      }))
-    : userDistributionData;
+      ...d,
+      color: d.name === 'Drivers' ? '#3b82f6' :
+        d.name === 'Agents' ? '#8b5cf6' :
+          d.name === 'Accounting' ? '#10b981' :
+            d.name === 'Procurement' ? '#f59e0b' :
+              d.name === 'HR' ? '#ec4899' : '#6366f1'
+    }))
+    : [];
+
+  // ── Live data — falls back to empty arrays so UI shows nothing rather than stale static data ──
+  const localBookings = dashboardData?.local_bookings ?? [];
+  const internationalBookings = dashboardData?.international_bookings ?? [];
+  const pendingAndReservedBookings = dashboardData?.pending_reserved_bookings ?? [];
+  const detailedCustomerData = dashboardData?.customer_list ?? [];
+  const detailedEmployeeData = dashboardData?.employee_list ?? [];
+  const detailedRevenueData = dashboardData?.revenue_export ?? [];
+
+  const busesUnderMaintenance = useMemo(() => {
+    return buses.filter((b: any) => b.status === 'under_maintenance');
+  }, [buses]);
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -534,33 +402,32 @@ export default function AdminDashboard() {
       <div className="relative flex items-center" ref={dropdownRef}>
         <button
           onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-          className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${
-            variant === 'light'
-              ? 'bg-white/20 hover:bg-white/30 text-white'
-              : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
-          }`}
+          className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${variant === 'light'
+            ? 'bg-white/20 hover:bg-white/30 text-white'
+            : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
+            }`}
         >
           <LuDownload className="w-3.5 h-3.5" />
         </button>
 
         {isOpen && (
           <div className="absolute top-full right-0 pt-2 z-[100]">
-              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
-                <button
-                  onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
-                >
-                  <LuFileText className="w-3.5 h-3.5" />
-                  Export PDF
-                </button>
-                <button
-                  onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
-                >
-                  <LuFileSpreadsheet className="w-3.5 h-3.5" />
-                  Export Excel
-                </button>
-              </div>
+            <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
+              <button
+                onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
+                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
+              >
+                <LuFileText className="w-3.5 h-3.5" />
+                Export PDF
+              </button>
+              <button
+                onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
+                className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
+              >
+                <LuFileSpreadsheet className="w-3.5 h-3.5" />
+                Export Excel
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -747,95 +614,100 @@ export default function AdminDashboard() {
         {/* Column 2: Heatmap + Travel Bookings */}
         <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
-          {/* Peak Client Activity Heatmap */}
-          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+          {/* Local Travel Bookings List */}
+          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col animate-fadeIn">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div>
                 <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                  <LuFlame className="w-3 h-3 text-orange-500" />
-                  Peak Client Activity
+                  <LuGlobe className="w-3 h-3 text-emerald-500" />
+                  Local Travel Bookings
                 </h3>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Client density per day · hour</p>
               </div>
+              <DownloadActions variant="dark" title="Local Bookings Report" data={localBookings} />
             </div>
 
-            <div className="flex-1 flex flex-col justify-center min-h-0 mt-3 overflow-x-auto custom-scrollbar select-none">
-              <div className="grid gap-y-1 w-full min-w-[290px]" style={{ gridTemplateColumns: '26px repeat(12, minmax(0, 1fr))', gap: '2.5px' }}>
-                <div className="col-start-1" />
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">8AM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">12PM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">4PM</div>
-                <div className="col-span-2 text-[7.5px] font-black text-gray-400 dark:text-gray-500 text-left">8PM</div>
-
-                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].flatMap((day, dayIdx) => [
-                  <div key={`label-${day}`} className="text-[8px] font-black text-gray-400 dark:text-gray-500 flex items-center pr-1">
-                    {day}
-                  </div>,
-                  ...(heatmap[dayIdx] || []).map((dataVal, hourIdx) => (
-                    <div
-                      key={`block-${day}-${hourIdx}`}
-                      className={`h-[18px] rounded-[3px] transition-all duration-300 hover:scale-110 cursor-pointer ${getHeatmapColor(dataVal, theme)}`}
-                      title={`${day} at ${hourIdx * 2}:00 — Density: ${dataVal}%`}
-                    />
-                  ))
-                ])}
-              </div>
-
-              <div className="flex items-center justify-end gap-1 mt-3 text-[7.5px] font-bold text-gray-400 dark:text-gray-500 shrink-0">
-                <span>Low</span>
-                <div className="flex gap-0.5">
-                  <div className="w-2 h-2 rounded bg-purple-50 dark:bg-purple-950/20 border border-purple-100/50 dark:border-purple-900/10" />
-                  <div className="w-2 h-2 rounded bg-purple-100 dark:bg-purple-900/40 border border-purple-200/50 dark:border-purple-800/20" />
-                  <div className="w-2 h-2 rounded bg-purple-200 dark:bg-purple-800/60 border border-purple-300/50 dark:border-purple-700/30" />
-                  <div className="w-2 h-2 rounded bg-violet-400 dark:bg-violet-600/80 border border-violet-400/50 dark:border-violet-500/40" />
-                  <div className="w-2 h-2 rounded bg-fuchsia-600 dark:bg-fuchsia-500 border border-fuchsia-500 dark:border-fuchsia-400" />
-                </div>
-                <span>High</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Travel Bookings List */}
-          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                <LuTicket className="w-3 h-3 text-violet-500" />
-                Travel Bookings
-              </h3>
-              <DownloadActions variant="dark" title="Travel Bookings Weekly" data={recentBookings} />
-            </div>
-
-            <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5">
-              {recentBookings.slice(0, 6).map((item, idx) => (
-                <div key={item['Booking ID']} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                  <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-[9px] font-black shrink-0">
+            <div className="space-y-1 overflow-y-auto flex-1 mt-3 pr-0.5 custom-scrollbar">
+              {localBookings.map((item, idx) => (
+                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-[7px] font-black text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 rounded">
-                        {item['Booking ID']}
+                      <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        {item.id}
                       </span>
-                      <span className="text-[7px] text-gray-400 font-bold">{item.Date}</span>
+                      <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
                     </div>
                     <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
-                      {item.Customer} {'->'} <span className="text-violet-600 dark:text-violet-400">{item.Destination}</span>
+                      {item.customer} {'->'} <span className="text-emerald-600 dark:text-emerald-400">{item.destination}</span>
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.Amount}</p>
-                    <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
-                      item.Status === 'Confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                      item.Status === 'Pending'   ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                      'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                    }`}>
-                      {item.Status}
+                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
+                    <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${item.status === 'Confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                      item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                        'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                      }`}>
+                      {item.status}
                     </span>
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* Buses Under Maintenance List */}
+          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
+              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <LuBus className="w-3 h-3 text-amber-500" />
+                Buses Under Maintenance
+              </h3>
+              <DownloadActions
+                variant="dark"
+                title="Buses Under Maintenance"
+                data={busesUnderMaintenance.map((b: any) => ({
+                  'Plate Number': b.plate_number,
+                  'Model': b.model,
+                  'Category': b.bus_category,
+                  'Mileage': `${b.total_mileage?.toLocaleString() ?? 0} km`,
+                  'Status': 'Under Maintenance'
+                }))}
+              />
+            </div>
+
+            <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5 custom-scrollbar">
+              {busesUnderMaintenance.slice(0, 6).map((item: any, idx: number) => (
+                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-[9px] font-black shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1">
+                      <span className="text-[7px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        {item.plate_number}
+                      </span>
+                      <span className="text-[7px] text-gray-400 font-bold">{item.bus_category}</span>
+                    </div>
+                    <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                      {item.model}
+                    </h4>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.total_mileage?.toLocaleString() ?? 0} km</p>
+                    <span className="text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      Maintenance
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {busesUnderMaintenance.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-gray-400 dark:text-gray-500">
+                  <LuBus className="w-8 h-8 mb-2 opacity-50 text-gray-300 animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-wider">No Buses Under Maintenance</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -843,63 +715,51 @@ export default function AdminDashboard() {
         {/* Column 3: Performers + Charts */}
         <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
 
-          {/* Top Performers */}
+          {/* Top Performers / Travel */}
           <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                <LuTrophy className="w-3 h-3 text-amber-500" />
-                Top Performers
+                <LuGlobe className="w-3 h-3 text-rose-500" />
+                International Travel booking
               </h3>
             </div>
 
-            <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5">
-              {/* Agents */}
+            <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5 custom-scrollbar">
+              {/* International Travel Bookings */}
               <div>
-                <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">Top Agents</h4>
+                <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">International Travel Bookings</h4>
                 <div className="space-y-0.5">
-                  {agents.map((agent) => (
-                    <div key={agent.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
-                        agent.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
-                        agent.rank === 2 ? 'bg-slate-300 text-gray-800' :
-                        'bg-amber-600/80 text-white'
-                      }`}>
-                        {agent.rank}
+                  {internationalBookings.map((item, idx) => (
+                    <div key={item.id} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                      <div className="w-4 h-4 rounded-full bg-rose-105 dark:bg-rose-950/40 text-rose-600 dark:text-rose-450 flex items-center justify-center text-[8px] font-black shrink-0">
+                        {idx + 1}
                       </div>
-                      <img src={agent.image} alt={agent.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{agent.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{agent.bookings} Bk • {agent.rating}★</p>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[6.5px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-1 py-0.2 rounded">
+                            {item.id}
+                          </span>
+                          <span className="text-[6.5px] text-gray-400 font-bold">{item.date}</span>
+                        </div>
+                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate mt-0.5">
+                          {item.customer} {'->'} <span className="text-rose-600 dark:text-rose-400">{item.destination}</span>
+                        </h4>
                       </div>
-                      <p className="text-[8.5px] font-black text-rose-600 dark:text-rose-400 shrink-0 pr-0.5">{agent.sales}</p>
+                      <div className="text-right shrink-0 pr-0.5">
+                        <p className="text-[8.5px] font-black text-rose-600 dark:text-rose-400 leading-none">{item.amount}</p>
+                        <span className={`text-[6px] font-black uppercase px-1 py-0.2 rounded-full inline-block mt-0.5 ${item.status === 'Confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
+                          item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                            'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                          }`}>
+                          {item.status}
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Drivers */}
-              <div className="pt-1 border-t border-gray-50 dark:border-gray-800/50">
-                <h4 className="text-[8px] font-black text-blue-500 uppercase tracking-wider mb-1">Top Coach Drivers</h4>
-                <div className="space-y-0.5">
-                  {drivers.map((driver) => (
-                    <div key={driver.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
-                        driver.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
-                        driver.rank === 2 ? 'bg-slate-300 text-gray-800' :
-                        'bg-amber-600/80 text-white'
-                      }`}>
-                        {driver.rank}
-                      </div>
-                      <img src={driver.image} alt={driver.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{driver.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{driver.trips} Trips • {driver.rating}★</p>
-                      </div>
-                      <p className="text-[8.5px] font-black text-blue-600 dark:text-blue-400 shrink-0 pr-0.5">{driver.hours}h</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
+
             </div>
           </div>
 
@@ -909,22 +769,20 @@ export default function AdminDashboard() {
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setChartTab('revenue')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'revenue'
-                      ? 'border-blue-500 text-blue-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${chartTab === 'revenue'
+                    ? 'border-blue-500 text-blue-600 dark:text-white'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
                 >
-                  <LuTrendingUp className="w-3 h-3 text-blue-500" />
-                  Revenue vs Bookings
+                  <LuTicket className="w-3 h-3 text-blue-500" />
+                  Pending & Reserved
                 </button>
                 <button
                   onClick={() => setChartTab('utilization')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'utilization'
-                      ? 'border-purple-500 text-purple-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
+                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${chartTab === 'utilization'
+                    ? 'border-purple-500 text-purple-600 dark:text-white'
+                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                    }`}
                 >
                   <LuActivity className="w-3 h-3 text-purple-500" />
                   Fleet Utilization
@@ -932,10 +790,7 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-1.5">
                 {chartTab === 'revenue' ? (
-                  <>
-                    <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
-                    <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
-                  </>
+                  <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
                 ) : (
                   <>
                     <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2026</span></span>
@@ -954,38 +809,41 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            <div className="flex-1 min-h-0 mt-3">
-              <ResponsiveContainer width="100%" height="100%">
-                {chartTab === 'revenue' ? (
-                  <AreaChart data={monthlyData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
-                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                        border: '1px solid',
-                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                        borderRadius: 10,
-                        fontSize: 10,
-                        fontWeight: 700
-                      }}
-                      labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
-                    <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
-                  </AreaChart>
-                ) : (
+            <div className="flex-1 min-h-0 mt-3 overflow-y-auto custom-scrollbar">
+              {chartTab === 'revenue' ? (
+                <div className="space-y-1 pr-0.5">
+                  {pendingAndReservedBookings.map((item, idx) => (
+                    <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
+                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-black shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1">
+                          <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+                            {item.id}
+                          </span>
+                          <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
+                          <span className="text-[6.5px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.2 rounded uppercase">
+                            {item.type}
+                          </span>
+                        </div>
+                        <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                          {item.customer} {'->'} <span className="text-blue-600 dark:text-blue-400">{item.destination}</span>
+                        </h4>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
+                        <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                          'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                          }`}>
+                          {item.status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
                     <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
                     <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
@@ -1003,8 +861,8 @@ export default function AdminDashboard() {
                     />
                     <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
                   </BarChart>
-                )}
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
 
@@ -1039,53 +897,8 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
     return arr;
   }, [calYear, calMonth, daysInMonth, firstWeekday]);
 
+  // Build live schedules from trip tickets
   const fleetSchedules = useMemo(() => {
-    const fallbackEvents = [
-      { id: 1,  date: new Date(y, m, 1), busIndex: 0, route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
-      { id: 2,  date: new Date(y, m, 3), busIndex: 1, route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
-      { id: 3,  date: new Date(y, m, 5), busIndex: 2, route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
-      { id: 4,  date: new Date(y, m, today.getDate()), busIndex: 3, route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
-      { id: 5,  date: new Date(y, m, today.getDate()), busIndex: 0, route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
-      { id: 6,  date: new Date(y, m, today.getDate()), busIndex: 4, route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
-      { id: 7,  date: new Date(y, m, today.getDate() + 1), busIndex: 1, route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
-      { id: 8,  date: new Date(y, m, today.getDate() + 2), busIndex: 5, route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
-      { id: 9,  date: new Date(y, m, today.getDate() + 3), busIndex: 2, route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
-      { id: 10, date: new Date(y, m, today.getDate() + 5), busIndex: 6, route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
-    ];
-
-    if (!tickets || tickets.length === 0) {
-      if (buses && buses.length > 0) {
-        return fallbackEvents.map(event => {
-          const actualBus = buses[event.busIndex % buses.length];
-          return {
-            id: event.id,
-            date: event.date,
-            bus: actualBus.plate_number,
-            busModel: actualBus.model,
-            plate: actualBus.plate_number,
-            route: event.route,
-            driver: event.driver,
-            depart: event.depart,
-            status: event.status,
-            seats: actualBus.seating_capacity || event.seats
-          };
-        });
-      } else {
-        return fallbackEvents.map(event => ({
-          id: event.id,
-          date: event.date,
-          bus: `BUS-00${event.busIndex + 1}`,
-          busModel: 'Luxury Coach',
-          plate: `XYZ-00${event.busIndex + 1}`,
-          route: event.route,
-          driver: event.driver,
-          depart: event.depart,
-          status: event.status,
-          seats: event.seats
-        }));
-      }
-    }
-
     return tickets.map((t: any) => ({
       id: t.id,
       date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
@@ -1098,7 +911,7 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
       status: t.status === 'completed' ? 'completed' : t.status === 'approved' ? 'in_service' : 'scheduled',
       seats: t.no_of_passengers || 45,
     }));
-  }, [tickets, buses, y, m, today]);
+  }, [tickets]);
 
   const selectedEvents = useMemo(() => {
     return fleetSchedules.filter(s => isSameDay(s.date, selected));
@@ -1181,13 +994,12 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
               <button
                 key={date.toISOString()}
                 onClick={() => setSelected(date)}
-                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-6.5 text-[9px] font-black ${
-                  isSel
-                    ? 'bg-blue-500 text-white shadow-md shadow-blue-200/50 dark:shadow-blue-900/30'
-                    : isToday
-                      ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200 dark:ring-blue-500/30'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
-                }`}
+                className={`relative flex flex-col items-center justify-center rounded-lg transition-all h-6.5 text-[9px] font-black ${isSel
+                  ? 'bg-blue-500 text-white shadow-md shadow-blue-200/50 dark:shadow-blue-900/30'
+                  : isToday
+                    ? 'bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-200 dark:ring-blue-500/30'
+                    : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
+                  }`}
               >
                 <span>{date.getDate()}</span>
                 {events.length > 0 && (
@@ -1251,7 +1063,7 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
                       <span className="truncate max-w-[65%]">{route}</span>
                       <span className="truncate max-w-[35%] opacity-75 text-right">{driver}</span>
                     </div>
- 
+
                   </div>
                 );
               })

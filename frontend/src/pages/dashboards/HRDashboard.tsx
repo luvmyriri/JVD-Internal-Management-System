@@ -19,7 +19,6 @@ import {
   LuChevronLeft,
   LuChevronRight,
   LuTrophy,
-  LuTicket,
   LuTrendingUp,
   LuActivity,
   LuUser,
@@ -60,110 +59,9 @@ const userDistributionData = [
   { name: 'Admin',        value:  5, color: '#6366f1' },
 ];
 
-const detailedBranchData = {
-  accounting: [
-    { Date: '2026-05-18', 'Invoice ID': 'INV-001', Client: 'Acme Corp', Amount: 'PHP 150,000', Status: 'Paid' },
-    { Date: '2026-05-17', 'Invoice ID': 'INV-002', Client: 'Globex', Amount: 'PHP 200,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'Invoice ID': 'INV-003', Client: 'Soylent Corp', Amount: 'PHP 50,000', Status: 'Paid' },
-    { Date: '2026-05-15', 'Invoice ID': 'INV-004', Client: 'Initech', Amount: 'PHP 120,000', Status: 'Cancelled' },
-    { Date: '2026-05-14', 'Invoice ID': 'INV-005', Client: 'Umbrella Corp', Amount: 'PHP 300,000', Status: 'Paid' },
-  ],
-  procurement: [
-    { Date: '2026-05-18', 'PO ID': 'PO-1001', Supplier: 'Office Depot', Item: 'Laptops', Amount: 'PHP 250,000', Status: 'Approved' },
-    { Date: '2026-05-17', 'PO ID': 'PO-1002', Supplier: 'Dell', Item: 'Monitors', Amount: 'PHP 80,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'PO ID': 'PO-1003', Supplier: 'Furniture Inc', Item: 'Desks', Amount: 'PHP 45,000', Status: 'Delivered' },
-    { Date: '2026-05-15', 'PO ID': 'PO-1004', Supplier: 'Stationery Pro', Item: 'Paper', Amount: 'PHP 5,000', Status: 'Approved' },
-  ],
-  inventory: [
-    { 'Item Code': 'ITEM-001', 'Item Name': 'MacBook Pro 14"', Category: 'Electronics', 'Stock Level': '45 pcs', Status: 'In Stock' },
-    { 'Item Code': 'ITEM-002', 'Item Name': 'Dell 24" Monitor', Category: 'Electronics', 'Stock Level': '12 pcs', Status: 'Low Stock' },
-    { 'Item Code': 'ITEM-003', 'Item Name': 'Ergonomic Chair', Category: 'Furniture', 'Stock Level': '0 pcs', Status: 'Out of Stock' },
-    { 'Item Code': 'ITEM-004', 'Item Name': 'A4 Paper Ream', Category: 'Supplies', 'Stock Level': '150 pcs', Status: 'In Stock' },
-  ],
-  travel: [
-    { Date: '2026-05-18', 'Booking ID': 'BK-9001', Customer: 'John Doe', Destination: 'Boracay', Amount: 'PHP 12,000', Status: 'Confirmed' },
-    { Date: '2026-05-17', 'Booking ID': 'BK-9002', Customer: 'Jane Smith', Destination: 'Palawan', Amount: 'PHP 18,000', Status: 'Pending' },
-    { Date: '2026-05-16', 'Booking ID': 'BK-9003', Customer: 'Bob Johnson', Destination: 'Cebu', Amount: 'PHP 8,500', Status: 'Confirmed' },
-    { Date: '2026-05-15', 'Booking ID': 'BK-9004', Customer: 'Alice Brown', Destination: 'Siargao', Amount: 'PHP 25,000', Status: 'Cancelled' },
-    { Date: '2026-05-14', 'Booking ID': 'BK-9005', Customer: 'Charlie Green', Destination: 'Bohol', Amount: 'PHP 14,500', Status: 'Confirmed' },
-    { Date: '2026-05-13', 'Booking ID': 'BK-9006', Customer: 'David Wilson', Destination: 'Iloilo', Amount: 'PHP 9,200', Status: 'Confirmed' },
-  ],
-};
 
-const detailedCustomerData = [
-  { 'Customer ID': 'CUST-001', Name: 'John Doe', Email: 'john.doe@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-01-15' },
-  { 'Customer ID': 'CUST-002', Name: 'Jane Smith', Email: 'jane.smith@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-02-20' },
-  { 'Customer ID': 'CUST-003', Name: 'Bob Johnson', Email: 'bob.j@example.com', 'Plan Type': 'Enterprise', Status: 'Inactive', 'Join Date': '2025-11-10' },
-  { 'Customer ID': 'CUST-004', Name: 'Alice Brown', Email: 'alice.b@example.com', 'Plan Type': 'Premium', Status: 'Active', 'Join Date': '2026-03-05' },
-  { 'Customer ID': 'CUST-005', Name: 'Charlie Green', Email: 'charlie.g@example.com', 'Plan Type': 'Basic', Status: 'Active', 'Join Date': '2026-04-12' },
-];
+// topDrivers removed
 
-const detailedEmployeeData = [
-  { 'Employee ID': 'EMP-001', Name: 'Alice Smith', Department: 'HR', Position: 'Manager', Status: 'Active', 'Hire Date': '2024-05-10' },
-  { 'Employee ID': 'EMP-002', Name: 'Bob Jones', Department: 'Accounting', Position: 'Accountant', Status: 'Active', 'Hire Date': '2025-01-15' },
-  { 'Employee ID': 'EMP-003', Name: 'Charlie Brown', Department: 'IT', Position: 'Developer', Status: 'Active', 'Hire Date': '2025-06-01' },
-  { 'Employee ID': 'EMP-004', Name: 'David Wilson', Department: 'Procurement', Position: 'Officer', Status: 'On Leave', 'Hire Date': '2024-11-20' },
-  { 'Employee ID': 'EMP-005', Name: 'Eva Davis', Department: 'Travel', Position: 'Agent', Status: 'Active', 'Hire Date': '2026-02-15' },
-];
-
-
-
-
-
-
-const topAgents = [
-  {
-    rank: 1,
-    name: 'Lara Croft',
-    sales: 'PHP 1,250,000',
-    bookings: 145,
-    rating: 4.9,
-    image: 'https://ui-avatars.com/api/?name=Lara+Croft&background=f43f5e&color=fff'
-  },
-  {
-    rank: 2,
-    name: 'Maria Santos',
-    sales: 'PHP 980,000',
-    bookings: 120,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Maria+Santos&background=8b5cf6&color=fff'
-  },
-  {
-    rank: 3,
-    name: 'Rosa Garcia',
-    sales: 'PHP 850,000',
-    bookings: 112,
-    rating: 4.7,
-    image: 'https://ui-avatars.com/api/?name=Rosa+Garcia&background=10b981&color=fff'
-  }
-];
-
-const topDrivers = [
-  {
-    rank: 1,
-    name: 'Juan dela Cruz',
-    trips: 42,
-    hours: 180,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Juan+dela+Cruz&background=3b82f6&color=fff'
-  },
-  {
-    rank: 2,
-    name: 'Emmanuel Nalang',
-    trips: 39,
-    hours: 165,
-    rating: 4.8,
-    image: 'https://ui-avatars.com/api/?name=Emmanuel+Nalang&background=f59e0b&color=fff'
-  },
-  {
-    rank: 3,
-    name: 'Pedro Reyes',
-    trips: 35,
-    hours: 150,
-    rating: 4.6,
-    image: 'https://ui-avatars.com/api/?name=Pedro+Reyes&background=6366f1&color=fff'
-  }
-];
 
 const heatmapGridData = [
   [15, 20, 25, 45, 60, 65, 75, 85, 95, 90, 80, 45], // Mon
@@ -259,10 +157,24 @@ export default function HRDashboard() {
 
   // @ts-expect-error kept for future heatmap feature
   const _heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
-  const recentBookings = dashboardData?.recent_bookings && dashboardData.recent_bookings.length > 0 ? dashboardData.recent_bookings : detailedBranchData.travel;
-  const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : topAgents;
-  const drivers = dashboardData?.top_drivers && dashboardData.top_drivers.length > 0 ? dashboardData.top_drivers : topDrivers;
+  const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : [];
+
+  const busesUnderMaintenance = useMemo(() => {
+    return buses.filter((b: any) => b.status === 'under_maintenance');
+  }, [buses]);
   const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : monthlyChartData;
+
+  // ── Live booking lists (available for export/future use) ──
+  // @ts-expect-error available for future dashboard features
+  const _localBookings              = dashboardData?.local_bookings ?? [];
+  // @ts-expect-error available for future dashboard features
+  const _internationalBookings      = dashboardData?.international_bookings ?? [];
+  // @ts-expect-error available for future dashboard features
+  const _pendingAndReservedBookings = dashboardData?.pending_reserved_bookings ?? [];
+  const detailedCustomerData        = dashboardData?.customer_list ?? [];
+  const detailedEmployeeData        = dashboardData?.employee_list ?? [];
+  // @ts-expect-error available for future dashboard features
+  const _detailedRevenueData        = dashboardData?.revenue_export ?? [];
 
   const totalEmployeesCount = usersResponse?.data?.length ?? 0;
   const inactiveEmployeesCount = usersResponse?.data?.filter((u: any) => !u.is_active).length ?? 0;
@@ -286,81 +198,18 @@ export default function HRDashboard() {
 
   const availableBusesToday = useMemo(() => {
     const todayDate = new Date();
-    const currentY = todayDate.getFullYear();
-    const currentM = todayDate.getMonth();
     const isSameDay = (a: Date, b: Date) =>
       a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
-    const fallbackEvents = [
-      { id: 1,  date: new Date(currentY, currentM, 1), busIndex: 0, route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
-      { id: 2,  date: new Date(currentY, currentM, 3), busIndex: 1, route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
-      { id: 3,  date: new Date(currentY, currentM, 5), busIndex: 2, route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
-      { id: 4,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 3, route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
-      { id: 5,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 0, route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
-      { id: 6,  date: new Date(currentY, currentM, todayDate.getDate()), busIndex: 4, route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
-      { id: 7,  date: new Date(currentY, currentM, todayDate.getDate() + 1), busIndex: 1, route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
-      { id: 8,  date: new Date(currentY, currentM, todayDate.getDate() + 2), busIndex: 5, route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
-      { id: 9,  date: new Date(currentY, currentM, todayDate.getDate() + 3), busIndex: 2, route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
-      { id: 10, date: new Date(currentY, currentM, todayDate.getDate() + 5), busIndex: 6, route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
-    ];
+    const schedules = tickets.map((t: any) => ({
+      date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
+      bus: t.bus?.plate_number || t.plate_no || 'N/A',
+    }));
 
-    const fleetSchedules = !tickets || tickets.length === 0
-      ? (buses && buses.length > 0
-          ? fallbackEvents.map(event => {
-              const actualBus = buses[event.busIndex % buses.length];
-              return {
-                id: event.id,
-                date: event.date,
-                bus: actualBus.plate_number,
-                busModel: actualBus.model,
-                plate: actualBus.plate_number,
-                route: event.route,
-                driver: event.driver,
-                depart: event.depart,
-                status: event.status,
-                seats: actualBus.seating_capacity || event.seats
-              };
-            })
-          : fallbackEvents.map(event => ({
-              id: event.id,
-              date: event.date,
-              bus: `BUS-00${event.busIndex + 1}`,
-              busModel: 'Luxury Coach',
-              plate: `XYZ-00${event.busIndex + 1}`,
-              route: event.route,
-              driver: event.driver,
-              depart: event.depart,
-              status: event.status,
-              seats: event.seats
-            })))
-      : tickets.map((t: any) => ({
-          id: t.id,
-          date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
-          bus: t.bus?.plate_number || t.plate_no || 'N/A',
-          busModel: t.bus?.model || '',
-          plate: t.bus?.plate_number || t.plate_no || 'N/A',
-          route: `${t.pick_up || 'N/A'} - ${t.drop_off || 'N/A'}`,
-          driver: t.driver ? `${t.driver.first_name || ''} ${t.driver.last_name || ''}`.trim() : (t.driver?.name || 'N/A'),
-          depart: '09:00 AM',
-          status: t.status === 'completed' ? 'completed' : t.status === 'approved' ? 'in_service' : 'scheduled',
-          seats: t.no_of_passengers || 45,
-        }));
-
-    const todayEvents = fleetSchedules.filter(s => isSameDay(s.date, todayDate));
+    const todayEvents = schedules.filter(s => isSameDay(s.date, todayDate));
     const occupiedToday = Array.from(new Set(todayEvents.map(d => d.bus)));
 
-    if (!buses || buses.length === 0) {
-      const allBusesPlaceholder = [
-        { id: 1, plate_number: 'XYZ-001', model: 'BUS-001', seating_capacity: 45 },
-        { id: 2, plate_number: 'XYZ-002', model: 'BUS-002', seating_capacity: 55 },
-        { id: 3, plate_number: 'XYZ-003', model: 'BUS-003', seating_capacity: 40 },
-        { id: 4, plate_number: 'XYZ-004', model: 'BUS-004', seating_capacity: 50 },
-        { id: 5, plate_number: 'XYZ-005', model: 'BUS-005', seating_capacity: 60 },
-        { id: 6, plate_number: 'XYZ-006', model: 'BUS-006', seating_capacity: 45 },
-        { id: 7, plate_number: 'XYZ-007', model: 'BUS-007', seating_capacity: 50 },
-      ];
-      return allBusesPlaceholder.filter((b: any) => !occupiedToday.includes(b.model));
-    }
+    if (!buses || buses.length === 0) return [];
     return buses.filter((b: any) => !occupiedToday.includes(b.plate_number));
   }, [tickets, buses]);
 
@@ -822,45 +671,57 @@ export default function HRDashboard() {
             </div>
           </div>
 
-          {/* Travel Bookings List */}
+          {/* Buses Under Maintenance List */}
           <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
-                <LuTicket className="w-3 h-3 text-violet-500" />
-                Travel Bookings
+                <LuBus className="w-3 h-3 text-amber-500" />
+                Buses Under Maintenance
               </h3>
-              <DownloadActions variant="dark" title="Travel Bookings Weekly" data={recentBookings} />
+              <DownloadActions
+                variant="dark"
+                title="Buses Under Maintenance"
+                data={busesUnderMaintenance.map((b: any) => ({
+                  'Plate Number': b.plate_number,
+                  'Model': b.model,
+                  'Category': b.bus_category,
+                  'Mileage': `${b.total_mileage?.toLocaleString() ?? 0} km`,
+                  'Status': 'Under Maintenance'
+                }))}
+              />
             </div>
 
-            <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5">
-              {recentBookings.slice(0, 6).map((item, idx) => (
-                <div key={item['Booking ID']} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                  <div className="w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-400 flex items-center justify-center text-[9px] font-black shrink-0">
+            <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5 custom-scrollbar">
+              {busesUnderMaintenance.slice(0, 6).map((item: any, idx: number) => (
+                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1">
-                      <span className="text-[7px] font-black text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-500/10 px-1.5 py-0.5 rounded">
-                        {item['Booking ID']}
+                      <span className="text-[7px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
+                        {item.plate_number}
                       </span>
-                      <span className="text-[7px] text-gray-400 font-bold">{item.Date}</span>
+                      <span className="text-[7px] text-gray-400 font-bold">{item.bus_category}</span>
                     </div>
                     <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
-                      {item.Customer} {'->'} <span className="text-violet-600 dark:text-violet-400">{item.Destination}</span>
+                      {item.model}
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.Amount}</p>
-                    <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
-                      item.Status === 'Confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
-                      item.Status === 'Pending'   ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                      'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400'
-                    }`}>
-                      {item.Status}
+                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.total_mileage?.toLocaleString() ?? 0} km</p>
+                    <span className="text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                      Maintenance
                     </span>
                   </div>
                 </div>
               ))}
+              {busesUnderMaintenance.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-gray-400 dark:text-gray-500">
+                  <LuBus className="w-8 h-8 mb-2 opacity-50 text-gray-300 animate-pulse" />
+                  <p className="text-[10px] font-black uppercase tracking-wider">No Buses Under Maintenance</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -899,31 +760,7 @@ export default function HRDashboard() {
                       <p className="text-[8.5px] font-black text-rose-600 dark:text-rose-400 shrink-0 pr-0.5">{agent.sales}</p>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              {/* Drivers */}
-              <div className="pt-1 border-t border-gray-50 dark:border-gray-800/50">
-                <h4 className="text-[8px] font-black text-blue-500 uppercase tracking-wider mb-1">Top Coach Drivers</h4>
-                <div className="space-y-0.5">
-                  {drivers.map((driver) => (
-                    <div key={driver.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
-                      <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
-                        driver.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
-                        driver.rank === 2 ? 'bg-slate-300 text-gray-800' :
-                        'bg-amber-600/80 text-white'
-                      }`}>
-                        {driver.rank}
-                      </div>
-                      <img src={driver.image} alt={driver.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{driver.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{driver.trips} Trips â€¢ {driver.rating}â˜…</p>
-                      </div>
-                      <p className="text-[8.5px] font-black text-blue-600 dark:text-blue-400 shrink-0 pr-0.5">{driver.hours}h</p>
-                    </div>
-                  ))}
-                </div>
+                          </div>
               </div>
             </div>
           </div>
@@ -1210,54 +1047,8 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
     return arr;
   }, [calYear, calMonth, daysInMonth, firstWeekday]);
 
-  // Build live schedules from trip tickets, fallback to static mock mapped to actual buses if available
+  // Build live schedules from trip tickets
   const fleetSchedules = useMemo(() => {
-    const fallbackEvents = [
-      { id: 1,  date: new Date(y, m, 1), busIndex: 0, route: 'Manila - Cebu',    driver: 'Juan dela Cruz', depart: '06:00 AM', status: 'completed',    seats: 45 },
-      { id: 2,  date: new Date(y, m, 3), busIndex: 1, route: 'Manila - Davao',   driver: 'Maria Santos',   depart: '07:30 AM', status: 'completed',    seats: 55 },
-      { id: 3,  date: new Date(y, m, 5), busIndex: 2, route: 'Cebu - Iloilo',    driver: 'Pedro Reyes',    depart: '08:00 AM', status: 'in_service',   seats: 40 },
-      { id: 4,  date: new Date(y, m, today.getDate()), busIndex: 3, route: 'Manila - Bohol',   driver: 'Ana Lim',      depart: '09:00 AM', status: 'in_service',   seats: 50 },
-      { id: 5,  date: new Date(y, m, today.getDate()), busIndex: 0, route: 'Davao - Cagayan', driver: 'Juan dela Cruz', depart: '02:00 PM', status: 'scheduled',    seats: 45 },
-      { id: 6,  date: new Date(y, m, today.getDate()), busIndex: 4, route: 'Manila - Palawan',driver: 'Rosa Garcia',    depart: '04:30 PM', status: 'scheduled',    seats: 60 },
-      { id: 7,  date: new Date(y, m, today.getDate() + 1), busIndex: 1, route: 'Cebu - Bacolod',  driver: 'Maria Santos',   depart: '07:00 AM', status: 'scheduled',    seats: 55 },
-      { id: 8,  date: new Date(y, m, today.getDate() + 2), busIndex: 5, route: 'Manila - Ilocos', driver: 'Carlo Tan',      depart: '05:00 AM', status: 'scheduled',    seats: 45 },
-      { id: 9,  date: new Date(y, m, today.getDate() + 3), busIndex: 2, route: 'Davao -> Butuan', driver: 'Pedro Reyes',  depart: '08:30 AM', status: 'maintenance', seats: 40 },
-      { id: 10, date: new Date(y, m, today.getDate() + 5), busIndex: 6, route: 'Manila -> Leyte',  driver: 'Liza Navarro',   depart: '06:45 AM', status: 'scheduled',   seats: 50 },
-    ];
-
-    if (!tickets || tickets.length === 0) {
-      if (buses && buses.length > 0) {
-        return fallbackEvents.map(event => {
-          const actualBus = buses[event.busIndex % buses.length];
-          return {
-            id: event.id,
-            date: event.date,
-            bus: actualBus.plate_number,
-            busModel: actualBus.model,
-            plate: actualBus.plate_number,
-            route: event.route,
-            driver: event.driver,
-            depart: event.depart,
-            status: event.status,
-            seats: actualBus.seating_capacity || event.seats
-          };
-        });
-      } else {
-        return fallbackEvents.map(event => ({
-          id: event.id,
-          date: event.date,
-          bus: `BUS-00${event.busIndex + 1}`,
-          busModel: 'Luxury Coach',
-          plate: `XYZ-00${event.busIndex + 1}`,
-          route: event.route,
-          driver: event.driver,
-          depart: event.depart,
-          status: event.status,
-          seats: event.seats
-        }));
-      }
-    }
-
     return tickets.map((t: any) => ({
       id: t.id,
       date: t.date_of_travel ? new Date(t.date_of_travel) : new Date(),
@@ -1270,7 +1061,7 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
       status: t.status === 'completed' ? 'completed' : t.status === 'approved' ? 'in_service' : 'scheduled',
       seats: t.no_of_passengers || 45,
     }));
-  }, [tickets, buses, y, m, today]);
+  }, [tickets]);
 
   const selectedEvents = useMemo(() => {
     return fleetSchedules.filter(s => isSameDay(s.date, selected));
