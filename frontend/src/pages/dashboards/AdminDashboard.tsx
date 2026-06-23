@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import {
   LuUsers,
   LuBanknote,
@@ -12,13 +11,9 @@ import {
   LuFileSpreadsheet,
   LuChevronLeft,
   LuChevronRight,
-  LuTicket,
-  LuActivity
+  LuTicket
 } from 'react-icons/lu';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
-} from 'recharts';
+
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -37,28 +32,13 @@ import { LoadingScreen } from '../../components/ui';
 
 
 
-const monthlyChartData = [
-  { month: 'Jan', bookings: 95, revenue: 1280, utilization: 72 },
-  { month: 'Feb', bookings: 108, revenue: 1520, utilization: 75 },
-  { month: 'Mar', bookings: 134, revenue: 1850, utilization: 82 },
-  { month: 'Apr', bookings: 119, revenue: 2100, utilization: 78 },
-  { month: 'May', bookings: 156, revenue: 2300, utilization: 91 },
-  { month: 'Jun', bookings: 162, revenue: 2480, utilization: 94 },
-  { month: 'Jul', bookings: 170, revenue: 2650, utilization: 96 },
-  { month: 'Aug', bookings: 158, revenue: 2520, utilization: 89 },
-  { month: 'Sep', bookings: 143, revenue: 2210, utilization: 84 },
-  { month: 'Oct', bookings: 128, revenue: 1980, utilization: 79 },
-  { month: 'Nov', bookings: 112, revenue: 1740, utilization: 76 },
-  { month: 'Dec', bookings: 98, revenue: 1350, utilization: 70 },
-];
+
 
 
 
 
 export default function AdminDashboard() {
   const { user } = useAuth();
-  const { theme } = useTheme();
-  const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
 
   // ── Live API Queries ──────────────────────────────────────────────────────
   const { data: dashboardData, isLoading, error } = useQuery({
@@ -93,6 +73,10 @@ export default function AdminDashboard() {
   const pendingBudgets = useMemo(() => {
     return cashBudgets.filter((b: any) => b.status === 'pending_accounting');
   }, [cashBudgets]);
+
+  const busesUnderMaintenance = useMemo(() => {
+    return buses.filter((b: any) => b.status === 'under_maintenance');
+  }, [buses]);
 
 
   const exportToPDF = async (title: string, data: any[]) => {
@@ -355,7 +339,6 @@ export default function AdminDashboard() {
   }
 
   const kpis = dashboardData?.kpis ?? {};
-  const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : monthlyChartData;
   const userDist = dashboardData?.user_distribution && dashboardData.user_distribution.length > 0
     ? dashboardData.user_distribution.map((d: any) => ({
       ...d,
@@ -375,9 +358,6 @@ export default function AdminDashboard() {
   const detailedEmployeeData = dashboardData?.employee_list ?? [];
   const detailedRevenueData = dashboardData?.revenue_export ?? [];
 
-  const busesUnderMaintenance = useMemo(() => {
-    return buses.filter((b: any) => b.status === 'under_maintenance');
-  }, [buses]);
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -763,54 +743,22 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Operations & Performance tabbed widget */}
+          {/* Pending & Reserved widget */}
           <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setChartTab('revenue')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${chartTab === 'revenue'
-                    ? 'border-blue-500 text-blue-600 dark:text-white'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                    }`}
-                >
+                <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-blue-600 dark:text-white">
                   <LuTicket className="w-3 h-3 text-blue-500" />
                   Pending & Reserved
-                </button>
-                <button
-                  onClick={() => setChartTab('utilization')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${chartTab === 'utilization'
-                    ? 'border-purple-500 text-purple-600 dark:text-white'
-                    : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                    }`}
-                >
-                  <LuActivity className="w-3 h-3 text-purple-500" />
-                  Fleet Utilization
-                </button>
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
-                {chartTab === 'revenue' ? (
-                  <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
-                ) : (
-                  <>
-                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2026</span></span>
-                    <DownloadActions
-                      variant="dark"
-                      title="Fleet Utilization 2026"
-                      data={monthlyData.map(d => ({
-                        Month: d.month,
-                        'Utilization (%)': d.utilization,
-                        'Bookings': d.bookings,
-                        'Revenue (PHP K)': d.revenue,
-                      }))}
-                    />
-                  </>
-                )}
+                <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
               </div>
             </div>
 
             <div className="flex-1 min-h-0 mt-3 overflow-y-auto custom-scrollbar">
-              {chartTab === 'revenue' ? (
+              (
                 <div className="space-y-1 pr-0.5">
                   {pendingAndReservedBookings.map((item, idx) => (
                     <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
@@ -842,27 +790,7 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      formatter={(v: any) => [`${v}%`, 'Utilization']}
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                        border: '1px solid',
-                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                        borderRadius: 10,
-                        fontSize: 10,
-                        fontWeight: 700
-                      }}
-                    />
-                    <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+              )
             </div>
           </div>
 
