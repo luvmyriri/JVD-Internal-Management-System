@@ -54,6 +54,21 @@ export interface RecentBooking {
   Status: 'Confirmed' | 'Pending' | 'Cancelled';
 }
 
+/** Local / International booking list item */
+export interface LiveBooking {
+  id: string;
+  customer: string;
+  destination: string;
+  date: string;
+  status: string;
+  amount: string;
+}
+
+/** Pending or Reserved booking list item */
+export interface PendingBooking extends LiveBooking {
+  type: 'Local' | 'International';
+}
+
 export interface UserDistribution {
   name: string;
   value: number;
@@ -67,6 +82,13 @@ export interface DashboardData {
   recent_bookings: RecentBooking[];
   user_distribution?: UserDistribution[];
   peak_client_activity?: number[][];
+  // New: live data for dashboard cards/lists
+  local_bookings?: LiveBooking[];
+  international_bookings?: LiveBooking[];
+  pending_reserved_bookings?: PendingBooking[];
+  customer_list?: Record<string, string>[];
+  employee_list?: Record<string, string>[];
+  revenue_export?: Record<string, string>[];
 }
 
 export const dashboardApi = {
