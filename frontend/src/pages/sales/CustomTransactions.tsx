@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import {
   LuPlus,
@@ -73,16 +73,34 @@ export default function CustomTransactions() {
   const [itineraryRows, setItineraryRows] = useState<ItineraryDayInput[]>([]);
   const [passengerRows, setPassengerRows] = useState<PassengerInput[]>([]);
 
-  // Load calendar for selected bus to check seat occupancy on travel date
+  const activeBusId = useMemo(() => {
+    if (customForm.category === 'Bus Rental') {
+      return busRental.busId;
+    } else if (customForm.category === 'Educational Tour') {
+      return eduTour.busId ? Number(eduTour.busId) : null;
+    }
+    return null;
+  }, [customForm.category, busRental.busId, eduTour.busId]);
+
+  const activeTravelDate = useMemo(() => {
+    if (customForm.category === 'Bus Rental') {
+      return busRental.travelDate;
+    } else if (customForm.category === 'Educational Tour') {
+      return eduTour.serviceDate;
+    }
+    return '';
+  }, [customForm.category, busRental.travelDate, eduTour.serviceDate]);
+
+  // Load calendar for selected bus to check seat occupancy and conflicts on travel date
   const { data: busCalendarRes } = useQuery({
-    queryKey: ['bus-calendar', busRental.busId, busRental.travelDate ? busRental.travelDate.substring(0, 7) : ''],
+    queryKey: ['bus-calendar', activeBusId, activeTravelDate ? activeTravelDate.substring(0, 7) : ''],
     queryFn: async () => {
-      if (!busRental.busId || !busRental.travelDate) return null;
-      const date = new Date(busRental.travelDate);
-      const res = await fleetApi.getCalendar(busRental.busId, { month: date.getMonth() + 1, year: date.getFullYear() });
+      if (!activeBusId || !activeTravelDate) return null;
+      const date = new Date(activeTravelDate);
+      const res = await fleetApi.getCalendar(activeBusId, { month: date.getMonth() + 1, year: date.getFullYear() });
       return res.data;
     },
-    enabled: !!busRental.busId && !!busRental.travelDate,
+    enabled: !!activeBusId && !!activeTravelDate,
   });
 
   const occupiedSeats = useMemo(() => {
@@ -97,6 +115,77 @@ export default function CustomTransactions() {
     });
     return seats;
   }, [busCalendarRes, busRental.travelDate]);
+
+  const isBusBookedOnDate = useMemo(() => {
+    if (!busCalendarRes?.data || !activeTravelDate) return false;
+    const entries = busCalendarRes.data;
+    return entries.some((e: any) => e.date === activeTravelDate);
+  }, [busCalendarRes, activeTravelDate]);
+
+  // Autocalculate price based on category inputs
+  useEffect(() => {
+    let calculatedPrice = 0;
+    switch (customForm.category) {
+      case 'Bus Rental': {
+        const baseRates: Record<string, number> = {
+          'Bus': 10000,
+          'Coaster': 8000,
+          'Van': 5000,
+          'Sedan': 3000,
+          'SUV': 4500
+        };
+        const base = baseRates[busRental.vehicleType] || 5000;
+        const days = Number(busRental.days) || 1;
+        calculatedPrice = base * days;
+        break;
+      }
+      case 'Educational Tour': {
+        const pax = Number(eduTour.expectedPax) || 0;
+        calculatedPrice = 800 * pax;
+        break;
+      }
+      case 'Tour Package': {
+        const adults = Number(tourPackage.adults) || 0;
+        const children = Number(tourPackage.children) || 0;
+        calculatedPrice = (1500 * adults) + (1000 * children);
+        break;
+      }
+      case 'Visa Processing': {
+        const count = visaProcessing.applicants.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).length || 1;
+        calculatedPrice = 2500 * count;
+        break;
+      }
+      case 'Joiners': {
+        const pax = Number(joiners.paxCount) || 0;
+        calculatedPrice = 2000 * pax;
+        break;
+      }
+      case 'Booking': {
+        const count = booking.guests.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).length || 1;
+        calculatedPrice = 1500 * count;
+        break;
+      }
+      default:
+        return; // Don't overwrite manually typed price for 'Other' or unknown
+    }
+
+    if (calculatedPrice > 0) {
+      setCustomForm(prev => ({
+        ...prev,
+        price: formatMoneyInput(calculatedPrice.toString())
+      }));
+    }
+  }, [
+    customForm.category,
+    busRental.vehicleType,
+    busRental.days,
+    eduTour.expectedPax,
+    tourPackage.adults,
+    tourPackage.children,
+    visaProcessing.applicants,
+    joiners.paxCount,
+    booking.guests
+  ]);
 
   const resetSubStates = () => {
     setBusRental(INITIAL_BUS_RENTAL);
@@ -225,6 +314,11 @@ export default function CustomTransactions() {
     const cleanPrice = parseMoneyInput(customForm.price);
     if (!customForm.name || customForm.price === '' || Number(cleanPrice) <= 0) {
       toast.error('Please enter a valid service name and price.');
+      return;
+    }
+
+    if (isBusBookedOnDate) {
+      toast.error('The selected bus unit is already booked/reserved on the specified travel date.');
       return;
     }
 
@@ -497,6 +591,12 @@ export default function CustomTransactions() {
 
               {/* Customized category specifications fields */}
               {renderCategoryFields()}
+
+              {isBusBookedOnDate && (
+                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-2xl text-xs font-bold animate-pulse">
+                  ⚠️ WARNING: The selected bus unit is already booked/reserved on the specified travel date ({activeTravelDate}). Please select another date or bus.
+                </div>
+              )}
 
               {showItineraryBuilder && (
                 <ItineraryBuilder value={itineraryRows} onChange={setItineraryRows} />

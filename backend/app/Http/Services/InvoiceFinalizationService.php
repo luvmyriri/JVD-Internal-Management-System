@@ -174,6 +174,68 @@ class InvoiceFinalizationService
      */
     public function finalizeWithinTransaction(Invoice $invoice, array $processedItems): Invoice
     {
+        // Conflict Check: Prevent double-booking driver or bus on overlapping date range
+        if ($invoice->travel_date) {
+            $dateStr = $invoice->travel_date;
+            
+            if ($invoice->bus_id) {
+                // Check local travels
+                $localConflict = \DB::table('local_travels')
+                    ->where('bus_id', $invoice->bus_id)
+                    ->where('travel_date', $dateStr)
+                    ->where(function ($q) use ($invoice) {
+                        $q->where('reference_type', '!=', 'invoice')
+                          ->orWhere('reference_id', '!=', $invoice->id);
+                    })
+                    ->first();
+                if ($localConflict) {
+                    throw new \InvalidArgumentException("Vehicle is already reserved for a local travel on " . $dateStr . ".");
+                }
+
+                // Check international travels
+                $intlConflict = \DB::table('international_travels')
+                    ->where('bus_id', $invoice->bus_id)
+                    ->where('travel_date', $dateStr)
+                    ->first();
+                if ($intlConflict) {
+                    throw new \InvalidArgumentException("Vehicle is already reserved for an international travel on " . $dateStr . ".");
+                }
+
+                // Check PMS
+                $pmsConflict = \DB::table('pms_schedules')
+                    ->where('bus_id', $invoice->bus_id)
+                    ->where('maintenance_date', $dateStr)
+                    ->first();
+                if ($pmsConflict) {
+                    throw new \InvalidArgumentException("Vehicle is under maintenance (PMS) on " . $dateStr . ".");
+                }
+            }
+
+            if ($invoice->driver_id) {
+                // Check local travels
+                $driverLocalConflict = \DB::table('local_travels')
+                    ->where('driver_id', $invoice->driver_id)
+                    ->where('travel_date', $dateStr)
+                    ->where(function ($q) use ($invoice) {
+                        $q->where('reference_type', '!=', 'invoice')
+                          ->orWhere('reference_id', '!=', $invoice->id);
+                    })
+                    ->first();
+                if ($driverLocalConflict) {
+                    throw new \InvalidArgumentException("Driver is already reserved for a local travel on " . $dateStr . ".");
+                }
+
+                // Check international travels
+                $driverIntlConflict = \DB::table('international_travels')
+                    ->where('driver_id', $invoice->driver_id)
+                    ->where('travel_date', $dateStr)
+                    ->first();
+                if ($driverIntlConflict) {
+                    throw new \InvalidArgumentException("Driver is already reserved for an international travel on " . $dateStr . ".");
+                }
+            }
+        }
+
         $statusResult = $this->computePaymentStatus(
             $invoice->payment_method,
             $invoice->payment_type ?? 'full',

@@ -163,51 +163,144 @@ class BusController extends Controller
         $start = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
         $end   = $start->copy()->endOfMonth()->endOfDay();
 
-        // Trip tickets for this bus (by bus_id FK or plate_no fallback)
-        $tripTickets = \App\Models\TripTicket::where(function ($q) use ($bus) {
-                $q->where('bus_id', $bus->id)
-                  ->orWhere('plate_no', $bus->plate_number);
-            })
-            ->whereBetween('date_of_travel', [$start->toDateString(), $end->toDateString()])
-            ->get(['id', 'control_no', 'date_of_travel', 'pick_up', 'drop_off', 'no_of_passengers', 'status']);
+        // Local travels for this bus
+        $localTravels = \DB::table('local_travels')
+            ->join('buses', 'local_travels.bus_id', '=', 'buses.id')
+            ->where('local_travels.bus_id', $bus->id)
+            ->whereBetween('local_travels.travel_date', [$start->toDateString(), $end->toDateString()])
+            ->select('local_travels.*')
+            ->get();
 
-        // POS invoices linked to this bus
-        $invoices = \App\Models\Invoice::where('bus_id', $bus->id)
-            ->whereNotNull('travel_date')
-            ->whereBetween('travel_date', [$start->toDateString(), $end->toDateString()])
-            ->get(['id', 'invoice_number', 'travel_date', 'customer_name', 'seat_map', 'status', 'total_amount']);
+        // International travels for this bus
+        $intlTravels = \DB::table('international_travels')
+            ->join('buses', 'international_travels.bus_id', '=', 'buses.id')
+            ->where('international_travels.bus_id', $bus->id)
+            ->whereBetween('international_travels.travel_date', [$start->toDateString(), $end->toDateString()])
+            ->select('international_travels.*')
+            ->get();
+
+        // PMS schedules for this bus
+        $pmsSchedules = \DB::table('pms_schedules')
+            ->join('buses', 'pms_schedules.bus_id', '=', 'buses.id')
+            ->where('pms_schedules.bus_id', $bus->id)
+            ->whereBetween('pms_schedules.maintenance_date', [$start->toDateString(), $end->toDateString()])
+            ->select('pms_schedules.*')
+            ->get();
 
         $entries = [];
 
-        foreach ($tripTickets as $tt) {
-            $entries[] = [
-                'date'         => $tt->date_of_travel,
-                'type'         => 'trip_ticket',
-                'reference_id' => $tt->id,
-                'reference_no' => $tt->control_no,
-                'pick_up'      => $tt->pick_up,
-                'drop_off'     => $tt->drop_off,
-                'pax'          => $tt->no_of_passengers,
-                'status'       => $tt->status,
-                'seat_map'     => null,
-            ];
+        foreach ($localTravels as $row) {
+            if ($row->reference_type === 'invoice') {
+                $inv = \App\Models\Invoice::find($row->reference_id);
+                if ($inv) {
+                    $mappedStatus = 'reserved';
+                    if ($inv->status === 'paid') {
+                        $mappedStatus = 'completed';
+                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
+                        $mappedStatus = 'reserved';
+                    }
+
+                    $entries[] = [
+                        'date'          => $row->travel_date,
+                        'type'          => 'invoice',
+                        'travel_type'   => 'local',
+                        'reference_id'  => $inv->id,
+                        'reference_no'  => $inv->invoice_number,
+                        'customer_name' => $inv->customer_name,
+                        'status'        => $mappedStatus,
+                        'seat_map'      => $inv->seat_map,
+                        'total_amount'  => $inv->total_amount,
+                    ];
+                }
+            } elseif ($row->reference_type === 'trip_ticket') {
+                $tt = \App\Models\TripTicket::find($row->reference_id);
+                if ($tt) {
+                    $entries[] = [
+                        'date'         => $row->travel_date,
+                        'type'         => 'trip_ticket',
+                        'travel_type'  => 'local',
+                        'reference_id' => $tt->id,
+                        'reference_no' => $tt->control_no,
+                        'pick_up'      => $tt->pick_up,
+                        'drop_off'     => $tt->drop_off,
+                        'pax'          => $tt->no_of_passengers,
+                        'status'       => $tt->status,
+                        'seat_map'     => null,
+                    ];
+                }
+            }
         }
 
-        foreach ($invoices as $inv) {
+        foreach ($intlTravels as $row) {
+            if ($row->reference_type === 'invoice') {
+                $inv = \App\Models\Invoice::find($row->reference_id);
+                if ($inv) {
+                    $mappedStatus = 'reserved';
+                    if ($inv->status === 'paid') {
+                        $mappedStatus = 'completed';
+                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
+                        $mappedStatus = 'reserved';
+                    }
+
+                    $entries[] = [
+                        'date'          => $row->travel_date,
+                        'type'          => 'invoice',
+                        'travel_type'   => 'international',
+                        'reference_id'  => $inv->id,
+                        'reference_no'  => $inv->invoice_number,
+                        'customer_name' => $inv->customer_name,
+                        'status'        => $mappedStatus,
+                        'seat_map'      => $inv->seat_map,
+                        'total_amount'  => $inv->total_amount,
+                    ];
+                }
+            } elseif ($row->reference_type === 'trip_ticket') {
+                $tt = \App\Models\TripTicket::find($row->reference_id);
+                if ($tt) {
+                    $entries[] = [
+                        'date'         => $row->travel_date,
+                        'type'         => 'trip_ticket',
+                        'travel_type'  => 'international',
+                        'reference_id' => $tt->id,
+                        'reference_no' => $tt->control_no,
+                        'pick_up'      => $tt->pick_up,
+                        'drop_off'     => $tt->drop_off,
+                        'pax'          => $tt->no_of_passengers,
+                        'status'       => $tt->status,
+                        'seat_map'     => null,
+                    ];
+                }
+            }
+        }
+
+        foreach ($pmsSchedules as $row) {
+            $refNo = 'TBA';
+            if ($row->work_order_id) {
+                $wo = \App\Models\WorkOrder::find($row->work_order_id);
+                if ($wo) {
+                    $refNo = $wo->wo_number;
+                }
+            } elseif ($row->job_order_id) {
+                $jo = \App\Models\JobOrder::find($row->job_order_id);
+                if ($jo) {
+                    $refNo = $jo->jo_number;
+                }
+            }
+
             $entries[] = [
-                'date'          => $inv->travel_date,
-                'type'          => 'invoice',
-                'reference_id'  => $inv->id,
-                'reference_no'  => $inv->invoice_number,
-                'customer_name' => $inv->customer_name,
-                'status'        => $inv->status,
-                'seat_map'      => $inv->seat_map,
-                'total_amount'  => $inv->total_amount,
+                'date'         => $row->maintenance_date,
+                'type'         => 'pms',
+                'reference_id' => $row->work_order_id ?? $row->job_order_id,
+                'reference_no' => $refNo,
+                'status'       => $row->status,
+                'description'  => $row->description,
+                'seat_map'     => null,
             ];
         }
 
         // Sort by date
         usort($entries, fn($a, $b) => strcmp($a['date'], $b['date']));
+
 
         return response()->json([
             'success' => true,

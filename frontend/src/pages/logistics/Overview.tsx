@@ -545,12 +545,14 @@ function CalendarDayDetailModal({
                       "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block shadow-sm",
                       entry.type === 'invoice' 
                         ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-850/30"
+                        : entry.type === 'pms'
+                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200/50 dark:border-red-800/30"
+                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-855/30"
                     )}>
-                      {entry.type === 'invoice' ? 'POS Invoice' : 'Trip Ticket'}
+                      {entry.type === 'invoice' ? 'POS Invoice' : entry.type === 'pms' ? 'PMS Maintenance' : entry.travel_type === 'international' ? 'International Travel' : 'Local Travel'}
                     </span>
                     <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase mt-2 font-mono">
-                      {entry.type === 'invoice' ? `INV-${entry.reference_no}` : `DTT-${entry.reference_no}`}
+                      {entry.type === 'invoice' ? `INV-${entry.reference_no}` : entry.type === 'pms' ? `${entry.reference_no}` : `DTT-${entry.reference_no}`}
                     </h3>
                   </div>
                   {entry.type === 'invoice' && (
@@ -571,8 +573,33 @@ function CalendarDayDetailModal({
                         <span className="font-bold text-gray-800 dark:text-gray-200">{entry.customer_name || 'Walk-in'}</span>
                       </div>
                       <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Status</span>
-                        <span className="font-bold uppercase text-gray-700 dark:text-gray-300">{entry.status}</span>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Status</span>
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-block shadow-sm",
+                          entry.status === 'completed'
+                            ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/30"
+                            : "bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/30"
+                        )}>
+                          {entry.status === 'completed' ? 'Completed' : 'Reserved'}
+                        </span>
+                      </div>
+                    </>
+                  ) : entry.type === 'pms' ? (
+                    <>
+                      <div className="col-span-2">
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Description / Notes</span>
+                        <span className="font-bold text-gray-800 dark:text-gray-200 block mt-1">{entry.description || 'No description provided.'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Status</span>
+                        <span className={cn(
+                          "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-block shadow-sm",
+                          entry.status === 'completed'
+                            ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/30"
+                            : "bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/30"
+                        )}>
+                          {entry.status}
+                        </span>
                       </div>
                     </>
                   ) : (
@@ -1244,20 +1271,31 @@ export default function LogisticsOverview() {
                                         return (
                                           <div 
                                             key={`e-${eIdx}`} 
-                                            className="px-2 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400 text-[9px] font-black rounded-lg border border-blue-100/30 dark:border-blue-900/20 truncate leading-tight shadow-sm text-left"
+                                            className="px-2 py-1 bg-blue-50 dark:bg-blue-955/40 text-blue-700 dark:text-blue-400 text-[9px] font-black rounded-lg border border-blue-100/30 dark:border-blue-900/20 truncate leading-tight shadow-sm text-left"
                                             title={`Invoice #${e.reference_no} - ${e.customer_name}`}
                                           >
                                             🎫 INV-{e.reference_no}
                                           </div>
                                         );
+                                      } else if (e.type === 'pms') {
+                                        return (
+                                          <div 
+                                            key={`e-${eIdx}`} 
+                                            className="px-2 py-1 bg-red-50 dark:bg-red-955/40 text-red-700 dark:text-red-400 text-[9px] font-black rounded-lg border border-red-100/30 dark:border-red-900/20 truncate leading-tight shadow-sm text-left"
+                                            title={`PMS - ${e.description}`}
+                                          >
+                                            🛠️ PMS-{e.reference_no}
+                                          </div>
+                                        );
                                       } else {
+                                        const prefix = e.travel_type === 'international' ? '✈️ DTT' : '🚌 DTT';
                                         return (
                                           <div 
                                             key={`e-${eIdx}`} 
                                             className="px-2 py-1 bg-amber-50 dark:bg-amber-955/40 text-amber-700 dark:text-amber-450 text-[9px] font-black rounded-lg border border-amber-100/30 dark:border-amber-900/20 truncate leading-tight shadow-sm text-left"
-                                            title={`Trip Ticket #${e.reference_no} - ${e.drop_off}`}
+                                            title={`${e.travel_type === 'international' ? 'International' : 'Local'} Trip Ticket #${e.reference_no} - ${e.drop_off}`}
                                           >
-                                            🚌 DTT-{e.reference_no}
+                                            {prefix}-{e.reference_no}
                                           </div>
                                         );
                                       }

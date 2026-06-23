@@ -423,55 +423,113 @@ class TripTicketController extends Controller
         list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
 
         if ($driverId) {
-            $driverTrips = TripTicket::where('driver_id', $driverId)
-                ->where('status', '!=', 'cancelled')
-                ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
-                ->with('driver:id,first_name,last_name')
-                ->get();
+            $local = \DB::table('local_travels')
+                ->where('driver_id', $driverId)
+                ->where(function ($q) use ($excludeId) {
+                    if ($excludeId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
 
-            foreach ($driverTrips as $trip) {
-                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
-                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+            if ($local) {
+                $conflicts[] = [
+                    'type' => 'driver',
+                    'message' => "Driver is already assigned to a local travel on {$local->travel_date}.",
+                    'conflicting_travel' => $local
+                ];
+            }
+
+            if (empty($conflicts)) {
+                $intl = \DB::table('international_travels')
+                    ->where('driver_id', $driverId)
+                    ->where(function ($q) use ($excludeId) {
+                        if ($excludeId) {
+                            $q->where('reference_type', '!=', 'trip_ticket')
+                              ->orWhere('reference_id', '!=', $excludeId);
+                        }
+                    })
+                    ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                    ->first();
+
+                if ($intl) {
                     $conflicts[] = [
                         'type' => 'driver',
-                        'message' => 'Driver is already assigned to trip ' . $trip->control_no
-                            . ' (' . $trip->pick_up . ' → ' . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ')',
-                        'conflicting_ticket' => [
-                            'id' => $trip->id,
-                            'control_no' => $trip->control_no,
-                            'pick_up' => $trip->pick_up,
-                            'drop_off' => $trip->drop_off,
-                            'date_of_travel' => $trip->date_of_travel,
-                        ]
+                        'message' => "Driver is already assigned to an international travel on {$intl->travel_date}.",
+                        'conflicting_travel' => $intl
                     ];
-                    break;
                 }
             }
         }
 
         if ($busId) {
-            $busTrips = TripTicket::where('bus_id', $busId)
-                ->where('status', '!=', 'cancelled')
-                ->when($excludeId, fn($q) => $q->where('id', '!=', $excludeId))
-                ->with('bus:id,plate_number,model')
-                ->get();
+            $local = \DB::table('local_travels')
+                ->where('bus_id', $busId)
+                ->where(function ($q) use ($excludeId) {
+                    if ($excludeId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
 
-            foreach ($busTrips as $trip) {
-                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
-                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+            if ($local) {
+                $conflicts[] = [
+                    'type' => 'bus',
+                    'message' => "Vehicle is already reserved for a local travel on {$local->travel_date}.",
+                    'conflicting_travel' => $local
+                ];
+            }
+
+            if (empty($conflicts)) {
+                $intl = \DB::table('international_travels')
+                    ->where('bus_id', $busId)
+                    ->where(function ($q) use ($excludeId) {
+                        if ($excludeId) {
+                            $q->where('reference_type', '!=', 'trip_ticket')
+                              ->orWhere('reference_id', '!=', $excludeId);
+                        }
+                    })
+                    ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                    ->first();
+
+                if ($intl) {
                     $conflicts[] = [
                         'type' => 'bus',
-                        'message' => 'Vehicle is already assigned to trip ' . $trip->control_no
-                            . ' (' . $trip->pick_up . ' → ' . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ')',
-                        'conflicting_ticket' => [
-                            'id' => $trip->id,
-                            'control_no' => $trip->control_no,
-                            'pick_up' => $trip->pick_up,
-                            'drop_off' => $trip->drop_off,
-                            'date_of_travel' => $trip->date_of_travel,
-                        ]
+                        'message' => "Vehicle is already reserved for an international travel on {$intl->travel_date}.",
+                        'conflicting_travel' => $intl
                     ];
-                    break;
+                }
+            }
+
+            if (empty($conflicts)) {
+                $excludeWoIds = [];
+                if ($excludeId) {
+                    $excludeWoIds = \App\Models\WorkOrder::where('trip_ticket_id', $excludeId)->pluck('id')->toArray();
+                }
+
+                $pmsQuery = \DB::table('pms_schedules')
+                    ->where('bus_id', $busId)
+                    ->whereBetween('maintenance_date', [$reqStart->toDateString(), $reqEnd->toDateString()]);
+
+                if (!empty($excludeWoIds)) {
+                    $pmsQuery->where(function ($q) use ($excludeWoIds) {
+                        $q->whereNull('work_order_id')
+                          ->orWhereNotIn('work_order_id', $excludeWoIds);
+                    });
+                }
+
+                $pms = $pmsQuery->first();
+
+                if ($pms) {
+                    $conflicts[] = [
+                        'type' => 'bus',
+                        'message' => "Vehicle is under maintenance (PMS) on {$pms->maintenance_date}.",
+                        'conflicting_pms' => $pms
+                    ];
                 }
             }
         }
@@ -491,45 +549,183 @@ class TripTicketController extends Controller
         list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
 
         if ($driverId) {
-            $driverTrips = TripTicket::where('driver_id', $driverId)
-                ->where('status', '!=', 'cancelled')
-                ->when($excludeTicketId, fn($q) => $q->where('id', '!=', $excludeTicketId))
-                ->get();
+            // Check local travels
+            $local = \DB::table('local_travels')
+                ->where('driver_id', $driverId)
+                ->where(function ($q) use ($excludeTicketId) {
+                    if ($excludeTicketId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
 
-            foreach ($driverTrips as $trip) {
-                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
-                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+            if ($local) {
+                if ($local->reference_type === 'invoice') {
+                    $inv = \App\Models\Invoice::find($local->reference_id);
+                    $invNo = $inv ? $inv->invoice_number : '';
+                    $custName = $inv ? $inv->customer_name : '';
+                    $tDate = $inv ? $inv->travel_date : '';
                     return response()->json([
                         'success' => false,
-                        'message' => 'Schedule conflict: The selected driver is already assigned to trip '
-                            . $trip->control_no . ' (' . $trip->pick_up . ' → '
-                            . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ').'
+                        'message' => "Schedule conflict: The selected driver is already reserved for invoice {$invNo} ({$custName}) on {$tDate}."
+                    ], 422);
+                } else {
+                    $tt = \App\Models\TripTicket::find($local->reference_id);
+                    $ctrlNo = $tt ? $tt->control_no : '';
+                    $pu = $tt ? $tt->pick_up : '';
+                    $do = $tt ? $tt->drop_off : '';
+                    $ttDate = $tt ? $tt->date_of_travel : '';
+                    $dur = $tt ? ($tt->duration ?: '1 day') : '1 day';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected driver is already assigned to trip {$ctrlNo} ({$pu} → {$do}) on {$ttDate} (Duration: {$dur})."
+                    ], 422);
+                }
+            }
+
+            // Check international travels
+            $intl = \DB::table('international_travels')
+                ->where('driver_id', $driverId)
+                ->where(function ($q) use ($excludeTicketId) {
+                    if ($excludeTicketId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
+
+            if ($intl) {
+                if ($intl->reference_type === 'invoice') {
+                    $inv = \App\Models\Invoice::find($intl->reference_id);
+                    $invNo = $inv ? $inv->invoice_number : '';
+                    $custName = $inv ? $inv->customer_name : '';
+                    $tDate = $inv ? $inv->travel_date : '';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected driver is already reserved for invoice {$invNo} ({$custName}) on {$tDate}."
+                    ], 422);
+                } else {
+                    $tt = \App\Models\TripTicket::find($intl->reference_id);
+                    $ctrlNo = $tt ? $tt->control_no : '';
+                    $pu = $tt ? $tt->pick_up : '';
+                    $do = $tt ? $tt->drop_off : '';
+                    $ttDate = $tt ? $tt->date_of_travel : '';
+                    $dur = $tt ? ($tt->duration ?: '1 day') : '1 day';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected driver is already assigned to trip {$ctrlNo} ({$pu} → {$do}) on {$ttDate} (Duration: {$dur})."
                     ], 422);
                 }
             }
         }
 
         if ($busId) {
-            $busTrips = TripTicket::where('bus_id', $busId)
-                ->where('status', '!=', 'cancelled')
-                ->when($excludeTicketId, fn($q) => $q->where('id', '!=', $excludeTicketId))
-                ->get();
+            // Check local travels
+            $local = \DB::table('local_travels')
+                ->where('bus_id', $busId)
+                ->where(function ($q) use ($excludeTicketId) {
+                    if ($excludeTicketId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
 
-            foreach ($busTrips as $trip) {
-                list($start, $end) = $this->getTripDateRange($trip->date_of_travel, $trip->duration);
-                if ($reqStart->lte($end) && $reqEnd->gte($start)) {
+            if ($local) {
+                if ($local->reference_type === 'invoice') {
+                    $inv = \App\Models\Invoice::find($local->reference_id);
+                    $invNo = $inv ? $inv->invoice_number : '';
+                    $custName = $inv ? $inv->customer_name : '';
+                    $tDate = $inv ? $inv->travel_date : '';
                     return response()->json([
                         'success' => false,
-                        'message' => 'Schedule conflict: The selected vehicle is already assigned to trip '
-                            . $trip->control_no . ' (' . $trip->pick_up . ' → '
-                            . $trip->drop_off . ') on ' . $trip->date_of_travel . ' (Duration: ' . ($trip->duration ?: '1 day') . ').'
+                        'message' => "Schedule conflict: The selected vehicle is already reserved for invoice {$invNo} ({$custName}) on {$tDate}."
+                    ], 422);
+                } else {
+                    $tt = \App\Models\TripTicket::find($local->reference_id);
+                    $ctrlNo = $tt ? $tt->control_no : '';
+                    $pu = $tt ? $tt->pick_up : '';
+                    $do = $tt ? $tt->drop_off : '';
+                    $ttDate = $tt ? $tt->date_of_travel : '';
+                    $dur = $tt ? ($tt->duration ?: '1 day') : '1 day';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected vehicle is already assigned to trip {$ctrlNo} ({$pu} → {$do}) on {$ttDate} (Duration: {$dur})."
                     ], 422);
                 }
             }
+
+            // Check international travels
+            $intl = \DB::table('international_travels')
+                ->where('bus_id', $busId)
+                ->where(function ($q) use ($excludeTicketId) {
+                    if ($excludeTicketId) {
+                        $q->where('reference_type', '!=', 'trip_ticket')
+                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                    }
+                })
+                ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
+                ->first();
+
+            if ($intl) {
+                if ($intl->reference_type === 'invoice') {
+                    $inv = \App\Models\Invoice::find($intl->reference_id);
+                    $invNo = $inv ? $inv->invoice_number : '';
+                    $custName = $inv ? $inv->customer_name : '';
+                    $tDate = $inv ? $inv->travel_date : '';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected vehicle is already reserved for invoice {$invNo} ({$custName}) on {$tDate}."
+                    ], 422);
+                } else {
+                    $tt = \App\Models\TripTicket::find($intl->reference_id);
+                    $ctrlNo = $tt ? $tt->control_no : '';
+                    $pu = $tt ? $tt->pick_up : '';
+                    $do = $tt ? $tt->drop_off : '';
+                    $ttDate = $tt ? $tt->date_of_travel : '';
+                    $dur = $tt ? ($tt->duration ?: '1 day') : '1 day';
+                    return response()->json([
+                        'success' => false,
+                        'message' => "Schedule conflict: The selected vehicle is already assigned to trip {$ctrlNo} ({$pu} → {$do}) on {$ttDate} (Duration: {$dur})."
+                    ], 422);
+                }
+            }
+
+            // Check PMS schedules (excluding pre-trip safety WOs for this trip ticket)
+            $excludeWoIds = [];
+            if ($excludeTicketId) {
+                $excludeWoIds = \App\Models\WorkOrder::where('trip_ticket_id', $excludeTicketId)->pluck('id')->toArray();
+            }
+
+            $pmsQuery = \DB::table('pms_schedules')
+                ->where('bus_id', $busId)
+                ->whereBetween('maintenance_date', [$reqStart->toDateString(), $reqEnd->toDateString()]);
+
+            if (!empty($excludeWoIds)) {
+                $pmsQuery->where(function ($q) use ($excludeWoIds) {
+                    $q->whereNull('work_order_id')
+                      ->orWhereNotIn('work_order_id', $excludeWoIds);
+                });
+            }
+
+            $pms = $pmsQuery->first();
+
+            if ($pms) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Schedule conflict: The selected vehicle is under maintenance (PMS) on {$pms->maintenance_date}."
+                ], 422);
+            }
         }
 
-        return null; // No conflict
+        return null;
     }
+
+
 
     public function autoGeneratePreTripWorkOrder(TripTicket $ticket)
     {

@@ -28,8 +28,9 @@ import autoTable from 'jspdf-autotable';
 import ExcelJS from 'exceljs';
 import { loadLogoAsBase64 } from '../../utils/pdfHelpers';
 import { dashboardApi } from '../../api/dashboards';
-import { tripTicketApi } from '../../api/operations';
+import { tripTicketApi, cashBudgetApi } from '../../api/operations';
 import { fleetApi } from '../../api/fleet';
+import toast from 'react-hot-toast';
 import { LoadingScreen } from '../../components/ui';
 
 // Donut â€“ user distribution
@@ -218,8 +219,20 @@ export default function AdminDashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
+  const { data: cashBudgets = [], refetch: refetchCashBudgets } = useQuery({
+    queryKey: ['cash-budgets-list'],
+    queryFn: () => cashBudgetApi.getAll(),
+    staleTime: 1000 * 60 * 2,
+  });
+
   const tickets = (ticketsRaw as any[]) ?? [];
   const buses   = (busesRaw as any)?.data ?? [];
+
+  const isApprover = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role);
+
+  const pendingBudgets = useMemo(() => {
+    return cashBudgets.filter((b: any) => b.status === 'pending_accounting');
+  }, [cashBudgets]);
 
 
   const exportToPDF = async (title: string, data: any[]) => {
@@ -639,6 +652,89 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ── Quick Approvals Action Panel for Admins ── */}
+      {isApprover && pendingBudgets.length > 0 && (
+        <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] p-6 shadow-sm flex flex-col gap-4 animate-in fade-in slide-in-from-top-4 duration-500 shrink-0">
+          <div className="flex items-center justify-between border-b border-gray-50 dark:border-gray-805 pb-3">
+            <div>
+              <h3 className="text-xs font-black text-gray-905 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping shrink-0" />
+                Pending Cash Budget Approvals
+              </h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                You have {pendingBudgets.length} pending cash budget request(s) requiring authorization.
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {pendingBudgets.map((budget: any) => {
+              const preparerName = budget.prepared_by && typeof budget.prepared_by === 'object'
+                ? `${budget.prepared_by.first_name || ''} ${budget.prepared_by.last_name || ''}`.trim()
+                : 'Staff';
+              return (
+                <div
+                  key={budget.id}
+                  className="bg-gray-50/40 dark:bg-gray-800/40 border border-gray-100/70 dark:border-gray-800/70 rounded-2xl p-4 flex flex-col justify-between gap-3 hover:border-blue-200 dark:hover:border-blue-800 transition-all hover:scale-[1.01]"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[8.5px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-2 py-0.5 rounded-md uppercase">
+                        {budget.trip_ticket?.control_no ?? `CB-${budget.id}`}
+                      </span>
+                      <span className="text-[10px] font-black text-gray-900 dark:text-white">
+                        ₱{Number(budget.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    <h4 className="text-[10px] font-black text-gray-850 dark:text-gray-200 uppercase truncate">
+                      {budget.destination || 'No Destination'}
+                    </h4>
+                    <p className="text-[8px] text-gray-400 font-bold mt-1 uppercase">
+                      Prepared By: {preparerName}
+                    </p>
+                    {budget.plate_number && (
+                      <p className="text-[7.5px] text-gray-400 font-medium mt-0.5">
+                        Plate: {budget.plate_number}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      onClick={async () => {
+                        try {
+                          await cashBudgetApi.approve(budget.id);
+                          toast.success('Cash budget request approved successfully!');
+                          refetchCashBudgets();
+                        } catch (err: any) {
+                          toast.error('Approval failed: ' + (err.message || 'unknown error'));
+                        }
+                      }}
+                      className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[8px] font-black uppercase tracking-wider transition-all shadow-md shadow-emerald-600/10"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!confirm('Are you sure you want to decline this request?')) return;
+                        try {
+                          await cashBudgetApi.decline(budget.id);
+                          toast.success('Cash budget request declined.');
+                          refetchCashBudgets();
+                        } catch (err: any) {
+                          toast.error('Decline failed: ' + (err.message || 'unknown error'));
+                        }
+                      }}
+                      className="py-1.5 px-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-[8px] font-black uppercase tracking-wider transition-all"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ── 3-Column Analytics Grid ── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">

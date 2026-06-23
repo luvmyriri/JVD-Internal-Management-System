@@ -80,6 +80,42 @@ class JobOrderService
             }
         }
 
+        // Inventory Check & Deduct when completing a maintenance Job Order
+        if ($newStatus === 'completed' && $jo->service_type === 'maintenance') {
+            DB::transaction(function () use ($jo) {
+                foreach ($jo->items as $item) {
+                    $normalized = strtolower(trim($item->item_description));
+                    $invItem = \App\Models\InventoryItem::whereRaw('LOWER(TRIM(item_name)) = ?', [$normalized])
+                        ->lockForUpdate()
+                        ->first();
+                        
+                    if (!$invItem) {
+                        throw new \InvalidArgumentException(
+                            "Cannot complete Job Order: Inventory item '{$item->item_description}' not found."
+                        );
+                    }
+                    
+                    if ($invItem->quantity < $item->quantity) {
+                        throw new \InvalidArgumentException(
+                            "Cannot complete Job Order: Insufficient inventory for '{$item->item_description}'. Required: {$item->quantity}, Available: {$invItem->quantity}."
+                        );
+                    }
+                    
+                    $invItem->decrement('quantity', $item->quantity);
+                    
+                    if (class_exists(\App\Http\Services\AuditLogService::class)) {
+                        \App\Http\Services\AuditLogService::log(
+                            action: 'DEDUCT_INVENTORY_JO',
+                            module: 'inventory',
+                            entityType: 'inventory_item',
+                            entityId: $invItem->id,
+                            new: ['quantity' => $invItem->fresh()->quantity, 'deducted' => $item->quantity, 'reason' => 'Used in completed Job Order ' . $jo->jo_number]
+                        );
+                    }
+                }
+            });
+        }
+
         $jo->update(['status' => $newStatus]);
 
         // Auto-generate WorkOrder or TripTicket depending on JO type when confirmed
@@ -149,7 +185,7 @@ class JobOrderService
         if ($newStatus === 'completed' && $jo->work_order_id) {
             $wo = \App\Models\WorkOrder::find($jo->work_order_id);
             if ($wo && $wo->status !== 'completed') {
-                $wo->update(['status' => 'completed']);
+                $wo->update(['status' => 'completed', 'supplies_deducted' => true]);
                 
                 // Recalculate PMS next service if auto-generated
                 if ($wo->auto_generated && $wo->bus_id) {

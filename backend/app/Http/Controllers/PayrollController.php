@@ -426,11 +426,12 @@ class PayrollController extends Controller
 
             // H-04: Create a CashBudgetRequest so finance can track the outflow
             CashBudgetRequest::create([
-                'date'         => now()->toDateString(),
-                'destination'  => 'Payroll Disbursement',
-                'total_amount' => $cycle->net_amount,
-                'status'       => 'approved',
-                'prepared_by'  => auth()->id(),
+                'date'             => now()->toDateString(),
+                'destination'      => 'Payroll Disbursement',
+                'total_amount'     => $cycle->net_amount,
+                'status'           => 'pending_accounting',
+                'prepared_by'      => auth()->id(),
+                'payroll_cycle_id' => $cycle->id,
             ]);
 
             DB::commit();

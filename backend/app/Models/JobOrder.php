@@ -102,4 +102,62 @@ class JobOrder extends Model
             'bus_rental', 'field_trip', 'corporate_transport', 'travel_package', 'event',
         ]);
     }
+
+    protected static function booted(): void
+    {
+        static::saved(function (JobOrder $jobOrder) {
+            self::syncToPmsSchedules($jobOrder);
+        });
+
+        static::deleted(function (JobOrder $jobOrder) {
+            self::deleteFromPmsSchedules($jobOrder);
+        });
+    }
+
+    public static function syncToPmsSchedules(JobOrder $jobOrder): void
+    {
+        if ($jobOrder->service_type !== 'maintenance' || $jobOrder->status === 'cancelled' || !$jobOrder->bus_id) {
+            self::deleteFromPmsSchedules($jobOrder);
+            return;
+        }
+
+        $date = $jobOrder->service_date ? $jobOrder->service_date->toDateString() : now()->toDateString();
+
+        if ($jobOrder->work_order_id) {
+            \DB::table('pms_schedules')->updateOrInsert(
+                ['work_order_id' => $jobOrder->work_order_id],
+                [
+                    'bus_id' => $jobOrder->bus_id,
+                    'job_order_id' => $jobOrder->id,
+                    'maintenance_date' => $date,
+                    'duration' => '1 day',
+                    'status' => $jobOrder->status,
+                    'description' => $jobOrder->notes ?? 'Maintenance Job Order',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        } else {
+            \DB::table('pms_schedules')->updateOrInsert(
+                ['job_order_id' => $jobOrder->id],
+                [
+                    'bus_id' => $jobOrder->bus_id,
+                    'work_order_id' => null,
+                    'maintenance_date' => $date,
+                    'duration' => '1 day',
+                    'status' => $jobOrder->status,
+                    'description' => $jobOrder->notes ?? 'Maintenance Job Order',
+                    'updated_at' => now(),
+                    'created_at' => now(),
+                ]
+            );
+        }
+    }
+
+    public static function deleteFromPmsSchedules(JobOrder $jobOrder): void
+    {
+        \DB::table('pms_schedules')
+            ->where('job_order_id', $jobOrder->id)
+            ->delete();
+    }
 }

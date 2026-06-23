@@ -103,7 +103,47 @@ class WorkOrder extends Model
                 // Deduct supplies
                 self::deductSupplies($workOrder->parts_used);
             }
+
+            self::syncToPmsSchedules($workOrder);
         });
+
+        static::deleted(function (WorkOrder $workOrder) {
+            self::deleteFromPmsSchedules($workOrder);
+        });
+    }
+
+    public static function syncToPmsSchedules(WorkOrder $workOrder): void
+    {
+        if ($workOrder->type !== 'maintenance' || $workOrder->status === 'cancelled' || !$workOrder->bus_id) {
+            self::deleteFromPmsSchedules($workOrder);
+            return;
+        }
+
+        $jobOrder = \App\Models\JobOrder::where('work_order_id', $workOrder->id)->first();
+        $date = $jobOrder ? ($jobOrder->service_date ? $jobOrder->service_date->toDateString() : null) : null;
+        $date = $date ?? ($workOrder->created_at ? $workOrder->created_at->toDateString() : now()->toDateString());
+        $jobOrderId = $jobOrder ? $jobOrder->id : null;
+
+        \DB::table('pms_schedules')->updateOrInsert(
+            ['work_order_id' => $workOrder->id],
+            [
+                'bus_id' => $workOrder->bus_id,
+                'job_order_id' => $jobOrderId,
+                'maintenance_date' => $date,
+                'duration' => '1 day',
+                'status' => $workOrder->status,
+                'description' => $workOrder->description ?? 'Maintenance Work Order',
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+    }
+
+    public static function deleteFromPmsSchedules(WorkOrder $workOrder): void
+    {
+        \DB::table('pms_schedules')
+            ->where('work_order_id', $workOrder->id)
+            ->delete();
     }
 
     public static function deductSupplies(string $partsUsed): void

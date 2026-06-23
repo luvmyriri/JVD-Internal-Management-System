@@ -60,6 +60,10 @@ class CashBudgetRequestController extends Controller
 
         $budget = CashBudgetRequest::create($validated);
 
+        if ($budget->status === 'pending_accounting') {
+            $this->initializeLiquidationAndLedger($budget);
+        }
+
         return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
@@ -158,6 +162,8 @@ class CashBudgetRequestController extends Controller
                     $budget->id
                 ));
             }
+
+            $this->initializeLiquidationAndLedger($budget);
         }
 
         // ── STEP 2: Accounting approves ──────
@@ -191,59 +197,81 @@ class CashBudgetRequestController extends Controller
             // ledger entry, invoice and invoice items all persist together or roll back together.
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $budget) {
             $disbursedAmount = $request->input('disbursed_amount') ?? $budget->total_amount;
+            $oldTotalAmount = (float) $budget->total_amount;
+
+            // Ensure Liquidation and initial Ledger are created (handles direct approved requests)
+            $this->initializeLiquidationAndLedger($budget);
+
             $budget->update([
                 'disbursed_by' => auth()->id(),
                 'disbursed_amount' => $disbursedAmount
             ]);
 
-            // Create pending liquidation
-            $liquidationService = app(\App\Services\LiquidationService::class);
-            if ($budget->tripTicket) {
-                $liquidationService->createForTripTicket($budget->tripTicket, $disbursedAmount);
+            // Adjust the Liquidation's total_advanced if it exists
+            if ($budget->liquidation) {
+                $budget->liquidation->update(['total_advanced' => $disbursedAmount]);
             }
 
-            // Create double-entry journal entry in Ledger
-            $ledgerService = app(\App\Services\LedgerService::class);
-            $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
-            
-            if ($cashInBankAccount) {
-                $debitAccount = null;
-                $description = "";
+            $diff = (float) $disbursedAmount - $oldTotalAmount;
+            if ($diff !== 0.0) {
+                $ledgerService = app(\App\Services\LedgerService::class);
+                $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
                 
-                if ($budget->commission_id) {
-                    $debitAccount = \App\Models\Account::where('code', '5400')->first(); // Commission Expense
-                    $description = "Commission disbursement for " . ($budget->commission?->serial_no ?? "Commission #{$budget->commission_id}");
-                } elseif ($budget->liquidation_id) {
-                    $debitAccount = \App\Models\Account::where('code', '2100')->first(); // Due to Employees (clearing liability)
-                    $description = "Liquidation reimbursement payout for DTT: " . ($budget->liquidation?->tripTicket?->control_no ?? "Liquidation #{$budget->liquidation_id}");
-                } elseif ($budget->purchase_order_id || $budget->work_order_id) {
-                    $debitAccount = \App\Models\Account::where('code', '5300')->first(); // Maintenance Expense
-                    $description = "Maintenance budget disbursement for PO #" . ($budget->purchase_order_id ?? $budget->work_order_id);
-                } elseif ($budget->tripTicket) {
-                    $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
-                    $description = "Cash advance disbursed to driver for DTT: " . $budget->tripTicket->control_no;
-                }
-                
-                if ($debitAccount) {
-                    $ledgerService->recordEntry(
-                        date('Y-m-d'),
-                        $description,
-                        [
-                            [
-                                'account_id' => $debitAccount->id,
-                                'debit' => $disbursedAmount,
-                                'credit' => 0,
-                                'description' => $description
-                            ],
-                            [
-                                'account_id' => $cashInBankAccount->id,
-                                'debit' => 0,
-                                'credit' => $disbursedAmount,
-                                'description' => 'Disbursement from Cash in Bank'
-                            ]
-                        ],
-                        $budget
-                    );
+                if ($cashInBankAccount) {
+                    $debitAccount = null;
+                    $description = "Adjustment for cash budget disbursement difference (Budget #{$budget->id})";
+                    
+                    if ($budget->commission_id) {
+                        $debitAccount = \App\Models\Account::where('code', '5400')->first();
+                    } elseif ($budget->payroll_cycle_id) {
+                        $debitAccount = \App\Models\Account::where('code', '6000')->first();
+                    } elseif ($budget->purchase_order_id || $budget->work_order_id) {
+                        $debitAccount = \App\Models\Account::where('code', '5300')->first();
+                    } else {
+                        $debitAccount = \App\Models\Account::where('code', '1200')->first();
+                    }
+                    
+                    if ($debitAccount) {
+                        if ($diff > 0) {
+                            $ledgerEntries = [
+                                [
+                                    'account_id' => $debitAccount->id,
+                                    'debit' => $diff,
+                                    'credit' => 0,
+                                    'description' => "Increase budget disbursement adjustment"
+                                ],
+                                [
+                                    'account_id' => $cashInBankAccount->id,
+                                    'debit' => 0,
+                                    'credit' => $diff,
+                                    'description' => "Decrease cash adjustment"
+                                ]
+                            ];
+                        } else {
+                            $absDiff = abs($diff);
+                            $ledgerEntries = [
+                                [
+                                    'account_id' => $cashInBankAccount->id,
+                                    'debit' => $absDiff,
+                                    'credit' => 0,
+                                    'description' => "Increase cash adjustment (reduced disbursement)"
+                                ],
+                                [
+                                    'account_id' => $debitAccount->id,
+                                    'debit' => 0,
+                                    'credit' => $absDiff,
+                                    'description' => "Decrease budget disbursement adjustment"
+                                ]
+                            ];
+                        }
+                        
+                        $ledgerService->recordEntry(
+                            date('Y-m-d'),
+                            $description,
+                            $ledgerEntries,
+                            $budget
+                        );
+                    }
                 }
             }
 
@@ -377,6 +405,86 @@ class CashBudgetRequestController extends Controller
         }
 
         return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
+    }
+
+    private function initializeLiquidationAndLedger(CashBudgetRequest $budget)
+    {
+        // 1. Create pending liquidation if not already exists
+        if (!$budget->liquidation_id) {
+            $employeeId = $budget->tripTicket?->driver_id ?? $budget->prepared_by ?? auth()->id() ?? 1;
+            
+            $liquidation = \App\Models\Liquidation::create([
+                'trip_ticket_id' => $budget->trip_ticket_id,
+                'employee_id'    => $employeeId,
+                'status'         => 'pending',
+                'total_advanced' => $budget->total_amount,
+            ]);
+            
+            $budget->update(['liquidation_id' => $liquidation->id]);
+            $budget->refresh();
+        }
+
+        // 2. Create double-entry journal entry in Ledger if not already exists
+        $exists = \App\Models\JournalEntry::where('reference_type', 'App\Models\CashBudgetRequest')
+            ->where('reference_id', $budget->id)
+            ->exists();
+
+        if (!$exists) {
+            $ledgerService = app(\App\Services\LedgerService::class);
+            $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
+            
+            if ($cashInBankAccount) {
+                $debitAccount = null;
+                $description = "";
+                
+                if ($budget->commission_id) {
+                    $debitAccount = \App\Models\Account::where('code', '5400')->first(); // Commission Expense
+                    $description = "Commission disbursement for " . ($budget->commission?->serial_no ?? "Commission #{$budget->commission_id}");
+                } elseif ($budget->liquidation_id) {
+                    if ($budget->payroll_cycle_id) {
+                        $debitAccount = \App\Models\Account::where('code', '6000')->first(); // Salary Expense
+                        $description = "Payroll request for cycle #" . $budget->payroll_cycle_id;
+                    } else {
+                        $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
+                        $description = "Cash advance request for DTT: " . ($budget->tripTicket?->control_no ?? "CB-{$budget->id}");
+                    }
+                } elseif ($budget->purchase_order_id || $budget->work_order_id) {
+                    $debitAccount = \App\Models\Account::where('code', '5300')->first(); // Maintenance Expense
+                    $description = "Maintenance budget request for PO #" . ($budget->purchase_order_id ?? $budget->work_order_id);
+                } elseif ($budget->payroll_cycle_id) {
+                    $debitAccount = \App\Models\Account::where('code', '6000')->first(); // Salary Expense
+                    $description = "Payroll request for cycle #" . $budget->payroll_cycle_id;
+                } elseif ($budget->tripTicket) {
+                    $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
+                    $description = "Cash advance request for DTT: " . $budget->tripTicket->control_no;
+                } else {
+                    $debitAccount = \App\Models\Account::where('code', '1200')->first();
+                    $description = "Cash budget request: " . ($budget->destination ?? "CB-{$budget->id}");
+                }
+                
+                if ($debitAccount) {
+                    $ledgerService->recordEntry(
+                        date('Y-m-d'),
+                        $description,
+                        [
+                            [
+                                'account_id' => $debitAccount->id,
+                                'debit' => $budget->total_amount,
+                                'credit' => 0,
+                                'description' => $description
+                            ],
+                            [
+                                'account_id' => $cashInBankAccount->id,
+                                'debit' => 0,
+                                'credit' => $budget->total_amount,
+                                'description' => 'Disbursement from Cash in Bank'
+                            ]
+                        ],
+                        $budget
+                    );
+                }
+            }
+        }
     }
 
     public function destroy($id)

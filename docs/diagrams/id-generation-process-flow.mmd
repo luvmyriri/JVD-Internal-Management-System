@@ -1,0 +1,36 @@
+%% JVD Internal Management System — Identifier Field Handling Process Flow
+%% How to use in Lucidchart:
+%%   1. In Lucidchart: File > Import > (or Insert > Diagram as Code / Mermaid)
+%%   2. Paste the contents of this file, or upload it.
+%%   3. Lucidchart renders editable shapes you can rearrange, recolor, and relabel.
+%% This flow is the DECISION LOGIC for any identifier-like field in a form.
+flowchart TD
+    A([A form field holds an identifier-like value]) --> D1{Is it a system-generated<br/>document or record number?<br/>WO / JO / PO / Invoice / Contract /<br/>Trip Control No / Commission Serial / Employee ID}
+
+    D1 -- Yes --> P1[Auto-generate on the SERVER at create time<br/>Sequential per year, e.g. WO-2026-0001]
+    P1 --> P2[Generate inside a DB transaction with<br/>lockForUpdate on the latest row<br/>so two concurrent saves cannot collide]
+    P2 --> P3[Frontend: do NOT show an input.<br/>Display the value read-only AFTER creation]
+    P3 --> E1([Done — no typing, no Math.random])
+
+    D1 -- No --> D2{Is it a reference to another<br/>existing record?<br/>mechanic / driver / customer /<br/>bus / supplier / service}
+
+    D2 -- Yes --> P4[Frontend: searchable dropdown / autocomplete.<br/>Submit the SELECTED record id — never a typed number]
+    P4 --> P5[Backend: validate the id exists AND is the<br/>correct type/role, e.g. user role = driver]
+    P5 --> E2([Done — selected, not typed])
+
+    D2 -- No --> D3{Is it an external,<br/>human-meaningful code?<br/>PNR / passport no / booking confirmation}
+
+    D3 -- Yes --> P6[Manual entry is legitimate.<br/>Keep the input; validate FORMAT only]
+    P6 --> E3([Done — legitimate manual field])
+
+    D3 -- No --> P7[Flag for review — most likely<br/>should be auto-generated.<br/>Confirm intent with the business]
+    P7 --> E4([Needs a decision])
+
+    classDef auto fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    classDef dropdown fill:#dcfce7,stroke:#16a34a,color:#14532d;
+    classDef manual fill:#fef9c3,stroke:#ca8a04,color:#713f12;
+    classDef review fill:#fee2e2,stroke:#dc2626,color:#7f1d1d;
+    class P1,P2,P3,E1 auto;
+    class P4,P5,E2 dropdown;
+    class P6,E3 manual;
+    class P7,E4 review;
