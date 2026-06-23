@@ -27,7 +27,7 @@ import {
   LuBriefcase
 } from 'react-icons/lu';
 import {
-  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { StatusBadge } from '../../components/ui';
@@ -111,7 +111,6 @@ const monthlyChartData = [
 export default function HRDashboard() {
   const { user } = useAuth();
   const { theme } = useTheme();
-  const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
 
   // Load real employees from backend
   const { data: usersResponse } = useQuery({
@@ -765,107 +764,49 @@ export default function HRDashboard() {
             </div>
           </div>
 
-          {/* Operations & Performance tabbed widget */}
+          {/* Operations & Performance widget */}
           <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setChartTab('revenue')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'revenue'
-                      ? 'border-blue-500 text-blue-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <LuTrendingUp className="w-3 h-3 text-blue-500" />
-                  Revenue vs Bookings
-                </button>
-                <button
-                  onClick={() => setChartTab('utilization')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'utilization'
-                      ? 'border-purple-500 text-purple-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <LuActivity className="w-3 h-3 text-purple-500" />
-                  Fleet Utilization
-                </button>
-              </div>
+              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <LuTrendingUp className="w-3 h-3 text-blue-500" />
+                Revenue vs Bookings
+              </h3>
               <div className="flex items-center gap-1.5">
-                {chartTab === 'revenue' ? (
-                  <>
-                    <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
-                    <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
-                  </>
-                ) : (
-                  <>
-                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2025</span></span>
-                    <DownloadActions
-                      variant="dark"
-                      title="Fleet Utilization 2025"
-                      data={monthlyData.map(d => ({
-                        Month: d.month,
-                        'Utilization (%)': d.utilization,
-                        'Bookings': d.bookings,
-                        'Revenue (PHP K)': d.revenue,
-                      }))}
-                    />
-                  </>
-                )}
+                <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded-full">Bookings</span>
+                <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Revenue (K)</span>
               </div>
             </div>
 
             <div className="flex-1 min-h-0 mt-3">
               <ResponsiveContainer width="100%" height="100%">
-                {chartTab === 'revenue' ? (
-                  <AreaChart data={monthlyData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
-                    <defs>
-                      <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
-                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                        border: '1px solid',
-                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                        borderRadius: 10,
-                        fontSize: 10,
-                        fontWeight: 700
-                      }}
-                      labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
-                    />
-                    <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
-                    <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
-                  </AreaChart>
-                ) : (
-                  <BarChart data={monthlyData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      formatter={(v: any) => [`${v}%`, 'Utilization']}
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                        border: '1px solid',
-                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                        borderRadius: 10,
-                        fontSize: 10,
-                        fontWeight: 700
-                      }}
-                    />
-                    <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                )}
+                <AreaChart data={monthlyData} margin={{ top: 4, right: 6, left: -28, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="bkGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} />
+                  <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: theme === 'dark' ? '#111827' : '#fff',
+                      border: '1px solid',
+                      borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
+                      borderRadius: 10,
+                      fontSize: 10,
+                      fontWeight: 700
+                    }}
+                    labelStyle={{ color: theme === 'dark' ? '#f9fafb' : '#111827', fontWeight: 900 }}
+                  />
+                  <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#revGrad)" dot={false} activeDot={{ r: 4, fill: '#10b981' }} />
+                  <Area type="monotone" dataKey="bookings" stroke="#3b82f6" strokeWidth={2} fill="url(#bkGrad)" dot={false} activeDot={{ r: 4, fill: '#3b82f6' }} />
+                </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>

@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import {
   LuUsers,
   LuBanknote,
@@ -12,13 +11,9 @@ import {
   LuFileSpreadsheet,
   LuChevronLeft,
   LuChevronRight,
-  LuTicket,
-  LuActivity
+  LuTicket
 } from 'react-icons/lu';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer
-} from 'recharts';
+
 
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,8 +35,6 @@ import { LoadingScreen } from '../../components/ui';
 
 export default function AccountingDashboard() {
   const { user } = useAuth();
-  const { theme } = useTheme();
-  const [chartTab, setChartTab] = useState<'revenue' | 'utilization'>('revenue');
 
   // ── Live API Queries ──────────────────────────────────────────────────────
   const { data: dashboardData, isLoading, error } = useQuery({
@@ -64,6 +57,10 @@ export default function AccountingDashboard() {
 
   const tickets = (ticketsRaw as any[]) ?? [];
   const buses   = (busesRaw as any)?.data ?? [];
+
+  const busesUnderMaintenance = useMemo(() => {
+    return buses.filter((b: any) => b.status === 'under_maintenance');
+  }, [buses]);
 
 
   const exportToPDF = async (title: string, data: any[]) => {
@@ -325,7 +322,6 @@ export default function AccountingDashboard() {
   }
 
   const kpis = dashboardData?.kpis ?? {};
-  const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : [];
 
   // ── Live booking lists ──
   const localBookings = dashboardData?.local_bookings ?? [];
@@ -335,9 +331,7 @@ export default function AccountingDashboard() {
   const detailedEmployeeData = dashboardData?.employee_list ?? [];
   const detailedRevenueData = dashboardData?.revenue_export ?? [];
 
-  const busesUnderMaintenance = useMemo(() => {
-    return buses.filter((b: any) => b.status === 'under_maintenance');
-  }, [buses]);
+
 
   const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -589,6 +583,7 @@ export default function AccountingDashboard() {
                 <LuGlobe className="w-3 h-3 text-rose-500" />
                 Travel & Performance
               </h3>
+              <DownloadActions variant="dark" title="International Bookings Report" data={internationalBookings} />
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5 custom-scrollbar">
@@ -631,109 +626,53 @@ export default function AccountingDashboard() {
             </div>
           </div>
 
-          {/* Operations & Performance tabbed widget */}
+          {/* Pending & Reserved widget */}
           <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
             <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setChartTab('revenue')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'revenue'
-                      ? 'border-blue-500 text-blue-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                >
+                <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-blue-600 dark:text-white">
                   <LuTicket className="w-3 h-3 text-blue-500" />
                   Pending & Reserved
-                </button>
-                <button
-                  onClick={() => setChartTab('utilization')}
-                  className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 pb-1 -mb-1.5 border-b-2 transition-all ${
-                    chartTab === 'utilization'
-                      ? 'border-purple-500 text-purple-600 dark:text-white'
-                      : 'border-transparent text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                  }`}
-                >
-                  <LuActivity className="w-3 h-3 text-purple-500" />
-                  Fleet Utilization
-                </button>
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
-                {chartTab === 'revenue' ? (
-                  <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
-                ) : (
-                  <>
-                    <span className="text-[9px] font-black text-purple-600 dark:text-purple-400">Full Year <span className="text-gray-400 font-bold text-[7px]">2026</span></span>
-                    <DownloadActions
-                      variant="dark"
-                      title="Fleet Utilization 2026"
-                      data={monthlyData.map(d => ({
-                        Month: d.month,
-                        'Utilization (%)': d.utilization,
-                        'Bookings': d.bookings,
-                        'Revenue (PHP K)': d.revenue,
-                      }))}
-                    />
-                  </>
-                )}
+                <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
               </div>
             </div>
 
             <div className="flex-1 min-h-0 mt-3 overflow-y-auto custom-scrollbar">
-              {chartTab === 'revenue' ? (
-                <div className="space-y-1 pr-0.5">
-                  {pendingAndReservedBookings.map((item, idx) => (
-                    <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
-                      <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-black shrink-0">
-                        {idx + 1}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
-                            {item.id}
-                          </span>
-                          <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
-                          <span className="text-[6.5px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.2 rounded uppercase">
-                            {item.type}
-                          </span>
-                        </div>
-                        <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
-                          {item.customer} {'->'} <span className="text-blue-600 dark:text-blue-400">{item.destination}</span>
-                        </h4>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
-                        <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
-                          item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
-                          'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
-                        }`}>
-                          {item.status}
+              <div className="space-y-1 pr-0.5">
+                {pendingAndReservedBookings.map((item, idx) => (
+                  <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
+                    <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-black shrink-0">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
+                          {item.id}
+                        </span>
+                        <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
+                        <span className="text-[6.5px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.2 rounded uppercase">
+                          {item.type}
                         </span>
                       </div>
+                      <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                        {item.customer} {'->'}  <span className="text-blue-600 dark:text-blue-400">{item.destination}</span>
+                      </h4>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={monthlyData} margin={{ top: 2, right: 4, left: -28, bottom: 0 }} barSize={9}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#1f2937' : '#f1f5f9'} vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 8, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <YAxis domain={[0, 100]} tick={{ fontSize: 7.5, fontWeight: 700, fill: theme === 'dark' ? '#6b7280' : '#9ca3af' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      formatter={(v: any) => [`${v}%`, 'Utilization']}
-                      contentStyle={{
-                        backgroundColor: theme === 'dark' ? '#111827' : '#fff',
-                        border: '1px solid',
-                        borderColor: theme === 'dark' ? '#374151' : '#e5e7eb',
-                        borderRadius: 10,
-                        fontSize: 10,
-                        fontWeight: 700
-                      }}
-                    />
-                    <Bar dataKey="utilization" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
+                    <div className="text-right shrink-0">
+                      <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
+                      <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
+                        item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
+                        'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'
+                      }`}>
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 
