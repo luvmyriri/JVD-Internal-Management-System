@@ -758,7 +758,6 @@ export default function AdminDashboard() {
             </div>
 
             <div className="flex-1 min-h-0 mt-3 overflow-y-auto custom-scrollbar">
-              (
                 <div className="space-y-1 pr-0.5">
                   {pendingAndReservedBookings.map((item, idx) => (
                     <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
@@ -790,7 +789,6 @@ export default function AdminDashboard() {
                     </div>
                   ))}
                 </div>
-              )
             </div>
           </div>
 
