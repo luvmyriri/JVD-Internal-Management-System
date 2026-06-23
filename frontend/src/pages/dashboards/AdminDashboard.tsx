@@ -702,6 +702,7 @@ export default function AdminDashboard() {
                 <LuGlobe className="w-3 h-3 text-rose-500" />
                 International Travel booking
               </h3>
+              <DownloadActions variant="dark" title="International Bookings Report" data={internationalBookings} />
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5 custom-scrollbar">
