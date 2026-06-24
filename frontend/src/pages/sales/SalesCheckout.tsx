@@ -925,8 +925,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       )}
 
       {/* Print Styles */}
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style>{`
         @media print {
           body * {
             visibility: hidden !important;
@@ -992,7 +991,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             display: none !important;
           }
         }
-      ` }} />
+      `}</style>
     </div>
   );
 }

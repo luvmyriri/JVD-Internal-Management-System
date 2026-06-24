@@ -4,6 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
+  timeout: 30000, // 30-second request timeout
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -20,7 +21,7 @@ client.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    
+
     // Prevent browser/tunnel caching on GET requests
     if (config.method?.toLowerCase() === 'get') {
       config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
@@ -37,18 +38,50 @@ client.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor — handle 401 redirects
+// Response interceptor — comprehensive error handling
 client.interceptors.response.use(
   (response) => response,
   (error) => {
+    // 401 Unauthorized — clear session and redirect to login
     if (error.response?.status === 401) {
       localStorage.removeItem('auth_token');
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
       }
+      return Promise.reject(error);
     }
+
+    // Request timeout (axios ECONNABORTED or code ETIMEDOUT)
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      console.error('[API] Request timed out:', error.config?.url);
+      return Promise.reject(new Error('The request timed out. Please try again.'));
+    }
+
+    // Network error — no response received (server down, offline, CORS failure)
+    if (!error.response) {
+      console.error('[API] Network error — no response received:', error.message);
+      return Promise.reject(new Error('Network error — please check your connection and try again.'));
+    }
+
+    // 5xx Server errors
+    if (error.response.status >= 500) {
+      console.error(
+        `[API] Server error ${error.response.status}:`,
+        error.config?.url,
+        error.response.data
+      );
+      return Promise.reject(
+        new Error(
+          error.response.data?.message ||
+          `Server error (${error.response.status}). Please try again or contact support.`
+        )
+      );
+    }
+
+    // All other errors (4xx etc.) — pass through as-is so callers can handle them
     return Promise.reject(error);
   }
 );
 
 export default client;
+

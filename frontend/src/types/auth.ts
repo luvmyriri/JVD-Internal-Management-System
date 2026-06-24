@@ -72,7 +72,14 @@ export interface User {
   department: string;
   is_active: boolean;
   is_online?: boolean;
-  custom_permissions?: any;
+  custom_permissions?: {
+    [module: string]: {
+      can_view?: boolean;
+      can_create?: boolean;
+      can_edit?: boolean;
+      can_delete?: boolean;
+    };
+  } | null;
   effective_permissions?: RolePermissions;
   tags?: string[];
   must_change_password: boolean;

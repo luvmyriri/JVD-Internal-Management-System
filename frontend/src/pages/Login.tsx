@@ -7,6 +7,30 @@ import { getLandingPageForUser, isPathAllowedForUser } from '../utils/navigation
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+/**
+ * Sanitize a branding URL read from localStorage or the API.
+ * Only accepts relative paths (must start with '/') or same-origin URLs.
+ * Rejects javascript:, data:, and any value containing HTML injection characters.
+ * Falls back to the given `defaultUrl` if the value is invalid.
+ */
+function sanitizeBrandingUrl(url: string | null | undefined, defaultUrl: string): string {
+  if (!url || typeof url !== 'string') return defaultUrl;
+  const trimmed = url.trim();
+  // Block dangerous schemes and HTML injection characters
+  const dangerous = /^(javascript:|data:|vbscript:)/i.test(trimmed) ||
+    /[<>"'`]/.test(trimmed);
+  if (dangerous) return defaultUrl;
+  // Allow relative paths starting with '/' and same-origin absolute URLs
+  if (trimmed.startsWith('/')) return trimmed;
+  try {
+    const parsed = new URL(trimmed);
+    if (parsed.origin === window.location.origin) return trimmed;
+  } catch {
+    // not a valid absolute URL
+  }
+  return defaultUrl;
+}
+
 const transitionVariants = {
   fade: {
     initial: { opacity: 0 },
@@ -59,14 +83,17 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
 
   // Portal Customization States (Initialized from localStorage to prevent flash of default assets/color)
-  const [logoUrl, setLogoUrl] = useState(() => localStorage.getItem('jvd_logo_url') || '/JVD 3D.png');
+  const [logoUrl, setLogoUrl] = useState(() => sanitizeBrandingUrl(localStorage.getItem('jvd_logo_url'), '/JVD 3D.png'));
   const [bgList, setBgList] = useState<string[]>(() => {
     const cached = localStorage.getItem('jvd_bg_list');
     try {
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const safe = parsed.map((u: unknown) =>
+            sanitizeBrandingUrl(typeof u === 'string' ? u : null, '/bus-bg.png')
+          );
+          return safe;
         }
       }
     } catch (e) {
@@ -96,12 +123,16 @@ export default function Login() {
         const { data } = response.data;
         if (data) {
           if (data.landing_page_logo) {
-            setLogoUrl(data.landing_page_logo);
-            localStorage.setItem('jvd_logo_url', data.landing_page_logo);
+            const safeLogo = sanitizeBrandingUrl(data.landing_page_logo, '/JVD 3D.png');
+            setLogoUrl(safeLogo);
+            localStorage.setItem('jvd_logo_url', safeLogo);
           }
           if (data.landing_page_bg && data.landing_page_bg.length > 0) {
-            setBgList(data.landing_page_bg);
-            localStorage.setItem('jvd_bg_list', JSON.stringify(data.landing_page_bg));
+            const safeBgs = data.landing_page_bg.map((u: unknown) =>
+              sanitizeBrandingUrl(typeof u === 'string' ? u : null, '/bus-bg.png')
+            );
+            setBgList(safeBgs);
+            localStorage.setItem('jvd_bg_list', JSON.stringify(safeBgs));
           }
           if (data.landing_page_btn_color) {
             setBtnColor(data.landing_page_btn_color);
