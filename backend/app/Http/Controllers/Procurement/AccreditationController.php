@@ -58,7 +58,8 @@ class AccreditationController extends Controller
             'expiry_date' => 'nullable|date',
             'contact_person' => 'required|string',
             'contact_email' => 'required|email',
-            'custom_documents' => 'nullable|array',
+            'custom_documents' => 'nullable|array|max:20',
+            'custom_documents.*' => 'required|string|max:100',
         ]);
 
         $validated['status'] = 'pending_renewal'; // Initial state waiting for KYC
@@ -261,6 +262,11 @@ class AccreditationController extends Controller
         if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
             return response()->json(['success' => false, 'message' => 'Invalid or expired token.'], 403);
         }
+
+        if ($accreditation->updated_at && $accreditation->updated_at->lt(now()->subDays(30))) {
+            return response()->json(['success' => false, 'message' => 'This KYC link has expired. Please request a new one.'], 403);
+        }
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -277,6 +283,10 @@ class AccreditationController extends Controller
         $token = $request->input('token');
         if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
             return response()->json(['message' => 'Forbidden: Invalid or expired compliance session.'], 403);
+        }
+
+        if ($accreditation->updated_at && $accreditation->updated_at->lt(now()->subDays(30))) {
+            return response()->json(['message' => 'This KYC link has expired. Please request a new one.'], 403);
         }
 
         $validated = $request->validate([
@@ -326,6 +336,11 @@ class AccreditationController extends Controller
         if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
             return response()->json(['success' => false, 'message' => 'Forbidden: Invalid or expired compliance session.'], 403);
         }
+
+        if ($accreditation->updated_at && $accreditation->updated_at->lt(now()->subDays(30))) {
+            return response()->json(['success' => false, 'message' => 'This KYC link has expired. Please request a new one.'], 403);
+        }
+
         return $this->uploadDocument($request, $accreditation, $type);
     }
 

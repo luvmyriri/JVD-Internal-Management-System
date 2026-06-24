@@ -85,9 +85,7 @@ class VisaPublicUploadTest extends TestCase
         $this->assertNotNull($portalToken);
         $this->assertEquals(['Valid Passport', 'Bank Statement'], $portalToken->requested_docs);
 
-        // VisaDocumentRequestMail now implements ShouldQueue (Phase 3), so Mail::to()->send()
-        // is queued rather than sent synchronously — assert against the queue, not the send log.
-        Mail::assertQueued(VisaDocumentRequestMail::class, function ($mail) {
+        Mail::assertSent(VisaDocumentRequestMail::class, function ($mail) {
             return $mail->hasTo($this->customer->email) &&
                    $mail->passportCase->id === $this->visaCase->id &&
                    $mail->requestedDocs === ['Valid Passport', 'Bank Statement'];

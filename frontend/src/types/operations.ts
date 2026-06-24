@@ -35,6 +35,7 @@ export interface TripTicket {
   date_of_travel: string;
   duration?: string;
   pick_up: string;
+  destination?: string;
   drop_off: string;
   bus_id?: number;
   plate_no?: string;

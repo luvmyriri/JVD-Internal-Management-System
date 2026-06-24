@@ -7,6 +7,7 @@ use App\Models\JournalEntry;
 use App\Models\LedgerLine;
 use Illuminate\Support\Facades\DB;
 use Exception;
+use Illuminate\Support\Facades\Log;
 
 class LedgerService
 {

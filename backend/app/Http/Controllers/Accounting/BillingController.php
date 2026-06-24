@@ -386,7 +386,7 @@ class BillingController extends Controller
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
                 'amount_received' => $amountReceived,
-                'change' => $request->change ?? 0,
+                'change' => max(0, $amountReceived - $totalAmount),
                 'payment_method' => $request->payment_method,
                 'payment_type' => $paymentType,
                 'balance' => 0,
@@ -436,7 +436,7 @@ class BillingController extends Controller
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during transaction processing.',
+                'message' => 'Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine(),
                 'error' => $e->getMessage()
             ], 500);
         }
@@ -528,6 +528,11 @@ class BillingController extends Controller
             }
 
             $timestamp = $parsedSignature['t'];
+
+            if (abs(time() - (int) $timestamp) > 300) {
+                \Log::warning('PayMongo webhook signature expired', ['age_seconds' => abs(time() - (int) $timestamp)]);
+                return response()->json(['error' => 'Webhook signature expired'], 401);
+            }
             $signedPayload = $timestamp . '.' . $request->getContent();
             $expectedSignature = hash_hmac('sha256', $signedPayload, $secret);
 

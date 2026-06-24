@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobOrderRequest;
 use App\Http\Resources\JobOrderResource;
 use App\Http\Services\JobOrderService;
+use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -257,5 +258,76 @@ class JobOrderController extends Controller
             'data'    => $po->load('lineItems'),
             'message' => 'Purchase Order generated successfully.',
         ], 201);
+    }
+
+    public function checkSupplies(JobOrder $jobOrder): JsonResponse
+    {
+        $items = $jobOrder->items()->get();
+
+        if ($items->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data'    => [],
+                'message' => 'No items attached to this Job Order.',
+            ]);
+        }
+
+        $results = $items->map(function ($item) {
+            $normalized = strtolower(trim($item->item_description));
+            $inventoryItem = InventoryItem::whereRaw('LOWER(TRIM(item_name)) = ?', [$normalized])->first();
+
+            $available = $inventoryItem ? (int) $inventoryItem->quantity : 0;
+            $needed = (int) $item->quantity;
+
+            return [
+                'item_description'   => $item->item_description,
+                'quantity_needed'    => $needed,
+                'quantity_available' => $available,
+                'is_sufficient'      => $available >= $needed,
+                'requires_po'        => !$inventoryItem || $available < $needed,
+                'inventory_item_id'  => $inventoryItem?->id,
+            ];
+        });
+
+        return response()->json([
+            'success'     => true,
+            'data'        => $results,
+            'all_sufficient' => $results->every(fn ($r) => $r['is_sufficient']),
+        ]);
+    }
+
+    public function availableSupplies(Request $request): JsonResponse
+    {
+        $query = InventoryItem::query();
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('item_name', 'like', "%{$search}%")
+                  ->orWhere('category', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
+        $items = $query->orderBy('item_name')
+            ->get()
+            ->map(fn ($item) => [
+                'id'            => $item->id,
+                'item_name'     => $item->item_name,
+                'category'      => $item->category,
+                'quantity'      => (int) $item->quantity,
+                'reorder_level' => (int) $item->reorder_level,
+                'unit'          => $item->unit,
+                'unit_cost'     => $item->unit_cost,
+                'is_low_stock'  => $item->quantity <= $item->reorder_level,
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'data'    => $items,
+        ]);
     }
 }

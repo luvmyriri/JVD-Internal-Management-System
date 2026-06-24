@@ -422,13 +422,29 @@ class TripTicketController extends Controller
 
         list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
 
+        $excludeInvoiceId = null;
+        if ($excludeId) {
+            $tt = \App\Models\TripTicket::find($excludeId);
+            if ($tt && $tt->invoice_id) {
+                $excludeInvoiceId = $tt->invoice_id;
+            }
+        }
+
         if ($driverId) {
             $local = \DB::table('local_travels')
                 ->where('driver_id', $driverId)
-                ->where(function ($q) use ($excludeId) {
+                ->where(function ($q) use ($excludeId, $excludeInvoiceId) {
                     if ($excludeId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeId);
+                        $q->where(function ($sub) use ($excludeId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -445,10 +461,18 @@ class TripTicketController extends Controller
             if (empty($conflicts)) {
                 $intl = \DB::table('international_travels')
                     ->where('driver_id', $driverId)
-                    ->where(function ($q) use ($excludeId) {
+                    ->where(function ($q) use ($excludeId, $excludeInvoiceId) {
                         if ($excludeId) {
-                            $q->where('reference_type', '!=', 'trip_ticket')
-                              ->orWhere('reference_id', '!=', $excludeId);
+                            $q->where(function ($sub) use ($excludeId, $excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'trip_ticket')
+                                    ->orWhere('reference_id', '!=', $excludeId);
+                            });
+                            if ($excludeInvoiceId) {
+                                $q->where(function ($sub) use ($excludeInvoiceId) {
+                                    $sub->where('reference_type', '!=', 'invoice')
+                                        ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                                });
+                            }
                         }
                     })
                     ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -467,10 +491,18 @@ class TripTicketController extends Controller
         if ($busId) {
             $local = \DB::table('local_travels')
                 ->where('bus_id', $busId)
-                ->where(function ($q) use ($excludeId) {
+                ->where(function ($q) use ($excludeId, $excludeInvoiceId) {
                     if ($excludeId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeId);
+                        $q->where(function ($sub) use ($excludeId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -487,10 +519,18 @@ class TripTicketController extends Controller
             if (empty($conflicts)) {
                 $intl = \DB::table('international_travels')
                     ->where('bus_id', $busId)
-                    ->where(function ($q) use ($excludeId) {
+                    ->where(function ($q) use ($excludeId, $excludeInvoiceId) {
                         if ($excludeId) {
-                            $q->where('reference_type', '!=', 'trip_ticket')
-                              ->orWhere('reference_id', '!=', $excludeId);
+                            $q->where(function ($sub) use ($excludeId, $excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'trip_ticket')
+                                    ->orWhere('reference_id', '!=', $excludeId);
+                            });
+                            if ($excludeInvoiceId) {
+                                $q->where(function ($sub) use ($excludeInvoiceId) {
+                                    $sub->where('reference_type', '!=', 'invoice')
+                                        ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                                });
+                            }
                         }
                     })
                     ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -548,14 +588,30 @@ class TripTicketController extends Controller
     {
         list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
 
+        $excludeInvoiceId = null;
+        if ($excludeTicketId) {
+            $tt = \App\Models\TripTicket::find($excludeTicketId);
+            if ($tt && $tt->invoice_id) {
+                $excludeInvoiceId = $tt->invoice_id;
+            }
+        }
+
         if ($driverId) {
             // Check local travels
             $local = \DB::table('local_travels')
                 ->where('driver_id', $driverId)
-                ->where(function ($q) use ($excludeTicketId) {
+                ->where(function ($q) use ($excludeTicketId, $excludeInvoiceId) {
                     if ($excludeTicketId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                        $q->where(function ($sub) use ($excludeTicketId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeTicketId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -588,10 +644,18 @@ class TripTicketController extends Controller
             // Check international travels
             $intl = \DB::table('international_travels')
                 ->where('driver_id', $driverId)
-                ->where(function ($q) use ($excludeTicketId) {
+                ->where(function ($q) use ($excludeTicketId, $excludeInvoiceId) {
                     if ($excludeTicketId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                        $q->where(function ($sub) use ($excludeTicketId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeTicketId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -626,10 +690,18 @@ class TripTicketController extends Controller
             // Check local travels
             $local = \DB::table('local_travels')
                 ->where('bus_id', $busId)
-                ->where(function ($q) use ($excludeTicketId) {
+                ->where(function ($q) use ($excludeTicketId, $excludeInvoiceId) {
                     if ($excludeTicketId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                        $q->where(function ($sub) use ($excludeTicketId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeTicketId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])
@@ -662,10 +734,18 @@ class TripTicketController extends Controller
             // Check international travels
             $intl = \DB::table('international_travels')
                 ->where('bus_id', $busId)
-                ->where(function ($q) use ($excludeTicketId) {
+                ->where(function ($q) use ($excludeTicketId, $excludeInvoiceId) {
                     if ($excludeTicketId) {
-                        $q->where('reference_type', '!=', 'trip_ticket')
-                          ->orWhere('reference_id', '!=', $excludeTicketId);
+                        $q->where(function ($sub) use ($excludeTicketId, $excludeInvoiceId) {
+                            $sub->where('reference_type', '!=', 'trip_ticket')
+                                ->orWhere('reference_id', '!=', $excludeTicketId);
+                        });
+                        if ($excludeInvoiceId) {
+                            $q->where(function ($sub) use ($excludeInvoiceId) {
+                                $sub->where('reference_type', '!=', 'invoice')
+                                    ->orWhere('reference_id', '!=', $excludeInvoiceId);
+                            });
+                        }
                     }
                 })
                 ->whereBetween('travel_date', [$reqStart->toDateString(), $reqEnd->toDateString()])

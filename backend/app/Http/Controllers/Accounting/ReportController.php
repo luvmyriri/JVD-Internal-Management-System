@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
+use App\Models\Collection;
 use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -140,6 +141,88 @@ class ReportController extends Controller
         return response()->json([
             'success' => true,
             'data' => $invoices
+        ]);
+    }
+
+    public function reconciliation(Request $request)
+    {
+        $mismatches = [];
+
+        $collections = Collection::whereNotNull('invoice_id')
+            ->with('invoice')
+            ->get();
+
+        foreach ($collections as $collection) {
+            $invoice = $collection->invoice;
+            if (!$invoice) continue;
+
+            $issues = [];
+
+            if (abs((float) $collection->billing_amount - (float) $invoice->total_amount) > 0.01) {
+                $issues[] = [
+                    'field' => 'billing_amount vs total_amount',
+                    'collection_value' => (float) $collection->billing_amount,
+                    'invoice_value' => (float) $invoice->total_amount,
+                ];
+            }
+
+            if (abs((float) $collection->remaining_balance - (float) $invoice->balance) > 0.01) {
+                $issues[] = [
+                    'field' => 'remaining_balance vs balance',
+                    'collection_value' => (float) $collection->remaining_balance,
+                    'invoice_value' => (float) $invoice->balance,
+                ];
+            }
+
+            if (abs((float) $collection->paid_amount - (float) $invoice->amount_received) > 0.01) {
+                $issues[] = [
+                    'field' => 'paid_amount vs amount_received',
+                    'collection_value' => (float) $collection->paid_amount,
+                    'invoice_value' => (float) $invoice->amount_received,
+                ];
+            }
+
+            if (!empty($issues)) {
+                $mismatches[] = [
+                    'collection_id' => $collection->id,
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'issues' => $issues,
+                ];
+            }
+        }
+
+        $invoicesWithItemMismatch = [];
+        $invoicesWithItems = Invoice::with('items')
+            ->whereIn('status', ['paid', 'partial', 'pending_payment'])
+            ->whereNull('cash_budget_request_id')
+            ->get();
+
+        foreach ($invoicesWithItems as $invoice) {
+            $itemsTotal = $invoice->items->sum('total_price');
+            if (abs((float) $invoice->subtotal - (float) $itemsTotal) > 0.01) {
+                $invoicesWithItemMismatch[] = [
+                    'invoice_id' => $invoice->id,
+                    'invoice_number' => $invoice->invoice_number,
+                    'recorded_subtotal' => (float) $invoice->subtotal,
+                    'calculated_subtotal' => (float) $itemsTotal,
+                    'difference' => round((float) $invoice->subtotal - (float) $itemsTotal, 2),
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'collection_invoice_mismatches' => $mismatches,
+                'invoice_item_mismatches' => $invoicesWithItemMismatch,
+                'summary' => [
+                    'total_linked_collections' => $collections->count(),
+                    'collections_with_issues' => count($mismatches),
+                    'invoices_checked' => $invoicesWithItems->count(),
+                    'invoices_with_item_mismatch' => count($invoicesWithItemMismatch),
+                ],
+            ],
         ]);
     }
 }

@@ -25,4 +25,19 @@ class Liquidation extends Model
     {
         return $this->belongsTo(User::class, 'employee_id');
     }
+
+    public function workOrder()
+    {
+        return $this->belongsTo(WorkOrder::class);
+    }
+
+    public function purchaseOrder()
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function cashBudgetRequest()
+    {
+        return $this->hasOne(CashBudgetRequest::class, 'liquidation_id');
+    }
 }

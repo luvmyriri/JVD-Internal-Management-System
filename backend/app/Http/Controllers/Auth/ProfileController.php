@@ -71,6 +71,12 @@ class ProfileController extends Controller
                 if ($image === false) {
                     throw new \Exception('base64_decode failed');
                 }
+
+                $finfo = new \finfo(FILEINFO_MIME_TYPE);
+                $detectedMime = $finfo->buffer($image);
+                if (!in_array($detectedMime, ['image/jpeg', 'image/png', 'image/gif'])) {
+                    throw new \Exception('File content does not match a valid image type');
+                }
             } else {
                 throw new \Exception('did not match data URI with image data');
             }

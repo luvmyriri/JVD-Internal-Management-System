@@ -43,6 +43,11 @@ class TripTicket extends Model
         return $this->hasOne(CashBudgetRequest::class, 'trip_ticket_id');
     }
 
+    public function invoice()
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     protected static function booted(): void
     {
         static::saved(function ($tripTicket) {

@@ -71,7 +71,8 @@ export default function AdminDashboard() {
   const isApprover = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role);
 
   const pendingBudgets = useMemo(() => {
-    return cashBudgets.filter((b: any) => b.status === 'pending_accounting');
+    const budgetsArray = Array.isArray(cashBudgets) ? cashBudgets : (cashBudgets as any)?.data || [];
+    return budgetsArray.filter((b: any) => b.status === 'pending_accounting');
   }, [cashBudgets]);
 
   const busesUnderMaintenance = useMemo(() => {

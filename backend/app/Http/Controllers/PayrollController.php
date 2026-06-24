@@ -194,13 +194,12 @@ class PayrollController extends Controller
     }
 
     /**
-     * BIR-compliant progressive withholding tax on the annualised MONTHLY base salary.
+     * BIR-compliant progressive withholding tax on annualised taxable compensation.
      * Returns the per-CYCLE (semi-monthly) tax amount.
      */
-    private function computeBirTax(float $monthlyBase): float
+    private function computeBirTax(float $monthlyBase, float $monthlyTaxableAllowances = 0): float
     {
-        // Annualise the monthly base salary
-        $annual = $monthlyBase * 12;
+        $annual = ($monthlyBase + $monthlyTaxableAllowances) * 12;
 
         // 2024 BIR Tax Table (TRAIN Law)
         if ($annual <= 250000) {
@@ -305,7 +304,7 @@ class PayrollController extends Controller
                 $hdd = isset($adj['half_day_deductions']) ? (float) $adj['half_day_deductions'] : 0.00;
 
                 // M-02: BIR progressive withholding tax (semi-monthly share)
-                $cycleTax = $this->computeBirTax($monthlyBase);
+                $cycleTax = $this->computeBirTax($monthlyBase, $monthlyAllowances);
 
                 // M-02: Floor net salary at 0 — never pay a negative amount
                 $cycleNet = max(0.00, round($cycleBase + $cycleAllowances + $comm + $ot - $cycleTax - $cycleDeductions - $hdd, 2));

@@ -47,6 +47,9 @@ class ActionableApprovalNotification extends Notification
         if ($this->modelType === 'purchase_order' && $notifiable->role === 'accounting_executive') {
             $approveAction = 'verify';
         }
+        if ($this->modelType === 'cash_budget' && $notifiable->role === 'accounting_executive') {
+            $approveAction = 'approve';
+        }
 
         // 2. Generate cryptographically signed URLs (valid for 3 days)
         $approveUrl = URL::temporarySignedRoute(
@@ -96,7 +99,11 @@ class ActionableApprovalNotification extends Notification
             'title' => $this->title,
             'message' => $this->summary,
             'type' => 'warning',
-            'link' => $this->modelType === 'purchase_order' ? '/procurement/purchase-orders' : '/fleet/maintenance',
+            'link' => match ($this->modelType) {
+                'purchase_order' => '/procurement/purchase-orders',
+                'cash_budget' => '/operations/cash-budgets',
+                default => '/fleet/maintenance',
+            },
             'model_type' => $this->modelType,
             'model_id' => $this->modelId,
         ];

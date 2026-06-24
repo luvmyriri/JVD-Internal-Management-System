@@ -2,16 +2,12 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 
-class VisaDocumentRequestMail extends Mailable implements ShouldQueue
+class VisaDocumentRequestMail extends Mailable
 {
-    use Queueable, SerializesModels;
 
     public $link;
     public $passportCase;

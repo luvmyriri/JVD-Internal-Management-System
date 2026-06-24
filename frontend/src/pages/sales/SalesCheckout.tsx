@@ -286,9 +286,17 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       }
 
       resetCheckoutForm();
-    } catch (err) {
-      alert('Checkout failed. Please try again.');
-      console.error(err);
+    } catch (err: any) {
+      const data = err?.response?.data;
+      const serverMsg = data?.error
+        || data?.message
+        || (data?.errors
+          ? Object.values(data.errors).flat().join('\n')
+          : null)
+        || err?.message
+        || 'Unknown error';
+      alert(`Checkout failed: ${serverMsg}`);
+      console.error('Checkout error:', err?.response?.data || err);
     } finally {
       setIsProcessing(false);
     }

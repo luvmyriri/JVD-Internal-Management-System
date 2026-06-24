@@ -105,6 +105,11 @@ class Invoice extends Model
         return $this->belongsTo(CashBudgetRequest::class);
     }
 
+    public function tripTicket(): HasOne
+    {
+        return $this->hasOne(TripTicket::class);
+    }
+
     public function bus(): BelongsTo
     {
         return $this->belongsTo(Bus::class);

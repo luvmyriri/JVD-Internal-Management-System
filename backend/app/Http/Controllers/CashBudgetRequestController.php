@@ -5,13 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\CashBudgetRequest;
 use App\Models\User;
 use App\Notifications\SystemAlert;
+use App\Notifications\ActionableApprovalNotification;
 use Illuminate\Http\Request;
 
 class CashBudgetRequestController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->latest()->get();
+        $user = auth()->user();
+        $query = CashBudgetRequest::with(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
+
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+            $query->where('prepared_by', $user->id);
+        }
+
+        return $query->latest()->paginate($request->per_page ?? 20);
     }
 
     public function store(Request $request)
@@ -64,12 +72,12 @@ class CashBudgetRequestController extends Controller
             $this->initializeLiquidationAndLedger($budget);
         }
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     public function show($id)
     {
-        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->findOrFail($id);
+        return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->findOrFail($id);
     }
 
     public function update(Request $request, $id)
@@ -86,9 +94,14 @@ class CashBudgetRequestController extends Controller
                     return response()->json(['error' => 'Unauthorized to approve cash budget requests.'], 403);
                 }
             }
+            if ($newStatus === 'pending_super_admin') {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
+                    return response()->json(['error' => 'Unauthorized to forward cash budget requests for super admin approval.'], 403);
+                }
+            }
             if ($newStatus === 'disbursed') {
-                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager', 'dispatcher', 'service_adviser', 'logistics_in_charge', 'purchasing_manager')) {
-                    return response()->json(['error' => 'Unauthorized to disburse cash budget requests.'], 403);
+                if (!$user->hasRole('super_admin', 'executive_vice_president')) {
+                    return response()->json(['error' => 'Only Super Admin or Executive Vice President can approve disbursement.'], 403);
                 }
             }
         }
@@ -96,7 +109,7 @@ class CashBudgetRequestController extends Controller
         $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier', 'workOrder'])->findOrFail($id);
 
         $validated = $request->validate([
-            'status'               => 'sometimes|in:draft,pending_accounting,approved,disbursed',
+            'status'               => 'sometimes|in:draft,pending_accounting,approved,pending_super_admin,disbursed',
             'diesel'               => 'sometimes|numeric',
             'meal_allowance'       => 'sometimes|numeric',
             'sop'                  => 'sometimes|numeric',
@@ -122,6 +135,8 @@ class CashBudgetRequestController extends Controller
             }
         }
 
+        $previousStatus = $budget->status;
+
         // Recalculate total if any amounts updated and it's a DTT flow
         $amounts = ['diesel', 'meal_allowance', 'sop', 'autosweep', 'easytrip', 'coach_captain_salary', 'spare_driver_salary'];
         $needsRecalculation = collect($amounts)->contains(fn($a) => $request->has($a));
@@ -134,7 +149,7 @@ class CashBudgetRequestController extends Controller
             ]);
         }
 
-        // ── STEP 1: Operations forwards to accounting → notify accounting/super_admin ──────
+        // ── STEP 1: Operations forwards to accounting → notify accounting via EMAIL + database ──────
         if ($request->has('status') && $request->status === 'pending_accounting') {
             $preparedByName = $budget->preparedBy?->first_name
                 ? "{$budget->preparedBy->first_name} {$budget->preparedBy->last_name}"
@@ -144,60 +159,101 @@ class CashBudgetRequestController extends Controller
             $totalAmount = number_format($budget->total_amount, 2);
             $reference   = $budget->tripTicket?->control_no ?? ('CB-' . $budget->id);
 
-            $title   = "Cash Budget Approval Required — {$reference}";
-            $message = "{$preparedByName} submitted a cash budget of ₱{$totalAmount} for {$destination}. Please review and approve in Operations → Cash Budgets.";
+            $details = [
+                'Reference'   => $reference,
+                'Destination' => $destination,
+                'Amount'      => '₱' . $totalAmount,
+                'Prepared By' => $preparedByName,
+                'Source Type'  => $this->determineBudgetSourceType($budget),
+            ];
 
-            // Notify every accounting & super_admin user
             $accountingUsers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'accounting_executive'])
                 ->where('is_active', true)
                 ->get();
 
             foreach ($accountingUsers as $accountingUser) {
-                $accountingUser->notify(new SystemAlert(
-                    $title,
-                    $message,
-                    'warning',
-                    '/operations/cash-budgets',
+                $accountingUser->notify(new ActionableApprovalNotification(
+                    "Cash Budget Approval Required — {$reference}",
+                    "{$preparedByName} submitted a cash budget of ₱{$totalAmount} for {$destination}. Please review and approve.",
                     'cash_budget',
-                    $budget->id
+                    $budget->id,
+                    $details
                 ));
             }
 
             $this->initializeLiquidationAndLedger($budget);
         }
 
-        // ── STEP 2: Accounting approves ──────
-        if ($request->has('status') && $request->status === 'approved') {
-            $budget->update(['approved_by' => auth()->id()]);
+        // ── STEP 2: Accounting approves → auto-forward to pending_super_admin → EMAIL super admin ──────
+        if ($request->has('status') && $request->status === 'approved' && $previousStatus === 'pending_accounting') {
+            $budget->update([
+                'approved_by' => auth()->id(),
+                'status'      => 'pending_super_admin',
+            ]);
 
-            // Link to the Invoice
-            $invoiceId = $budget->tripTicket?->jobOrder?->invoice_id;
-            if ($invoiceId) {
-                $invoice = \App\Models\Invoice::find($invoiceId);
-                if ($invoice) {
-                    $invoice->update(['cash_budget_request_id' => $budget->id]);
-                }
+            $reference   = $budget->tripTicket?->control_no ?? ('CB-' . $budget->id);
+            $totalAmount = number_format($budget->total_amount, 2);
+            $destination = $budget->destination ?? ($budget->tripTicket?->drop_off ?? 'N/A');
+            $approverName = auth()->user()->first_name . ' ' . auth()->user()->last_name;
+
+            $details = [
+                'Reference'    => $reference,
+                'Destination'  => $destination,
+                'Amount'       => '₱' . $totalAmount,
+                'Verified By'  => $approverName . ' (Accounting)',
+                'Prepared By'  => $budget->preparedBy ? ($budget->preparedBy->first_name . ' ' . $budget->preparedBy->last_name) : 'N/A',
+            ];
+
+            $superAdminUsers = User::whereIn('role', ['super_admin', 'executive_vice_president'])
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($superAdminUsers as $saUser) {
+                $saUser->notify(new ActionableApprovalNotification(
+                    "Cash Budget Pending Final Approval — {$reference}",
+                    "Accounting has verified a cash budget of ₱{$totalAmount} for {$destination}. Your final approval is required before disbursement.",
+                    'cash_budget',
+                    $budget->id,
+                    $details
+                ));
             }
 
-            // Optional: notify the preparer that it is approved and ready for disbursement
             if ($budget->preparedBy) {
-                $reference = $budget->tripTicket?->control_no ?? ('CB-' . $budget->id);
                 $budget->preparedBy->notify(new SystemAlert(
-                    "Cash Budget Approved — {$reference}",
-                    "Accounting has approved the cash budget. It is now ready for disbursement.",
-                    'success',
+                    "Cash Budget Approved by Accounting — {$reference}",
+                    "Accounting has approved the cash budget. It is now pending Super Admin approval.",
+                    'info',
                     '/operations/cash-budgets'
                 ));
             }
         }
 
-        // ── STEP 3: Cash budgets user disburses → create invoice in billing ─────────
+        // ── STEP 2b: Super Admin approves → ready for disbursement ──────
+        if ($request->has('status') && $request->status === 'approved' && $previousStatus === 'pending_super_admin') {
+            $budget->update([
+                'super_admin_approved_by' => auth()->id(),
+                'status'                  => 'approved',
+            ]);
+        }
+
+        // ── STEP 3: Super Admin / EVP disburses → create invoice in billing ─────────
         if ($request->has('status') && $request->status === 'disbursed') {
+            if ($previousStatus !== 'approved') {
+                return response()->json([
+                    'error' => 'Cash budget must be approved by both accounting and super admin before disbursement.'
+                ], 422);
+            }
+
+            $budget->update(['super_admin_approved_by' => auth()->id()]);
             // C-07: make the disbursement side effects atomic — the budget update, liquidation,
             // ledger entry, invoice and invoice items all persist together or roll back together.
             \Illuminate\Support\Facades\DB::transaction(function () use ($request, $budget) {
-            $disbursedAmount = $request->input('disbursed_amount') ?? $budget->total_amount;
+            $disbursedAmount = (float) ($request->input('disbursed_amount') ?? $budget->total_amount);
             $oldTotalAmount = (float) $budget->total_amount;
+
+            if ($disbursedAmount > $oldTotalAmount * 1.1) {
+                throw new \InvalidArgumentException("Disbursed amount (₱" . number_format($disbursedAmount, 2) . ") cannot exceed 110% of the approved total (₱" . number_format($oldTotalAmount, 2) . ").");
+            }
 
             // Ensure Liquidation and initial Ledger are created (handles direct approved requests)
             $this->initializeLiquidationAndLedger($budget);
@@ -216,11 +272,15 @@ class CashBudgetRequestController extends Controller
             if ($diff !== 0.0) {
                 $ledgerService = app(\App\Services\LedgerService::class);
                 $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
-                
+
+                if (!$cashInBankAccount) {
+                    \Log::warning("Ledger entry skipped for CashBudgetRequest #{$budget->id}: Cash in Bank account (1000) not found.");
+                }
+
                 if ($cashInBankAccount) {
                     $debitAccount = null;
                     $description = "Adjustment for cash budget disbursement difference (Budget #{$budget->id})";
-                    
+
                     if ($budget->commission_id) {
                         $debitAccount = \App\Models\Account::where('code', '5400')->first();
                     } elseif ($budget->payroll_cycle_id) {
@@ -230,7 +290,11 @@ class CashBudgetRequestController extends Controller
                     } else {
                         $debitAccount = \App\Models\Account::where('code', '1200')->first();
                     }
-                    
+
+                    if (!$debitAccount) {
+                        \Log::warning("Ledger entry skipped for CashBudgetRequest #{$budget->id}: debit account not found in chart of accounts.");
+                    }
+
                     if ($debitAccount) {
                         if ($diff > 0) {
                             $ledgerEntries = [
@@ -404,22 +468,30 @@ class CashBudgetRequestController extends Controller
             });
         }
 
-        return $budget->load(['preparedBy', 'approvedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
+        return $budget->load(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
     }
 
     private function initializeLiquidationAndLedger(CashBudgetRequest $budget)
     {
+        // Determine the source type BEFORE creating the liquidation (liquidation_id
+        // will always be truthy after creation, so checking it later shadows PO/WO/payroll).
+        $sourceType = $this->determineBudgetSourceType($budget);
+
         // 1. Create pending liquidation if not already exists
         if (!$budget->liquidation_id) {
             $employeeId = $budget->tripTicket?->driver_id ?? $budget->prepared_by ?? auth()->id() ?? 1;
-            
+
             $liquidation = \App\Models\Liquidation::create([
-                'trip_ticket_id' => $budget->trip_ticket_id,
-                'employee_id'    => $employeeId,
-                'status'         => 'pending',
-                'total_advanced' => $budget->total_amount,
+                'trip_ticket_id'     => $budget->trip_ticket_id,
+                'work_order_id'      => $budget->work_order_id,
+                'purchase_order_id'  => $budget->purchase_order_id,
+                'payroll_cycle_id'   => $budget->payroll_cycle_id,
+                'employee_id'        => $employeeId,
+                'source_type'        => $sourceType,
+                'status'             => 'pending',
+                'total_advanced'     => $budget->total_amount,
             ]);
-            
+
             $budget->update(['liquidation_id' => $liquidation->id]);
             $budget->refresh();
         }
@@ -432,36 +504,10 @@ class CashBudgetRequestController extends Controller
         if (!$exists) {
             $ledgerService = app(\App\Services\LedgerService::class);
             $cashInBankAccount = \App\Models\Account::where('code', '1000')->first();
-            
+
             if ($cashInBankAccount) {
-                $debitAccount = null;
-                $description = "";
-                
-                if ($budget->commission_id) {
-                    $debitAccount = \App\Models\Account::where('code', '5400')->first(); // Commission Expense
-                    $description = "Commission disbursement for " . ($budget->commission?->serial_no ?? "Commission #{$budget->commission_id}");
-                } elseif ($budget->liquidation_id) {
-                    if ($budget->payroll_cycle_id) {
-                        $debitAccount = \App\Models\Account::where('code', '6000')->first(); // Salary Expense
-                        $description = "Payroll request for cycle #" . $budget->payroll_cycle_id;
-                    } else {
-                        $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
-                        $description = "Cash advance request for DTT: " . ($budget->tripTicket?->control_no ?? "CB-{$budget->id}");
-                    }
-                } elseif ($budget->purchase_order_id || $budget->work_order_id) {
-                    $debitAccount = \App\Models\Account::where('code', '5300')->first(); // Maintenance Expense
-                    $description = "Maintenance budget request for PO #" . ($budget->purchase_order_id ?? $budget->work_order_id);
-                } elseif ($budget->payroll_cycle_id) {
-                    $debitAccount = \App\Models\Account::where('code', '6000')->first(); // Salary Expense
-                    $description = "Payroll request for cycle #" . $budget->payroll_cycle_id;
-                } elseif ($budget->tripTicket) {
-                    $debitAccount = \App\Models\Account::where('code', '1200')->first(); // Employee Advances
-                    $description = "Cash advance request for DTT: " . $budget->tripTicket->control_no;
-                } else {
-                    $debitAccount = \App\Models\Account::where('code', '1200')->first();
-                    $description = "Cash budget request: " . ($budget->destination ?? "CB-{$budget->id}");
-                }
-                
+                [$debitAccount, $description] = $this->resolveDebitAccountAndDescription($budget, $sourceType);
+
                 if ($debitAccount) {
                     $ledgerService->recordEntry(
                         date('Y-m-d'),
@@ -485,6 +531,41 @@ class CashBudgetRequestController extends Controller
                 }
             }
         }
+    }
+
+    private function determineBudgetSourceType(CashBudgetRequest $budget): string
+    {
+        if ($budget->commission_id) return 'commission';
+        if ($budget->purchase_order_id || $budget->work_order_id) return 'maintenance';
+        if ($budget->payroll_cycle_id) return 'payroll';
+        if ($budget->trip_ticket_id || $budget->tripTicket) return 'dtt';
+        return 'general';
+    }
+
+    private function resolveDebitAccountAndDescription(CashBudgetRequest $budget, string $sourceType): array
+    {
+        return match ($sourceType) {
+            'commission' => [
+                \App\Models\Account::where('code', '5400')->first(),
+                "Commission disbursement for " . ($budget->commission?->serial_no ?? "Commission #{$budget->commission_id}"),
+            ],
+            'maintenance' => [
+                \App\Models\Account::where('code', '5300')->first(),
+                "Maintenance budget request for " . ($budget->purchase_order_id ? "PO #{$budget->purchase_order_id}" : "WO #{$budget->work_order_id}"),
+            ],
+            'payroll' => [
+                \App\Models\Account::where('code', '6000')->first(),
+                "Payroll request for cycle #{$budget->payroll_cycle_id}",
+            ],
+            'dtt' => [
+                \App\Models\Account::where('code', '1200')->first(),
+                "Cash advance request for DTT: " . ($budget->tripTicket?->control_no ?? "CB-{$budget->id}"),
+            ],
+            default => [
+                \App\Models\Account::where('code', '1200')->first(),
+                "Cash budget request: " . ($budget->destination ?? "CB-{$budget->id}"),
+            ],
+        };
     }
 
     public function destroy($id)

@@ -55,8 +55,8 @@ Route::prefix('auth')->group(function () {
 
 // Public KYC route
 Route::get('/accreditations/{accreditation}/verify-token', [App\Http\Controllers\Procurement\AccreditationController::class, 'verifyToken'])->name('accreditations.verify-token');
-Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->name('accreditations.submit-kyc');
-Route::post('/accreditations/{accreditation}/submit-kyc/upload/{type}', [App\Http\Controllers\Procurement\AccreditationController::class, 'uploadDocumentPublic'])->name('accreditations.submit-kyc.upload');
+Route::post('/accreditations/{accreditation}/submit-kyc', [App\Http\Controllers\Procurement\AccreditationController::class, 'submitKyc'])->middleware('throttle:10,1')->name('accreditations.submit-kyc');
+Route::post('/accreditations/{accreditation}/submit-kyc/upload/{type}', [App\Http\Controllers\Procurement\AccreditationController::class, 'uploadDocumentPublic'])->middleware('throttle:10,1')->name('accreditations.submit-kyc.upload');
 
 // Public settings route
 Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettings'])->name('settings.public');
@@ -64,12 +64,12 @@ Route::get('/public/settings', [SystemSettingController::class, 'getPublicSettin
 // Public Visa Document Request upload routes (legacy — kept live for already-sent links;
 // new links are generated against /public/portal/{token} below)
 Route::get('/public/visa-requests/{token}', [PassportCaseController::class, 'verifyPublicToken'])->name('passport-cases.public.verify');
-Route::post('/public/visa-requests/{token}/upload', [PassportCaseController::class, 'uploadPublicDocument'])->name('passport-cases.public.upload');
+Route::post('/public/visa-requests/{token}/upload', [PassportCaseController::class, 'uploadPublicDocument'])->middleware('throttle:10,1')->name('passport-cases.public.upload');
 
 // Unified Customer Portal (document upload + contract e-signature)
 Route::get('/public/portal/{token}', [App\Http\Controllers\CustomerPortalController::class, 'verify'])->name('portal.verify');
-Route::post('/public/portal/{token}/upload', [App\Http\Controllers\CustomerPortalController::class, 'uploadDocument'])->name('portal.upload');
-Route::post('/public/portal/{token}/sign', [App\Http\Controllers\CustomerPortalController::class, 'signContract'])->name('portal.sign');
+Route::post('/public/portal/{token}/upload', [App\Http\Controllers\CustomerPortalController::class, 'uploadDocument'])->middleware('throttle:10,1')->name('portal.upload');
+Route::post('/public/portal/{token}/sign', [App\Http\Controllers\CustomerPortalController::class, 'signContract'])->middleware('throttle:10,1')->name('portal.sign');
 
 // Public endpoints for presentation/showcase website connection
 Route::get('/public/buses', function () {
@@ -80,10 +80,12 @@ Route::get('/public/buses', function () {
 });
 
 Route::get('/public/drivers', function () {
-    // H-01: do not expose personal email addresses on an unauthenticated endpoint (phishing/scraping risk).
     return response()->json([
         'success' => true,
-        'data' => \App\Models\User::where('role', 'driver')->orderBy('first_name')->get(['id', 'first_name', 'last_name'])
+        'data' => \App\Models\User::where('role', 'driver')->orderBy('first_name')->get(['id'])->map(fn ($d) => [
+            'id' => $d->id,
+            'display_name' => 'Driver #' . $d->id,
+        ])
     ]);
 });
 
@@ -267,8 +269,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // (dynamic permissions via operations / logistics / accounting modules)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,executive_vice_president,operations_manager,dispatcher,service_adviser,logistics_in_charge,purchasing_manager,accounting_executive,driver')->group(function () {
+        Route::get('/job-orders/available-supplies', [JobOrderController::class, 'availableSupplies'])->name('job-orders.available-supplies');
         Route::apiResource('job-orders',  JobOrderController::class)->except(['destroy']);
         Route::post('/job-orders/{jobOrder}/generate-purchase-order', [JobOrderController::class, 'generatePurchaseOrder'])->name('job-orders.generate-po');
+        Route::get('/job-orders/{jobOrder}/check-supplies', [JobOrderController::class, 'checkSupplies'])->name('job-orders.check-supplies');
         Route::apiResource('work-orders', WorkOrderController::class)->except(['destroy']);
         Route::apiResource('commissions', CommissionController::class);
         Route::apiResource('trip-tickets', TripTicketController::class)->except(['index', 'show']);
@@ -428,7 +432,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // ──────────────────────────────────────
     
     // Webhook for PayMongo (no auth required)
-    Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum');
+    Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
 
     Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,accounting:view')->group(function () {
         // Billing / Reports / Sales
@@ -441,6 +445,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive')->group(function () {
             Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
             Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
+            Route::get('/accounting/reconciliation', [App\Http\Controllers\Accounting\ReportController::class, 'reconciliation'])->name('accounting.reconciliation');
         });
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
 
@@ -465,6 +470,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
         Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');
         Route::get('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'show'])->name('liquidations.show');
+        Route::post('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'store'])->name('liquidations.store');
+        Route::put('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'update'])->name('liquidations.update');
+        Route::delete('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'destroy'])->name('liquidations.destroy');
         Route::post('/liquidations/{liquidation}/settle', [App\Http\Controllers\Accounting\LiquidationController::class, 'settle'])->name('liquidations.settle');
     });
 
@@ -557,6 +565,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             ->middleware('role:super_admin,executive_vice_president,driver')->name('dashboards.driver');
         Route::get('/hr',         [DashboardController::class, 'hr'])
             ->middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary')->name('dashboards.hr');
+        Route::get('/approvals',  [DashboardController::class, 'approvals'])
+            ->middleware('role:super_admin,executive_vice_president')->name('dashboards.approvals');
     });
 });
 

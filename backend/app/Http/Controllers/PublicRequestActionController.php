@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\WorkOrder;
 use App\Models\PurchaseOrder;
+use App\Models\CashBudgetRequest;
 use App\Models\InventoryItem;
 use App\Http\Services\AuditLogService;
 use App\Http\Services\NotificationService;
+use App\Notifications\SystemAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -56,6 +58,8 @@ class PublicRequestActionController extends Controller
             return $this->handleWorkOrder($modelId, $action, $actor);
         } elseif ($modelType === 'purchase_order') {
             return $this->handlePurchaseOrder($modelId, $action, $actor);
+        } elseif ($modelType === 'cash_budget') {
+            return $this->handleCashBudget($modelId, $action, $actor);
         }
 
         return view('action_result', [
@@ -497,6 +501,132 @@ class PublicRequestActionController extends Controller
             'details' => [
                 'Action Requested' => $action,
                 'Current Status' => $purchaseOrder->status,
+            ]
+        ]);
+    }
+
+    private function handleCashBudget(int $id, string $action, User $actor): View
+    {
+        $budget = CashBudgetRequest::with(['preparedBy', 'tripTicket'])->find($id);
+
+        if (!$budget) {
+            return view('action_result', [
+                'status'  => 'error',
+                'title'   => 'Record Not Found',
+                'message' => 'The requested Cash Budget could not be retrieved.',
+                'details' => ['CB ID' => '#' . $id]
+            ]);
+        }
+
+        if ($action === 'reject') {
+            if (!in_array($budget->status, ['pending_accounting', 'pending_super_admin'])) {
+                return view('action_result', [
+                    'status'  => 'warning',
+                    'title'   => 'Already Processed',
+                    'message' => 'This Cash Budget has already been finalized.',
+                    'details' => [
+                        'Reference' => $budget->tripTicket?->control_no ?? 'CB-' . $budget->id,
+                        'Current Status' => strtoupper(str_replace('_', ' ', $budget->status)),
+                    ]
+                ]);
+            }
+
+            $budget->update(['status' => 'draft']);
+
+            if ($budget->preparedBy) {
+                $budget->preparedBy->notify(new SystemAlert(
+                    'Cash Budget Rejected',
+                    'Your cash budget request of ₱' . number_format($budget->total_amount, 2) . ' was rejected by ' . $actor->first_name . ' ' . $actor->last_name . '. Please revise and resubmit.',
+                    'error',
+                    '/operations/cash-budgets',
+                    'cash_budget',
+                    $budget->id
+                ));
+            }
+
+            return view('action_result', [
+                'status'  => 'success',
+                'title'   => 'Cash Budget Rejected',
+                'message' => 'The Cash Budget request has been rejected. The preparer has been notified.',
+                'details' => [
+                    'Reference' => $budget->tripTicket?->control_no ?? 'CB-' . $budget->id,
+                    'Amount' => '₱' . number_format($budget->total_amount, 2),
+                    'Rejected By' => $actor->first_name . ' ' . $actor->last_name,
+                ]
+            ]);
+        }
+
+        if ($action === 'approve' && $budget->status === 'pending_accounting') {
+            $budget->update([
+                'approved_by' => $actor->id,
+                'status'      => 'pending_super_admin',
+            ]);
+
+            $saUsers = User::whereIn('role', ['super_admin', 'executive_vice_president'])->where('is_active', true)->get();
+            $reference = $budget->tripTicket?->control_no ?? 'CB-' . $budget->id;
+            $details = [
+                'Reference'   => $reference,
+                'Destination' => $budget->destination ?? ($budget->tripTicket?->drop_off ?? 'N/A'),
+                'Amount'      => '₱' . number_format($budget->total_amount, 2),
+                'Approved By' => $actor->first_name . ' ' . $actor->last_name . ' (Accounting)',
+                'Prepared By' => $budget->preparedBy ? ($budget->preparedBy->first_name . ' ' . $budget->preparedBy->last_name) : 'N/A',
+            ];
+
+            foreach ($saUsers as $saUser) {
+                $saUser->notify(new \App\Notifications\ActionableApprovalNotification(
+                    "Cash Budget Pending Final Approval — {$reference}",
+                    "A cash budget of ₱" . number_format($budget->total_amount, 2) . " has been verified by accounting and needs your final approval before disbursement.",
+                    'cash_budget',
+                    $budget->id,
+                    $details
+                ));
+            }
+
+            return view('action_result', [
+                'status'  => 'success',
+                'title'   => 'Cash Budget Verified by Accounting',
+                'message' => 'The Cash Budget has been verified and forwarded to the CEO/EVP for final approval.',
+                'details' => $details,
+            ]);
+        }
+
+        if ($action === 'approve' && $budget->status === 'pending_super_admin') {
+            $budget->update([
+                'super_admin_approved_by' => $actor->id,
+                'status' => 'approved',
+            ]);
+
+            if ($budget->preparedBy) {
+                $budget->preparedBy->notify(new SystemAlert(
+                    'Cash Budget Approved for Disbursement',
+                    'Your cash budget request of ₱' . number_format($budget->total_amount, 2) . ' has been approved by ' . $actor->first_name . ' ' . $actor->last_name . '. Proceed to disbursement.',
+                    'success',
+                    '/operations/cash-budgets',
+                    'cash_budget',
+                    $budget->id
+                ));
+            }
+
+            return view('action_result', [
+                'status'  => 'success',
+                'title'   => 'Cash Budget Approved',
+                'message' => 'Final approval granted. The budget is now ready for disbursement.',
+                'details' => [
+                    'Reference' => $budget->tripTicket?->control_no ?? 'CB-' . $budget->id,
+                    'Amount' => '₱' . number_format($budget->total_amount, 2),
+                    'Approved By' => $actor->first_name . ' ' . $actor->last_name,
+                    'Status' => 'READY FOR DISBURSEMENT',
+                ]
+            ]);
+        }
+
+        return view('action_result', [
+            'status'  => 'warning',
+            'title'   => 'Already Processed',
+            'message' => 'This Cash Budget has already been processed at this stage.',
+            'details' => [
+                'Reference' => $budget->tripTicket?->control_no ?? 'CB-' . $budget->id,
+                'Current Status' => strtoupper(str_replace('_', ' ', $budget->status)),
             ]
         ]);
     }

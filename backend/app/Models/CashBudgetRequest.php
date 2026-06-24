@@ -25,6 +25,7 @@ class CashBudgetRequest extends Model
         'status',
         'prepared_by',
         'approved_by',
+        'super_admin_approved_by',
         'disbursed_by',
         'purchase_order_id',
         'trip_ticket_id',
@@ -51,6 +52,11 @@ class CashBudgetRequest extends Model
     public function approvedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    public function superAdminApprovedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'super_admin_approved_by');
     }
 
     public function disbursedBy(): BelongsTo

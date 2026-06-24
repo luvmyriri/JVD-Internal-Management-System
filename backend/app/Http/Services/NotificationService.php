@@ -198,7 +198,7 @@ class NotificationService
                 "New Cash Budget Generated",
                 $message,
                 "info",
-                "/operations/commissions",
+                "/accounting/cash-budgets",
                 "cash_budget_request",
                 $budget->id
             ));
@@ -241,6 +241,47 @@ class NotificationService
                 "/travel/visa-processing",
                 "passport_case",
                 $passportCase->id
+            ));
+        }
+    }
+
+    /**
+     * Notify employee and accounting of liquidation settlement result.
+     */
+    public static function notifyLiquidationSettled(\App\Models\Liquidation $liquidation)
+    {
+        $employee = User::find($liquidation->employee_id);
+        $reference = $liquidation->tripTicket?->control_no ?? "Liquidation #{$liquidation->id}";
+        $advanced = number_format($liquidation->total_advanced, 2);
+        $spent = number_format($liquidation->total_spent, 2);
+        $shortage = $liquidation->shortage_amount;
+
+        $statusLabel = $shortage > 0 ? 'SHORTAGE of ₱' . number_format($shortage, 2) : ($shortage < 0 ? 'REIMBURSEMENT of ₱' . number_format(abs($shortage), 2) . ' due' : 'BALANCED');
+
+        if ($employee) {
+            $employee->notify(new SystemAlert(
+                "Liquidation Settled — {$reference}",
+                "Your liquidation has been settled. Advanced: ₱{$advanced}, Spent: ₱{$spent}. Result: {$statusLabel}.",
+                $shortage > 0 ? 'warning' : 'success',
+                '/accounting/liquidations',
+                'liquidation',
+                $liquidation->id
+            ));
+        }
+
+        $accountingStaff = User::whereIn('role', ['super_admin', 'executive_vice_president', 'accounting_executive'])
+            ->where('is_active', true)
+            ->get();
+
+        foreach ($accountingStaff as $staff) {
+            if ($employee && $staff->id === $employee->id) continue;
+            $staff->notify(new SystemAlert(
+                "Liquidation Settled — {$reference}",
+                "Liquidation for " . ($employee ? ($employee->first_name . ' ' . $employee->last_name) : "Employee #{$liquidation->employee_id}") . " has been settled. Result: {$statusLabel}.",
+                $shortage > 0 ? 'warning' : 'info',
+                '/accounting/liquidations',
+                'liquidation',
+                $liquidation->id
             ));
         }
     }

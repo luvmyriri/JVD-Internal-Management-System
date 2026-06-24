@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commission;
 use App\Models\CommissionItem;
 use Illuminate\Http\Request;
+use App\Http\Services\AuditLogService;
 use Illuminate\Support\Facades\DB;
 
 class CommissionController extends Controller
@@ -68,6 +69,8 @@ class CommissionController extends Controller
                 $commission->items()->create($item);
             }
 
+            AuditLogService::log('create', 'accounting', 'Commission', $commission->id, null, $commission->toArray());
+
             return $commission->load('items');
         });
     }
@@ -116,26 +119,30 @@ class CommissionController extends Controller
             'status' => 'sometimes|in:draft,approved,released',
         ]);
 
+        $oldValues = $commission->toArray();
         $commission->update($validated);
+
+        AuditLogService::log('update', 'accounting', 'Commission', $commission->id, $oldValues, $commission->fresh()->toArray());
 
         if ($request->has('status')) {
             if ($request->status === 'approved') {
                 $commission->update(['approved_by' => auth()->id()]);
 
-                // Calculate total commission amount
-                $totalAmt = $commission->items()->sum(DB::raw('amount * quantity'));
+                $existingCbr = \App\Models\CashBudgetRequest::where('commission_id', $commission->id)->first();
+                if (!$existingCbr) {
+                    $totalAmt = $commission->items()->sum(DB::raw('amount * quantity'));
 
-                // Automatically create CashBudgetRequest for the commission payout
-                \App\Models\CashBudgetRequest::create([
-                    'date' => date('Y-m-d'),
-                    'travel_date' => date('Y-m-d'),
-                    'destination' => "Commission Payout - " . $commission->serial_no,
-                    'coach_captain_salary' => $totalAmt,
-                    'total_amount' => $totalAmt,
-                    'status' => 'pending_accounting',
-                    'prepared_by' => auth()->id() ?? $commission->employee_id,
-                    'commission_id' => $commission->id,
-                ]);
+                    \App\Models\CashBudgetRequest::create([
+                        'date' => date('Y-m-d'),
+                        'travel_date' => date('Y-m-d'),
+                        'destination' => "Commission Payout - " . $commission->serial_no,
+                        'coach_captain_salary' => $totalAmt,
+                        'total_amount' => $totalAmt,
+                        'status' => 'pending_accounting',
+                        'prepared_by' => auth()->id() ?? $commission->employee_id,
+                        'commission_id' => $commission->id,
+                    ]);
+                }
             } elseif ($request->status === 'released') {
                 $commission->update(['released_by' => auth()->id()]);
             }
@@ -152,7 +159,9 @@ class CommissionController extends Controller
             return response()->json(['error' => 'Unauthorized to delete commissions.'], 403);
         }
 
-        Commission::findOrFail($id)->delete();
+        $commission = Commission::findOrFail($id);
+        AuditLogService::log('delete', 'accounting', 'Commission', $commission->id, $commission->toArray(), null);
+        $commission->delete();
         return response()->json(['message' => 'Commission deleted successfully.']);
     }
 }

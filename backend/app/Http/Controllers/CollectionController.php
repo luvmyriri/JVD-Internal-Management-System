@@ -6,6 +6,7 @@ use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use App\Http\Services\AuditLogService;
 use App\Mail\TransactionNotificationMail;
 
 class CollectionController extends Controller
@@ -92,12 +93,18 @@ class CollectionController extends Controller
             // Recalculate will populate paid_amount, remaining_balance, and status!
             $collection->recalculate();
 
+            AuditLogService::log('create', 'accounting', 'Collection', $collection->id, null, $collection->toArray());
+
             return $collection->load('payments');
         });
     }
 
     public function show($id)
     {
+        $user = auth()->user();
+        if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+            return response()->json(['error' => 'Unauthorized.'], 403);
+        }
         return Collection::with('payments')->findOrFail($id);
     }
 
@@ -150,7 +157,9 @@ class CollectionController extends Controller
 
     public function destroy($id)
     {
-        Collection::findOrFail($id)->delete();
+        $collection = Collection::findOrFail($id);
+        AuditLogService::log('delete', 'accounting', 'Collection', $collection->id, $collection->toArray(), null);
+        $collection->delete();
         return response()->json(['message' => 'Collection deleted successfully.']);
     }
 

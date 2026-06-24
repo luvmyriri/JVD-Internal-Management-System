@@ -360,7 +360,8 @@ export default function CustomTransactions() {
           driverNameParam = busRental.driverName || undefined;
           travelDateParam = busRental.travelDate || undefined;
           serviceDateParam = busRental.serviceDate || undefined;
-          destinationParam = busRental.route || undefined;
+          tourCodeParam = busRental.route || undefined;
+          destinationParam = busRental.dropoffLocation || undefined;
           pickupLocationParam = busRental.pickupLocation || undefined;
           paxCountParam = busRental.paxCount ? Number(busRental.paxCount) : undefined;
         } else if (customForm.category === 'Joiners') {
@@ -369,7 +370,7 @@ export default function CustomTransactions() {
           pickupLocationParam = joiners.pickupLocation || undefined;
           paxCountParam = joiners.paxCount ? Number(joiners.paxCount) : undefined;
           serviceDateParam = joiners.travelDate || undefined;
-          destinationParam = joiners.tourCode || undefined;
+          destinationParam = joiners.dropoffLocation || joiners.tourCode || undefined;
         } else if (customForm.category === 'Tour Package') {
           travelDateParam = tourPackage.travelDates || undefined;
           tourCodeParam = tourPackage.destination || undefined;

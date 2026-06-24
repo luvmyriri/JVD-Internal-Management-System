@@ -11,6 +11,7 @@ export interface BusRentalData {
   driverName: string;
   selectedSeats: string[];
   pickupLocation: string;
+  dropoffLocation: string;
   paxCount: string;
 }
 
@@ -45,6 +46,7 @@ export interface JoinersData {
   travelDate: string;
   paxCount: string;
   pickupLocation: string;
+  dropoffLocation: string;
 }
 
 export interface BookingData {
@@ -67,6 +69,7 @@ export const INITIAL_BUS_RENTAL: BusRentalData = {
   driverName: '',
   selectedSeats: [],
   pickupLocation: '',
+  dropoffLocation: '',
   paxCount: '1',
 };
 
@@ -101,6 +104,7 @@ export const INITIAL_JOINERS: JoinersData = {
   travelDate: '',
   paxCount: '1',
   pickupLocation: '',
+  dropoffLocation: '',
 };
 
 export const INITIAL_BOOKING: BookingData = {

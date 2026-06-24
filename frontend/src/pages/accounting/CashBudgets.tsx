@@ -23,12 +23,14 @@ function StatusBadge({ status }: { status: string }) {
     draft: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
     approved: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
     pending_accounting: 'bg-violet-50 text-violet-600 border-violet-100 dark:bg-violet-950/30 dark:text-violet-400 dark:border-violet-900/50',
+    pending_super_admin: 'bg-fuchsia-50 text-fuchsia-600 border-fuchsia-100 dark:bg-fuchsia-950/30 dark:text-fuchsia-400 dark:border-fuchsia-900/50',
   };
   const icons: any = {
     disbursed: <LuFileCheck className="w-3 h-3" />,
     draft: <LuClock className="w-3 h-3" />,
     approved: <LuActivity className="w-3.5 h-3.5" />,
     pending_accounting: <LuClock className="w-3 h-3" />,
+    pending_super_admin: <LuActivity className="w-3 h-3" />,
   };
 
   const s = status || 'draft';
@@ -44,6 +46,7 @@ function StatusBadge({ status }: { status: string }) {
 const STATUS_LABEL: Record<string, string> = {
   draft: 'Draft — Awaiting Operations Approval',
   pending_accounting: 'Forwarded to Accounting',
+  pending_super_admin: 'Awaiting Super Admin Approval',
   approved: 'Approved — Ready for Disbursement',
   disbursed: 'Disbursed',
 };
@@ -70,6 +73,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
     !budget.work_order_id && 
     ((budget.status === 'draft' && isOperationsOrAdmin) ||
      (budget.status === 'pending_accounting' && isAccountingOrAdmin) ||
+     (budget.status === 'pending_super_admin' && user?.role === 'super_admin') ||
      (budget.status === 'approved' && isOperationsOrAdmin));
 
   // Compute live sum reactively
@@ -194,8 +198,8 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
             currentStatus={
               !!budget.purchase_order_id
                 ? (budget.status === 'disbursed' ? 'disbursed' : 'budget_pending')
-                : (budget.status === 'draft' || budget.status === 'pending_accounting'
-                    ? 'draft'
+                : (budget.status === 'draft' || budget.status === 'pending_accounting' || budget.status === 'pending_super_admin'
+                    ? 'budget_pending'
                     : (budget.status === 'approved' ? 'approved' : 'disbursed'))
             }
             metadata={{
@@ -246,9 +250,9 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                     <span className="font-bold text-gray-900 dark:text-gray-100">{(budget.trip_ticket ?? budget.tripTicket)?.no_of_passengers || 0} pax</span>
                   </div>
                   <div className="col-span-2 md:col-span-3">
-                    <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Route</span>
+                    <span className="block font-bold text-gray-400 uppercase text-[9px] tracking-wider">Route (Pickup → Destination → Dropoff)</span>
                     <span className="font-bold text-gray-900 dark:text-white">
-                      {(budget.trip_ticket ?? budget.tripTicket)?.pick_up || 'TBA'} to {(budget.trip_ticket ?? budget.tripTicket)?.drop_off || budget.destination || 'TBA'}
+                      {[(budget.trip_ticket ?? budget.tripTicket)?.pick_up, (budget.trip_ticket ?? budget.tripTicket)?.destination, (budget.trip_ticket ?? budget.tripTicket)?.drop_off].filter(x => x && x !== 'TBD' && x !== 'TBA').join(' → ') || budget.destination || 'TBA'}
                     </span>
                   </div>
                 </div>
@@ -509,7 +513,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Tolls (Autosweep/Easytrip)</span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((budget.autosweep || 0) + (budget.easytrip || 0)).toLocaleString()}</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {(Number(budget.autosweep || 0) + Number(budget.easytrip || 0)).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between items-center pb-2 border-b border-gray-200 dark:border-gray-700">
                     <span className="text-sm text-gray-600 dark:text-gray-400">Coach Captain Salary</span>
@@ -656,7 +660,18 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
               disabled={isPending}
               className="px-6 py-3 bg-blue-600 text-white hover:bg-blue-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-blue-600/20 active:scale-95"
             >
-              {approveMutation.isPending ? 'Approving...' : 'Approve Budget'}
+              {approveMutation.isPending ? 'Forwarding...' : 'Approve & Forward to Super Admin'}
+            </button>
+          )}
+
+          {/* Super Admin: Approve */}
+          {budget.status === 'pending_super_admin' && user?.role === 'super_admin' && (
+            <button 
+              onClick={() => approveMutation.mutate()} 
+              disabled={isPending}
+              className="px-6 py-3 bg-fuchsia-600 text-white hover:bg-fuchsia-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-fuchsia-600/20 active:scale-95"
+            >
+              {approveMutation.isPending ? 'Approving...' : 'Super Admin Approve'}
             </button>
           )}
 

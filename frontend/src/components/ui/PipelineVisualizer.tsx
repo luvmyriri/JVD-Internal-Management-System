@@ -38,27 +38,15 @@ interface PipelineVisualizerProps {
 
 const TRANSACTION_STEPS: Step[] = [
   {
-    id: 'wo_requested',
-    label: 'WO Requested',
-    description: 'Trip Work Order created',
+    id: 'reservation_confirmed',
+    label: 'Reservation Confirmed',
+    description: 'Transaction Success',
     icon: <LuFileText size={18} />
-  },
-  {
-    id: 'wo_approved',
-    label: 'WO Approved',
-    description: 'Passed safety validation',
-    icon: <LuClipboardCheck size={18} />
-  },
-  {
-    id: 'jo_confirmed',
-    label: 'JO Confirmed',
-    description: 'Bus & Captain assigned',
-    icon: <LuBus size={18} />
   },
   {
     id: 'ticket_issued',
     label: 'Ticket Issued',
-    description: 'Pre-trip safety cleared',
+    description: 'Trip Ticket drafted',
     icon: <LuTicket size={18} />
   },
   {
@@ -126,22 +114,21 @@ export default function PipelineVisualizer({
     if (pipelineType === 'transaction') {
       switch (currentStatus) {
         case 'pending_approval':
-          return 0;
         case 'verified':
         case 'open':
-          return 1;
         case 'created':
         case 'confirmed':
-          return 2;
+          return 0;
         case 'draft':
         case 'ticket_draft':
-          return 3;
+          return 1;
+        case 'budget_pending':
         case 'approved':
         case 'ticket_approved':
-          return 4;
+          return 2;
         case 'disbursed':
         case 'completed':
-          return 5;
+          return 3;
         default:
           return 0;
       }

@@ -9,6 +9,7 @@ use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Service;
+use App\Models\TripTicket;
 use App\Models\User;
 use App\Notifications\SystemAlert;
 use Illuminate\Support\Facades\DB;
@@ -38,7 +39,7 @@ class InvoiceFinalizationService
     public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount): array
     {
         $subtotal = 0;
-        $taxRate = 0.12; // 12% VAT
+        $taxRate = (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
         $processedItems = [];
 
         foreach ($items as $item) {
@@ -120,16 +121,13 @@ class InvoiceFinalizationService
      */
     public function resolveCustomerId(?int $customerId, ?string $name, ?string $email, ?string $contact, ?string $address): ?int
     {
-        if ($customerId) {
-            return $customerId;
-        }
-
-        if (!$name) {
-            return null;
-        }
-
         $existingCustomer = null;
-        if ($email) {
+        
+        if ($customerId) {
+            $existingCustomer = Customer::find($customerId);
+        }
+
+        if (!$existingCustomer && $email) {
             $existingCustomer = Customer::where('email', $email)->first();
         }
         if (!$existingCustomer && $contact) {
@@ -138,13 +136,39 @@ class InvoiceFinalizationService
 
         if ($existingCustomer) {
             $updatedData = [];
-            if (!$existingCustomer->address && $address) {
+            if ($address && $existingCustomer->address !== $address) {
                 $updatedData['address'] = $address;
             }
+            if ($email && $existingCustomer->email !== $email) {
+                $updatedData['email'] = $email;
+            }
+            if ($contact && $existingCustomer->phone !== $contact) {
+                $updatedData['phone'] = $contact;
+            }
+            if ($name) {
+                $parts = explode(' ', trim($name));
+                if (count($parts) > 1) {
+                    $lastName = array_pop($parts);
+                    $firstName = implode(' ', $parts);
+                } else {
+                    $firstName = $name;
+                    $lastName = '';
+                }
+                
+                if ($existingCustomer->first_name !== $firstName || $existingCustomer->last_name !== $lastName) {
+                    $updatedData['first_name'] = $firstName;
+                    $updatedData['last_name'] = $lastName;
+                }
+            }
+
             if (!empty($updatedData)) {
                 $existingCustomer->update($updatedData);
             }
             return $existingCustomer->id;
+        }
+
+        if (!$name) {
+            return null;
         }
 
         $parts = explode(' ', trim($name));
@@ -299,18 +323,35 @@ class InvoiceFinalizationService
             }
         }
 
-        if ($hasBusService) {
-            $jobOrderService = app(\App\Http\Services\JobOrderService::class);
-            $jobOrderService->create([
-                'customer_id' => $invoice->customer_id ?? 1,
-                'bus_id' => $invoice->bus_id,
-                'service_type' => 'bus_rental',
-                'service_date' => $busServiceDate ?? $invoice->travel_date ?? date('Y-m-d', strtotime('+1 day')),
-                'destination' => $busDestination ?? $invoice->tour_code ?? $invoice->pickup_location ?? 'Not Specified',
-                'total_cost' => $invoice->total_amount,
-                'notes' => "Auto-generated from Invoice #{$invoice->invoice_number}.\nServices:\n{$busServiceDescription}\nArrival: " . ($invoice->arrival_datetime ?? 'N/A') . "\nDeparture: " . ($invoice->departure_datetime ?? 'N/A') . "\nNotes: {$invoice->notes}",
-                'invoice_id' => $invoice->id,
-            ], $invoice->created_by ?? 1);
+        if ($hasBusService && $invoice->bus_id) {
+            DB::transaction(function () use ($invoice, $busServiceDate, $busDestination) {
+                $year = now()->year;
+                $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")
+                    ->orderByDesc('id')
+                    ->lockForUpdate()
+                    ->first();
+                $sequence = 1;
+                if ($latest) {
+                    $parts = explode('-', $latest->control_no);
+                    $sequence = (int) end($parts) + 1;
+                }
+                $controlNo = sprintf('DTT-%d-%04d', $year, $sequence);
+
+                TripTicket::create([
+                    'control_no'       => $controlNo,
+                    'issue_date'       => now()->toDateString(),
+                    'date_of_travel'   => $busServiceDate ?? $invoice->travel_date ?? now()->addDay()->toDateString(),
+                    'pick_up'          => $invoice->pickup_location ?? 'TBD',
+                    'destination'      => $invoice->tour_code ?? 'TBD',
+                    'drop_off'         => $busDestination ?? 'TBD',
+                    'no_of_passengers' => $invoice->pax_count ?? 1,
+                    'bus_id'           => $invoice->bus_id,
+                    'driver_id'        => $invoice->driver_id,
+                    'status'           => 'draft',
+                    'requested_by'     => $invoice->created_by,
+                    'invoice_id'       => $invoice->id,
+                ]);
+            });
         }
 
         return $invoice->fresh();

@@ -59,6 +59,17 @@ export default function CategoryFormJoiners({ value, onChange }: CategoryFormJoi
           />
         </div>
       </div>
+      
+      <div className="space-y-2">
+        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Drop Off Location</label>
+        <input
+          type="text"
+          placeholder="e.g. Baguio City Center"
+          className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
+          value={value.dropoffLocation}
+          onChange={(e) => onChange({ dropoffLocation: e.target.value })}
+        />
+      </div>
     </div>
   );
 }

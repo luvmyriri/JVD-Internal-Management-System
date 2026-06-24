@@ -2,17 +2,13 @@
 
 namespace App\Mail;
 
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
-use Illuminate\Queue\SerializesModels;
 use App\Models\Customer;
 
-class CustomerOutreachMail extends Mailable implements ShouldQueue
+class CustomerOutreachMail extends Mailable
 {
-    use Queueable, SerializesModels;
 
     public $customer;
     public $customSubject;

@@ -111,6 +111,7 @@ export default function FixedPackages() {
   // Joiner specifications states
   const [joinerTourCode, setJoinerTourCode] = useState<string>('');
   const [joinerPickup, setJoinerPickup] = useState<string>('');
+  const [joinerDropoff, setJoinerDropoff] = useState<string>('');
   const [joinerPaxCount, setJoinerPaxCount] = useState<number | ''>(1);
   const [editingCartId, setEditingCartId] = useState<string | null>(null);
 
@@ -220,7 +221,8 @@ export default function FixedPackages() {
     pickupLocation?: string,
     paxCount?: number,
     arrivalDate?: string,
-    departureDate?: string
+    departureDate?: string,
+    destination?: string
   ) => {
     setCart(prev => {
       const cartId = `${service.id}-${Date.now()}-${Math.random()}`;
@@ -243,7 +245,8 @@ export default function FixedPackages() {
         pickupLocation,
         paxCount,
         arrivalDate,
-        departureDate
+        departureDate,
+        destination
       }];
     });
   };
@@ -265,7 +268,8 @@ export default function FixedPackages() {
     pickupLocation?: string,
     paxCount?: number,
     arrivalDate?: string,
-    departureDate?: string
+    departureDate?: string,
+    destination?: string
   ) => {
     setCart(prev => prev.map(item =>
       item.cartId === cartId
@@ -286,7 +290,8 @@ export default function FixedPackages() {
           pickupLocation,
           paxCount,
           arrivalDate,
-          departureDate
+          departureDate,
+          destination
         }
         : item
     ));
@@ -317,7 +322,12 @@ export default function FixedPackages() {
           newItems.push({
             ...targetItem,
             cartId: `${targetItem.service.id}-${Date.now()}-${Math.random()}`,
-            quantity: 1
+            quantity: 1,
+            busId: undefined,
+            selectedSeats: undefined,
+            driverId: undefined,
+            driverName: undefined,
+            pickupLocation: undefined,
           });
         }
         return [...prev, ...newItems];
@@ -336,6 +346,7 @@ export default function FixedPackages() {
     setBookingDriverName(item.driverName || '');
     setJoinerTourCode(item.tourCode || '');
     setJoinerPickup(item.pickupLocation || '');
+    setJoinerDropoff(item.destination || '');
     setJoinerPaxCount(item.paxCount || 1);
     setBookingArrivalDate(item.arrivalDate || '');
     setBookingDepartureDate(item.departureDate || '');
@@ -1201,6 +1212,7 @@ export default function FixedPackages() {
                         setBookingDriverName('');
                         setJoinerTourCode(service.name || '');
                         setJoinerPickup('');
+                        setJoinerDropoff('');
                         setJoinerPaxCount(1);
                         setShowDetailModal(true);
                       } else {
@@ -1977,11 +1989,14 @@ export default function FixedPackages() {
                                 const capacity = selectedBusObj.seating_capacity || 49;
                                 const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
                                 setBookingSeats(allSeats);
+                                setJoinerPaxCount(capacity);
                               } else {
                                 setBookingSeats([]);
+                                setJoinerPaxCount(1);
                               }
                             } else {
                               setBookingSeats([]);
+                              setJoinerPaxCount(1);
                             }
                           }}
                           minDate={new Date()}
@@ -2061,8 +2076,10 @@ export default function FixedPackages() {
                               const capacity = selectedBusObj.seating_capacity || 49;
                               const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
                               setBookingSeats(allSeats);
+                              setJoinerPaxCount(capacity);
                             } else {
                               setBookingSeats([]);
+                              setJoinerPaxCount(1);
                             }
 
                             if (selectedBusObj.driver) {
@@ -2074,6 +2091,7 @@ export default function FixedPackages() {
                             }
                           } else {
                             setBookingSeats([]);
+                            setJoinerPaxCount(1);
                             setBookingDriverId(null);
                             setBookingDriverName('');
                           }
@@ -2137,8 +2155,10 @@ export default function FixedPackages() {
                                 onClick={() => {
                                   if (allSelected) {
                                     setBookingSeats([]);
+                                    setJoinerPaxCount(1);
                                   } else {
                                     setBookingSeats(availableSeats);
+                                    setJoinerPaxCount(availableSeats.length || 1);
                                   }
                                 }}
                                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${allSelected
@@ -2172,11 +2192,13 @@ export default function FixedPackages() {
                               if (isBusRentalCategory) {
                                 return;
                               }
-                              setBookingSeats(prev =>
-                                prev.includes(seatNum)
+                              setBookingSeats(prev => {
+                                const next = prev.includes(seatNum)
                                   ? prev.filter(s => s !== seatNum)
-                                  : [...prev, seatNum]
-                              );
+                                  : [...prev, seatNum];
+                                setJoinerPaxCount(next.length || 1);
+                                return next;
+                              });
                             }}
                           />
                         </div>
@@ -2436,6 +2458,16 @@ export default function FixedPackages() {
                         />
                       </div>
                     </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Drop Off Location</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Baguio City Center"
+                        className="w-full px-4 py-3 bg-white dark:bg-gray-850 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white"
+                        value={joinerDropoff}
+                        onChange={(e) => setJoinerDropoff(e.target.value)}
+                      />
+                    </div>
                   </div>
                 )}
 
@@ -2565,6 +2597,7 @@ export default function FixedPackages() {
                           const departureDateParam = bookingDepartureDate || undefined;
                           const tourCodeParam = isJoinerCategory ? (joinerTourCode || undefined) : undefined;
                           const pickupLocationParam = isJoinerCategory ? (joinerPickup || undefined) : undefined;
+                          const destinationParam = isJoinerCategory ? (joinerDropoff || undefined) : undefined;
                           const paxCountParam = isJoinerCategory ? (joinerPaxCount === '' ? 1 : Math.max(1, joinerPaxCount)) : undefined;
 
                           if (editingCartId) {
@@ -2573,12 +2606,12 @@ export default function FixedPackages() {
                               const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
                               const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
                               const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                              saveCartItemEdit(editingCartId, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              saveCartItemEdit(editingCartId, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             } else if (selectedServiceForDetail.has_booking_fields) {
                               const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                              saveCartItemEdit(editingCartId, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              saveCartItemEdit(editingCartId, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             } else {
-                              saveCartItemEdit(editingCartId, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              saveCartItemEdit(editingCartId, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             }
                           } else {
                             if (selectedServiceForDetail.is_tour) {
@@ -2586,12 +2619,12 @@ export default function FixedPackages() {
                               const extraDaysPrice = bookingTourExtraDays * (bookingTourVehicle === 'Bus' ? 22010 : 16780);
                               const extraHoursPrice = bookingTourExtraHours * (bookingTourVehicle === 'Bus' ? 1950 : 1680);
                               const computedPrice = basePrice + extraDaysPrice + extraHoursPrice;
-                              addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              addToCart(selectedServiceForDetail, undefined, undefined, computedPrice, bookingTourVehicle, bookingTourExtraDays, bookingTourExtraHours, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             } else if (selectedServiceForDetail.has_booking_fields) {
                               const computedPrice = (bookingAdults * selectedDetailAdultPrice) + (bookingChildren * selectedDetailChildPrice);
-                              addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              addToCart(selectedServiceForDetail, bookingAdults, bookingChildren, computedPrice, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             } else {
-                              addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam);
+                              addToCart(selectedServiceForDetail, undefined, undefined, undefined, undefined, undefined, undefined, bookingBusId || undefined, bookingSeats.length > 0 ? bookingSeats : undefined, bookingDriverId || undefined, bookingDriverName || undefined, travelDateParam, tourCodeParam, pickupLocationParam, paxCountParam, arrivalDateParam, departureDateParam, destinationParam);
                             }
                           }
                           closeDetailModal();

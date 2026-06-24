@@ -11,7 +11,9 @@ use App\Models\Customer;
 use App\Models\JobApplication;
 use App\Models\Internship;
 use App\Models\Bus;
+use App\Models\PurchaseOrder;
 use App\Models\TripTicket;
+use App\Models\WorkOrder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -114,6 +116,7 @@ class DashboardController extends Controller
                 DB::raw('COUNT(*) as bookings')
             )
             ->whereIn('status', ['paid', 'partial'])
+            ->whereNull('cash_budget_request_id')
             ->whereYear('created_at', $year)
             ->groupBy(DB::raw($monthExpr))
             ->get()
@@ -408,6 +411,7 @@ class DashboardController extends Controller
         $totalUsers    = User::count();
         $totalCustomers = Customer::count();
         $monthlyRevenue = Invoice::whereIn('status', ['paid', 'partial'])
+            ->whereNull('cash_budget_request_id')
             ->where('created_at', '>=', $month)->sum('total_amount');
 
         // User role distribution
@@ -452,6 +456,7 @@ class DashboardController extends Controller
         $pendingBudgets      = CashBudgetRequest::where('status', 'pending_accounting')->count();
         $processedCollections = Collection::where('collection_status', 'completed')->count();
         $monthlyRevenue      = Invoice::whereIn('status', ['paid', 'partial'])
+            ->whereNull('cash_budget_request_id')
             ->where('created_at', '>=', $month)->sum('total_amount');
 
         // Recent invoices formatted for the bookings list
@@ -634,6 +639,71 @@ class DashboardController extends Controller
                 'revenue_export'            => $this->revenueExportData(),
                 'peak_client_activity'      => $this->peakClientActivityData(),
             ],
+        ]);
+    }
+
+    public function approvals()
+    {
+        $pendingCashBudgets = CashBudgetRequest::where('status', 'pending_super_admin')
+            ->with(['preparedBy', 'approvedBy', 'tripTicket', 'purchaseOrder', 'workOrder'])
+            ->latest()
+            ->get()
+            ->map(fn ($cb) => [
+                'id'               => $cb->id,
+                'type'             => 'cash_budget',
+                'reference_number' => $cb->tripTicket?->control_no ?? ('CB-' . $cb->id),
+                'description'      => $cb->destination ?? ($cb->tripTicket?->drop_off ?? 'Cash Budget Request'),
+                'amount'           => $cb->total_amount,
+                'requested_by'     => $cb->preparedBy ? "{$cb->preparedBy->first_name} {$cb->preparedBy->last_name}" : 'N/A',
+                'approved_by'      => $cb->approvedBy ? "{$cb->approvedBy->first_name} {$cb->approvedBy->last_name}" : 'N/A',
+                'date'             => $cb->created_at->toDateString(),
+                'action_url'       => '/operations/cash-budgets',
+            ]);
+
+        $pendingPOs = PurchaseOrder::where('status', 'pending_ceo_approval')
+            ->with(['supplier', 'creator', 'verifiedBy'])
+            ->latest()
+            ->get()
+            ->map(fn ($po) => [
+                'id'               => $po->id,
+                'type'             => 'purchase_order',
+                'reference_number' => $po->po_number,
+                'description'      => $po->supplier?->company_name ?? $po->supplier?->name ?? 'Purchase Order',
+                'amount'           => $po->total_amount,
+                'requested_by'     => $po->creator ? "{$po->creator->first_name} {$po->creator->last_name}" : 'N/A',
+                'approved_by'      => $po->verifiedBy ? "{$po->verifiedBy->first_name} {$po->verifiedBy->last_name}" : 'Pending',
+                'date'             => $po->created_at->toDateString(),
+                'action_url'       => '/procurement/purchase-orders',
+            ]);
+
+        $pendingWOs = WorkOrder::where('status', 'pending_approval')
+            ->with(['bus', 'creator', 'assignee'])
+            ->latest()
+            ->get()
+            ->map(fn ($wo) => [
+                'id'               => $wo->id,
+                'type'             => 'work_order',
+                'reference_number' => $wo->wo_number,
+                'description'      => $wo->description ?? 'Work Order',
+                'amount'           => $wo->cost ?? 0,
+                'requested_by'     => $wo->creator ? "{$wo->creator->first_name} {$wo->creator->last_name}" : 'N/A',
+                'approved_by'      => 'Pending',
+                'date'             => $wo->created_at->toDateString(),
+                'action_url'       => '/procurement/work-orders',
+            ]);
+
+        $allItems = $pendingCashBudgets->merge($pendingPOs)->merge($pendingWOs)
+            ->sortByDesc('date')
+            ->values();
+
+        return response()->json([
+            'summary' => [
+                'cash_budgets'   => $pendingCashBudgets->count(),
+                'purchase_orders' => $pendingPOs->count(),
+                'work_orders'    => $pendingWOs->count(),
+                'total'          => $allItems->count(),
+            ],
+            'items' => $allItems,
         ]);
     }
 }
