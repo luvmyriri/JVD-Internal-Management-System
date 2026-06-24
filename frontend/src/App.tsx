@@ -7,6 +7,7 @@ import { AuthGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Toaster } from 'react-hot-toast';
 import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation';
 
@@ -92,6 +93,7 @@ const AdminRoute = ({ path, children }: { path: string; children: React.ReactNod
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <BrowserRouter>
@@ -205,5 +207,6 @@ export default function App() {
       </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
