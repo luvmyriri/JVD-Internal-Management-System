@@ -146,7 +146,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const subtotal = useMemo(() => {
     return cart.reduce((sum, item) => {
       const price = item.customPrice ?? item.service.price;
-      const isPerPax = !item.customPrice && ['International Tour', 'Domestic Tour', 'Educational Tour', 'Visa Processing', 'Joiners', 'Booking', 'Tour Package'].includes(String(item.serviceType || item.service?.category));
+      const isPerPax = !item.customPrice && ['International Tour', 'Domestic Tour', 'Educational Tour', 'Visa Processing', 'Joiners', 'Booking', 'Tour Package'].includes(String(item.service?.category));
       const paxCount = item.paxCount || item.adults || 1;
       const multiplier = isPerPax ? paxCount : item.quantity;
       return sum + (price * multiplier);

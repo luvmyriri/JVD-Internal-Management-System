@@ -54,7 +54,7 @@ class AccountingTest extends TestCase
             'autosweep'             => 1000,
             'easytrip'              => 1500,
             'coach_captain_salary'  => 1000,
-            'status'                => 'pending_super_admin',
+            'status'                => 'approved',
             'total_amount'          => 11000,
             'prepared_by'           => $this->admin->id,
         ]);
@@ -110,7 +110,7 @@ class AccountingTest extends TestCase
             'trip_ticket_id'        => $this->tripTicket->id,
             'diesel'                => 5000,
             'meal_allowance'        => 2000,
-            'status'                => 'pending_super_admin',
+            'status'                => 'approved',
             'total_amount'          => 7000,
             'prepared_by'           => $this->admin->id,
         ]);
@@ -203,7 +203,7 @@ class AccountingTest extends TestCase
             'date'                  => '2026-06-08',
             'trip_ticket_id'        => $this->tripTicket->id,
             'diesel'                => 10000,
-            'status'                => 'pending_super_admin',
+            'status'                => 'approved',
             'total_amount'          => 10000,
             'prepared_by'           => $this->admin->id,
         ]);
@@ -330,7 +330,7 @@ class AccountingTest extends TestCase
             'date'                  => '2026-06-08',
             'trip_ticket_id'        => $this->tripTicket->id,
             'diesel'                => 3000,
-            'status'                => 'pending_super_admin',
+            'status'                => 'approved',
             'total_amount'          => 3000,
             'prepared_by'           => $this->admin->id,
         ]);
@@ -414,7 +414,7 @@ class AccountingTest extends TestCase
             'date'                  => '2026-06-08',
             'trip_ticket_id'        => $this->tripTicket->id,
             'diesel'                => 5000,
-            'status'                => 'pending_super_admin',
+            'status'                => 'approved',
             'total_amount'          => 5000,
             'prepared_by'           => $this->admin->id,
         ]);
@@ -535,7 +535,16 @@ class AccountingTest extends TestCase
             'total_amount'      => 4500,
             'prepared_by'       => $this->admin->id,
         ]);
-        
+
+        // Super Admin final approval (pending_super_admin → approved) — disbursement is
+        // intentionally gated behind this step (CashBudgetRequestController STEP 2b/STEP 3),
+        // so a budget cannot jump straight from pending_super_admin to disbursed.
+        $this->actingAs($this->admin)
+             ->putJson("/api/cash-budgets/{$budget->id}", [
+                 'status' => 'approved',
+             ])
+             ->assertOk();
+
         $this->actingAs($this->admin)
              ->putJson("/api/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',

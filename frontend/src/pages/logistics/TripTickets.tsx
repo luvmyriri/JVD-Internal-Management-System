@@ -548,7 +548,7 @@ function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket
                 Customize & Approve
               </button>
             )}
-            {ticket.status === 'approved' && user?.role === 'admin' && onCustomizeApprove && (
+            {ticket.status === 'approved' && user?.role === 'super_admin' && onCustomizeApprove && (
               <button
                 onClick={() => {
                   onCustomizeApprove(ticket);

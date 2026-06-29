@@ -73,6 +73,7 @@ class ContractController extends Controller
             'payment_method' => 'required|string',
             'payment_type' => 'nullable|string|in:full,downpayment',
             'amount_received' => 'nullable|numeric',
+            'tax_rate' => 'nullable|numeric|min:0|max:1',
             'due_date' => 'nullable|date',
             'travel_date' => 'nullable|date',
             'arrival_datetime' => 'nullable|date',
@@ -152,7 +153,7 @@ class ContractController extends Controller
         DB::beginTransaction();
         try {
             try {
-                $calc = $finalizer->calculateItems($validated['items'], $validated['travel_date'] ?? null, $validated['pax_count'] ?? null);
+                $calc = $finalizer->calculateItems($validated['items'], $validated['travel_date'] ?? null, $validated['pax_count'] ?? null, $validated['tax_rate'] ?? null);
             } catch (MaxPaxExceededException $e) {
                 DB::rollBack();
                 return response()->json([

@@ -65,6 +65,7 @@ export interface ContractDraftPayload {
   payment_method: string;
   payment_type?: string;
   amount_received?: number;
+  tax_rate?: number;
   due_date?: string;
   travel_date?: string;
   arrival_datetime?: string;
