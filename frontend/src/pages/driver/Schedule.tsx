@@ -7,7 +7,7 @@ import {
   LuCircleCheck, LuCircleDot, LuCircle,
 } from 'react-icons/lu';
 import { jobOrderApi } from '../../api/jobOrders';
-import { fleetApi } from '../../api/fleet';
+import { tripTicketApi } from '../../api/operations';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils';
 import toast from 'react-hot-toast';
@@ -79,6 +79,11 @@ export default function DriverSchedule() {
     placeholderData: keepPreviousData,
   });
 
+  const { data: ticketsRes, isLoading: ticketsLoading, refetch: refetchTickets } = useQuery({
+    queryKey: ['trip-tickets-driver-schedule'],
+    queryFn: () => tripTicketApi.getAll(),
+  });
+
   const startMutation = useMutation({
     mutationFn: (id: number) => jobOrderApi.start(id),
     onSuccess: () => {
@@ -101,7 +106,31 @@ export default function DriverSchedule() {
     }
   });
 
-  const trips: any[] = joRes ?? [];
+  const startTicketMutation = useMutation({
+    mutationFn: (id: number) => tripTicketApi.update(id, { status: 'in_progress' }),
+    onSuccess: () => {
+      toast.success('Trip started!');
+      refetchTickets();
+    },
+    onError: (err: any) => toast.error('Failed to start trip.')
+  });
+
+  const completeTicketMutation = useMutation({
+    mutationFn: (id: number) => tripTicketApi.update(id, { status: 'completed' }),
+    onSuccess: () => {
+      toast.success('Trip completed!');
+      refetchTickets();
+    },
+    onError: (err: any) => toast.error('Failed to complete trip.')
+  });
+
+  const allJos = joRes ?? [];
+  const allTickets = (ticketsRes as any) ?? [];
+
+  const trips: any[] = [
+    ...allJos.map((jo: any) => ({ ...jo, _is_jo: true, date: jo.service_date })),
+    ...allTickets.map((t: any) => ({ ...t, _is_ticket: true, date: t.date_of_travel })),
+  ];
 
   // Build day → trips map
   const dayMap: Record<string, any[]> = {};
@@ -111,8 +140,8 @@ export default function DriverSchedule() {
     dayMap[toYMD(d)] = [];
   }
   trips.forEach(t => {
-    if (t.service_date) {
-      const d = new Date(t.service_date);
+    if (t.date) {
+      const d = new Date(t.date);
       const dateKey = toYMD(d);
       if (dayMap[dateKey]) {
         dayMap[dateKey].push(t);
@@ -234,7 +263,7 @@ export default function DriverSchedule() {
         </h2>
 
         <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-          {isLoading ? (
+          {isLoading || ticketsLoading ? (
             <div className="py-16 text-center text-gray-400">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm font-medium">Loading schedule…</p>
@@ -254,7 +283,7 @@ export default function DriverSchedule() {
             <div className="space-y-3">
               {selectedTrips.map((trip: any, idx: number) => (
                 <motion.div
-                  key={trip.id}
+                  key={`${trip._is_jo ? 'jo' : 't'}-${trip.id}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
@@ -264,25 +293,25 @@ export default function DriverSchedule() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
-                        <span className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status])}>
-                          {STATUS_ICON[trip.status]}
-                          {trip.status.replace('_', ' ')}
+                        <span className={cn('flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status] ?? STATUS_COLOR['draft'])}>
+                          {STATUS_ICON[trip.status] ?? STATUS_ICON['draft']}
+                          {(trip.status || 'draft').replace('_', ' ')}
                         </span>
                         <span className="px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-700">
-                          {SERVICE_LABELS[trip.service_type] ?? trip.service_type}
+                          {trip._is_jo ? (SERVICE_LABELS[trip.service_type] ?? trip.service_type) : 'Travel Trip'}
                         </span>
                       </div>
 
                       <p className="font-black text-gray-900 dark:text-white text-base">
-                        {trip.jo_number}
+                        {trip._is_jo ? trip.jo_number : trip.control_no}
                       </p>
 
-                      {trip.destination && (
-                        <div className="flex items-center gap-1.5 mt-2 text-gray-500 dark:text-gray-400 text-sm">
-                          <LuMapPin size={14} className="shrink-0 text-blue-400" />
-                          <span className="font-medium">{trip.destination}</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-1.5 mt-2 text-gray-500 dark:text-gray-400 text-sm">
+                        <LuMapPin size={14} className="shrink-0 text-blue-400" />
+                        <span className="font-medium">
+                          {trip._is_jo ? trip.destination : `${trip.pick_up} → ${trip.destination && trip.destination !== 'TBD' ? trip.destination : trip.drop_off}`}
+                        </span>
+                      </div>
 
                       {trip.customer && (
                         <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
@@ -290,22 +319,29 @@ export default function DriverSchedule() {
                           <span className="font-medium">{trip.customer.first_name} {trip.customer.last_name}</span>
                         </div>
                       )}
+                      {trip._is_ticket && trip.passenger_name && (
+                        <div className="flex items-center gap-1.5 mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
+                          <LuUsers size={14} className="shrink-0 text-emerald-400" />
+                          <span className="font-medium">{trip.no_of_passengers} pax - {trip.passenger_name}</span>
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex flex-col items-end gap-2 shrink-0">
                       <div className="flex items-center gap-1.5 text-gray-400 text-xs font-bold">
                         <LuClock size={13} />
-                        <span>{trip.service_date}</span>
+                        <span>{trip.date?.split('T')[0]}</span>
                       </div>
                       {trip.bus && (
                         <span className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black tracking-widest">
                           {trip.bus.plate_number}
                         </span>
                       )}
-                      {trip.status === 'confirmed' && (
+                      
+                      {['confirmed', 'draft'].includes(trip.status) && (
                         <button
-                          onClick={() => startMutation.mutate(trip.id)}
-                          disabled={startMutation.isPending}
+                          onClick={() => trip._is_jo ? startMutation.mutate(trip.id) : startTicketMutation.mutate(trip.id)}
+                          disabled={trip._is_jo ? startMutation.isPending : startTicketMutation.isPending}
                           className="mt-2 px-4 py-1.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 transition disabled:opacity-50"
                         >
                           Start Trip
@@ -313,8 +349,8 @@ export default function DriverSchedule() {
                       )}
                       {trip.status === 'in_progress' && (
                         <button
-                          onClick={() => completeMutation.mutate(trip.id)}
-                          disabled={completeMutation.isPending}
+                          onClick={() => trip._is_jo ? completeMutation.mutate(trip.id) : completeTicketMutation.mutate(trip.id)}
+                          disabled={trip._is_jo ? completeMutation.isPending : completeTicketMutation.isPending}
                           className="mt-2 px-4 py-1.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 transition disabled:opacity-50"
                         >
                           Complete Trip

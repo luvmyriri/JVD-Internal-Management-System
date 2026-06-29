@@ -38,3 +38,5 @@ coverage/
 Project Adherence/JVD_Development_Guide.pdf
 Project Adherence/JVD_System_Architecture.pdf
 Project Adherence/JVD_Travel_Management_System_Proposal.pdf
+.vercel
+.env*

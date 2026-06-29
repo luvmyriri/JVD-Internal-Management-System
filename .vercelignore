@@ -1,0 +1,23 @@
+node_modules/
+frontend/node_modules/
+backend/
+php83/
+tools/
+docs/
+api-contracts/
+*.zip
+*.txt
+*.md
+*.pdf
+.claude/
+.vscode/
+Project Adherence/
+scratch/
+frontend/dist/
+backend/vendor/
+backend/node_modules/
+backend/public/hot
+backend/storage/
+backend/bootstrap/cache/
+coverage/
+.phpunit.result.cache

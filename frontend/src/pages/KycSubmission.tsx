@@ -1264,7 +1264,8 @@ export default function KycSubmission() {
 
                 </div>
               </div>
-            )}            {/* Section 3: Upload / Attached Verification Documents */}
+            )}
+            {/* Section 3: Upload / Attached Verification Documents */}
             <div className="space-y-6">
               <div className="border-b border-slate-800/85 pb-3">
                 <h3 className="text-lg font-bold text-slate-200 flex items-center gap-2">
@@ -1912,7 +1913,7 @@ function InteractiveSigningModal({ type, onClose, onSign, ndaFields, termsFields
                       <div className="h-6 w-16 bg-blue-50/50 border border-blue-200/80 rounded flex items-center justify-center text-[6px] text-blue-500 tracking-wider uppercase font-black">✔ VERIFIED</div>
                       <p className="text-[8px] font-bold text-slate-850">By: Compliance Director</p>
                       <p className="text-[7px] text-slate-450">JVD Event & Travel Co.</p>
-                    </div>
+                    </div>      
                     <div className="space-y-1 text-right">
                       <span className="text-[7px] uppercase font-bold text-slate-400 block">RECEIVING PARTY SIGNATURE</span>
                       {sigCanvas && (

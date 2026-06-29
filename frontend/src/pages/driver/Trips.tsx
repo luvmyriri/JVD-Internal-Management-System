@@ -591,25 +591,37 @@ export default function DriverTrips() {
     }
   });
 
-  const trips: any[] = data?.data ?? [];
-  const meta = data?.meta;
+  const allJos = data?.data ?? [];
 
-  // Client-side search on destination / jo_number / customer name
+  const combinedTrips: any[] = [
+    ...allJos.map((jo: any) => ({ ...jo, _is_jo: true, sortDate: new Date(jo.service_date).getTime() })),
+    ...tickets.map((t: any) => ({ ...t, _is_ticket: true, sortDate: new Date(t.date_of_travel).getTime() }))
+  ].sort((a, b) => b.sortDate - a.sortDate);
+
+  // Client-side search on destination / jo_number / control_no / customer name
   const filtered = search.trim()
-    ? trips.filter(t => {
+    ? combinedTrips.filter(t => {
         const q = search.toLowerCase();
         return (
           t.jo_number?.toLowerCase().includes(q) ||
+          t.control_no?.toLowerCase().includes(q) ||
           t.destination?.toLowerCase().includes(q) ||
-          `${t.customer?.first_name} ${t.customer?.last_name}`.toLowerCase().includes(q)
+          t.pick_up?.toLowerCase().includes(q) ||
+          t.drop_off?.toLowerCase().includes(q) ||
+          `${t.customer?.first_name || ''} ${t.customer?.last_name || ''}`.toLowerCase().includes(q)
         );
       })
-    : trips;
+    : combinedTrips;
 
-  // Summary counts
-  const completedCount = trips.filter(t => t.status === 'completed').length;
-  const upcoming = trips.filter(t => ['confirmed', 'draft'].includes(t.status)).length;
-  const inProgress = trips.filter(t => t.status === 'in_progress').length;
+  // Filter by status if not "all"
+  const finallyFiltered = statusFilter !== 'all' 
+    ? filtered.filter(t => (t.status || 'draft') === statusFilter)
+    : filtered;
+
+  // Summary counts (use finallyFiltered or combinedTrips? typically all trips for summary)
+  const completedCount = combinedTrips.filter(t => t.status === 'completed').length;
+  const upcoming = combinedTrips.filter(t => ['confirmed', 'draft'].includes(t.status || 'draft')).length;
+  const inProgress = combinedTrips.filter(t => t.status === 'in_progress').length;
 
   return (
     <div className="space-y-8">
@@ -673,12 +685,12 @@ export default function DriverTrips() {
           </div>
         )}
         <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-          {isLoading ? (
+          {isLoading || (ticketsRes === undefined) ? (
             <div className="py-16 text-center text-gray-400">
               <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
               <p className="text-sm font-medium">Loading trips…</p>
             </div>
-          ) : filtered.length === 0 ? (
+          ) : finallyFiltered.length === 0 ? (
             <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] py-16 text-center">
               <p className="text-sm font-bold text-gray-400">No trips found</p>
               <p className="text-xs text-gray-300 dark:text-gray-600 mt-1">Try a different filter or check back later</p>
@@ -686,16 +698,15 @@ export default function DriverTrips() {
           ) : (
             <AnimatePresence mode="popLayout">
               <div className="space-y-3">
-                {filtered.map((trip: any, idx: number) => {
-                  const tripDate = trip.service_date?.split('T')[0];
-                  const ticket = tickets.find((t: any) => {
+                {finallyFiltered.map((trip: any, idx: number) => {
+                  const ticket = trip._is_ticket ? trip : (tickets.find((t: any) => {
                     const tDate = t.date_of_travel?.split('T')[0];
-                    return tDate === tripDate && (t.bus_id === trip.bus_id || t.driver_id === user?.id);
-                  });
+                    return tDate === trip.service_date?.split('T')[0] && (t.bus_id === trip.bus_id || t.driver_id === user?.id);
+                  }));
 
                   return (
                     <motion.div
-                      key={trip.id}
+                      key={`${trip._is_jo ? 'jo' : 't'}-${trip.id}`}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}
@@ -707,24 +718,19 @@ export default function DriverTrips() {
                           : ""
                       )}
                       onClick={(e) => {
-                        // Prevent clicking inside buttons from triggering the card click
-                        if ((e.target as HTMLElement).closest('button')) {
-                          return;
-                        }
-                        if (ticket) {
-                          setSelectedTicket(ticket);
-                        }
+                        if ((e.target as HTMLElement).closest('button')) return;
+                        if (ticket) setSelectedTicket(ticket);
                       }}
                       title={ticket ? "Click to view DTT" : undefined}
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-3 flex-wrap">
-                            <span className={cn('px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status])}>
-                              {trip.status.replace('_', ' ')}
+                            <span className={cn('px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-widest', STATUS_COLOR[trip.status] ?? STATUS_COLOR['draft'])}>
+                              {(trip.status || 'draft').replace('_', ' ')}
                             </span>
                             <span className="px-2.5 py-1 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-700">
-                              {SERVICE_LABELS[trip.service_type] ?? trip.service_type}
+                              {trip._is_jo ? (SERVICE_LABELS[trip.service_type] ?? trip.service_type) : 'Travel Trip'}
                             </span>
                             
                             {ticket ? (
@@ -738,39 +744,43 @@ export default function DriverTrips() {
                             )}
                           </div>
 
-                          <p className="font-black text-gray-900 dark:text-white text-base">{trip.jo_number}</p>
+                          <p className="font-black text-gray-900 dark:text-white text-base">
+                            {trip._is_jo ? trip.jo_number : trip.control_no}
+                          </p>
 
-                          {trip.destination && (
-                            <div className="flex items-center mt-2 text-gray-500 dark:text-gray-400 text-sm">
-                              <span className="font-bold text-xs uppercase tracking-wider text-blue-500 mr-2">Route:</span>
-                              <span className="font-medium">{trip.destination}</span>
-                            </div>
-                          )}
+                          <div className="flex items-center mt-2 text-gray-500 dark:text-gray-400 text-sm">
+                            <span className="font-bold text-xs uppercase tracking-wider text-blue-500 mr-2">Route:</span>
+                            <span className="font-medium">
+                              {trip._is_jo ? trip.destination : `${trip.pick_up} → ${trip.destination && trip.destination !== 'TBD' ? trip.destination : trip.drop_off}`}
+                            </span>
+                          </div>
                           {trip.customer && (
                             <div className="flex items-center mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
                               <span className="font-bold text-xs uppercase tracking-wider text-emerald-500 mr-2">Client:</span>
                               <span className="font-medium">{trip.customer.first_name} {trip.customer.last_name}</span>
                             </div>
                           )}
+                          {trip._is_ticket && trip.passenger_name && (
+                            <div className="flex items-center mt-1.5 text-gray-500 dark:text-gray-400 text-sm">
+                              <span className="font-bold text-xs uppercase tracking-wider text-emerald-500 mr-2">Pax:</span>
+                              <span className="font-medium">{trip.no_of_passengers} pax - {trip.passenger_name}</span>
+                            </div>
+                          )}
                         </div>
 
-                        {/* Metadata & Actions Column */}
                         <div className="flex flex-col justify-between items-end gap-4 shrink-0 min-w-[125px]">
-                          {/* Metadata */}
                           <div className="flex flex-col items-end gap-1.5">
                             <div className="text-gray-500 dark:text-gray-400 text-xs font-bold">
-                              Date: {trip.service_date?.split('T')[0]}
+                              Date: {trip._is_jo ? trip.service_date?.split('T')[0] : trip.date_of_travel?.split('T')[0]}
                             </div>
-                            {trip.bus && (
+                            {(trip.bus || ticket?.bus) && (
                               <span className="px-2.5 py-1 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-black tracking-wider border border-indigo-100/10">
-                                {trip.bus.plate_number}
+                                {trip.bus?.plate_number || ticket?.bus?.plate_number || ticket?.plate_no}
                               </span>
                             )}
                           </div>
                           
-                          {/* Action Buttons Column */}
                           <div className="flex flex-col gap-2 w-full">
-                            {/* DTT View / Request */}
                             {ticket ? (
                               <button
                                 onClick={() => setSelectedTicket(ticket)}
@@ -788,21 +798,37 @@ export default function DriverTrips() {
                               </button>
                             )}
 
-                            {/* Trip Actions */}
-                            {trip.status === 'confirmed' && (
+                            {['confirmed', 'draft'].includes(trip.status || 'draft') && (
                               <button
-                                onClick={() => startMutation.mutate(trip.id)}
-                                disabled={startMutation.isPending}
+                                onClick={() => {
+                                  if (trip._is_jo) startMutation.mutate(trip.id);
+                                  else {
+                                    tripTicketApi.update(trip.id, { status: 'in_progress' }).then(() => {
+                                      toast.success('Trip started!');
+                                      refetchTickets();
+                                    });
+                                  }
+                                }}
+                                disabled={trip._is_jo ? startMutation.isPending : false}
                                 className="w-full py-2 bg-blue-650 hover:bg-blue-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-lg hover:shadow-blue-500/15 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 Start Trip
                               </button>
                             )}
+                            
                             {trip.status === 'in_progress' && (
                               <button
-                                onClick={() => completeMutation.mutate(trip.id)}
-                                disabled={completeMutation.isPending}
-                                className="w-full py-2 bg-emerald-650 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-lg hover:shadow-emerald-500/15 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
+                                onClick={() => {
+                                  if (trip._is_jo) completeMutation.mutate(trip.id);
+                                  else {
+                                    tripTicketApi.update(trip.id, { status: 'completed' }).then(() => {
+                                      toast.success('Trip completed!');
+                                      refetchTickets();
+                                    });
+                                  }
+                                }}
+                                disabled={trip._is_jo ? completeMutation.isPending : false}
+                                className="w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all hover:shadow-lg hover:shadow-emerald-500/15 active:scale-95 disabled:opacity-50 flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 Complete Trip
                               </button>
