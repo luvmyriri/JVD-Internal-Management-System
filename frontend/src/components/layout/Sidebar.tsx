@@ -71,7 +71,7 @@ export const navigation: NavSection[] = [
       { label: 'General Ledger', path: '/accounting/journal-entries', icon: <LuScrollText />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.reports' },
       { label: 'Collections', path: '/accounting/collections', icon: <LuBanknote />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.collections' },
       { label: 'Cash Budgets', path: '/accounting/cash-budgets', icon: <LuWallet />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.cash_budgets' },
-      { label: 'Commissions', path: '/accounting/commissions', icon: <LuSignature />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive', 'driver', 'head_mechanic', 'dispatcher', 'office_staff', 'service_adviser'], module: 'accounting', pageKey: 'accounting.commissions' },
+      { label: 'Commissions', path: '/accounting/commissions', icon: <LuSignature />, roles: ['super_admin', 'executive_vice_president', 'corporate_secretary', 'operations_manager', 'accounting_executive', 'driver', 'head_mechanic', 'dispatcher', 'office_staff', 'service_adviser'], module: 'accounting', pageKey: 'accounting.commissions' },
       { label: 'Liquidations', path: '/accounting/liquidations', icon: <LuReceipt />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.liquidations' },
     ],
   },

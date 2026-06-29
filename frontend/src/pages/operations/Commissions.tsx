@@ -51,7 +51,7 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
     }
   });
 
-  const canApprove = (user?.role === 'super_admin' || user?.tags?.includes('process:approve_commission') || user?.tags?.includes('access:general')) && commission.status === 'draft';
+  const canApprove = user && ['super_admin', 'executive_vice_president', 'corporate_secretary'].includes(user.role) && commission.status === 'draft';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -510,6 +510,7 @@ export default function Commissions() {
   const hasGeneralAccess = !!(
     user?.role === 'super_admin' ||
     user?.role === 'executive_vice_president' ||
+    user?.role === 'corporate_secretary' ||
     user?.role === 'operations_manager' ||
     user?.role === 'accounting_executive' ||
     user?.tags?.includes('access:general') ||

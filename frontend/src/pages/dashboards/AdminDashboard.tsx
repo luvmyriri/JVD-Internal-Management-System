@@ -69,6 +69,7 @@ export default function AdminDashboard() {
   const buses = (busesRaw as any)?.data ?? [];
 
   const isApprover = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role);
+  const showKpiCards = user && ['super_admin', 'executive_vice_president'].includes(user.role);
 
   const pendingBudgets = useMemo(() => {
     const budgetsArray = Array.isArray(cashBudgets) ? cashBudgets : (cashBudgets as any)?.data || [];
@@ -419,7 +420,8 @@ export default function AdminDashboard() {
     <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
 
       {/* ── Top KPI Row ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
+      {showKpiCards && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
 
         {/* KPI 1: Total Users */}
         <div className="relative rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
@@ -500,6 +502,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
+      )}
 
       {/* ── Quick Approvals Action Panel for Admins ── */}
       {isApprover && pendingBudgets.length > 0 && (
