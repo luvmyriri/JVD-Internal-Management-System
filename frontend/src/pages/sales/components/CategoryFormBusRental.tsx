@@ -127,7 +127,7 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
               totalSeats={buses.find((b: any) => b.id === value.busId)?.seating_capacity || 49}
               selectedSeats={value.selectedSeats}
               occupiedSeats={occupiedSeats}
-              onSeatToggle={(seatNum) => {
+              onSeatToggle={(_seatNum) => {
                 // Read-only for custom Bus Rentals
                 return;
               }}

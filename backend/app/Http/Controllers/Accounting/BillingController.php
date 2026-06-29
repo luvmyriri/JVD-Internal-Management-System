@@ -328,6 +328,7 @@ class BillingController extends Controller
             'bus_id' => 'nullable|integer|exists:buses,id',
             'driver_id' => 'nullable|integer|exists:users,id',
             'seat_map' => 'nullable|array',
+            'tax_rate' => 'nullable|numeric|min:0|max:1',
         ], [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
             'customer_email.email' => 'The email address must be a valid email format.',
@@ -346,7 +347,7 @@ class BillingController extends Controller
             DB::beginTransaction();
 
             try {
-                $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count);
+                $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count, $request->tax_rate);
             } catch (MaxPaxExceededException $e) {
                 DB::rollBack();
                 return response()->json([

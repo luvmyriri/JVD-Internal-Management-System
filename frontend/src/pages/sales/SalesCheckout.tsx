@@ -78,6 +78,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
   const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
+  const [vatRate, setVatRate] = useState<number>(0.12);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -141,11 +142,18 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setShowDropdown(false);
   };
 
-  const TAX_RATE = 0.12;
-
   // Calculations
-  const subtotal = cart.reduce((sum, item) => sum + ((item.customPrice ?? item.service.price) * item.quantity), 0);
-  const tax = subtotal * TAX_RATE;
+  const subtotal = useMemo(() => {
+    return cart.reduce((sum, item) => {
+      const price = item.customPrice ?? item.service.price;
+      const isPerPax = !item.customPrice && ['International Tour', 'Domestic Tour', 'Educational Tour', 'Visa Processing', 'Joiners', 'Booking', 'Tour Package'].includes(String(item.serviceType || item.service?.category));
+      const paxCount = item.paxCount || item.adults || 1;
+      const multiplier = isPerPax ? paxCount : item.quantity;
+      return sum + (price * multiplier);
+    }, 0);
+  }, [cart]);
+
+  const tax = subtotal * vatRate;
   const total = subtotal + tax;
 
   const change = amountReceived !== '' && !isNaN(Number(parseMoneyInput(String(amountReceived))))
@@ -218,6 +226,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           payment_method: paymentMethod,
           payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
           amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
+          tax_rate: vatRate,
           travel_date: cart.find(item => item.travelDate)?.travelDate,
           pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation,
           tour_code: cart.find(item => item.tourCode)?.tourCode,
@@ -256,6 +265,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
         amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
+        tax_rate: vatRate,
         items: cart.map(item => ({
           service_id: item.service.id,
           quantity: item.quantity,
@@ -651,7 +661,17 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             <span className="text-gray-900 dark:text-white">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <span>VAT (12%)</span>
+            <span className="flex items-center gap-2">
+              VAT
+              <select 
+                value={vatRate}
+                onChange={(e) => setVatRate(Number(e.target.value))}
+                className="bg-transparent border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5 text-gray-900 dark:text-white"
+              >
+                <option value={0.12}>12%</option>
+                <option value={0}>0%</option>
+              </select>
+            </span>
             <span className="text-gray-900 dark:text-white">₱{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100 dark:border-gray-700">

@@ -36,10 +36,10 @@ class InvoiceFinalizationService
      *
      * @return array{processedItems: array, subtotal: float, taxAmount: float, totalAmount: float}
      */
-    public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount): array
+    public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount, ?float $customTaxRate = null): array
     {
         $subtotal = 0;
-        $taxRate = (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
+        $taxRate = $customTaxRate !== null ? $customTaxRate : (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
         $processedItems = [];
 
         foreach ($items as $item) {

@@ -16,8 +16,9 @@ class WorkOrderService
             $user = \App\Models\User::find($userId);
             
             $status = 'open';
+            $isMaintenance = ($data['type'] ?? 'maintenance') === 'maintenance';
             if ($user) {
-                if ($user->hasRole('driver')) {
+                if ($user->hasRole('driver') || ($isMaintenance && in_array($user->role, ['dispatcher', 'logistics_in_charge']))) {
                     $status = 'pending_validation';
                 } elseif (!in_array($user->role, ['super_admin', 'executive_vice_president', 'service_adviser'])) {
                     $status = 'pending_approval';

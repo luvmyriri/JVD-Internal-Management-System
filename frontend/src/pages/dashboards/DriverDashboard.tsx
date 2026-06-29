@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboards';
 import { tripTicketApi } from '../../api/operations';
 import { fleetApi } from '../../api/fleet';
-import { LoadingScreen } from '../../components/ui';
+import { LoadingScreen, RequestCommissionModal } from '../../components/ui';
 import { useAuth } from '../../context/AuthContext';
 import {
   LuUsers,
@@ -35,6 +35,7 @@ import { loadLogoAsBase64 } from '../../utils/pdfHelpers';
 
 export default function DriverDashboard() {
   const { user } = useAuth();
+  const [showCommissionModal, setShowCommissionModal] = useState(false);
 
   // ── Live API Queries ──────────────────────────────────────────────────────
   const { data: dashboardData, isLoading, error } = useQuery({
@@ -673,6 +674,7 @@ export default function DriverDashboard() {
 
         </div>
       </div>
+      <RequestCommissionModal isOpen={showCommissionModal} onClose={() => setShowCommissionModal(false)} />
     </div>
   );
 }
@@ -731,16 +733,7 @@ function CalendarFleetAvailability({ tickets = [], buses = [] }: { tickets?: any
 
   const availableToday = useMemo(() => {
     if (!buses || buses.length === 0) {
-      const allBusesPlaceholder = [
-        { id: 1, plate_number: 'XYZ-001', model: 'BUS-001', seating_capacity: 45 },
-        { id: 2, plate_number: 'XYZ-002', model: 'BUS-002', seating_capacity: 55 },
-        { id: 3, plate_number: 'XYZ-003', model: 'BUS-003', seating_capacity: 40 },
-        { id: 4, plate_number: 'XYZ-004', model: 'BUS-004', seating_capacity: 50 },
-        { id: 5, plate_number: 'XYZ-005', model: 'BUS-005', seating_capacity: 60 },
-        { id: 6, plate_number: 'XYZ-006', model: 'BUS-006', seating_capacity: 45 },
-        { id: 7, plate_number: 'XYZ-007', model: 'BUS-007', seating_capacity: 50 },
-      ];
-      return allBusesPlaceholder.filter((b: any) => !occupiedToday.includes(b.model));
+      return [];
     }
     return buses.filter((b: any) => !occupiedToday.includes(b.plate_number));
   }, [buses, occupiedToday]);

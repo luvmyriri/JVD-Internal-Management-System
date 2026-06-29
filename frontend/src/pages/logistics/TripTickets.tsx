@@ -413,9 +413,6 @@ function printTripTicket(ticket: TripTicket) {
 
 function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket: TripTicket; onClose: () => void; onCustomizeApprove?: (ticket: TripTicket) => void }) {
   const { user } = useAuth();
-
-  const isSafetyComplete = true;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -549,6 +546,18 @@ function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket
                 title="Approve this trip ticket"
               >
                 Customize & Approve
+              </button>
+            )}
+            {ticket.status === 'approved' && user?.role === 'admin' && onCustomizeApprove && (
+              <button
+                onClick={() => {
+                  onCustomizeApprove(ticket);
+                  onClose();
+                }}
+                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer`}
+                title="Edit this customized trip ticket"
+              >
+                Edit Customized DTT
               </button>
             )}
           </div>
@@ -692,7 +701,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
   };
 
   return (
-    <Modal isOpen={true} onClose={onClose} title={ticket ? "Customize & Approve Trip Ticket" : "New Trip Ticket"} size="xl">
+    <Modal isOpen={true} onClose={onClose} title={ticket ? (ticket.status === 'draft' ? "Customize & Approve Trip Ticket" : "Edit Customized DTT") : "New Trip Ticket"} size="xl">
       <form onSubmit={handleSubmit} className="space-y-4 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
         {/* Section 1: Document Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>

@@ -292,6 +292,7 @@ export default function CustomTransactions() {
       {
         service,
         quantity,
+        customPrice: service.price,
         busId,
         selectedSeats,
         driverId,

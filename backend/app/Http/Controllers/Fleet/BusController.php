@@ -29,6 +29,10 @@ class BusController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('category')) {
+            $query->where('category', $request->category);
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

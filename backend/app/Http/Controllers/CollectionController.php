@@ -392,5 +392,52 @@ class CollectionController extends Controller
 
         return $pdf->download($fileName);
     }
+
+    public function cancelAndRefund($id)
+    {
+        try {
+            DB::beginTransaction();
+
+            $collection = Collection::findOrFail($id);
+            
+            // Check if there is a linked invoice
+            $invoice = $collection->invoice;
+            
+            if ($invoice) {
+                $invoice->update(['status' => 'cancelled']);
+            }
+            
+            $collection->update([
+                'payment_status' => 'cancelled' // Or if they don't have payment_status, just use invoice status
+            ]);
+
+            // If there's an amount paid, record a refund
+            $totalPaid = $collection->payments()->sum('amount');
+            if ($totalPaid > 0) {
+                // Record negative payment as refund
+                CollectionPayment::create([
+                    'collection_id' => $collection->id,
+                    'amount' => -$totalPaid,
+                    'payment_date' => now()->toDateString(),
+                    'payment_method' => 'Refund',
+                    'reference_number' => 'REF-' . time(),
+                    'recorded_by' => auth()->id() ?? 1,
+                    'remarks' => 'Refund for cancelled transaction'
+                ]);
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'Transaction cancelled and refund recorded successfully.'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to cancel and refund: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
 

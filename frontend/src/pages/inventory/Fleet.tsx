@@ -421,6 +421,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
 export default function Fleet() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create'|'edit'|'view'>('create');
   const [editingBus, setEditingBus] = useState<Bus | undefined>();
@@ -605,10 +606,11 @@ export default function Fleet() {
   };
 
   const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['buses', search, statusFilter, page],
+    queryKey: ['buses', search, statusFilter, categoryFilter, page],
     queryFn: () => fleetApi.list({ 
       search: search || undefined, 
       status: statusFilter || undefined,
+      category: categoryFilter || undefined,
       page,
       per_page: 10
     }),
@@ -675,6 +677,15 @@ export default function Fleet() {
             <option value="in_service">In Service</option>
             <option value="under_maintenance">Under Maintenance</option>
             <option value="decommissioned">Decommissioned</option>
+          </select>
+          
+          <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
+            className="px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300 appearance-none min-w-[150px]">
+            <option value="">All Categories</option>
+            <option value="regular">Regular</option>
+            <option value="luxury">Luxury</option>
+            <option value="minibus">Minibus</option>
+            <option value="coaster">Coaster</option>
           </select>
         </div>
 

@@ -7,6 +7,7 @@ import {
   LuCircleCheck, LuCircleDot, LuCircle,
 } from 'react-icons/lu';
 import { jobOrderApi } from '../../api/jobOrders';
+import { fleetApi } from '../../api/fleet';
 import { tripTicketApi } from '../../api/operations';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils';
@@ -107,12 +108,12 @@ export default function DriverSchedule() {
   });
 
   const startTicketMutation = useMutation({
-    mutationFn: (id: number) => tripTicketApi.update(id, { status: 'in_progress' }),
+    mutationFn: (id: number) => tripTicketApi.update(id, { status: 'in_progress' as any }),
     onSuccess: () => {
       toast.success('Trip started!');
       refetchTickets();
     },
-    onError: (err: any) => toast.error('Failed to start trip.')
+    onError: () => toast.error('Failed to start trip.')
   });
 
   const completeTicketMutation = useMutation({
@@ -121,7 +122,7 @@ export default function DriverSchedule() {
       toast.success('Trip completed!');
       refetchTickets();
     },
-    onError: (err: any) => toast.error('Failed to complete trip.')
+    onError: () => toast.error('Failed to complete trip.')
   });
 
   const allJos = joRes ?? [];

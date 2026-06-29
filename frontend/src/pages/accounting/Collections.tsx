@@ -326,6 +326,18 @@ export default function Collections() {
     }
   });
 
+  const cancelRefundMutation = useMutation({
+    mutationFn: (id: number) => collectionApi.cancelAndRefund(id),
+    onSuccess: (res: any) => {
+      toast.success(res?.message || 'Transaction cancelled and refund recorded');
+      queryClient.invalidateQueries({ queryKey: ['collections'] });
+      setSelectedCollection(prev => prev ? { ...prev, payment_status: 'cancelled' } : null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to cancel and refund');
+    }
+  });
+
   const sendSoaMutation = useMutation({
     mutationFn: (id: number) => collectionApi.sendSoa(id),
     onSuccess: (res: any) => {
@@ -340,6 +352,12 @@ export default function Collections() {
   const handleConfirmCollection = (id: number) => {
     if (window.confirm('Are you sure you want to confirm this transaction as fully paid? This will also mark the linked invoice as paid.')) {
       confirmMutation.mutate(id);
+    }
+  };
+
+  const handleCancelRefund = (id: number) => {
+    if (window.confirm('Are you sure you want to cancel this transaction? This will record a refund for any payments made.')) {
+      cancelRefundMutation.mutate(id);
     }
   };
 
@@ -740,6 +758,15 @@ export default function Collections() {
                         isLoading={confirmMutation.isPending}
                       >
                         <LuFileCheck className="w-4 h-4 mr-1" /> Confirm Transaction
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
+                        onClick={() => handleCancelRefund(selectedCollection.id)}
+                        isLoading={cancelRefundMutation.isPending}
+                      >
+                        <LuX className="w-4 h-4 mr-1" /> Cancel & Refund
                       </Button>
                       <Button size="sm" onClick={() => setShowPaymentModal(true)}>
                         <LuPlus className="w-4 h-4 mr-1" /> Add Payment

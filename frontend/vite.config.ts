@@ -8,13 +8,13 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:8000';
 
-  let wsProxyTarget = 'ws://localhost:6001';
-  try {
-    const url = new URL(proxyTarget);
-    wsProxyTarget = `ws://${url.hostname}:6001`;
-  } catch (e) {
-    // Fallback if parsing fails
-  }
+  // let wsProxyTarget = 'ws://localhost:6001';
+  // try {
+  //   const url = new URL(proxyTarget);
+  //   wsProxyTarget = `ws://${url.hostname}:6001`;
+  // } catch (e) {
+  //   // Fallback if parsing fails
+  // }
 
   return {
     plugins: [

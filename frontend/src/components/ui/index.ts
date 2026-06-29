@@ -8,3 +8,5 @@ export { default as Dropdown } from './Dropdown';
 export { default as LoadingScreen } from './LoadingScreen';
 export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as PipelineVisualizer } from './PipelineVisualizer';
+export * from './RequestMaintenanceModal';
+export * from './RequestCommissionModal';

@@ -11,6 +11,9 @@ export const workOrderApi = {
   create: (data: WorkOrderFormData) =>
     client.post<{ success: boolean; data: WorkOrder }>('/work-orders', data),
 
+  request: (data: any) =>
+    client.post<{ success: boolean; data: WorkOrder }>('/work-orders/request', data),
+
   update: (id: number, data: Partial<WorkOrderFormData>) =>
     client.put<{ success: boolean; data: WorkOrder }>(`/work-orders/${id}`, data),
 

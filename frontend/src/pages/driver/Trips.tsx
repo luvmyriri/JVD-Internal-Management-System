@@ -804,7 +804,7 @@ export default function DriverTrips() {
                                 onClick={() => {
                                   if (trip._is_jo) startMutation.mutate(trip.id);
                                   else {
-                                    tripTicketApi.update(trip.id, { status: 'in_progress' }).then(() => {
+                                    tripTicketApi.update(trip.id, { status: 'in_progress' as any }).then(() => {
                                       toast.success('Trip started!');
                                       refetchTickets();
                                     });

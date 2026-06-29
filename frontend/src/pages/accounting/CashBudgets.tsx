@@ -73,7 +73,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
     !budget.work_order_id && 
     ((budget.status === 'draft' && isOperationsOrAdmin) ||
      (budget.status === 'pending_accounting' && isAccountingOrAdmin) ||
-     (budget.status === 'pending_super_admin' && user?.role === 'super_admin') ||
+     ((budget.status as string) === 'pending_super_admin' && user?.role === 'super_admin') ||
      (budget.status === 'approved' && isOperationsOrAdmin));
 
   // Compute live sum reactively
@@ -198,7 +198,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
             currentStatus={
               !!budget.purchase_order_id
                 ? (budget.status === 'disbursed' ? 'disbursed' : 'budget_pending')
-                : (budget.status === 'draft' || budget.status === 'pending_accounting' || budget.status === 'pending_super_admin'
+                : (budget.status === 'draft' || budget.status === 'pending_accounting' || (budget.status as string) === 'pending_super_admin'
                     ? 'budget_pending'
                     : (budget.status === 'approved' ? 'approved' : 'disbursed'))
             }
@@ -665,7 +665,7 @@ function CashBudgetDetailModal({ budget, onClose }: { budget: CashBudgetRequest;
           )}
 
           {/* Super Admin: Approve */}
-          {budget.status === 'pending_super_admin' && user?.role === 'super_admin' && (
+          {(budget.status as string) === 'pending_super_admin' && user?.role === 'super_admin' && (
             <button 
               onClick={() => approveMutation.mutate()} 
               disabled={isPending}
