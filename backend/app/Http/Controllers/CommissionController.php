@@ -15,7 +15,7 @@ class CommissionController extends Controller
         $user = auth()->user();
         $query = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee']);
         
-        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager')) {
+        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
             $query->where('employee_id', $user->id);
         }
         
@@ -81,7 +81,7 @@ class CommissionController extends Controller
         $commission = Commission::with(['items', 'receivedBy', 'releasedBy', 'approvedBy', 'employee'])->findOrFail($id);
 
         // C-01: non-privileged staff/drivers may only view their own commission record.
-        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive')
+        if ($user && !$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive', 'corporate_secretary')
             && $commission->employee_id !== $user->id) {
             return response()->json(['error' => 'Unauthorized access to this commission.'], 403);
         }
@@ -99,7 +99,7 @@ class CommissionController extends Controller
         if ($request->has('status')) {
             $newStatus = $request->status;
             if ($newStatus === 'approved') {
-                if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+                if (!$user->hasRole('super_admin', 'executive_vice_president', 'corporate_secretary')) {
                     return response()->json(['error' => 'Unauthorized to approve commissions.'], 403);
                 }
             }

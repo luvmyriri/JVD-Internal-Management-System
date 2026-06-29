@@ -592,6 +592,7 @@ export default function DriverTrips() {
   });
 
   const allJos = data?.data ?? [];
+  const meta = data?.meta ?? null;
 
   const combinedTrips: any[] = [
     ...allJos.map((jo: any) => ({ ...jo, _is_jo: true, sortDate: new Date(jo.service_date).getTime() })),

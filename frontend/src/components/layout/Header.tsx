@@ -1024,8 +1024,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
       {/* Right: Notifications + User */}
       <div className="flex items-center gap-3">
-        {/* Quick Action: Request Commission (For General Employees only) */}
-        {!hasGeneralAccess && (
+        {/* Quick Action: Request Commission (For General Employees only, hidden on the commissions page itself) */}
+        {!hasGeneralAccess && location.pathname !== '/accounting/commissions' && (
           <button
             onClick={() => setShowRequestCommission(true)}
             className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer shrink-0"
