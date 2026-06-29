@@ -48,12 +48,12 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
         },
-        '/ws': {
-          target: wsProxyTarget,
-          ws: true,
-          changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/ws/, ''),
-        },
+        // '/ws': {
+        //   target: wsProxyTarget,
+        //   ws: true,
+        //   changeOrigin: true,
+        //   rewrite: (path) => path.replace(/^\/ws/, ''),
+        // },
       },
     },
     optimizeDeps: {
