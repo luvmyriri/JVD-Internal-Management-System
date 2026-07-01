@@ -224,10 +224,13 @@ class DashboardController extends Controller
         };
     }
 
-    /** Determine if a destination string is local (Philippine). */
-    private function isLocalDestination(string $destination): bool
+    /** Determine if a Job Order is local (Philippine). */
+    private function isLocalJobOrder($jo): bool
     {
-        $lower = strtolower($destination);
+        if (($jo->service_type ?? '') === 'bus_rental') {
+            return true;
+        }
+        $lower = strtolower($jo->destination ?? '');
         foreach (LOCAL_DESTINATION_KEYWORDS as $kw) {
             if (str_contains($lower, $kw)) return true;
         }
@@ -240,7 +243,7 @@ class DashboardController extends Controller
             ->travel()
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn($jo) => $this->isLocalDestination($jo->destination ?? ''))
+            ->filter(fn($jo) => $this->isLocalJobOrder($jo))
             ->take($limit)
             ->values()
             ->map(function ($jo, $idx) {
@@ -267,7 +270,7 @@ class DashboardController extends Controller
             ->travel()
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn($jo) => !$this->isLocalDestination($jo->destination ?? ''))
+            ->filter(fn($jo) => !$this->isLocalJobOrder($jo))
             ->take($limit)
             ->values()
             ->map(function ($jo, $idx) {
@@ -300,7 +303,7 @@ class DashboardController extends Controller
                 $customer = $jo->customer
                     ? "{$jo->customer->first_name} {$jo->customer->last_name}"
                     : 'N/A';
-                $isLocal = $this->isLocalDestination($jo->destination ?? '');
+                $isLocal = $this->isLocalJobOrder($jo);
                 $rawStatus = $jo->status ?? 'created';
                 $status = in_array($rawStatus, ['confirmed', 'in_progress']) ? 'Reserved' : 'Pending';
                 return [
