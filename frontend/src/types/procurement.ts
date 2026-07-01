@@ -121,19 +121,35 @@ export interface JobOrder {
   trip_ticket?: { id: number; ticket_number: string; status: string } | null;
   purchase_order?: { id: number; po_number: string; status: string } | null;
   work_order?: { id: number; wo_number: string; status: string } | null;
+  items?: JobOrderItem[];
   created_at: string;
   updated_at: string;
 }
 
+export interface JobOrderItem {
+  id: number;
+  item_no?: string | null;
+  item_description: string;
+  quantity: number;
+  unit_cost: number;
+  amount: number;
+}
+
 export interface JobOrderFormData {
-  customer_id: number;
+  customer_id: number | null;
   bus_id?: number;
   service_type: ServiceType;
   service_date: string;
-  destination: string;
+  destination: string | null;
   total_cost: number;
   notes?: string;
   passenger_ids?: number[];
+  items?: {
+    item_no?: string;
+    item_description: string;
+    quantity: number;
+    unit_cost: number;
+  }[];
 }
 
 export type WOStatus =

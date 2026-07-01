@@ -126,7 +126,7 @@ class JobOrderController extends Controller
         return response()->json([
             'success' => true,
             'data'    => new JobOrderResource(
-                $jobOrder->load(['customer', 'bus', 'passengers', 'legalDocuments', 'driver', 'tripTicket', 'purchaseOrder', 'workOrder'])
+                $jobOrder->load(['customer', 'bus', 'passengers', 'legalDocuments', 'driver', 'tripTicket', 'purchaseOrder', 'workOrder', 'items'])
             ),
         ]);
     }

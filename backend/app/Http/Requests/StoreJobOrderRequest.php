@@ -23,6 +23,11 @@ class StoreJobOrderRequest extends FormRequest
             'notes'         => ['nullable', 'string', 'max:1000'],
             'passenger_ids' => ['nullable', 'array'],
             'passenger_ids.*'=> ['integer', 'exists:passengers,id'],
+            'items'                 => ['nullable', 'array'],
+            'items.*.item_no'       => ['nullable', 'string', 'max:50'],
+            'items.*.item_description' => ['required', 'string', 'max:255'],
+            'items.*.quantity'      => ['required', 'integer', 'min:1'],
+            'items.*.unit_cost'     => ['required', 'numeric', 'min:0'],
         ];
     }
 

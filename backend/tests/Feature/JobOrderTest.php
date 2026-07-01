@@ -123,4 +123,56 @@ class JobOrderTest extends TestCase
              ->assertOk()
              ->assertJsonCount(2, 'data');
     }
+
+    public function test_can_create_job_order_with_items()
+    {
+        $bus = \App\Models\Bus::factory()->create();
+        $payload = [
+            'bus_id'       => $bus->id,
+            'service_type' => 'maintenance',
+            'service_date' => now()->toDateString(),
+            'total_cost'   => 4300.00,
+            'notes'        => 'Routine PMS with auto-recommended items',
+            'items'        => [
+                [
+                    'item_no'          => 'PMS-001',
+                    'item_description' => 'Engine Oil 15W-40',
+                    'quantity'         => 10,
+                    'unit_cost'        => 350.00,
+                ],
+                [
+                    'item_no'          => 'PMS-002',
+                    'item_description' => 'Oil Filter',
+                    'quantity'         => 1,
+                    'unit_cost'        => 800.00,
+                ]
+            ]
+        ];
+
+
+        $res = $this->actingAs($this->admin)
+                    ->postJson('/api/job-orders', $payload);
+
+        $res->assertCreated();
+        
+        $this->assertDatabaseHas('job_orders', [
+            'id' => $res->json('data.id'),
+            'service_type' => 'maintenance',
+        ]);
+
+        $this->assertDatabaseHas('job_order_items', [
+            'job_order_id'     => $res->json('data.id'),
+            'item_no'          => 'PMS-001',
+            'quantity'         => 10,
+            'unit_cost'        => 350.00,
+        ]);
+
+        $this->assertDatabaseHas('job_order_items', [
+            'job_order_id'     => $res->json('data.id'),
+            'item_no'          => 'PMS-002',
+            'quantity'         => 1,
+            'unit_cost'        => 800.00,
+        ]);
+    }
 }
+

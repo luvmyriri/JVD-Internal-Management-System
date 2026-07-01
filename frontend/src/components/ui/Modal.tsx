@@ -64,13 +64,13 @@ export default function Modal({ isOpen, onClose, title, children, className, siz
             exit={{ opacity: 0, scale: 0.9, y: 30 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className={cn(
-              'relative w-full bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.15)] dark:shadow-none overflow-hidden flex flex-col max-h-[90vh] border border-white/50 dark:border-gray-800',
+              'relative w-full bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.18)] dark:shadow-[0_0_0_1px_rgba(55,65,81,1)] overflow-hidden flex flex-col max-h-[90vh] border border-gray-200 dark:border-gray-700',
               sizeClasses[size],
               className
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shrink-0">
+            <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shrink-0">
               <div>
                 <h3 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">{title}</h3>
                 <div className="w-8 h-1 bg-blue-600 rounded-full mt-1 opacity-20" />

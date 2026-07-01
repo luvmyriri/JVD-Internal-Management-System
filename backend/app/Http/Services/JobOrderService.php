@@ -16,24 +16,39 @@ class JobOrderService
         return DB::transaction(function () use ($data, $userId) {
             $jo = JobOrder::create([
                 'jo_number'    => $this->generateJONumber(),
-                'customer_id'  => $data['customer_id'],
+                'customer_id'  => $data['customer_id'] ?? null,
                 'bus_id'       => $data['bus_id'],
                 'created_by'   => $userId,
                 'service_type' => $data['service_type'],
                 'status'       => 'created',
-                'service_date' => $data['service_date'],
-                'destination'  => $data['destination'],
-                'total_cost'   => $data['total_cost'],
+                'service_date' => $data['service_date'] ?? null,
+                'destination'  => $data['destination'] ?? ($data['service_type'] === 'maintenance' ? 'Maintenance Shop' : 'N/A'),
+                'total_cost'   => $data['total_cost'] ?? 0,
                 'notes'        => $data['notes'] ?? null,
                 'invoice_id'   => $data['invoice_id'] ?? null,
             ]);
+
+
 
             // Attach passengers to the pivot table if provided
             if (!empty($data['passenger_ids'])) {
                 $jo->passengers()->sync($data['passenger_ids']);
             }
 
-            return $jo->load(['customer', 'bus', 'passengers']);
+            // Create job order items if provided
+            if (!empty($data['items'])) {
+                foreach ($data['items'] as $item) {
+                    $jo->items()->create([
+                        'item_no'          => $item['item_no'] ?? null,
+                        'item_description' => $item['item_description'],
+                        'quantity'         => $item['quantity'],
+                        'unit_cost'        => $item['unit_cost'],
+                        'amount'           => $item['quantity'] * $item['unit_cost'],
+                    ]);
+                }
+            }
+
+            return $jo->load(['customer', 'bus', 'passengers', 'items']);
         });
     }
 

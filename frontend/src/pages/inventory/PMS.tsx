@@ -1,14 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import * as ExcelJS from 'exceljs';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { jobOrderApi } from '../../api/jobOrders';
+import { inventoryApi } from '../../api/inventory';
 
 import {
   LuWrench, LuSearch, LuTriangleAlert, LuCircleCheckBig, LuClock,
   LuLoaderCircle, LuBus, LuCalendar, LuCheckCheck, LuList, LuClipboardList,
   LuUser, LuShieldAlert, LuFileText, LuSend, LuExternalLink,
-  LuDownload, LuCloudUpload, LuFileDown, LuChevronRight
+  LuDownload, LuCloudUpload, LuFileDown, LuChevronRight, LuPackage, LuSparkles
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
@@ -21,6 +22,62 @@ import BusProfilePanel from './BusProfilePanel';
 function daysUntilDue(dateStr: string | null): number | null {
   if (!dateStr) return null;
   return differenceInDays(parseISO(dateStr), new Date());
+}
+
+function needsPmsAttention(bus: Bus): boolean {
+  if (bus.is_service_overdue) return true;
+  const days = daysUntilDue(bus.next_service_due);
+  if (days !== null && days <= 7) return true;
+  const info = getNextPmsInfo(bus.total_mileage);
+  if (info.progressPct >= 90 || info.kmRemaining <= 1000) return true;
+  return false;
+}
+
+interface RecommendedPart {
+  partName: string;
+  quantity: number;
+  unit: string;
+  notes: string;
+  searchKeyword: string;
+}
+
+function getRecommendedPartsForPms(key: string): RecommendedPart[] {
+  switch (key) {
+    case 'first':
+      return [
+        { partName: 'Engine Oil', quantity: 2, unit: 'bottles', notes: '10 ltrs Engine Oil 15W-40', searchKeyword: 'Engine Oil - 5L' },
+        { partName: 'Oil Filter', quantity: 1, unit: 'pcs', notes: 'Genuine Oil Filter', searchKeyword: 'Oil Filter' },
+      ];
+    case 'pms1':
+      return [
+        { partName: 'Engine Oil', quantity: 2, unit: 'bottles', notes: '10 ltrs Engine Oil 15W-40', searchKeyword: 'Engine Oil - 5L' },
+        { partName: 'Oil Filter', quantity: 1, unit: 'pcs', notes: 'Genuine Oil Filter', searchKeyword: 'Oil Filter' },
+        { partName: 'Fuel Filter', quantity: 1, unit: 'pcs', notes: 'Fuel Filter (Primary Only)', searchKeyword: 'Fuel Filter' },
+      ];
+    case 'pms2':
+      return [
+        { partName: 'Engine Oil', quantity: 2, unit: 'bottles', notes: '10 ltrs Engine Oil 15W-40', searchKeyword: 'Engine Oil - 5L' },
+        { partName: 'Oil Filter', quantity: 1, unit: 'pcs', notes: 'Genuine Oil Filter', searchKeyword: 'Oil Filter' },
+        { partName: 'Fuel Filter', quantity: 2, unit: 'pcs', notes: 'Primary & Secondary fuel filter', searchKeyword: 'Fuel Filter' },
+      ];
+    case 'pms3':
+      return [
+        { partName: 'Engine Oil', quantity: 2, unit: 'bottles', notes: '10 ltrs Engine Oil 15W-40', searchKeyword: 'Engine Oil - 5L' },
+        { partName: 'Oil Filter', quantity: 1, unit: 'pcs', notes: 'Genuine Oil Filter', searchKeyword: 'Oil Filter' },
+        { partName: 'Fuel Filter', quantity: 1, unit: 'pcs', notes: 'Fuel Filter (Primary Only)', searchKeyword: 'Fuel Filter' },
+      ];
+    case 'pms4':
+      return [
+        { partName: 'Engine Oil', quantity: 2, unit: 'bottles', notes: '10 ltrs Engine Oil 15W-40', searchKeyword: 'Engine Oil - 5L' },
+        { partName: 'Oil Filter', quantity: 1, unit: 'pcs', notes: 'Genuine Oil Filter', searchKeyword: 'Oil Filter' },
+        { partName: 'Fuel Filter', quantity: 2, unit: 'pcs', notes: 'Primary & Secondary fuel filter', searchKeyword: 'Fuel Filter' },
+        { partName: 'Clutch Lining', quantity: 1, unit: 'pcs', notes: 'Clutch Lining Replacement', searchKeyword: 'Clutch Lining' },
+        { partName: 'Brake Pads Front', quantity: 1, unit: 'sets', notes: 'Brake Pads (Front)', searchKeyword: 'Brake Pad Set - Front' },
+        { partName: 'Brake Pads Rear', quantity: 1, unit: 'sets', notes: 'Brake Pads (Rear)', searchKeyword: 'Brake Pads - Rear' },
+      ];
+    default:
+      return [];
+  }
 }
 
 // ── Log Maintenance Modal ────────────────────────────────────────────────────
@@ -231,7 +288,220 @@ function MileageBar({ bus }: { bus: Bus }) {
   );
 }
 
-// ── Request JO Modal ─────────────────────────────────────────────────────────
+// ── Auto Recommend Modal ──────────────────────────────────────────
+interface AutoRecommendModalProps { bus: Bus; onClose: () => void; }
+
+function AutoRecommendModal({ bus, onClose }: AutoRecommendModalProps) {
+  const qc = useQueryClient();
+  const pmsInfo = getNextPmsInfo(bus.total_mileage);
+  const recommendedParts = useMemo(() => getRecommendedPartsForPms(pmsInfo.key), [pmsInfo.key]);
+  const [submitted, setSubmitted] = useState(false);
+  const [priority, setPriority] = useState<'routine' | 'urgent' | 'critical'>(pmsInfo.isOverdue ? 'urgent' : 'routine');
+  const [notes, setNotes] = useState(
+    `Auto-recommended PMS Job Order for ${bus.plate_number}.\nMileage: ${bus.total_mileage.toLocaleString()} km — Next service: ${pmsInfo.level.type} @ ${pmsInfo.dueAtKm.toLocaleString()} km.`
+  );
+
+  const { data: inventoryData, isLoading: invLoading } = useQuery({
+    queryKey: ['inventory-pms-check'],
+    queryFn: () => inventoryApi.list({ per_page: 200 }).then(r => r.data),
+    staleTime: 30_000,
+  });
+  const inventoryItems: any[] = (inventoryData as any)?.data ?? [];
+
+  const resolvedParts = useMemo(() => {
+    return recommendedParts.map(part => {
+      const match = inventoryItems.find(
+        (i: any) => i.item_name?.toLowerCase().includes(part.searchKeyword.toLowerCase()) ||
+               part.searchKeyword.toLowerCase().includes(i.item_name?.toLowerCase())
+      );
+      const inStock: number | null = match ? match.quantity : null;
+      const needed = part.quantity;
+      let stockStatus: 'in_stock' | 'low_stock' | 'out_of_stock' | 'unknown' = 'unknown';
+      if (inStock !== null) {
+        if (inStock >= needed) stockStatus = 'in_stock';
+        else if (inStock > 0) stockStatus = 'low_stock';
+        else stockStatus = 'out_of_stock';
+      }
+      return { ...part, match, inStock, stockStatus };
+    });
+  }, [recommendedParts, inventoryItems]);
+
+  const estimatedCost = resolvedParts.reduce((sum, p) => sum + ((p.match?.unit_cost ?? 0) * p.quantity), 0);
+
+  const mutation = useMutation({
+    mutationFn: () => jobOrderApi.create({
+      bus_id: bus.id,
+      customer_id: null as any,
+      service_type: 'maintenance',
+      service_date: new Date().toISOString().split('T')[0],
+      destination: null as any,
+      total_cost: estimatedCost,
+      notes,
+      items: resolvedParts.map((p, i) => ({
+        item_no: `PMS-${String(i + 1).padStart(3, '0')}`,
+        item_description: p.notes,
+        quantity: p.quantity,
+        unit_cost: p.match?.unit_cost ?? 0,
+      })),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job-orders'] });
+      setSubmitted(true);
+      toast.success(`PMS Job Order created for ${bus.plate_number}`);
+    },
+    onError: (err: any) => {
+      toast.error(err?.response?.data?.message || 'Failed to create Job Order.');
+    },
+  });
+
+  const inp = 'w-full px-4 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all';
+  const lbl = 'block text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-1 mb-1.5';
+
+  const stockBadgeCls = (s: string) => {
+    if (s === 'in_stock')     return 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-100 dark:border-emerald-500/20';
+    if (s === 'low_stock')    return 'bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-100 dark:border-amber-500/20';
+    if (s === 'out_of_stock') return 'bg-red-50 dark:bg-red-500/10 text-red-700 dark:text-red-400 border-red-100 dark:border-red-500/20';
+    return 'bg-gray-50 dark:bg-gray-800 text-gray-500 border-gray-100 dark:border-gray-700';
+  };
+  const stockLabel = (s: string, qty: number | null) => {
+    if (s === 'in_stock')     return `In Stock (${qty})`;
+    if (s === 'low_stock')    return `Low Stock (${qty})`;
+    if (s === 'out_of_stock') return 'Out of Stock — Needs PO';
+    return 'Not in Inventory';
+  };
+
+  if (submitted) return (
+    <Modal isOpen onClose={onClose} title="PMS Job Order Created" size="md">
+      <div className="p-6 text-center space-y-4">
+        <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center mx-auto">
+          <LuCheckCheck className="w-8 h-8 text-emerald-500" />
+        </div>
+        <p className="text-lg font-black text-gray-900 dark:text-white">JO Request Submitted</p>
+        <p className="text-sm text-gray-400">The PMS Job Order for <span className="font-bold text-gray-700 dark:text-gray-300">{bus.plate_number}</span> is pending management confirmation.</p>
+        <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-left">
+          <p className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest mb-1">⚠ Next Step</p>
+          <p className="text-xs text-amber-600 dark:text-amber-300">Once management confirms this Job Order, a Work Order will be auto-generated for the maintenance team. Items flagged "Out of Stock" will require a Purchase Order from Procurement.</p>
+        </div>
+        <Button onClick={onClose} className="w-full">Done</Button>
+      </div>
+    </Modal>
+  );
+
+  return (
+    <Modal isOpen onClose={onClose} title="PMS Auto-Recommendation" size="xl">
+      <div className="overflow-y-auto custom-scrollbar max-h-[80vh] p-2">
+        <div className="space-y-5">
+          <div className="flex items-center gap-4 p-4 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-500/10 dark:to-indigo-500/10 border border-blue-100 dark:border-blue-500/20">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center shrink-0">
+              <LuBus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-black text-gray-900 dark:text-white text-base">{bus.plate_number}</p>
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{bus.model} · {bus.total_mileage.toLocaleString()} km</p>
+            </div>
+            <div className="flex flex-col items-end gap-1">
+              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-wider ${pmsInfo.level.color} ${pmsInfo.level.textColor}`}>{pmsInfo.level.type}</span>
+              {pmsInfo.isOverdue && <span className="text-[10px] font-black text-red-600 bg-red-50 dark:bg-red-500/10 dark:text-red-400 px-2.5 py-0.5 rounded-full uppercase tracking-wider">Overdue</span>}
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Due At', val: `${pmsInfo.dueAtKm.toLocaleString()} km`, red: false },
+              { label: 'Km Remaining', val: pmsInfo.isOverdue ? `−${Math.abs(pmsInfo.kmRemaining).toLocaleString()} km` : `${pmsInfo.kmRemaining.toLocaleString()} km`, red: pmsInfo.isOverdue },
+              { label: 'Est. Parts Cost', val: `₱${estimatedCost.toLocaleString()}`, red: false },
+            ].map(c => (
+              <div key={c.label} className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/30 p-4 text-center">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">{c.label}</p>
+                <p className={`text-sm font-black ${c.red ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>{c.val}</p>
+              </div>
+            ))}
+          </div>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span className="flex items-center gap-2"><LuPackage className="w-4 h-4 text-blue-500" /> Recommended Parts & Inventory Check</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-3 px-1">
+              {invLoading ? (
+                <div className="flex items-center gap-2 py-4 justify-center">
+                  <LuLoaderCircle className="w-4 h-4 animate-spin text-blue-500" />
+                  <span className="text-xs text-gray-400">Checking inventory stock levels...</span>
+                </div>
+              ) : resolvedParts.length === 0 ? (
+                <p className="text-xs text-gray-400 italic py-3 text-center">No parts required for this PMS level.</p>
+              ) : (
+                <div className="space-y-2">
+                  {resolvedParts.map((part, i) => (
+                    <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${stockBadgeCls(part.stockStatus)}`}>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-gray-900 dark:text-white">{part.notes}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">
+                          Qty needed: <span className="font-black">{part.quantity} {part.unit}</span>
+                          {part.match && <span> · ₱{(part.match.unit_cost * part.quantity).toLocaleString()} est.</span>}
+                        </p>
+                      </div>
+                      <span className={`shrink-0 text-[9px] font-black px-2 py-1 rounded-lg border uppercase tracking-wider ${stockBadgeCls(part.stockStatus)}`}>
+                        {stockLabel(part.stockStatus, part.inStock)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </details>
+          <details className="group">
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span className="flex items-center gap-2"><LuClipboardList className="w-4 h-4 text-gray-400" /> Scope of Works — {pmsInfo.level.type}</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-3 px-1">
+              <ul className="divide-y divide-gray-50 dark:divide-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 overflow-hidden">
+                {pmsInfo.level.checklist.map((item, i) => (
+                  <li key={i} className="flex items-start gap-2 px-4 py-2.5 bg-white dark:bg-gray-800/20">
+                    <span className="text-gray-300 dark:text-gray-600 text-xs mt-0.5 shrink-0">{i + 1}.</span>
+                    <span className="text-xs text-gray-600 dark:text-gray-300">{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span>Job Order Details</span>
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1 space-y-4">
+              <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20">
+                <LuShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                <p className="text-xs text-amber-700 dark:text-amber-300"><span className="font-black">Approval Required.</span> Management must confirm this JO before a Work Order is auto-generated and maintenance begins.</p>
+              </div>
+              <div>
+                <label className={lbl}>Priority Level</label>
+                <select value={priority} onChange={e => setPriority(e.target.value as any)} className={inp.replace('bg-white dark:bg-gray-800', 'bg-white dark:bg-gray-900')}>
+                  <option value="routine">Routine</option>
+                  <option value="urgent">Urgent</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+              <div>
+                <label className={lbl}>Notes / Description</label>
+                <textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} className={inp + ' resize-none'} />
+              </div>
+            </div>
+          </details>
+          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+            <Button variant="secondary" onClick={onClose}>Cancel</Button>
+            <Button onClick={() => mutation.mutate()} isLoading={mutation.isPending}>
+              <LuSend className="w-4 h-4 mr-1.5" /> Submit JO Request
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+// ── Request JO Modal ──────────────────────────────────────────────
 interface RequestJoModalProps { bus: Bus; onClose: () => void; }
 
 function RequestJoModal({ bus, onClose }: RequestJoModalProps) {
@@ -416,11 +686,12 @@ function ServiceAdviserAlerts({ overdue, upcoming }: { overdue: Bus[]; upcoming:
 // ── Main Page ─────────────────────────────────────────────────────────────────
 export default function PMS() {
   const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'priority' | 'all'>('priority');
+  const [tab, setTab] = useState<'priority' | 'all' | 'in_maintenance'>('priority');
   const [page, setPage] = useState(1);
   const [logBus, setLogBus] = useState<Bus | null>(null);
   const [joBus, setJoBus] = useState<Bus | null>(null);
   const [profileBus, setProfileBus] = useState<Bus | null>(null);
+  const [autoRecommendBus, setAutoRecommendBus] = useState<Bus | null>(null);
   const itemsPerPage = 10;
 
   const downloadTemplate = async () => {
@@ -516,24 +787,28 @@ export default function PMS() {
 
   const buses: Bus[] = data?.data?.data ?? [];
 
-  const overdueBuses  = buses.filter(b => b.is_service_overdue);
-  const upcomingBuses = buses.filter(b => {
+  const overdueBuses        = buses.filter(b => b.is_service_overdue);
+  const upcomingBuses       = buses.filter(b => {
     if (b.is_service_overdue) return false;
     const days = daysUntilDue(b.next_service_due);
     return days !== null && days <= 7;
   });
-  const healthyBuses  = buses.filter(b => !overdueBuses.includes(b) && !upcomingBuses.includes(b));
+  const healthyBuses        = buses.filter(b => !overdueBuses.includes(b) && !upcomingBuses.includes(b));
+  const inMaintenanceBuses  = buses.filter(b => b.status === 'under_maintenance');
 
-  const displayBuses = tab === 'priority'
-    ? [...overdueBuses, ...upcomingBuses].sort((a, b) => {
-        if (!a.next_service_due) return 1;
-        if (!b.next_service_due) return -1;
-        return new Date(a.next_service_due).getTime() - new Date(b.next_service_due).getTime();
-      })
-    : buses;
+  const displayBuses =
+    tab === 'priority'
+      ? [...overdueBuses, ...upcomingBuses].sort((a, b) => {
+          if (!a.next_service_due) return 1;
+          if (!b.next_service_due) return -1;
+          return new Date(a.next_service_due).getTime() - new Date(b.next_service_due).getTime();
+        })
+      : tab === 'in_maintenance'
+        ? inMaintenanceBuses
+        : buses;
 
-  const totalPages   = Math.ceil(displayBuses.length / itemsPerPage);
-  const paginated    = displayBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const totalPages = Math.ceil(displayBuses.length / itemsPerPage);
+  const paginated  = displayBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   return (
     <div className="space-y-8 pb-12">
@@ -588,8 +863,9 @@ export default function PMS() {
           {/* Tabs */}
           <div className="flex bg-gray-50 dark:bg-gray-800/50 p-1 rounded-2xl border border-gray-100 dark:border-gray-700/50 gap-1">
             {([
-              { key: 'priority', label: 'Priority Queue', icon: LuTriangleAlert },
-              { key: 'all',      label: 'All Fleet',      icon: LuList },
+              { key: 'priority',       label: 'Priority Queue',  icon: LuTriangleAlert },
+              { key: 'all',            label: 'All Fleet',        icon: LuList },
+              { key: 'in_maintenance', label: 'In Maintenance',   icon: LuWrench },
             ] as const).map(t => (
               <button key={t.key} onClick={() => { setTab(t.key); setPage(1); }}
                 className={`flex items-center gap-2 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -601,6 +877,11 @@ export default function PMS() {
                 {t.key === 'priority' && overdueBuses.length + upcomingBuses.length > 0 && (
                   <span className="bg-red-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none">
                     {overdueBuses.length + upcomingBuses.length}
+                  </span>
+                )}
+                {t.key === 'in_maintenance' && inMaintenanceBuses.length > 0 && (
+                  <span className="bg-amber-500 text-white rounded-full px-1.5 py-0.5 text-[9px] font-black leading-none">
+                    {inMaintenanceBuses.length}
                   </span>
                 )}
               </button>
@@ -646,28 +927,40 @@ export default function PMS() {
             <thead>
               <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-400 uppercase tracking-widest text-[10px] border-b border-gray-100 dark:border-gray-800">
                 <th className="px-8 py-5">Bus / Driver</th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5">Last Serviced</th>
-                <th className="px-8 py-5">Next Due</th>
-                <th className="px-8 py-5">Next PMS Type</th>
-                <th className="px-8 py-5">Mileage Progress</th>
+                {tab === 'in_maintenance' ? (
+                  <>
+                    <th className="px-8 py-5">Active Work Order</th>
+                    <th className="px-8 py-5">Mechanic / Assignee</th>
+                    <th className="px-8 py-5">Priority & Status</th>
+                    <th className="px-8 py-5">Scheduled/Due Date</th>
+                    <th className="px-8 py-5">Est. Cost</th>
+                  </>
+                ) : (
+                  <>
+                    <th className="px-8 py-5">Status</th>
+                    <th className="px-8 py-5">Last Serviced</th>
+                    <th className="px-8 py-5">Next Due</th>
+                    <th className="px-8 py-5">Next PMS Type</th>
+                    <th className="px-8 py-5">Mileage Progress</th>
+                  </>
+                )}
                 <th className="px-8 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
               {isLoading ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-16 text-center text-gray-400">
+                  <td colSpan={7} className="px-8 py-16 text-center text-gray-400">
                     <LuLoaderCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
                     <p className="text-sm font-medium">Loading PMS data...</p>
                   </td>
                 </tr>
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-16 text-center">
+                  <td colSpan={7} className="px-8 py-16 text-center">
                     <LuCircleCheckBig className="w-10 h-10 mx-auto mb-3 text-emerald-300 dark:text-emerald-700" />
                     <p className="text-sm font-bold text-gray-400">
-                      {tab === 'priority' ? 'No priority maintenance needed — fleet is healthy!' : 'No vehicles found.'}
+                      {tab === 'priority' ? 'No priority maintenance needed — fleet is healthy!' : tab === 'in_maintenance' ? 'No vehicles currently in maintenance.' : 'No vehicles found.'}
                     </p>
                   </td>
                 </tr>
@@ -676,6 +969,7 @@ export default function PMS() {
                   const days = daysUntilDue(bus.next_service_due);
                   const isOverdue = bus.is_service_overdue;
                   const isUpcoming = !isOverdue && days !== null && days <= 7;
+                  const activeWO = bus.work_orders?.find(wo => wo.status !== 'completed' && wo.status !== 'cancelled');
                   return (
                     <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all">
                       <td className="px-8 py-5">
@@ -705,57 +999,126 @@ export default function PMS() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-8 py-5">
-                        <div className="space-y-1.5">
-                          <StatusBadge status={bus.status.replace('_', ' ')}
-                            variant={bus.status === 'available' ? 'success' : bus.status === 'in_service' ? 'info' : bus.status === 'under_maintenance' ? 'warning' : 'danger'} />
-                          {isOverdue && (
-                            <div className="flex items-center gap-1 text-[9px] text-red-500 font-black uppercase tracking-widest">
-                              <LuTriangleAlert className="w-3 h-3" /> Overdue
+                      {tab === 'in_maintenance' ? (
+                        <>
+                          <td className="px-8 py-5 font-medium">
+                            {activeWO ? (
+                              <div className="space-y-0.5">
+                                <p className="font-black text-sm text-gray-900 dark:text-white">{activeWO.wo_number}</p>
+                                <p className="text-[10px] text-gray-400 max-w-[200px] truncate" title={activeWO.description}>
+                                  {activeWO.description || 'No description provided'}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-gray-300 dark:text-gray-600 italic">No Active WO</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-5">
+                            {activeWO?.assignee ? (
+                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                                {activeWO.assignee.first_name} {activeWO.assignee.last_name}
+                              </p>
+                            ) : (
+                              <span className="text-xs text-amber-500 font-medium">Unassigned Mechanic</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-5">
+                            {activeWO ? (
+                              <div className="flex items-center gap-2">
+                                <StatusBadge
+                                  status={activeWO.priority}
+                                  variant={
+                                    activeWO.priority === 'critical'
+                                      ? 'danger'
+                                      : activeWO.priority === 'urgent'
+                                      ? 'warning'
+                                      : 'info'
+                                  }
+                                />
+                                <StatusBadge
+                                  status={activeWO.status.replace('_', ' ')}
+                                  variant={activeWO.status === 'in_progress' ? 'info' : 'warning'}
+                                />
+                              </div>
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-5 text-sm text-gray-600 dark:text-gray-300 font-semibold">
+                            {activeWO ? (
+                              format(parseISO(activeWO.created_at), 'MMM dd, yyyy')
+                            ) : (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-5 text-sm font-bold text-gray-900 dark:text-white">
+                            {activeWO ? `₱${activeWO.cost.toLocaleString()}` : '₱0.00'}
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-8 py-5">
+                            <div className="space-y-1.5">
+                              <StatusBadge status={bus.status.replace('_', ' ')}
+                                variant={bus.status === 'available' ? 'success' : bus.status === 'in_service' ? 'info' : bus.status === 'under_maintenance' ? 'warning' : 'danger'} />
+                              {isOverdue && (
+                                <div className="flex items-center gap-1 text-[9px] text-red-500 font-black uppercase tracking-widest">
+                                  <LuTriangleAlert className="w-3 h-3" /> Overdue
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-2">
-                          <LuCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                          <span className="font-bold text-gray-900 dark:text-white text-sm">
-                            {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : <span className="text-gray-300 dark:text-gray-600 italic">Never</span>}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-8 py-5">
-                        {bus.next_service_due ? (
-                          <div>
-                            <p className={`font-black text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isUpcoming ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
-                              {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
-                            </p>
-                            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-gray-400'}`}>
-                              {isOverdue ? `${Math.abs(days ?? 0)}d overdue` : days === 0 ? 'Due today' : `${days}d remaining`}
-                            </p>
-                          </div>
-                        ) : (
-                          <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
-                        )}
-                      </td>
-                      <td className="px-8 py-5">
-                        {(() => {
-                          const info = getNextPmsInfo(bus.total_mileage);
-                          return (
-                            <div className="space-y-1">
-                              <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest border ${info.level.color} ${info.level.textColor} border-current/20`}>
-                                {info.level.type}
+                          </td>
+                          <td className="px-8 py-5">
+                            <div className="flex items-center gap-2">
+                              <LuCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+                              <span className="font-bold text-gray-900 dark:text-white text-sm">
+                                {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : <span className="text-gray-300 dark:text-gray-600 italic">Never</span>}
                               </span>
-                              <p className="text-[9px] text-gray-400 font-bold">@ {info.dueAtKm.toLocaleString()} km</p>
                             </div>
-                          );
-                        })()}
-                      </td>
-                      <td className="px-8 py-5 min-w-[170px]">
-                        <MileageBar bus={bus} />
-                      </td>
+                          </td>
+                          <td className="px-8 py-5">
+                            {bus.next_service_due ? (
+                              <div>
+                                <p className={`font-black text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isUpcoming ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+                                  {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
+                                </p>
+                                <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-gray-400'}`}>
+                                  {isOverdue ? `${Math.abs(days ?? 0)}d overdue` : days === 0 ? 'Due today' : `${days}d remaining`}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
+                            )}
+                          </td>
+                          <td className="px-8 py-5">
+                            {(() => {
+                              const info = getNextPmsInfo(bus.total_mileage);
+                              return (
+                                <div className="space-y-1">
+                                  <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest border ${info.level.color} ${info.level.textColor} border-current/20`}>
+                                    {info.level.type}
+                                  </span>
+                                  <p className="text-[9px] text-gray-400 font-bold">@ {info.dueAtKm.toLocaleString()} km</p>
+                                </div>
+                              );
+                            })()}
+                          </td>
+                          <td className="px-8 py-5 min-w-[170px]">
+                            <MileageBar bus={bus} />
+                          </td>
+                        </>
+                      )}
                       <td className="px-8 py-5 text-center">
                         <div className="flex flex-col items-center gap-2">
+                          {needsPmsAttention(bus) && (
+                            <button
+                              onClick={() => setAutoRecommendBus(bus)}
+                              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-blue-600 hover:to-indigo-700 transition-all w-full shadow-sm"
+                              title="Auto-generate a Job Order with inventory recommendations"
+                            >
+                              <LuSparkles className="w-3.5 h-3.5" /> Auto-Recommend JO
+                            </button>
+                          )}
                           <button
                             onClick={() => setJoBus(bus)}
                             className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
@@ -773,6 +1136,7 @@ export default function PMS() {
                     </tr>
                   );
                 })
+
               )}
             </tbody>
           </table>
@@ -783,9 +1147,10 @@ export default function PMS() {
         <Pagination currentPage={page} lastPage={totalPages} total={displayBuses.length} perPage={itemsPerPage} onPageChange={setPage} />
       )}
 
-      {logBus     && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
-      {joBus      && <RequestJoModal bus={joBus} onClose={() => setJoBus(null)} />}
-      {profileBus && <BusProfilePanel bus={profileBus} onClose={() => setProfileBus(null)} />}
+      {logBus           && <LogMaintenanceModal bus={logBus} onClose={() => setLogBus(null)} />}
+      {joBus            && <RequestJoModal bus={joBus} onClose={() => setJoBus(null)} />}
+      {autoRecommendBus && <AutoRecommendModal bus={autoRecommendBus} onClose={() => setAutoRecommendBus(null)} />}
+      {profileBus       && <BusProfilePanel bus={profileBus} onClose={() => setProfileBus(null)} />}
     </div>
   );
 }

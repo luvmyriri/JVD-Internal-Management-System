@@ -264,6 +264,7 @@ class DashboardController extends Controller
                 $status = $this->mapJobOrderStatus($jo->status ?? 'created');
                 return [
                     'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'db_id'       => $jo->id,
                     'customer'    => $customer,
                     'destination' => $jo->destination ?? 'N/A',
                     'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
@@ -290,6 +291,7 @@ class DashboardController extends Controller
                 $status = $this->mapJobOrderStatus($jo->status ?? 'created');
                 return [
                     'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'db_id'       => $jo->id,
                     'customer'    => $customer,
                     'destination' => $jo->destination ?? 'N/A',
                     'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),

@@ -83,7 +83,7 @@ export default function Dropdown({
     >
       <div onClick={toggle}>
         {trigger || (
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all active:scale-95 shadow-sm bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800">
+          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl text-gray-400 transition-all active:scale-95 shadow-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
             <MoreHorizontal className="w-5 h-5" />
           </button>
         )}
@@ -94,7 +94,7 @@ export default function Dropdown({
           <div
             ref={menuRef}
             style={menuStyle}
-            className="rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-100 dark:border-gray-800 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
+            className="rounded-2xl bg-white dark:bg-gray-900 shadow-2xl border border-gray-200 dark:border-gray-700 py-2 animate-in fade-in slide-in-from-top-2 duration-200"
           >
             {items.map((item, idx) => (
               <button

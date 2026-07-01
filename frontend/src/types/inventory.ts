@@ -23,9 +23,26 @@ export interface Bus {
   is_service_overdue: boolean;
   driver?: Driver | null;
   custom_seats?: any[] | null;
+  work_orders?: Array<{
+    id: number;
+    wo_number: string;
+    type: string;
+    status: string;
+    priority: string;
+    description: string;
+    cost: number;
+    parts_used?: any;
+    created_at: string;
+    assignee?: {
+      id: number;
+      first_name: string;
+      last_name: string;
+    } | null;
+  }>;
   created_at: string;
   updated_at: string;
 }
+
 
 // ── Bus Profiling Types (boss requirements) ──────────────────────────────────
 export interface BusDocument {

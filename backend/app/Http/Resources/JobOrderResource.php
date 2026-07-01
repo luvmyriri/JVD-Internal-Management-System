@@ -70,6 +70,16 @@ class JobOrderResource extends JsonResource
                 'wo_number' => $this->workOrder->wo_number,
                 'status'    => $this->workOrder->status,
             ]),
+            'items'        => $this->whenLoaded('items', fn() =>
+                $this->items->map(fn($item) => [
+                    'id'               => $item->id,
+                    'item_no'          => $item->item_no,
+                    'item_description' => $item->item_description,
+                    'quantity'         => (int) $item->quantity,
+                    'unit_cost'        => (float) $item->unit_cost,
+                    'amount'           => (float) $item->amount,
+                ])
+            ),
             'created_at'   => $this->created_at->toISOString(),
             'updated_at'   => $this->updated_at->toISOString(),
         ];

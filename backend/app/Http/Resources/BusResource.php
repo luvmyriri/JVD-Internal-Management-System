@@ -28,6 +28,24 @@ class BusResource extends JsonResource
                 'first_name' => $this->driver->first_name,
                 'last_name'  => $this->driver->last_name,
             ]),
+            'work_orders'       => $this->whenLoaded('workOrders', fn() =>
+                $this->workOrders->map(fn($wo) => [
+                    'id'          => $wo->id,
+                    'wo_number'   => $wo->wo_number,
+                    'type'        => $wo->type,
+                    'status'      => $wo->status,
+                    'priority'    => $wo->priority,
+                    'description' => $wo->description,
+                    'cost'        => (float) $wo->cost,
+                    'parts_used'  => $wo->parts_used,
+                    'created_at'  => $wo->created_at->toISOString(),
+                    'assignee'    => $wo->assignee ? [
+                        'id'         => $wo->assignee->id,
+                        'first_name' => $wo->assignee->first_name,
+                        'last_name'  => $wo->assignee->last_name,
+                    ] : null,
+                ])
+            ),
             'created_at'        => $this->created_at->toISOString(),
             'updated_at'        => $this->updated_at->toISOString(),
         ];

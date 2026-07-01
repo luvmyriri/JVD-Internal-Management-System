@@ -18,7 +18,7 @@ class BusController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Bus::with('driver');
+        $query = Bus::with(['driver', 'workOrders.assignee']);
 
         $user = $request->user();
         if ($user->hasRole('driver')) {
