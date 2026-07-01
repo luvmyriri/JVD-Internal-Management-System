@@ -13,8 +13,6 @@ import {
   LuBus,
   LuDownload,
   LuFileSpreadsheet,
-  LuChevronLeft,
-  LuChevronRight,
   LuTicket
 } from 'react-icons/lu';
 import CalendarFleetAvailability from '../../components/ui/CalendarFleetAvailability';

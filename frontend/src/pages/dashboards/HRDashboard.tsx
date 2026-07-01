@@ -16,8 +16,6 @@ import {
   LuBus,
   LuDownload,
   LuFileSpreadsheet,
-  LuChevronLeft,
-  LuChevronRight,
   LuTrophy,
   LuTrendingUp,
   LuActivity,

@@ -100,7 +100,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
   const set = (key: keyof JobOrderFormData, value: any) => setForm(p => ({ ...p, [key]: value }));
   const isMaintenanceType = form.service_type === 'maintenance';
-  const canSubmit = (isMaintenanceType || form.customer_id > 0) && form.service_date && form.destination;
+  const canSubmit = (isMaintenanceType || (form.customer_id ?? 0) > 0) && form.service_date && form.destination;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -189,7 +189,7 @@ function CreateJOModal({ onClose }: { onClose: () => void }) {
 
                 <div>
                   <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Destination / Description *</label>
-                  <input value={form.destination} onChange={e => set('destination', e.target.value)} placeholder="e.g. Baguio City or 'Engine overhaul'"
+                  <input value={form.destination ?? ''} onChange={e => set('destination', e.target.value)} placeholder="e.g. Baguio City or 'Engine overhaul'"
                     className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
                 </div>
 
