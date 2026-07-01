@@ -115,6 +115,9 @@ export function getLandingPageForUser(user?: User | null, permissions?: RolePerm
   
   // Super admin always goes to dashboard
   if (user.role === 'super_admin') return '/dashboard';
+  
+  // Driver explicitly goes to their overview page to bypass personalized tag checks causing redirect to commissions
+  if (user.role === 'driver') return '/driver/overview';
 
   // Helper to check view permission
   const hasViewPerm = (module: string) => {
@@ -175,10 +178,6 @@ export function getLandingPageForUser(user?: User | null, permissions?: RolePerm
   }
 
   // Final fallbacks if no navigation items match
-  if (user.role === 'driver') {
-    return '/driver/schedule';
-  }
-  
   if (['executive_vice_president', 'operations_manager', 'corporate_secretary'].includes(user.role)) {
     return '/dashboard';
   }

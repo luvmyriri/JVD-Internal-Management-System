@@ -222,12 +222,15 @@ function WODetailModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) 
 // ── Create WO Modal ──────────────────────────────────────────────────────────
 
 function CreateWOModal({ onClose }: { onClose: () => void }) {
+  const { user } = useAuth();
   const qc = useQueryClient();
-  const [form, setForm] = useState<Partial<WorkOrderFormData>>({ bus_id: 0, priority: 'routine', description: '' });
+  const [form, setForm] = useState<Partial<WorkOrderFormData>>({ bus_id: 0, priority: 'routine', description: '', is_override: false });
   const mutation = useMutation({
     mutationFn: () => workOrderApi.create(form as WorkOrderFormData),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['work-orders'] }); onClose(); },
   });
+
+  const canOverride = ['super_admin', 'executive_vice_president', 'service_adviser', 'dispatcher', 'logistics_in_charge'].includes(user?.role || '');
 
   const { data: busesData, isLoading: busesLoading } = useQuery({
     queryKey: ['buses-dropdown'],
@@ -284,8 +287,22 @@ function CreateWOModal({ onClose }: { onClose: () => void }) {
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Detailed Description *</label>
               <textarea rows={4} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
                 placeholder="Describe the issue, symptoms, or maintenance required..."
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow" />
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 dark:border-gray-700 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow bg-white dark:bg-gray-800 dark:text-white" />
             </div>
+            {canOverride && (
+              <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800/50">
+                <input 
+                  type="checkbox" 
+                  id="is_override"
+                  checked={!!form.is_override} 
+                  onChange={e => setForm(p => ({ ...p, is_override: e.target.checked }))} 
+                  className="w-4 h-4 rounded border-blue-300 text-blue-600 focus:ring-blue-500" 
+                />
+                <label htmlFor="is_override" className="text-sm font-semibold text-blue-900 dark:text-blue-300 cursor-pointer">
+                  Bypass Mechanic Verification (Override)
+                </label>
+              </div>
+            )}
             {mutation.isError && (
               <p className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
                 {(mutation.error as any)?.response?.data?.message || 'Failed to submit work order request.'}

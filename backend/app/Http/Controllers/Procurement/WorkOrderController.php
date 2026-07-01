@@ -75,9 +75,6 @@ class WorkOrderController extends Controller
      */
     public function store(StoreWorkOrderRequest $request): JsonResponse
     {
-        if ($request->user()->hasRole('driver')) {
-            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
 
         $wo = $this->service->create($request->validated(), $request->user()->id);
 

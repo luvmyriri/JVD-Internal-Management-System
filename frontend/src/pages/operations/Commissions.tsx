@@ -86,22 +86,26 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
           </div>
 
           <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Travel Items</p>
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Commission Items</p>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden">
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-100 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400">
                   <tr>
-                    <th className="px-6 py-4 font-semibold">Travel Date</th>
-                    <th className="px-6 py-4 font-semibold">Destination</th>
+                    <th className="px-6 py-4 font-semibold">Type</th>
+                    <th className="px-6 py-4 font-semibold">Details (Date/Dest or Desc)</th>
                     <th className="px-6 py-4 font-semibold text-right">Quantity</th>
                     <th className="px-6 py-4 font-semibold text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {commission.items?.map((item) => (
+                  {commission.items?.map((item: any) => (
                     <tr key={item.id}>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300">{item.travel_date}</td>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300">{item.destination}</td>
+                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300 capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</td>
+                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300">
+                        {item.source_type === 'trip_ticket' || !item.source_type 
+                          ? `${item.travel_date || ''} - ${item.destination || ''}` 
+                          : item.description}
+                      </td>
                       <td className="px-6 py-4 text-gray-900 dark:text-gray-300 text-right">{item.quantity}</td>
                       <td className="px-6 py-4 text-gray-900 dark:text-gray-300 text-right">₱ {item.amount?.toLocaleString()}</td>
                     </tr>
@@ -137,6 +141,9 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
 }
 
 interface NewCommissionItem {
+  source_type: string;
+  source_id?: number | '';
+  description: string;
   travel_date: string;
   destination: string;
   quantity: number;
@@ -178,6 +185,8 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
 
   const [items, setItems] = useState<NewCommissionItem[]>([]);
   const [newItem, setNewItem] = useState<any>({
+    source_type: 'trip_ticket',
+    description: '',
     travel_date: new Date().toISOString().split('T')[0],
     destination: '',
     quantity: '1',
@@ -199,6 +208,8 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
         });
         setItems([]);
         setNewItem({
+          source_type: 'trip_ticket',
+          description: '',
           travel_date: new Date().toISOString().split('T')[0],
           destination: '',
           quantity: '1',
@@ -215,8 +226,12 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
 
   const handleAddItem = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (!newItem.destination) {
+    if (newItem.source_type === 'trip_ticket' && !newItem.destination) {
       toast.error('Please enter a destination for the item');
+      return;
+    }
+    if (newItem.source_type !== 'trip_ticket' && !newItem.description) {
+      toast.error('Please enter a description for the commission source');
       return;
     }
     if (newItem.quantity < 1) {
@@ -236,6 +251,8 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
 
     // Reset mini form
     setNewItem({
+      source_type: 'trip_ticket',
+      description: '',
       travel_date: new Date().toISOString().split('T')[0],
       destination: '',
       quantity: '1',
@@ -342,26 +359,54 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
         </summary>
         
         <div className="p-4 pt-0 space-y-4">
-          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-4 gap-4 items-end border border-gray-100 dark:border-gray-800">
+          <div className="bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl p-4 grid grid-cols-1 md:grid-cols-5 gap-4 items-end border border-gray-100 dark:border-gray-800">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
-              <input
-                type="date"
-                value={newItem.travel_date}
-                onChange={e => setNewItem((p: any) => ({ ...p, travel_date: e.target.value }))}
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Type</label>
+              <select
+                value={newItem.source_type}
+                onChange={e => setNewItem((p: any) => ({ ...p, source_type: e.target.value }))}
                 className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="trip_ticket">Trip Ticket</option>
+                <option value="sales_invoice">Sales / Invoice</option>
+                <option value="referral">Referral</option>
+              </select>
             </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
-              <input
-                type="text"
-                value={newItem.destination}
-                onChange={e => setNewItem((p: any) => ({ ...p, destination: e.target.value }))}
-                placeholder="e.g. San Fernando, Pampanga"
-                className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+            
+            {newItem.source_type === 'trip_ticket' ? (
+              <>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Travel Date</label>
+                  <input
+                    type="date"
+                    value={newItem.travel_date}
+                    onChange={e => setNewItem((p: any) => ({ ...p, travel_date: e.target.value }))}
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Destination</label>
+                  <input
+                    type="text"
+                    value={newItem.destination}
+                    onChange={e => setNewItem((p: any) => ({ ...p, destination: e.target.value }))}
+                    placeholder="e.g. San Fernando, Pampanga"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2 md:col-span-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Description</label>
+                <input
+                  type="text"
+                  value={newItem.description}
+                  onChange={e => setNewItem((p: any) => ({ ...p, description: e.target.value }))}
+                  placeholder="e.g. Sold Package INV-123"
+                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Quantity</label>
               <input
@@ -420,8 +465,8 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
               <table className="w-full text-sm text-left">
                 <thead className="bg-gray-55 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
                   <tr>
-                    <th className="px-6 py-4">Travel Date</th>
-                    <th className="px-6 py-4">Destination</th>
+                    <th className="px-6 py-4">Type</th>
+                    <th className="px-6 py-4">Details</th>
                     <th className="px-6 py-4 text-right">Quantity</th>
                     <th className="px-6 py-4 text-right">Amount</th>
                     <th className="px-6 py-4 text-right">Action</th>
@@ -430,8 +475,12 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
                   {items.map((item, index) => (
                     <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.travel_date}</td>
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">{item.destination}</td>
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</td>
+                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">
+                        {item.source_type === 'trip_ticket' || !item.source_type
+                          ? `${item.travel_date || ''} - ${item.destination || ''}`
+                          : item.description}
+                      </td>
                       <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
                       <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
                       <td className="px-6 py-4.5 text-right">

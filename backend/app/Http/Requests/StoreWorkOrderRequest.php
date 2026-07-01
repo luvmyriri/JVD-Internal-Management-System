@@ -8,7 +8,9 @@ class StoreWorkOrderRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasPermission('procurement', 'create') || $this->user()->hasRole('driver');
+        $user = $this->user();
+        return $user->hasPermission('procurement', 'create') ||
+               $user->hasRole('driver', 'head_mechanic', 'service_adviser', 'dispatcher', 'logistics_in_charge', 'super_admin', 'executive_vice_president');
     }
 
     public function rules(): array
@@ -21,6 +23,7 @@ class StoreWorkOrderRequest extends FormRequest
             'parts_used'  => ['nullable', 'string', 'max:1000'],
             'cost'        => ['nullable', 'numeric', 'min:0'],
             'type'        => ['nullable', 'in:maintenance,trip'],
+            'is_override' => ['nullable', 'boolean'],
         ];
     }
 }

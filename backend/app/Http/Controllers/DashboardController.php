@@ -40,19 +40,9 @@ class DashboardController extends Controller
         $grid = array_fill(0, 7, array_fill(0, 12, 0));
         
         $jobOrders = JobOrder::select('created_at')->get();
-        
-        $baseline = [
-            [15, 20, 25, 45, 60, 65, 75, 85, 95, 90, 80, 45], // Mon
-            [20, 15, 20, 35, 55, 68, 72, 88, 98, 92, 85, 50], // Tue
-            [18, 12, 15, 30, 50, 60, 70, 80, 95, 90, 78, 40], // Wed
-            [15, 10, 18, 32, 48, 62, 75, 82, 92, 88, 75, 35], // Thu
-            [22, 18, 25, 40, 65, 75, 85, 95, 100, 96, 88, 60], // Fri
-            [30, 25, 22, 35, 50, 65, 80, 90, 98, 95, 90, 70], // Sat
-            [25, 20, 15, 25, 40, 55, 68, 78, 88, 85, 80, 65], // Sun
-        ];
 
         if ($jobOrders->isEmpty()) {
-            return $baseline;
+            return $grid;
         }
 
         foreach ($jobOrders as $jo) {
@@ -74,22 +64,18 @@ class DashboardController extends Controller
         }
 
         if ($max === 0) {
-            return $baseline;
+            return $grid;
         }
 
         $normalizedGrid = [];
         for ($day = 0; $day < 7; $day++) {
             $dayRow = [];
             for ($block = 0; $block < 12; $block++) {
-                $realPercentage = ($grid[$day][$block] / $max) * 100;
+                $val = 0;
                 if ($grid[$day][$block] > 0) {
-                    // Blend 60% real data and 40% baseline to ensure nice aesthetics
-                    $val = (int) (($realPercentage * 0.6) + ($baseline[$day][$block] * 0.4));
-                } else {
-                    // If no real bookings in this slot, use baseline dimmed to 50%
-                    $val = (int) ($baseline[$day][$block] * 0.5);
+                    $val = (int) (($grid[$day][$block] / $max) * 100);
                 }
-                $dayRow[] = max(5, min(100, $val));
+                $dayRow[] = $val;
             }
             $normalizedGrid[] = $dayRow;
         }
@@ -175,7 +161,7 @@ class DashboardController extends Controller
                 'sales'    => '₱' . number_format($row->total, 0),
                 'bookings' => Invoice::where('created_by', $row->created_by)
                     ->whereMonth('created_at', Carbon::now()->month)->count(),
-                'rating'   => 4.5,
+                'rating'   => 0.0,
                 'image'    => "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=f43f5e&color=fff",
             ];
         })->toArray();
@@ -200,16 +186,16 @@ class DashboardController extends Controller
                 'name'   => $name,
                 'trips'  => (int) $row->trips,
                 'hours'  => (int) $row->trips * 4, // approx 4h/trip
-                'rating' => 4.7,
+                'rating' => 0.0,
                 'image'  => "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background=3b82f6&color=fff",
             ];
         })->toArray();
     }
 
-    /** Recent job orders formatted as travel bookings for the list widget. */
     private function recentTravelBookings(int $limit = 6): array
     {
         return JobOrder::with(['customer:id,first_name,last_name'])
+            ->travel()
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
@@ -248,10 +234,10 @@ class DashboardController extends Controller
         return false;
     }
 
-    /** Local (domestic PH) job orders, formatted for the booking list widget. */
     private function localTravelBookings(int $limit = 6): array
     {
         return JobOrder::with(['customer:id,first_name,last_name'])
+            ->travel()
             ->orderByDesc('created_at')
             ->get()
             ->filter(fn($jo) => $this->isLocalDestination($jo->destination ?? ''))
@@ -275,10 +261,10 @@ class DashboardController extends Controller
             ->toArray();
     }
 
-    /** International (non-PH) job orders, formatted for the booking list widget. */
     private function internationalTravelBookings(int $limit = 5): array
     {
         return JobOrder::with(['customer:id,first_name,last_name'])
+            ->travel()
             ->orderByDesc('created_at')
             ->get()
             ->filter(fn($jo) => !$this->isLocalDestination($jo->destination ?? ''))
@@ -302,10 +288,10 @@ class DashboardController extends Controller
             ->toArray();
     }
 
-    /** Pending and reserved (non-completed, non-cancelled) job orders. */
     private function pendingReservedBookings(int $limit = 6): array
     {
         return JobOrder::with(['customer:id,first_name,last_name'])
+            ->travel()
             ->whereNotIn('status', ['completed', 'cancelled'])
             ->orderByDesc('created_at')
             ->limit($limit)

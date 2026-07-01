@@ -30,8 +30,11 @@ class CommissionController extends Controller
             'serial_no' => 'nullable|string|unique:commissions,serial_no',
             'date' => 'required|date',
             'items' => 'required|array|min:1',
-            'items.*.travel_date' => 'required|date',
-            'items.*.destination' => 'required|string',
+            'items.*.travel_date' => 'nullable|date',
+            'items.*.destination' => 'nullable|string',
+            'items.*.source_type' => 'nullable|string',
+            'items.*.source_id' => 'nullable|integer',
+            'items.*.description' => 'nullable|string',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.amount' => 'required|numeric|min:0',
         ]);

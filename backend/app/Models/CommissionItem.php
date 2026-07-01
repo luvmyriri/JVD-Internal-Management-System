@@ -7,12 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class CommissionItem extends Model
 {
     protected $fillable = [
-        'commission_id', 'travel_date', 'destination', 'quantity', 'amount'
+        'commission_id', 'travel_date', 'destination', 'quantity', 'amount',
+        'source_type', 'source_id', 'description'
     ];
 
     public function commission()
     {
         return $this->belongsTo(Commission::class);
+    }
+
+    public function source()
+    {
+        return $this->morphTo();
     }
 }
 

@@ -15,14 +15,13 @@ class WorkOrderService
         return DB::transaction(function () use ($data, $userId) {
             $user = \App\Models\User::find($userId);
             
-            $status = 'open';
-            $isMaintenance = ($data['type'] ?? 'maintenance') === 'maintenance';
-            if ($user) {
-                if ($user->hasRole('driver') || ($isMaintenance && in_array($user->role, ['dispatcher', 'logistics_in_charge']))) {
-                    $status = 'pending_validation';
-                } elseif (!in_array($user->role, ['super_admin', 'executive_vice_president', 'service_adviser'])) {
-                    $status = 'pending_approval';
-                }
+            $status = 'pending_validation';
+            $isOverride = !empty($data['is_override']);
+            
+            if ($isOverride && $user && $user->hasRole('super_admin', 'executive_vice_president', 'service_adviser', 'dispatcher', 'logistics_in_charge')) {
+                $status = 'open';
+            } elseif ($user && $user->hasRole('head_mechanic')) {
+                $status = 'pending_approval';
             }
 
             $wo = WorkOrder::create([

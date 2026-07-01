@@ -9,6 +9,9 @@ interface Props {
 }
 
 interface CommissionItem {
+  source_type: string;
+  source_id?: number | '';
+  description: string;
   travel_date: string;
   destination: string;
   quantity: number;
@@ -19,7 +22,8 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
   const queryClient = useQueryClient();
   const [commissionerName, setCommissionerName] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [items, setItems] = useState<CommissionItem[]>([{ travel_date: '', destination: '', quantity: 1, amount: 0 }]);
+  const defaultItem: CommissionItem = { source_type: 'trip_ticket', source_id: '', description: '', travel_date: '', destination: '', quantity: 1, amount: 0 };
+  const [items, setItems] = useState<CommissionItem[]>([{ ...defaultItem }]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -33,7 +37,7 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
         onClose();
         // Reset form
         setCommissionerName('');
-        setItems([{ travel_date: '', destination: '', quantity: 1, amount: 0 }]);
+        setItems([{ ...defaultItem }]);
       }, 2000);
     },
     onError: (err: any) => {
@@ -51,8 +55,16 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
     }
     
     for (const item of items) {
-      if (!item.travel_date || !item.destination || item.quantity < 1 || item.amount < 0) {
+      if (item.quantity < 1 || item.amount < 0) {
         setError('Please fill out all item fields correctly.');
+        return;
+      }
+      if (item.source_type === 'trip_ticket' && (!item.travel_date || !item.destination)) {
+        setError('Please provide travel date and destination for trips.');
+        return;
+      }
+      if (item.source_type !== 'trip_ticket' && !item.description) {
+        setError('Please provide a description for the commission source.');
         return;
       }
     }
@@ -64,7 +76,7 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
     });
   };
 
-  const addItem = () => setItems([...items, { travel_date: '', destination: '', quantity: 1, amount: 0 }]);
+  const addItem = () => setItems([...items, { ...defaultItem }]);
   const removeItem = (idx: number) => setItems(items.filter((_, i) => i !== idx));
 
   if (!isOpen) return null;
@@ -129,35 +141,72 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
               
               <div className="space-y-3">
                 {items.map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                    <input
-                      type="date"
-                      value={item.travel_date}
-                      onChange={(e) => {
-                        const newItems = [...items];
-                        newItems[idx].travel_date = e.target.value;
-                        setItems(newItems);
-                      }}
-                      className="w-32 px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      disabled={mutation.isPending}
-                      required
-                    />
-                    <input
-                      type="text"
-                      placeholder="Destination"
-                      value={item.destination}
-                      onChange={(e) => {
-                        const newItems = [...items];
-                        newItems[idx].destination = e.target.value;
-                        setItems(newItems);
-                      }}
-                      className="flex-1 px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                      disabled={mutation.isPending}
-                      required
-                    />
-                    <input
-                      type="number"
-                      min="1"
+                  <div key={idx} className="flex flex-col gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                      <select
+                        value={item.source_type}
+                        onChange={(e) => {
+                          const newItems = [...items];
+                          newItems[idx].source_type = e.target.value;
+                          setItems(newItems);
+                        }}
+                        className="w-full sm:w-auto px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white"
+                        disabled={mutation.isPending}
+                      >
+                        <option value="trip_ticket">Trip Ticket</option>
+                        <option value="sales_invoice">Sales / Invoice</option>
+                        <option value="referral">Referral / Other</option>
+                      </select>
+                      
+                      {item.source_type === 'trip_ticket' ? (
+                        <>
+                          <input
+                            type="date"
+                            value={item.travel_date}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].travel_date = e.target.value;
+                              setItems(newItems);
+                            }}
+                            className="w-full sm:w-32 px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            disabled={mutation.isPending}
+                            required
+                          />
+                          <input
+                            type="text"
+                            placeholder="Destination"
+                            value={item.destination}
+                            onChange={(e) => {
+                              const newItems = [...items];
+                              newItems[idx].destination = e.target.value;
+                              setItems(newItems);
+                            }}
+                            className="flex-1 px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            disabled={mutation.isPending}
+                            required
+                          />
+                        </>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder="Description (e.g. Sold Fixed Package ID-123)"
+                          value={item.description}
+                          onChange={(e) => {
+                            const newItems = [...items];
+                            newItems[idx].description = e.target.value;
+                            setItems(newItems);
+                          }}
+                          className="flex-1 px-2 py-1.5 text-sm border border-slate-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          disabled={mutation.isPending}
+                          required
+                        />
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2 self-end sm:self-auto">
+                      <input
+                        type="number"
+                        min="1"
                       placeholder="Qty"
                       value={item.quantity}
                       onChange={(e) => {
@@ -190,6 +239,7 @@ export function RequestCommissionModal({ isOpen, onClose }: Props) {
                       </button>
                     )}
                   </div>
+                </div>
                 ))}
               </div>
             </div>

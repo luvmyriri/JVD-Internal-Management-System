@@ -253,6 +253,13 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
   });
   const suppliers = suppliersData?.data?.data ?? [];
 
+  const { data: inventoryData } = useQuery({
+    queryKey: ['available-supplies'],
+    queryFn: () => jobOrderApi.getAvailableSupplies(),
+    staleTime: 60_000,
+  });
+  const supplies = inventoryData?.data?.data ?? [];
+
   const mutation = useMutation({
     mutationFn: () => jobOrderApi.generatePurchaseOrder(jo.id, {
       supplier_id: supplierId,
@@ -320,43 +327,57 @@ function GeneratePOModal({ jo, onClose }: { jo: JobOrder; onClose: () => void })
                 <LuPlus size={12} /> Add Item
               </button>
             </div>
-            <div className="space-y-3">
-              {items.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-12 gap-3 items-center">
-                  <input value={item.item_name} onChange={e => setItem(idx, 'item_name', e.target.value)}
-                    placeholder="Item / Parts name" className="col-span-5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="text" inputMode="numeric" value={item.quantity} 
-                    onChange={e => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      setItem(idx, 'quantity', val);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.ctrlKey || e.metaKey) return;
-                      if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    placeholder="Qty" className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <input type="text" inputMode="decimal" value={item.unit_price} 
-                    onChange={e => {
-                      const clean = parseMoneyInput(e.target.value);
-                      if ((clean.split('.').length - 1) > 1) return;
-                      const formatted = formatMoneyInput(e.target.value);
-                      setItem(idx, 'unit_price', formatted);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.ctrlKey || e.metaKey) return;
-                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                    placeholder="Unit price" className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1}
-                    className="col-span-1 flex items-center justify-center p-2 text-red-400 hover:text-red-600 disabled:opacity-30 transition">
-                    <LuTrash2 size={14} />
-                  </button>
-                </div>
-              ))}
+            <div className="space-y-4">
+              {items.map((item, idx) => {
+                const match = item.item_name.trim() ? supplies.find((s: any) => s.item_name.toLowerCase() === item.item_name.toLowerCase().trim()) : null;
+                return (
+                  <div key={idx} className="flex flex-col gap-1.5">
+                    <div className="grid grid-cols-12 gap-3 items-center">
+                      <input value={item.item_name} onChange={e => setItem(idx, 'item_name', e.target.value)}
+                        placeholder="Item / Parts name" className="col-span-5 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white" />
+                      <input type="text" inputMode="numeric" value={item.quantity} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/\D/g, '');
+                          setItem(idx, 'quantity', val);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.ctrlKey || e.metaKey) return;
+                          if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        placeholder="Qty" className="col-span-2 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white" />
+                      <input type="text" inputMode="decimal" value={item.unit_price} 
+                        onChange={e => {
+                          const clean = parseMoneyInput(e.target.value);
+                          if ((clean.split('.').length - 1) > 1) return;
+                          const formatted = formatMoneyInput(e.target.value);
+                          setItem(idx, 'unit_price', formatted);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.ctrlKey || e.metaKey) return;
+                          if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        placeholder="Unit price" className="col-span-4 px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-800 dark:text-white" />
+                      <button type="button" onClick={() => removeItem(idx)} disabled={items.length === 1}
+                        className="col-span-1 flex items-center justify-center p-2 text-red-400 hover:text-red-600 disabled:opacity-30 transition">
+                        <LuTrash2 size={14} />
+                      </button>
+                    </div>
+                    {match && (
+                      <div className="text-[10px] ml-1 flex items-center gap-1.5 font-bold">
+                        {match.quantity > 0 ? (
+                          <span className="text-emerald-600 dark:text-emerald-400">Notice: {match.quantity} {match.unit} available in inventory. You may not need to purchase this.</span>
+                        ) : (
+                          <span className="text-blue-600 dark:text-blue-400">Notice: This item is in inventory but currently out of stock (0 qty). This purchase will replenish it.</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
 

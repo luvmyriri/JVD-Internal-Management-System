@@ -198,6 +198,7 @@ export interface WorkOrderFormData {
   description: string;
   parts_used?: string;
   cost?: number;
+  is_override?: boolean;
 }
 
 // ──────────────────────────────────────────

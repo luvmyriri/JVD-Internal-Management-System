@@ -101,6 +101,55 @@ export default function OperationsDashboard() {
         </div>
       </div>
 
+      {/* ── Active Trips Table ── */}
+      <div className="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0 bg-slate-50/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
+              <LuGlobe className="w-5 h-5" />
+            </div>
+            <h2 className="text-lg font-bold text-slate-800">Active Trips Overview</h2>
+          </div>
+        </div>
+        
+        <div className="p-0 overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[800px]">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
+                <th className="p-4 pl-6">Control No.</th>
+                <th className="p-4">Travel Date</th>
+                <th className="p-4">Destination</th>
+                <th className="p-4">Bus</th>
+                <th className="p-4">Driver</th>
+                <th className="p-4 pr-6">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 text-sm">
+              {activeTickets.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500">No active trips at the moment.</td>
+                </tr>
+              ) : (
+                activeTickets.map((ticket: any) => (
+                  <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
+                    <td className="p-4 pl-6 font-medium text-slate-800">{ticket.control_no}</td>
+                    <td className="p-4 text-slate-600">{ticket.date_of_travel}</td>
+                    <td className="p-4 text-slate-600 truncate max-w-[200px]">{ticket.drop_off}</td>
+                    <td className="p-4 text-slate-600">{ticket.bus?.plate_number || 'TBD'}</td>
+                    <td className="p-4 text-slate-600">{ticket.driver ? `${ticket.driver.first_name} ${ticket.driver.last_name}` : 'TBD'}</td>
+                    <td className="p-4 pr-6">
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+                        {ticket.status.replace('_', ' ').toUpperCase()}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <RequestCommissionModal isOpen={showCommissionModal} onClose={() => setShowCommissionModal(false)} />
     </div>
   );

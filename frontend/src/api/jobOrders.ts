@@ -26,4 +26,7 @@ export const jobOrderApi = {
   /** Generate a Purchase Order from a Job Order */
   generatePurchaseOrder: (id: number, data: { supplier_id: number; items: { item_name: string; quantity: number; unit_price: number }[] }) =>
     client.post<{ success: boolean; data: any; message: string }>(`/job-orders/${id}/generate-purchase-order`, data),
+
+  getAvailableSupplies: (search?: string) =>
+    client.get<{ success: boolean; data: any[] }>('/job-orders/available-supplies', { params: { search } }),
 };
