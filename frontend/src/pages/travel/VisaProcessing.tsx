@@ -111,6 +111,14 @@ const COUNTRY_SPECIFIC_CHECKLISTS: Record<string, string[]> = {
   'TW': ['Valid Passport', 'Return Flight Ticket', 'Proof of Accommodation', 'e-Gate Registration (Optional)'],
 };
 
+const VISA_TYPE_EXTRAS: Record<string, string[]> = {
+  'Business': ['Letter of Invitation (from Host Company)', 'Business Registration of Host Company', 'Guarantee Letter (if applicable)'],
+  'Student': ['Acceptance Letter from School', 'Proof of Tuition Payment', 'Academic Transcripts/Records'],
+  'Transit': ['Visa for Final Destination', 'Confirmed Forward Flight Ticket'],
+  'Tourist': ['Detailed Travel Itinerary'],
+  'Other': ['Additional Supporting Documents as requested'],
+};
+
 const COUNTRIES = [
   { code: 'JP', name: 'Japan' },
   { code: 'KR', name: 'South Korea' },
@@ -209,8 +217,8 @@ function NewVisaCaseModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Open Visa Case" size="sm">
-      <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
+    <Modal isOpen onClose={onClose} title="Open Visa Case" size="lg">
+      <div className="flex flex-col p-2">
         <div className="space-y-5">
           <details className="group" open>
             <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
@@ -563,8 +571,8 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           const itemsToUse = specificChecklist || VISA_CHECKLIST;
 
           if (apiData) {
-            const rule = apiData.visa_rules?.primary || '';
-            const validity = apiData.metadata?.passport_validity || '';
+            const rule = apiData.visa_rules?.primary_rule?.name || '';
+            const validity = apiData.destination?.passport_validity || '';
             const reg = apiData.mandatory_registration;
 
             itemsToUse.forEach(item => {
@@ -584,6 +592,14 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
             });
           }
 
+          // Add visa type specific requirements
+          if (vc.visa_type) {
+            const extras = VISA_TYPE_EXTRAS[vc.visa_type] || [];
+            extras.forEach(item => {
+              generatedChecklist[item] = false;
+            });
+          }
+
           setLocalChecklist(generatedChecklist);
           checklistMutation.mutate(generatedChecklist);
         })
@@ -597,6 +613,14 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           itemsToUse.forEach(item => {
             generatedChecklist[item] = false;
           });
+
+          // Add visa type specific requirements
+          if (vc.visa_type) {
+            const extras = VISA_TYPE_EXTRAS[vc.visa_type] || [];
+            extras.forEach(item => {
+              generatedChecklist[item] = false;
+            });
+          }
           
           setLocalChecklist(generatedChecklist);
           checklistMutation.mutate(generatedChecklist);
@@ -637,7 +661,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
 
   return (
     <Modal isOpen onClose={onClose} title={`Visa Case #${vc.id}`} size="lg">
-      <div className="overflow-y-auto custom-scrollbar max-h-[75vh]">
+      <div className="flex flex-col">
         <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
           <button
             onClick={() => setActiveTab('details')}

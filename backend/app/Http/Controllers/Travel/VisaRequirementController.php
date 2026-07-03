@@ -34,8 +34,7 @@ class VisaRequirementController extends Controller
             $response = Http::withHeaders([
                 'x-rapidapi-host' => 'visa-requirement.p.rapidapi.com',
                 'x-rapidapi-key'  => $apiKey,
-                'Content-Type'    => 'application/json',
-            ])->post('https://visa-requirement.p.rapidapi.com/v2/visa/check', [
+            ])->asForm()->post('https://visa-requirement.p.rapidapi.com/v2/visa/check', [
                 'passport'    => $passport,
                 'destination' => $destination,
             ]);
