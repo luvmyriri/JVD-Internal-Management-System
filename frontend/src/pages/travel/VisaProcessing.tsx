@@ -91,6 +91,26 @@ const VISA_CHECKLIST = [
   'Employer Certificate / ITR',
 ];
 
+const COUNTRY_SPECIFIC_CHECKLISTS: Record<string, string[]> = {
+  'US': ['Valid Passport', 'DS-160 Confirmation Page', 'MRV Fee Receipt', 'Interview Appointment Confirmation', '2x2 Photo (White Background)', 'Bank Statement', 'Proof of Ties to Home Country'],
+  'JP': ['Valid Passport', 'Visa Application Form (Japan)', '2x2 Photo (White Background)', 'Birth Certificate (PSA)', 'Marriage Certificate (PSA, if applicable)', 'Itinerary in Japan', 'Bank Certificate', 'ITR (Form 2316)'],
+  'KR': ['Valid Passport', 'Visa Application Form (South Korea)', '1.5x2 Photo (White Background)', 'Original Bank Certificate', 'Bank Statement (Last 3 months)', 'ITR (Form 2316)', 'Certificate of Employment'],
+  'GB': ['Valid Passport', 'Online Application Form (UK)', 'Biometrics Confirmation', 'Proof of Financial Means (Bank Statements)', 'Accommodation Details', 'Travel Itinerary', 'Certificate of Employment'],
+  'CA': ['Valid Passport', 'IMM 5257 Form', 'Family Information Form (IMM 5645)', 'Digital Photo', 'Proof of Financial Support', 'Purpose of Travel (Itinerary)', 'Travel History'],
+  'AU': ['Valid Passport', 'Form 1419', 'Recent Passport-sized Photo', 'Bank Statement (Last 3 months)', 'Payslips', 'Certificate of Employment', 'Evidence of Travel History'],
+  'CN': ['Valid Passport (with at least 6 months validity)', 'Visa Application Form', 'Recent Passport-sized Photo', 'Round-trip Flight Tickets', 'Hotel Reservation', 'Previous Chinese Visas (if applicable)'],
+  'AE': ['Valid Passport (with at least 6 months validity)', 'Recent Colored Photograph', 'Confirmed Flight Ticket', 'National ID (if applicable)'],
+  // Schengen countries
+  'FR': ['Valid Passport', 'Schengen Application Form', 'Travel Health Insurance (Min €30,000)', 'Flight Reservation', 'Proof of Accommodation', 'Bank Statement (3 months)', 'Certificate of Employment'],
+  'IT': ['Valid Passport', 'Schengen Application Form', 'Travel Health Insurance (Min €30,000)', 'Flight Reservation', 'Proof of Accommodation', 'Bank Statement (3 months)', 'Certificate of Employment'],
+  'ES': ['Valid Passport', 'Schengen Application Form', 'Travel Health Insurance (Min €30,000)', 'Flight Reservation', 'Proof of Accommodation', 'Bank Statement (3 months)', 'Certificate of Employment'],
+  'DE': ['Valid Passport', 'Schengen Application Form', 'Travel Health Insurance (Min €30,000)', 'Flight Reservation', 'Proof of Accommodation', 'Bank Statement (3 months)', 'Certificate of Employment'],
+  // Visa-free / VoA for PH
+  'SG': ['Valid Passport', 'SG Arrival Card', 'Return Flight Ticket', 'Proof of Accommodation'],
+  'TH': ['Valid Passport', 'Return Flight Ticket', 'Proof of Accommodation', 'Sufficient Funds'],
+  'TW': ['Valid Passport', 'Return Flight Ticket', 'Proof of Accommodation', 'e-Gate Registration (Optional)'],
+};
+
 const COUNTRIES = [
   { code: 'JP', name: 'Japan' },
   { code: 'KR', name: 'South Korea' },
@@ -537,27 +557,19 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
       passportingApi.getVisaRequirements(vc.destination_country)
         .then(res => {
           const apiData = res.data?.data?.data;
-          const generatedChecklist: Record<string, boolean> = {
-            'Valid Passport': false,
-          };
+          const generatedChecklist: Record<string, boolean> = {};
+          
+          const specificChecklist = COUNTRY_SPECIFIC_CHECKLISTS[vc.destination_country || ''];
+          const itemsToUse = specificChecklist || VISA_CHECKLIST;
 
           if (apiData) {
             const rule = apiData.visa_rules?.primary || '';
             const validity = apiData.metadata?.passport_validity || '';
             const reg = apiData.mandatory_registration;
 
-            if (rule.toLowerCase().includes('required') || rule.toLowerCase().includes('evisa') || rule.toLowerCase().includes('eta')) {
-              generatedChecklist['Visa Application Form'] = false;
-              generatedChecklist['Proof of Accommodation'] = false;
-              generatedChecklist['Flight Itinerary'] = false;
-              generatedChecklist['Bank Statement (3 months)'] = false;
-              generatedChecklist['Travel Insurance'] = false;
-              generatedChecklist['Employer Certificate / ITR'] = false;
-              generatedChecklist['Passport photo (white background)'] = false;
-            } else {
-              generatedChecklist['Return Flight Ticket'] = false;
-              generatedChecklist['Proof of Accommodation'] = false;
-            }
+            itemsToUse.forEach(item => {
+              generatedChecklist[item] = false;
+            });
 
             if (reg && reg.name) {
               generatedChecklist[`Complete ${reg.name} Registration`] = false;
@@ -567,7 +579,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
               generatedChecklist[`Passport valid for at least ${validity}`] = false;
             }
           } else {
-            VISA_CHECKLIST.forEach(item => {
+            itemsToUse.forEach(item => {
               generatedChecklist[item] = false;
             });
           }
@@ -576,11 +588,16 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           checklistMutation.mutate(generatedChecklist);
         })
         .catch(err => {
-          console.error('Failed to load API visa requirements:', err);
+          console.warn('Failed to load API visa requirements (fallback used):', err);
           const generatedChecklist: Record<string, boolean> = {};
-          VISA_CHECKLIST.forEach(item => {
+          
+          const specificChecklist = COUNTRY_SPECIFIC_CHECKLISTS[vc.destination_country || ''];
+          const itemsToUse = specificChecklist || VISA_CHECKLIST;
+
+          itemsToUse.forEach(item => {
             generatedChecklist[item] = false;
           });
+          
           setLocalChecklist(generatedChecklist);
           checklistMutation.mutate(generatedChecklist);
         })
