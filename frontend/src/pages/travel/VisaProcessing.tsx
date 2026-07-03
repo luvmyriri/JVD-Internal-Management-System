@@ -660,29 +660,31 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
   };
 
   return (
-    <Modal isOpen onClose={onClose} title={`Visa Case #${vc.id}`} size="lg">
-      <div className="flex flex-col">
-        <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 sticky top-0 bg-white dark:bg-gray-900 z-10">
-          <button
-            onClick={() => setActiveTab('details')}
-            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          >
-            Details
-          </button>
-          <button
-            onClick={() => setActiveTab('documents')}
-            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'documents' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          >
-            Documents
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
-          >
-            History
-          </button>
-        </div>
+    <Modal isOpen onClose={onClose} title={`Visa Case #${vc.id}`} size="lg" noPadding>
+      {/* Tabs — fixed, outside scroll area */}
+      <div className="flex border-b border-gray-200 dark:border-gray-800 px-6 pt-2 bg-white dark:bg-gray-900 shrink-0">
+        <button
+          onClick={() => setActiveTab('details')}
+          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'details' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+        >
+          Details
+        </button>
+        <button
+          onClick={() => setActiveTab('documents')}
+          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'documents' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+        >
+          Documents
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`pb-2 px-4 text-sm font-medium border-b-2 transition-colors ${activeTab === 'history' ? 'border-violet-600 text-violet-600' : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400'}`}
+        >
+          History
+        </button>
+      </div>
 
+      {/* Scrollable content */}
+      <div className="overflow-y-auto custom-scrollbar flex-1 p-6">
         {activeTab === 'details' && (
           <div className="p-2 space-y-5 mt-4">
             <details className="group" open>
@@ -724,12 +726,12 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
                       <p className="text-sm font-bold text-gray-900 dark:text-white">{vc.handler.full_name || `${vc.handler.first_name} ${vc.handler.last_name}`}</p>
                     </div>
                   )}
-                  {vc.reference_number && (
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
-                      <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">{vc.reference_number}</p>
-                    </div>
-                  )}
+                  <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl col-span-2">
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Reference No.</p>
+                    <p className="text-sm font-mono font-bold text-gray-900 dark:text-white">
+                      {vc.reference_number || <span className="text-gray-400 font-normal italic text-xs">Not yet assigned</span>}
+                    </p>
+                  </div>
                   {vc.customer?.email && (
                     <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-2xl">
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Email Address</p>
@@ -961,9 +963,9 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
             {!readOnly && (
               <div className="bg-gray-50 dark:bg-gray-800 p-5 rounded-2xl border border-gray-100 dark:border-gray-750 space-y-4 shadow-sm">
                 <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wider">Upload New Document</h4>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Document Title *</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Document Title *</label>
                     <div className="flex gap-2">
                       <select
                         value={selectedTitle}
@@ -975,7 +977,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
                             setUploadTitle('');
                           }
                         }}
-                        className="px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 max-w-[180px]"
+                        className="px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500 w-full"
                       >
                         <option value="">-- Select Title --</option>
                         {items.map(i => (
@@ -989,13 +991,13 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
                           placeholder="e.g. Custom scan"
                           value={uploadTitle}
                           onChange={e => setUploadTitle(e.target.value)}
-                          className="flex-1 px-4 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          className="flex-1 px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-xs bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-violet-500"
                         />
                       )}
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">File *</label>
+                    <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">File *</label>
                     <input
                       key={fileInputKey}
                       type="file"
