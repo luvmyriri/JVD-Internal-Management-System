@@ -237,28 +237,41 @@ class DashboardController extends Controller
         return false;
     }
 
+    private function isLocalBooking($inv): bool
+    {
+        $lower = strtolower($inv->tour_code ?? $inv->description ?? '');
+        // If it's explicitly a bus rental, we consider it local
+        if (str_contains($lower, 'bus rental')) {
+            return true;
+        }
+        foreach (LOCAL_DESTINATION_KEYWORDS as $kw) {
+            if (str_contains($lower, $kw)) return true;
+        }
+        return false;
+    }
+
     private function localTravelBookings(int $limit = 6): array
     {
-        return JobOrder::with(['customer:id,first_name,last_name'])
-            ->travel()
+        return Invoice::with(['customer:id,first_name,last_name'])
+            ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn($jo) => $this->isLocalJobOrder($jo))
+            ->filter(fn($inv) => $this->isLocalBooking($inv))
             ->take($limit)
             ->values()
-            ->map(function ($jo, $idx) {
-                $customer = $jo->customer
-                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
-                    : 'N/A';
-                $status = $this->mapJobOrderStatus($jo->status ?? 'created');
+            ->map(function ($inv, $idx) {
+                $customer = $inv->customer
+                    ? "{$inv->customer->first_name} {$inv->customer->last_name}"
+                    : ($inv->customer_name ?? 'N/A');
+                $status = $this->mapInvoiceStatus($inv->status ?? 'pending');
                 return [
-                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
-                    'db_id'       => $jo->id,
+                    'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
+                    'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $jo->destination ?? 'N/A',
-                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
-                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                    'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
             })
             ->toArray();
@@ -266,26 +279,26 @@ class DashboardController extends Controller
 
     private function internationalTravelBookings(int $limit = 5): array
     {
-        return JobOrder::with(['customer:id,first_name,last_name'])
-            ->travel()
+        return Invoice::with(['customer:id,first_name,last_name'])
+            ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
-            ->filter(fn($jo) => !$this->isLocalJobOrder($jo))
+            ->filter(fn($inv) => !$this->isLocalBooking($inv))
             ->take($limit)
             ->values()
-            ->map(function ($jo, $idx) {
-                $customer = $jo->customer
-                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
-                    : 'N/A';
-                $status = $this->mapJobOrderStatus($jo->status ?? 'created');
+            ->map(function ($inv, $idx) {
+                $customer = $inv->customer
+                    ? "{$inv->customer->first_name} {$inv->customer->last_name}"
+                    : ($inv->customer_name ?? 'N/A');
+                $status = $this->mapInvoiceStatus($inv->status ?? 'pending');
                 return [
-                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
-                    'db_id'       => $jo->id,
+                    'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
+                    'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $jo->destination ?? 'N/A',
-                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
-                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                    'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
             })
             ->toArray();
@@ -293,26 +306,26 @@ class DashboardController extends Controller
 
     private function pendingReservedBookings(int $limit = 6): array
     {
-        return JobOrder::with(['customer:id,first_name,last_name'])
-            ->travel()
-            ->whereNotIn('status', ['completed', 'cancelled'])
+        return Invoice::with(['customer:id,first_name,last_name'])
+            ->whereNull('cash_budget_request_id')
+            ->whereNotIn('status', ['paid', 'cancelled']) // Not fully paid or cancelled
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get()
-            ->map(function ($jo) {
-                $customer = $jo->customer
-                    ? "{$jo->customer->first_name} {$jo->customer->last_name}"
-                    : 'N/A';
-                $isLocal = $this->isLocalJobOrder($jo);
-                $rawStatus = $jo->status ?? 'created';
-                $status = in_array($rawStatus, ['confirmed', 'in_progress']) ? 'Reserved' : 'Pending';
+            ->map(function ($inv) {
+                $customer = $inv->customer
+                    ? "{$inv->customer->first_name} {$inv->customer->last_name}"
+                    : ($inv->customer_name ?? 'N/A');
+                $isLocal = $this->isLocalBooking($inv);
+                $rawStatus = $inv->status ?? 'pending';
+                $status = in_array($rawStatus, ['partial']) ? 'Reserved' : 'Pending';
                 return [
-                    'id'          => $jo->jo_number ?? "JO-{$jo->id}",
+                    'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'customer'    => $customer,
-                    'destination' => $jo->destination ?? 'N/A',
-                    'date'        => optional($jo->service_date)->format('Y-m-d') ?? $jo->created_at->format('Y-m-d'),
+                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
-                    'amount'      => '₱' . number_format($jo->total_cost ?? 0, 0),
+                    'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                     'type'        => $isLocal ? 'Local' : 'International',
                 ];
             })

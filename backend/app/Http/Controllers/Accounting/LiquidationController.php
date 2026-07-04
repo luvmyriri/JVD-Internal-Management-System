@@ -150,8 +150,10 @@ class LiquidationController extends Controller
             return response()->json(['error' => 'Cannot delete a settled liquidation.'], 422);
         }
 
-        $liquidation->items()->delete();
-        $liquidation->delete();
+        \Illuminate\Support\Facades\DB::transaction(function () use ($liquidation) {
+            $liquidation->items()->delete();
+            $liquidation->delete();
+        });
 
         return response()->json(['success' => true, 'message' => 'Liquidation deleted successfully.']);
     }

@@ -474,11 +474,14 @@ class BillingController extends Controller
         ]);
 
         $invoice = Invoice::findOrFail($id);
-        $invoice->update([
-            'status' => $validated['status'],
-        ]);
+        
+        DB::transaction(function () use ($invoice, $validated) {
+            $invoice->update([
+                'status' => $validated['status'],
+            ]);
 
-        app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+            app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+        });
 
         if ($invoice->customer_email) {
             try {

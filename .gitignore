@@ -40,3 +40,10 @@ Project Adherence/JVD_System_Architecture.pdf
 Project Adherence/JVD_Travel_Management_System_Proposal.pdf
 .vercel
 .env*
+
+# Prevent tracking binaries, archives, and environment/tooling folders
+*.exe
+*.zip
+*.log
+php83/
+tools/

@@ -167,27 +167,35 @@ class CollectionController extends Controller
     {
         $collection = Collection::findOrFail($id);
 
-        $remaining = $collection->billing_amount - $collection->payments()->sum('amount');
-        if ($remaining > 0) {
-            $collection->payments()->create([
-                'payment_date'   => date('Y-m-d'),
-                'payment_method' => 'Cash',
-                'amount'         => $remaining,
-                'balance'        => 0,
-            ]);
-        }
-
-        $collection->recalculate();
-
-        // Sync the linked invoice to paid as well
-        if ($collection->invoice_id) {
-            $invoice = $collection->invoice;
-            if ($invoice) {
-                $invoice->update([
-                    'status'          => 'paid',
-                    'balance'         => 0,
-                    'amount_received' => $invoice->total_amount,
+        DB::transaction(function () use ($collection) {
+            $remaining = $collection->billing_amount - $collection->payments()->sum('amount');
+            if ($remaining > 0) {
+                $collection->payments()->create([
+                    'payment_date'   => date('Y-m-d'),
+                    'payment_method' => 'Cash',
+                    'amount'         => $remaining,
+                    'balance'        => 0,
                 ]);
+            }
+
+            $collection->recalculate();
+
+            // Sync the linked invoice to paid as well
+            if ($collection->invoice_id) {
+                $invoice = $collection->invoice;
+                if ($invoice) {
+                    $invoice->update([
+                        'status'          => 'paid',
+                        'balance'         => 0,
+                        'amount_received' => $invoice->total_amount,
+                    ]);
+                }
+            }
+        });
+
+        // Send email outside of transaction
+        if ($collection->invoice_id && $collection->invoice && $collection->invoice->customer_email) {
+            $invoice = $collection->invoice;
 
                 if ($invoice->customer_email) {
                     try {
