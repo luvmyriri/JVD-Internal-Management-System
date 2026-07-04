@@ -15,26 +15,32 @@ class DatabaseSeeder extends Seeder
         $this->call([
             RolePermissionSeeder::class,
             SuperAdminSeeder::class,
-            EmployeeSeeder::class,
-            EmployeeSalarySeeder::class,
-            CustomerSeeder::class,
-            PassengerSeeder::class,
-            ServiceSeeder::class,
-            SupplierSeeder::class,
-            BusSeeder::class,
-            InventorySeeder::class,
-            WorkOrderSeeder::class,
-            JobOrderSeeder::class,
-            PurchaseOrderSeeder::class,
-            TripTicketSeeder::class,
-            CashBudgetRequestSeeder::class,
-            CommissionSeeder::class,
-            CollectionSeeder::class,
-            PassportSeeder::class,
-            AccreditationSeeder::class,
-            InvoiceSeeder::class,
-            AuditLogSeeder::class,
-            LegalDocumentSeeder::class,
         ]);
+
+        // Guard against running dummy data seeders in production
+        if (!app()->environment('production')) {
+            $this->call([
+                EmployeeSeeder::class,
+                EmployeeSalarySeeder::class,
+                CustomerSeeder::class,
+                PassengerSeeder::class,
+                ServiceSeeder::class,
+                SupplierSeeder::class,
+                BusSeeder::class,
+                InventorySeeder::class,
+                WorkOrderSeeder::class,
+                JobOrderSeeder::class,
+                PurchaseOrderSeeder::class,
+                TripTicketSeeder::class,
+                CashBudgetRequestSeeder::class,
+                CommissionSeeder::class,
+                CollectionSeeder::class,
+                PassportSeeder::class,
+                AccreditationSeeder::class,
+                InvoiceSeeder::class,
+                AuditLogSeeder::class,
+                LegalDocumentSeeder::class,
+            ]);
+        }
     }
 }

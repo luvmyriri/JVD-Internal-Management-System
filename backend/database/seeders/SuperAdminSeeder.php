@@ -13,11 +13,16 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
+        $password = env('SUPER_ADMIN_PASSWORD', 'JVD@Admin2026!');
+        if (app()->environment('production') && $password === 'JVD@Admin2026!') {
+            $this->command->warn('WARNING: Using default super admin password in production!');
+        }
+
         $admins = [
             [
                 'email' => 'johnemmanuelnalang@gmail.com',
                 'employee_id' => 'SA-0001',
-                'password' => Hash::make('JVD@Admin2026!'),
+                'password' => Hash::make($password),
                 'first_name' => 'Val',
                 'last_name' => 'Lamsen',
                 'role' => 'super_admin',
@@ -30,7 +35,7 @@ class SuperAdminSeeder extends Seeder
             [
                 'email' => 'vjlamsenlamsen28@gmail.com',
                 'employee_id' => 'SA-0002',
-                'password' => Hash::make('JVD@Admin2026!'),
+                'password' => Hash::make($password),
                 'first_name' => 'VJ',
                 'last_name' => 'Lamsen',
                 'role' => 'super_admin',
@@ -49,6 +54,6 @@ class SuperAdminSeeder extends Seeder
             );
             $this->command->info("✓ Super Admin account ensured: {$admin['email']}");
         }
-        $this->command->warn('  Password for both: JVD@Admin2026!');
+        $this->command->warn("  Password for both: (from SUPER_ADMIN_PASSWORD env var or default)");
     }
 }

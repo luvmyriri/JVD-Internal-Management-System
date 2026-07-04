@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 
 // https://vite.dev/config/
 // Triggering reload after installing new dependencies
@@ -20,6 +21,11 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      sentryVitePlugin({
+        org: process.env.SENTRY_ORG || "jvd",
+        project: process.env.SENTRY_PROJECT || "frontend",
+        authToken: process.env.SENTRY_AUTH_TOKEN,
+      }),
     ],
     server: {
       port: 3000,
