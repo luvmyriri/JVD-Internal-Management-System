@@ -206,8 +206,6 @@ class CollectionController extends Controller
                     }
                 }
             }
-        }
-
         return response()->json([
             'message' => 'Collection confirmed as fully paid.',
             'data'    => $collection->load('payments'),

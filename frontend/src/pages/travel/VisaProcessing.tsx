@@ -571,6 +571,7 @@ function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onClose: () => voi
           const itemsToUse = specificChecklist || VISA_CHECKLIST;
 
           if (apiData) {
+            const validity = apiData.destination?.passport_validity || '';
             const reg = apiData.mandatory_registration;
 
             itemsToUse.forEach(item => {
