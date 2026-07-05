@@ -45,6 +45,12 @@ class SystemAlert extends Notification
         return ['database'];
     }
 
+    /** Notification category for per-user preference gating (roadmap 2.6). */
+    public function category(): string
+    {
+        return 'system';
+    }
+
     /**
      * Get the array representation of the notification.
      *

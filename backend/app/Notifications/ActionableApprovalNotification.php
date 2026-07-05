@@ -38,6 +38,12 @@ class ActionableApprovalNotification extends Notification implements ShouldQueue
         return ['database', 'mail'];
     }
 
+    /** Notification category for per-user preference gating (roadmap 2.6). */
+    public function category(): string
+    {
+        return 'approvals';
+    }
+
     /**
      * Get the mail representation of the notification.
      */

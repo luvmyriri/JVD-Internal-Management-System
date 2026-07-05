@@ -39,6 +39,12 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(JobOrder::class, JobOrderPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
 
+        // Roadmap 2.6 — central per-user notification preference gate.
+        \Illuminate\Support\Facades\Event::listen(
+            \Illuminate\Notifications\Events\NotificationSending::class,
+            \App\Listeners\ApplyNotificationPreferences::class
+        );
+
         // Polymorphic Morph Map alignment for Accreditations
         \Illuminate\Database\Eloquent\Relations\Relation::morphMap([
             'supplier' => \App\Models\Supplier::class,
