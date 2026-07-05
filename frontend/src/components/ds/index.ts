@@ -8,3 +8,4 @@ export type { ButtonVariant, ButtonSize } from './Button';
 export { default as StatusPill } from './StatusPill';
 export { default as Card } from './Card';
 export { default as EmptyState } from './EmptyState';
+export { default as DataTable, CategoryDot, type Column } from './DataTable';
