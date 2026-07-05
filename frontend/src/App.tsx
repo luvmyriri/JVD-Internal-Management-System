@@ -53,6 +53,7 @@ import VisaUploadPublic from './pages/travel/VisaUploadPublic';
 import CustomerPortal from './pages/portal/CustomerPortal';
 import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
+import DesignSystem from './pages/DesignSystem';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
 import LogisticsOverview from './pages/logistics/Overview';
 
@@ -106,6 +107,7 @@ export default function App() {
               <Route path="/kyc-submission" element={<KycSubmission />} />
               <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
               <Route path="/portal/:token" element={<CustomerPortal />} />
+              <Route path="/design-system" element={<DesignSystem />} />
 
               {/* Authenticated */}
               <Route

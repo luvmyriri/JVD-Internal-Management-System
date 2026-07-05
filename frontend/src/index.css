@@ -4,7 +4,37 @@
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
-  
+
+  /* ── JVD design tokens (roadmap 3.1 · see docs/DESIGN_DIRECTION.md §1) ──
+     Brand-semantic: brand/blue = the ONLY interactive color, danger/red and
+     warning/amber are status-only, primary = near-black buttons. Values point at
+     the mode-aware CSS vars below so every token flips automatically in dark mode.
+     Generates utilities like bg-surface, text-ink, text-muted, bg-brand,
+     text-danger, border-warning, etc. Additive — existing pages are untouched. */
+  --color-bg: var(--jvd-bg);
+  --color-surface: var(--jvd-surface);
+  --color-surface-muted: var(--jvd-surface-muted);
+  --color-border: var(--jvd-border);
+  --color-ink: var(--jvd-ink);
+  --color-muted: var(--jvd-ink-muted);
+  --color-primary: var(--jvd-primary);
+  --color-primary-hover: var(--jvd-primary-hover);
+  --color-brand: var(--jvd-brand);
+  --color-brand-hover: var(--jvd-brand-hover);
+  --color-brand-tint: var(--jvd-brand-tint);
+  --color-success: var(--jvd-success);
+  --color-success-tint: var(--jvd-success-tint);
+  --color-warning: var(--jvd-warning);
+  --color-warning-tint: var(--jvd-warning-tint);
+  --color-danger: var(--jvd-danger);
+  --color-danger-tint: var(--jvd-danger-tint);
+
+  --radius-card: 16px;
+  --radius-control: 10px;
+  --radius-pill: 9999px;
+
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
   --animate-loading: loading 1.5s infinite ease-in-out;
 
   @keyframes loading {
@@ -22,6 +52,48 @@
 
 /* Enable class-based dark mode for Tailwind v4 */
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* JVD design-token values — light theme (default) + dark overrides (roadmap 3.1).
+   The @theme color-* tokens above reference these, so toggling .dark flips them all. */
+:root {
+  --jvd-bg: #FAFAFA;
+  --jvd-surface: #FFFFFF;
+  --jvd-surface-muted: #F5F5F5;
+  --jvd-border: #E8E8E8;
+  --jvd-ink: #171717;
+  --jvd-ink-muted: #737373;
+  --jvd-primary: #171717;
+  --jvd-primary-hover: #000000;
+  --jvd-brand: #1D4ED8;         /* JVD blue — interactive only */
+  --jvd-brand-hover: #1E40AF;
+  --jvd-brand-tint: #EFF6FF;
+  --jvd-success: #16A34A;
+  --jvd-success-tint: #DCFCE7;
+  --jvd-warning: #B45309;       /* JVD yellow → amber, warning only (darkened for contrast on tint) */
+  --jvd-warning-tint: #FEF3C7;
+  --jvd-danger: #DC2626;        /* JVD red — danger only */
+  --jvd-danger-tint: #FEE2E2;
+}
+
+.dark {
+  --jvd-bg: #000000;
+  --jvd-surface: #0D0D0D;
+  --jvd-surface-muted: #171717;
+  --jvd-border: #262626;
+  --jvd-ink: #FAFAFA;
+  --jvd-ink-muted: #8A8A8A;
+  --jvd-primary: #FFFFFF;
+  --jvd-primary-hover: #E5E5E5;
+  --jvd-brand: #3B82F6;         /* vivid blue on true-black (Micro-Dashboard) */
+  --jvd-brand-hover: #60A5FA;
+  --jvd-brand-tint: #0D1F3C;
+  --jvd-success: #4ADE80;
+  --jvd-success-tint: #0D2818;
+  --jvd-warning: #FBBF24;
+  --jvd-warning-tint: #2A1F06;
+  --jvd-danger: #F87171;
+  --jvd-danger-tint: #2A0D0D;
+}
 
 @layer base {
   /* Aesthetic Scrollbar Styling */
