@@ -25,6 +25,7 @@ class User extends Authenticatable
         'role',
         'department',
         'custom_permissions',
+        'custom_abilities',
         'tags',
         'totp_secret',
         'is_active',
@@ -56,6 +57,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',
             'custom_permissions' => 'array',
+            'custom_abilities' => 'array',
             'tags' => 'array',
             'totp_secret' => 'encrypted',
         ];
@@ -177,6 +179,69 @@ class User extends Authenticatable
         }
 
         return $rolePermissions;
+    }
+
+    // ──────────────────────────────────────────
+    // Abilities (named verbs beyond CRUD — roadmap 2.3)
+    // ──────────────────────────────────────────
+
+    /**
+     * Check a named ability (e.g. "cash_budgets.approve_accounting").
+     * Resolution order: super_admin bypass → per-user revoke → per-user grant → role grant.
+     */
+    public function hasAbility(string $ability): bool
+    {
+        if ($this->role === 'super_admin') {
+            return true;
+        }
+
+        $custom = $this->custom_abilities ?? [];
+        if (in_array($ability, $custom['revoke'] ?? [], true)) {
+            return false;
+        }
+        if (in_array($ability, $custom['grant'] ?? [], true)) {
+            return true;
+        }
+
+        return RoleAbility::roleHasAbility($this->role, $ability);
+    }
+
+    /**
+     * The user's effective ability set (role grants + per-user grants − per-user revokes).
+     *
+     * @return string[]
+     */
+    public function abilities(): array
+    {
+        if ($this->role === 'super_admin') {
+            return array_keys(RoleAbility::ABILITIES);
+        }
+
+        $custom = $this->custom_abilities ?? [];
+        $set = array_diff(RoleAbility::getForRole($this->role), $custom['revoke'] ?? []);
+
+        return array_values(array_unique(array_merge($set, $custom['grant'] ?? [])));
+    }
+
+    /**
+     * Query scope: users who effectively hold a given ability. Used by the workflow
+     * engine / notifications to answer "who can act" without looping every user in PHP.
+     * (Per-user overrides are JSON, so we resolve those in PHP after the role-level filter.)
+     */
+    public static function withAbility(string $ability)
+    {
+        $roles = RoleAbility::where('ability', $ability)->pluck('role')->all();
+        $roles[] = 'super_admin';
+
+        return self::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($roles, $ability) {
+                $q->whereIn('role', $roles)
+                  ->orWhereJsonContains('custom_abilities->grant', $ability);
+            })
+            ->get()
+            ->filter(fn (User $u) => $u->hasAbility($ability))
+            ->values();
     }
 
     public function hasTag(string $tag): bool

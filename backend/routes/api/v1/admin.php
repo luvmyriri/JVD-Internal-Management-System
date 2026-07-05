@@ -52,6 +52,10 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/role-permissions/{role}',        [RolePermissionController::class, 'show'])->name('role-permissions.show');
         Route::put('/role-permissions/{role}',        [RolePermissionController::class, 'update'])->name('role-permissions.update');
         Route::post('/role-permissions/{role}/reset', [RolePermissionController::class, 'reset'])->name('role-permissions.reset');
+
+        // Named Abilities Management (roadmap 2.3 — Super Admin only)
+        Route::get('/role-abilities',        [RolePermissionController::class, 'abilities'])->name('role-abilities.index');
+        Route::put('/role-abilities/{role}', [RolePermissionController::class, 'updateAbilities'])->name('role-abilities.update');
     });
 
     // ──────────────────────────────────────
