@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { LuInbox } from 'react-icons/lu';
+import { Button, StatusPill, Card, EmptyState } from '../components/ds';
 
 /**
  * Design-system showcase (roadmap 3.1). Renders every JVD design token so the
@@ -79,22 +81,37 @@ export default function DesignSystem() {
         </section>
 
         <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
-          <h2 className="mb-4 text-sm font-medium text-brand">Buttons</h2>
+          <h2 className="mb-4 text-sm font-medium text-brand">Component library — Button (3.2)</h2>
           <div className="flex flex-wrap items-center gap-3">
-            <button className="rounded-[var(--radius-pill)] bg-primary px-5 py-2.5 text-sm font-medium text-surface transition-colors hover:bg-primary-hover">
-              Primary (near-black)
-            </button>
-            <button className="rounded-[var(--radius-pill)] bg-brand px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-brand-hover">
-              Brand action
-            </button>
-            <button className="rounded-[var(--radius-pill)] border border-border bg-surface px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-surface-muted">
-              Secondary
-            </button>
-            <button className="rounded-[var(--radius-pill)] px-5 py-2.5 text-sm font-medium text-danger transition-colors hover:bg-danger-tint">
-              Delete
-            </button>
+            <Button variant="primary">Primary</Button>
+            <Button variant="brand">Brand action</Button>
+            <Button variant="secondary">Secondary</Button>
+            <Button variant="ghost">Ghost</Button>
+            <Button variant="danger">Delete</Button>
+            <Button variant="primary" isLoading>Saving</Button>
+            <Button variant="secondary" size="sm">Small</Button>
+            <Button variant="secondary" disabled>Disabled</Button>
           </div>
         </section>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">StatusPill — resolves any status string</h2>
+          <div className="flex flex-wrap items-center gap-2">
+            {['approved', 'pending', 'overdue', 'rejected', 'draft', 'active', 'pending_ceo_approval', 'unknown_status'].map((s) => (
+              <StatusPill key={s} status={s} />
+            ))}
+          </div>
+        </section>
+
+        <Card className="mb-10">
+          <h2 className="mb-4 text-sm font-medium text-brand">Card + EmptyState</h2>
+          <EmptyState
+            icon={<LuInbox size={22} />}
+            title="No applicants yet"
+            description="Start posting job listings to begin receiving applications."
+            action={<Button variant="primary">Create listing</Button>}
+          />
+        </Card>
 
         <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
           <h2 className="mb-4 text-sm font-medium text-brand">Card &amp; row example</h2>
