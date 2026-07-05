@@ -59,7 +59,7 @@
   --jvd-bg: #FAFAFA;
   --jvd-surface: #FFFFFF;
   --jvd-surface-muted: #F5F5F5;
-  --jvd-border: #E8E8E8;
+  --jvd-border: #D4D4D8;       /* hairline but clearly visible on #FAFAFA/#FFFFFF (was #E8E8E8 — too faint) */
   --jvd-ink: #171717;
   --jvd-ink-muted: #737373;
   --jvd-primary: #171717;
@@ -317,13 +317,18 @@ select:hover:not(:focus) {
   border-color: #6b7280 !important; /* gray-500 */
 }
 
-/* ── Cards / Panels (divs using border-gray-100/200 patterns) ─ */
-/* We target the specific tailwind class names rather than all divs */
-.border-gray-100 {
-  border-color: #e5e7eb !important; /* gray-200 — twice as visible */
+/* ── Cards / Panels (divs using light border-gray patterns) ──
+   The app leans on border-gray-50/100/200, which are near-invisible on white.
+   Bump them all to a clearly-visible hairline (gray-300) in light mode. */
+.border-gray-50,
+.border-gray-100,
+.border-gray-200 {
+  border-color: #d1d5db !important; /* gray-300 — clearly visible on white */
 }
 
+.dark .border-gray-50,
 .dark .border-gray-100,
+.dark .border-gray-200,
 .dark .dark\:border-gray-800 {
   border-color: #374151 !important; /* gray-700 — visible on dark */
 }
