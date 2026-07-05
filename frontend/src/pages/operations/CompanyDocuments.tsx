@@ -311,8 +311,8 @@ export default function CompanyDocuments() {
   const getApiUrl = () => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
     return apiBase.startsWith('/')
-      ? apiBase.replace(/\/api$/, '')
-      : apiBase.replace(/\/api$/, '') || 'http://localhost:8000';
+      ? apiBase.replace(/\/api(\/v\d+)?$/, '')
+      : apiBase.replace(/\/api(\/v\d+)?$/, '') || 'http://localhost:8000';
   };
 
   const docs = data?.data.data || [];

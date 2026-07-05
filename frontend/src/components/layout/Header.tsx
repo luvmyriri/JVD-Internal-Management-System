@@ -1822,7 +1822,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         >
           <div className="relative overflow-hidden rounded-2xl shadow-2xl border border-white/10 bg-gray-950/40">
             <img
-              src={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+              src={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace(/\/api(\/v\d+)?$/, '')}${activeImagePreview.path}`}
               alt={activeImagePreview.name}
               className="max-w-full max-h-[80vh] object-contain select-text cursor-default"
             />
@@ -1836,7 +1836,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
             </div>
             <div className="flex items-center gap-2">
               <a
-                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace(/\/api(\/v\d+)?$/, '')}${activeImagePreview.path}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-white/80 hover:text-white transition cursor-pointer flex items-center justify-center"
@@ -1845,7 +1845,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 <LuExternalLink className="w-3.5 h-3.5" />
               </a>
               <a
-                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace('/api', '')}${activeImagePreview.path}`}
+                href={activeImagePreview.path.startsWith('blob:') ? activeImagePreview.path : `${client.defaults.baseURL?.replace(/\/api(\/v\d+)?$/, '')}${activeImagePreview.path}`}
                 download={activeImagePreview.name}
                 className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white transition cursor-pointer flex items-center justify-center font-bold"
                 title="Download"
@@ -2477,14 +2477,14 @@ function FloatingChatWindow({
                                   title="Click to preview image"
                                 >
                                   <img
-                                    src={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace('/api', '')}${item.attachmentPath}`}
+                                    src={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace(/\/api(\/v\d+)?$/, '')}${item.attachmentPath}`}
                                     alt={item.attachmentName || 'attachment'}
                                     className="max-w-full rounded-lg max-h-40 object-cover"
                                   />
                                 </div>
                               ) : (
                                 <a
-                                  href={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace('/api', '')}${item.attachmentPath}`}
+                                  href={item.attachmentPath.startsWith('blob:') ? item.attachmentPath : `${client.defaults.baseURL?.replace(/\/api(\/v\d+)?$/, '')}${item.attachmentPath}`}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   download={item.attachmentName}
