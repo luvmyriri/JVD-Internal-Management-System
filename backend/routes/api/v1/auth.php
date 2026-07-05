@@ -44,6 +44,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // Notifications Management
     Route::prefix('notifications')->group(function () {
         Route::get('/',                 [\App\Http\Controllers\NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/preferences',      [\App\Http\Controllers\NotificationController::class, 'preferences'])->name('notifications.preferences.index');
+        Route::put('/preferences',      [\App\Http\Controllers\NotificationController::class, 'updatePreferences'])->name('notifications.preferences.update');
         Route::post('/mark-all-read',   [\App\Http\Controllers\NotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
         Route::put('/{id}/read',        [\App\Http\Controllers\NotificationController::class, 'markAsRead'])->name('notifications.read');
         Route::delete('/{id}',          [\App\Http\Controllers\NotificationController::class, 'destroy'])->name('notifications.destroy');

@@ -46,6 +46,12 @@ class SystemAlert extends Notification implements ShouldQueue
         return ['database'];
     }
 
+    /** Notification category for per-user preference gating (roadmap 2.6). */
+    public function category(): string
+    {
+        return 'system';
+    }
+
     /**
      * Get the array representation of the notification.
      *
