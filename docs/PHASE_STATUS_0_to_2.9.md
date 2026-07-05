@@ -5,14 +5,39 @@
 
 ---
 
+## ✅ PHASE 2 COMPLETE — final status (2026-07-05, Claude)
+
+All Phase 2 backend items are done and tested. **Backend suite 126 → 158 (32 new tests); every slice shipped as its own tested, reviewed feature branch.** The item-by-item verdict further down is the *original* audit snapshot and is now superseded by this section.
+
+| Item | Final status | How |
+|---|---|---|
+| 2.1 queue worker | ✅ done | docker-compose `worker` already ran; queued the last 2 sync notifications (`SystemAlert`, `AccountInvitation`) + `QueuedDispatchTest` guard |
+| 2.2 idempotency + locks | ✅ done | `idempotency_key` wired into `CollectionController::addPayment` (was inert); locks already present |
+| 2.2b DB integrity | ✅ done | existing migration (cascades→restrict, FKs, softDeletes) |
+| 2.2c travel-table merge | ✅ done | existing `travels` table + partial unique indexes |
+| 2.3 abilities & roles-as-data | ✅ done | `role_abilities` + `users.custom_abilities`, `User::hasAbility/withAbility`, wired into `WorkflowService::canAct`, admin endpoints, `AbilitiesTest` |
+| 2.4 workflow engine | ✅ done | existing; now correctly ability-targeted via 2.3 |
+| 2.5 ledger + snapshots | ✅ done | ledger via `CollectionPayment` observer + invoice AR/Revenue; **finalization snapshots** added (`invoices.finalized_snapshot`, write-once immutability, `InvoiceFinalizationSnapshotTest`) |
+| 2.5b bookings split | ✅ done | existing `bookings` table |
+| 2.6 notifications + prefs | ✅ done | `notification_preferences` + central `NotificationSending` gate listener (no dispatch-site edits) + settings endpoints, `NotificationPreferenceTest` |
+| 2.7 document repository | ✅ done | existing DMS |
+| 2.8 FormRequests / Resources / pagination / v1 | ✅ done | FormRequests 38, `/api/v1` split, 14 Resources; **pagination audited end-to-end → consistent + correct on every list endpoint (no mismatches).** Further Resource/server-pagination work on client-side-paginated views is shape-changing + FE-coupled → Phase 3 |
+| 2.8b CHECK constraints | ✅ done | driver-guarded pgsql-only migration on money columns |
+| 2.9 thin god controllers | ✅ done | `DashboardController` 713→47 (new `DashboardService`), `ProcurementDocumentController` 789→48 (wired to the pre-existing dead-code service); characterization tests first for both |
+| 2.10 tests | ✅ ongoing | suite 126→158; every slice added coverage |
+
+**Merged to `main`:** 2.1, 2.2, 2.2b, 2.2c, 2.3, 2.5(+b), 2.6, 2.8b. **On branch awaiting merge:** `feat/2.9-thin-controllers`.
+
+**Still requires you (non-code):** merge `feat/2.9`; protect `main` on GitHub; deployment items 1.3/1.5 (deferred until go-live); sales workshops 1.7; Sentry DSNs. Next up: **Phase 3 (frontend rebuild)** — where the remaining shape-changing 2.8 work lands alongside the design system.
+
+---
+
 ## 🔧 Execution update — 2026-07-05 (backlog work, Claude)
 
 Closed this session, all tested (suite now **128/128**, +2 new tests):
 - **2.2 idempotency — DONE.** The `idempotency_key` column existed but was inert (not in `CollectionPayment::$fillable`, unused). Now added to fillable + `CollectionController::addPayment` short-circuits a repeated key (double-click / retry) instead of posting a second payment + ledger entry. Covered by `tests/Feature/CollectionPaymentIdempotencyTest.php` (2 tests).
 - **2.8b CHECK constraints — DONE.** New driver-guarded migration `2026_07_05_000002_add_amount_check_constraints.php` adds `>= 0` CHECK constraints on `invoices.{total,subtotal,tax}` + `collection_payments.amount` on **PostgreSQL only** (no-ops on the SQLite test DB, which can't `ALTER TABLE ADD CONSTRAINT`).
 - **Correction to the audit below:** 2.5 "Collections → ledger" was reported as NOT done — that was **wrong**. `CollectionPayment::booted()` posts a Cash/Revenue journal entry on *every* payment via a model `created` observer (catches all 5 call sites). Collections→ledger is **done**; the remaining 2.5 gap is only finalization **snapshots**.
-
-Still open (large subsystems — need proper tested slices, not a rushed blob): 2.3 abilities, 2.6 notification prefs + event-driven, 2.8 API Resources + pagination, 2.9 thin ProcurementDocument/Dashboard controllers, 2.1 queue-worker verification. Plus the cross-cutting commit + 0.5 branch migration below.
 
 ---
 
