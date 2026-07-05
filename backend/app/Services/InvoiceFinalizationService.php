@@ -376,7 +376,56 @@ class InvoiceFinalizationService
             }
         }
 
+        // Immutable snapshot of the financial facts as sold (roadmap 2.5) — written once.
+        $this->captureSnapshot($invoice);
+
         return $invoice->fresh();
+    }
+
+    /**
+     * Freeze the invoice's billed facts (customer as sold, line items, prices, totals)
+     * into finalized_snapshot. Written exactly once; later price/customer/service edits
+     * can never rewrite this record. Corrections must be new documents, not edits.
+     */
+    public function captureSnapshot(Invoice $invoice): void
+    {
+        if (!empty($invoice->finalized_snapshot)) {
+            return; // already frozen — immutable
+        }
+
+        $invoice->loadMissing('items');
+
+        $items = $invoice->items->map(fn ($item) => [
+            'service_id'   => $item->service_id,
+            'service_name' => optional(Service::find($item->service_id))->name,
+            'quantity'     => $item->quantity,
+            'unit_price'   => $item->unit_price,
+            'total_price'  => $item->total_price,
+            'adults'       => $item->adults,
+            'children'     => $item->children,
+        ])->all();
+
+        $snapshot = [
+            'captured_at' => now()->toIso8601String(),
+            'customer' => [
+                'id'      => $invoice->customer_id,
+                'name'    => $invoice->customer_name,
+                'address' => $invoice->customer_address,
+                'email'   => $invoice->customer_email,
+                'contact' => $invoice->customer_contact,
+            ],
+            'items'  => $items,
+            'totals' => [
+                'subtotal'     => $invoice->subtotal,
+                'tax_amount'   => $invoice->tax_amount,
+                'total_amount' => $invoice->total_amount,
+            ],
+        ];
+
+        $invoice->forceFill([
+            'finalized_snapshot' => $snapshot,
+            'finalized_at'       => now(),
+        ])->save();
     }
 
     /**

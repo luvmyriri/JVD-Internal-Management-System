@@ -36,12 +36,16 @@ class Invoice extends Model
         'created_by',
         'notes',
         'cash_budget_request_id',
+        'finalized_snapshot',
+        'finalized_at',
     ];
 
     protected function casts(): array
     {
         return [
             'requires_contract' => 'boolean',
+            'finalized_snapshot' => 'array',
+            'finalized_at' => 'datetime',
         ];
     }
 
