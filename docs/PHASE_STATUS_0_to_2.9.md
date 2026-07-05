@@ -5,6 +5,17 @@
 
 ---
 
+## 🔧 Execution update — 2026-07-05 (backlog work, Claude)
+
+Closed this session, all tested (suite now **128/128**, +2 new tests):
+- **2.2 idempotency — DONE.** The `idempotency_key` column existed but was inert (not in `CollectionPayment::$fillable`, unused). Now added to fillable + `CollectionController::addPayment` short-circuits a repeated key (double-click / retry) instead of posting a second payment + ledger entry. Covered by `tests/Feature/CollectionPaymentIdempotencyTest.php` (2 tests).
+- **2.8b CHECK constraints — DONE.** New driver-guarded migration `2026_07_05_000002_add_amount_check_constraints.php` adds `>= 0` CHECK constraints on `invoices.{total,subtotal,tax}` + `collection_payments.amount` on **PostgreSQL only** (no-ops on the SQLite test DB, which can't `ALTER TABLE ADD CONSTRAINT`).
+- **Correction to the audit below:** 2.5 "Collections → ledger" was reported as NOT done — that was **wrong**. `CollectionPayment::booted()` posts a Cash/Revenue journal entry on *every* payment via a model `created` observer (catches all 5 call sites). Collections→ledger is **done**; the remaining 2.5 gap is only finalization **snapshots**.
+
+Still open (large subsystems — need proper tested slices, not a rushed blob): 2.3 abilities, 2.6 notification prefs + event-driven, 2.8 API Resources + pagination, 2.9 thin ProcurementDocument/Dashboard controllers, 2.1 queue-worker verification. Plus the cross-cutting commit + 0.5 branch migration below.
+
+---
+
 ## ⚠️ Two cross-cutting issues that outrank any single item
 
 1. **Phase 2 is entirely uncommitted.** Only Phase 0 (2 commits) and Phase 1 (1 commit) are in git history. Every Phase 2 artifact — workflow engine, bookings, documents, travels, the thinned controllers, `/api/v1` split — exists **only as uncommitted/untracked working-tree changes** (165 files, 71 untracked in `backend/` alone). This means: it's not on a branch, not in a PR, not reviewed, and one `git checkout .` from being lost. It also contradicts the `TEAM_WORKFLOW.md` branch model. **Action: commit this to feature branches immediately** (see bottom).
