@@ -214,7 +214,20 @@ class CollectionController extends Controller
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
             'amount' => 'required|numeric|min:0.01',
+            'idempotency_key' => 'sometimes|nullable|string|max:255',
         ]);
+
+        // Idempotency: a repeated submit (double-click, network retry) carrying the same key
+        // must not post a second payment + ledger entry. Return the already-recorded result.
+        if (!empty($validated['idempotency_key'])) {
+            $existing = \App\Models\CollectionPayment::where('idempotency_key', $validated['idempotency_key'])->first();
+            if ($existing) {
+                return response()->json([
+                    'message' => 'Payment already recorded.',
+                    'data'    => $collection->load('payments'),
+                ]);
+            }
+        }
 
         // H-13: enforce the overpayment cap server-side (the frontend check is bypassable).
         $remaining = (float) ($collection->remaining_balance ?? $collection->billing_amount ?? $collection->rate ?? 0);
