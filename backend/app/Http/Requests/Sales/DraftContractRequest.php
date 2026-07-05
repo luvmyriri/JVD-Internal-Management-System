@@ -1,0 +1,97 @@
+<?php
+
+namespace App\Http\Requests\Sales;
+
+use Illuminate\Foundation\Http\FormRequest;
+
+class DraftContractRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    public function rules(): array
+    {
+        return [
+            'customer_id' => 'nullable|exists:customers,id',
+            'customer_name' => 'nullable|string|max:255',
+            'customer_address' => 'nullable|string|max:255',
+            'customer_email' => 'nullable|string|email|max:255',
+            'customer_contact' => 'nullable|string',
+            'payment_method' => 'required|string',
+            'payment_type' => 'nullable|string|in:full,downpayment',
+            'amount_received' => 'nullable|numeric',
+            'tax_rate' => 'nullable|numeric|min:0|max:1',
+            'due_date' => 'nullable|date',
+            'travel_date' => 'nullable|date',
+            'arrival_datetime' => 'nullable|date',
+            'departure_datetime' => 'nullable|date',
+            'pickup_location' => 'nullable|string|max:255',
+            'tour_code' => 'nullable|string|max:255',
+            'pax_count' => 'nullable|integer|min:1',
+            'bus_id' => 'nullable|integer|exists:buses,id',
+            'driver_id' => 'nullable|integer|exists:users,id',
+            'seat_map' => 'nullable|array',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.service_id' => 'required|exists:services,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.unit_price' => 'nullable|numeric',
+            'items.*.adults' => 'nullable|integer',
+            'items.*.children' => 'nullable|integer',
+            'items.*.service_date' => 'nullable|date',
+            'items.*.destination' => 'nullable|string',
+            'custom_transaction_detail' => 'required|array',
+            'custom_transaction_detail.category' => 'required|string',
+            'custom_transaction_detail.vehicle_type' => 'nullable|string|max:100',
+            'custom_transaction_detail.route' => 'nullable|string|max:255',
+            'custom_transaction_detail.rental_days' => 'nullable|integer|min:1',
+            'custom_transaction_detail.plate_number' => 'nullable|string|max:50',
+            'custom_transaction_detail.inclusion_driver' => 'nullable|boolean',
+            'custom_transaction_detail.inclusion_fuel' => 'nullable|boolean',
+            'custom_transaction_detail.inclusion_toll' => 'nullable|boolean',
+            'custom_transaction_detail.inclusion_insurance' => 'nullable|boolean',
+            'custom_transaction_detail.school_name' => 'nullable|string|max:255',
+            'custom_transaction_detail.grade_level' => 'nullable|string|max:100',
+            'custom_transaction_detail.expected_pax' => 'nullable|integer|min:0',
+            'custom_transaction_detail.itinerary_stops' => 'nullable|string',
+            'custom_transaction_detail.edu_inclusion_meals' => 'nullable|boolean',
+            'custom_transaction_detail.edu_inclusion_coordinator' => 'nullable|boolean',
+            'custom_transaction_detail.edu_inclusion_insurance' => 'nullable|boolean',
+            'custom_transaction_detail.edu_inclusion_tshirt' => 'nullable|boolean',
+            'custom_transaction_detail.destination' => 'nullable|string|max:255',
+            'custom_transaction_detail.accommodation_type' => 'nullable|string|max:100',
+            'custom_transaction_detail.visa_country' => 'nullable|string|max:100',
+            'custom_transaction_detail.visa_type' => 'nullable|string|max:100',
+            'custom_transaction_detail.visa_req_passport' => 'nullable|boolean',
+            'custom_transaction_detail.visa_req_photo' => 'nullable|boolean',
+            'custom_transaction_detail.visa_req_bank_cert' => 'nullable|boolean',
+            'custom_transaction_detail.visa_req_itr' => 'nullable|boolean',
+            'custom_transaction_detail.visa_req_birth_cert' => 'nullable|boolean',
+            'custom_transaction_detail.joiner_tour_code' => 'nullable|string|max:255',
+            'custom_transaction_detail.booking_type' => 'nullable|string|max:100',
+            'custom_transaction_detail.booking_reference_code' => 'nullable|string|max:255',
+            'custom_transaction_detail.booking_details' => 'nullable|string',
+            'custom_transaction_detail.category_meta' => 'nullable|array',
+            'custom_transaction_detail.additional_remarks' => 'nullable|string',
+            'itinerary' => 'nullable|array',
+            'itinerary.*.day_number' => 'required_with:itinerary|integer|min:1',
+            'itinerary.*.date' => 'nullable|date',
+            'itinerary.*.location' => 'nullable|string|max:255',
+            'itinerary.*.activity_description' => 'nullable|string',
+            'itinerary.*.meal_plan' => 'nullable|string|max:255',
+            'itinerary.*.accommodation_name' => 'nullable|string|max:255',
+            'itinerary.*.check_in_time' => 'nullable|string',
+            'itinerary.*.check_out_time' => 'nullable|string',
+            'passengers' => 'nullable|array',
+            'passengers.*.first_name' => 'required_with:passengers|string|max:255',
+            'passengers.*.date_of_birth' => 'nullable|date',
+            'passengers.*.passport_number' => 'nullable|string|max:100',
+            'passengers.*.dietary_restrictions' => 'nullable|string|max:255',
+            'passengers.*.emergency_contact' => 'nullable|string|max:255',
+            'passengers.*.special_needs' => 'nullable|string',
+            'passengers.*.last_name' => 'required_with:passengers|string|max:255',
+        ];
+    }
+}

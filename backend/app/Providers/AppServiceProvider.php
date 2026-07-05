@@ -10,6 +10,9 @@ use App\Policies\PurchaseOrderPolicy;
 use App\Policies\UserPolicy;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +30,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        \Illuminate\Database\Eloquent\Model::shouldBeStrict(!app()->isProduction());
+        RateLimiter::for('api', function (Request $request) {
+            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+        });
+
         Gate::policy(PurchaseOrder::class, PurchaseOrderPolicy::class);
         Gate::policy(JobOrder::class, JobOrderPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
@@ -35,8 +43,10 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Database\Eloquent\Relations\Relation::morphMap([
             'supplier' => \App\Models\Supplier::class,
             'bus'      => \App\Models\Bus::class,
-            'driver'   => \App\Models\User::class,
+            'driver'   => User::class,
         ]);
+
+        \App\Models\CollectionPayment::observe(\App\Observers\CollectionPaymentObserver::class);
     }
 }
 

@@ -42,7 +42,7 @@ class JobOrderTest extends TestCase
         JobOrder::factory(2)->create(['created_by' => $this->agent->id]);
         JobOrder::factory(3)->create(['created_by' => $this->admin->id]);
 
-        $res = $this->actingAs($this->agent)->getJson('/api/job-orders');
+        $res = $this->actingAs($this->agent)->getJson('/api/v1/job-orders');
 
         $res->assertOk();
         $this->assertCount(2, $res->json('data'));
@@ -53,7 +53,7 @@ class JobOrderTest extends TestCase
         JobOrder::factory(5)->create();
 
         $this->actingAs($this->admin)
-             ->getJson('/api/job-orders')
+             ->getJson('/api/v1/job-orders')
              ->assertOk()
              ->assertJsonPath('meta.total', 5);
     }
@@ -67,7 +67,7 @@ class JobOrderTest extends TestCase
 
         // Cannot go from draft → completed (must go through confirmed, in_progress first)
         $this->actingAs($this->agent)
-             ->putJson("/api/job-orders/{$jo->id}", ['status' => 'completed'])
+             ->putJson("/api/v1/job-orders/{$jo->id}", ['status' => 'completed'])
              ->assertUnprocessable();
     }
 
@@ -80,7 +80,7 @@ class JobOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->putJson("/api/job-orders/{$jo->id}", ['status' => 'confirmed'])
+             ->putJson("/api/v1/job-orders/{$jo->id}", ['status' => 'confirmed'])
              ->assertOk()
              ->assertJsonPath('data.status', 'confirmed');
     }
@@ -96,7 +96,7 @@ class JobOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->putJson("/api/job-orders/{$jo->id}", ['status' => 'confirmed'])
+             ->putJson("/api/v1/job-orders/{$jo->id}", ['status' => 'confirmed'])
              ->assertStatus(422);
     }
 
@@ -109,7 +109,7 @@ class JobOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->putJson("/api/job-orders/{$jo->id}", ['destination' => 'Hacked'])
+             ->putJson("/api/v1/job-orders/{$jo->id}", ['destination' => 'Hacked'])
              ->assertForbidden();
     }
 
@@ -119,7 +119,7 @@ class JobOrderTest extends TestCase
         JobOrder::factory(3)->create(['status' => 'confirmed']);
 
         $this->actingAs($this->admin)
-             ->getJson('/api/job-orders?status=draft')
+             ->getJson('/api/v1/job-orders?status=draft')
              ->assertOk()
              ->assertJsonCount(2, 'data');
     }
@@ -151,7 +151,7 @@ class JobOrderTest extends TestCase
 
 
         $res = $this->actingAs($this->admin)
-                    ->postJson('/api/job-orders', $payload);
+                    ->postJson('/api/v1/job-orders', $payload);
 
         $res->assertCreated();
         

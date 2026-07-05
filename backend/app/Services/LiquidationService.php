@@ -182,7 +182,7 @@ class LiquidationService
             }
 
             // Notify employee + accounting of settlement result
-            \App\Http\Services\NotificationService::notifyLiquidationSettled($liquidation);
+            \App\Services\NotificationService::notifyLiquidationSettled($liquidation);
 
             return $liquidation;
         });

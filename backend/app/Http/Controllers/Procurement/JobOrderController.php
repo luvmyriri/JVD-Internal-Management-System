@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Procurement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreJobOrderRequest;
 use App\Http\Resources\JobOrderResource;
-use App\Http\Services\JobOrderService;
+use App\Services\JobOrderService;
 use App\Models\InventoryItem;
 use App\Models\JobOrder;
 use Illuminate\Http\JsonResponse;
@@ -134,7 +134,7 @@ class JobOrderController extends Controller
     /**
      * Update a Job Order (status transition or field update).
      */
-    public function update(Request $request, JobOrder $jobOrder): JsonResponse
+    public function update(\App\Http\Requests\UpdateJobOrderRequest $request, JobOrder $jobOrder): JsonResponse
     {
         $user = $request->user();
         if ($user->hasRole('driver')) {
@@ -158,12 +158,7 @@ class JobOrderController extends Controller
 
         // Allow field updates for drafts only
         if ($jobOrder->status === 'created') {
-            $validated = $request->validate([
-                'destination' => ['sometimes', 'string', 'max:255'],
-                'service_date'=> ['sometimes', 'date'],
-                'total_cost'  => ['sometimes', 'numeric', 'min:0'],
-                'notes'       => ['nullable', 'string', 'max:1000'],
-            ]);
+            $validated = $request->validated();
             $jobOrder->update($validated);
         }
 
@@ -176,7 +171,7 @@ class JobOrderController extends Controller
     /**
      * Generate a Purchase Order from a Job Order.
      */
-    public function generatePurchaseOrder(Request $request, JobOrder $jobOrder): JsonResponse
+    public function generatePurchaseOrder(\App\Http\Requests\GeneratePurchaseOrderRequest $request, JobOrder $jobOrder): JsonResponse
     {
         if ($request->user()->hasRole('driver')) {
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
@@ -189,26 +184,7 @@ class JobOrderController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'supplier_id' => [
-                'required',
-                'integer',
-                'exists:suppliers,id',
-                function ($attribute, $value, $fail) {
-                    $supplier = \App\Models\Supplier::with('accreditations')->find($value);
-                    if ($supplier && $supplier->accreditation_status !== 'accredited') {
-                        $fail('The selected supplier must be accredited to issue a purchase order.');
-                    }
-                    if ($supplier && $supplier->accreditations()->where('status', 'active')->count() === 0) {
-                        $fail('The selected supplier lacks an active accreditation record.');
-                    }
-                }
-            ],
-            'items' => ['required', 'array', 'min:1'],
-            'items.*.item_name' => ['required', 'string', 'max:255'],
-            'items.*.quantity' => ['required', 'integer', 'min:1'],
-            'items.*.unit_price' => ['required', 'numeric', 'min:0.01'],
-        ]);
+        $validated = $request->validated();
 
         $po = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $request, $jobOrder) {
             $year = now()->year;

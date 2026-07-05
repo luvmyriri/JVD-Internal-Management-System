@@ -60,17 +60,9 @@ class AccreditationController extends Controller
     /**
      * Create a new accreditation record.
      */
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\Fleet\StoreAccreditationRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'entity_type'        => ['required', 'in:company,driver,bus'],
-            'entity_id'          => ['required', 'integer'],
-            'accreditation_type' => ['required', 'string', 'max:100'],
-            'issuing_body'       => ['required', 'string', 'max:150'],
-            'issue_date'         => ['required', 'date'],
-            'expiry_date'        => ['required', 'date', 'after:issue_date'],
-            'document_url'       => ['nullable', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         $accreditation = Accreditation::create(array_merge($validated, ['status' => 'active']));
 
@@ -95,16 +87,9 @@ class AccreditationController extends Controller
     /**
      * Update accreditation record (e.g., renewal, status change).
      */
-    public function update(Request $request, Accreditation $accreditation): JsonResponse
+    public function update(\App\Http\Requests\Fleet\UpdateAccreditationRequest $request, Accreditation $accreditation): JsonResponse
     {
-        $validated = $request->validate([
-            'accreditation_type' => ['sometimes', 'string', 'max:100'],
-            'issuing_body'       => ['sometimes', 'string', 'max:150'],
-            'issue_date'         => ['sometimes', 'date'],
-            'expiry_date'        => ['sometimes', 'date', 'after:issue_date'],
-            'status'             => ['sometimes', 'in:active,expired,pending_renewal'],
-            'document_url'       => ['nullable', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         $accreditation->update($validated);
 

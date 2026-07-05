@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Procurement;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreWorkOrderRequest;
 use App\Http\Resources\WorkOrderResource;
-use App\Http\Services\MaintenanceService;
-use App\Http\Services\WorkOrderService;
+use App\Services\MaintenanceService;
+use App\Services\WorkOrderService;
 use App\Models\WorkOrder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -109,7 +109,7 @@ class WorkOrderController extends Controller
      * When a PMS-auto-generated WO is marked 'completed', triggers
      * MaintenanceService::recalculateNextService() on the parent bus.
      */
-    public function update(Request $request, WorkOrder $workOrder): JsonResponse
+    public function update(\App\Http\Requests\UpdateWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
     {
         $user = $request->user();
         if ($user->hasRole('driver')) {
@@ -118,14 +118,7 @@ class WorkOrderController extends Controller
 
         // C-09: validate all field input BEFORE performing any status transition, so a
         // validation failure cannot leave an already-committed status change behind.
-        $validated = $request->validate([
-            'bus_id'     => ['sometimes', 'integer', 'exists:buses,id'],
-            'assigned_to'=> ['sometimes', 'nullable', 'integer', 'exists:users,id'],
-            'priority'   => ['sometimes', 'in:routine,urgent,critical'],
-            'description'=> ['sometimes', 'string', 'max:2000'],
-            'parts_used' => ['sometimes', 'nullable', 'string', 'max:1000'],
-            'cost'       => ['sometimes', 'nullable', 'numeric', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         $wasCompleted = false;
 
@@ -166,7 +159,7 @@ class WorkOrderController extends Controller
      *  - Service Adviser: verified → open
      *  - Trip Work Orders: direct transition from pending_approval → open
      */
-    public function approve(Request $request, WorkOrder $workOrder): JsonResponse
+    public function approve(\App\Http\Requests\ApproveWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
     {
         $user = $request->user();
         $isSuperAdmin = $user->hasRole('super_admin');
@@ -229,7 +222,7 @@ class WorkOrderController extends Controller
             ]);
 
             // Notify Service Adviser for final filing approval
-            \App\Http\Services\NotificationService::notifyWorkOrderVerification($workOrder);
+            \App\Services\NotificationService::notifyWorkOrderVerification($workOrder);
 
             return response()->json([
                 'success' => true,
@@ -247,11 +240,7 @@ class WorkOrderController extends Controller
                 ], 403);
             }
 
-            $validated = $request->validate([
-                'notes'       => ['nullable', 'string', 'max:1000'],
-                'assigned_to' => ['nullable', 'integer', 'exists:users,id'],
-                'priority'    => ['nullable', 'in:routine,urgent,critical'],
-            ]);
+            $validated = $request->validated();
 
             $workOrder->update([
                 'status'       => 'open',
@@ -347,7 +336,7 @@ class WorkOrderController extends Controller
      * Designated employee rejects a requested WO.
      * Transitions: pending_approval | verified → cancelled
      */
-    public function reject(Request $request, WorkOrder $workOrder): JsonResponse
+    public function reject(\App\Http\Requests\RejectWorkOrderRequest $request, WorkOrder $workOrder): JsonResponse
     {
         $user = $request->user();
         if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'head_mechanic', 'service_adviser')) {
@@ -361,9 +350,7 @@ class WorkOrderController extends Controller
             ], 422);
         }
 
-        $validated = $request->validate([
-            'notes' => ['required', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validated();
 
         $workOrder->update([
             'status'         => 'cancelled',

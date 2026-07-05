@@ -36,21 +36,11 @@ class Invoice extends Model
         'created_by',
         'notes',
         'cash_budget_request_id',
-        'bus_id',
-        'driver_id',
-        'seat_map',
-        'travel_date',
-        'arrival_datetime',
-        'departure_datetime',
-        'pickup_location',
-        'tour_code',
-        'pax_count',
     ];
 
     protected function casts(): array
     {
         return [
-            'seat_map' => 'array',
             'requires_contract' => 'boolean',
         ];
     }
@@ -110,65 +100,8 @@ class Invoice extends Model
         return $this->hasOne(TripTicket::class);
     }
 
-    public function bus(): BelongsTo
+    public function booking(): HasOne
     {
-        return $this->belongsTo(Bus::class);
-    }
-
-    public function driver(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'driver_id');
-    }
-
-    protected static function booted(): void
-    {
-        static::saved(function ($invoice) {
-            self::syncToTravelSchedules($invoice);
-        });
-
-        static::deleted(function ($invoice) {
-            self::deleteFromTravelSchedules($invoice);
-        });
-    }
-
-    public static function syncToTravelSchedules($invoice): void
-    {
-        if ($invoice->status === 'cancelled' || !$invoice->bus_id || !$invoice->travel_date) {
-            self::deleteFromTravelSchedules($invoice);
-            return;
-        }
-
-        \DB::table('international_travels')
-            ->where('reference_type', 'invoice')
-            ->where('reference_id', $invoice->id)
-            ->delete();
-
-        \DB::table('local_travels')->updateOrInsert(
-            ['reference_type' => 'invoice', 'reference_id' => $invoice->id],
-            [
-                'bus_id' => $invoice->bus_id,
-                'driver_id' => $invoice->driver_id,
-                'travel_date' => $invoice->travel_date,
-                'duration' => '1 day',
-                'pick_up' => $invoice->pickup_location ?? 'Not Specified',
-                'drop_off' => $invoice->tour_code ?? 'Not Specified',
-                'status' => $invoice->status ?? 'draft',
-                'updated_at' => now(),
-                'created_at' => now(),
-            ]
-        );
-    }
-
-    public static function deleteFromTravelSchedules($invoice): void
-    {
-        \DB::table('local_travels')
-            ->where('reference_type', 'invoice')
-            ->where('reference_id', $invoice->id)
-            ->delete();
-
-        \DB::table('international_travels')
-            ->where('reference_type', 'invoice')
-            ->where('reference_id', $invoice->id)
-            ->delete();
+        return $this->hasOne(Booking::class);
     }
 }

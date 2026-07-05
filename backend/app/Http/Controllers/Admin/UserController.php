@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 use App\Notifications\AccountInvitation;
 use App\Notifications\TempPasswordNotification;
 
@@ -154,7 +154,7 @@ class UserController extends Controller
     /**
      * Update user details.
      */
-    public function update(Request $request, User $user): JsonResponse
+    public function update(\App\Http\Requests\UpdateUserRequest $request, User $user): JsonResponse
     {
         // Only super_admin can assign the super_admin role
         if ($request->has('role') && $request->role === 'super_admin' && $request->user()->role !== 'super_admin') {
@@ -173,15 +173,7 @@ class UserController extends Controller
             abort(403, 'Unauthorized. Only a Super Admin can modify custom permissions.');
         }
 
-        $validated = $request->validate([
-            'first_name' => ['sometimes', 'string', 'max:100'],
-            'last_name' => ['sometimes', 'string', 'max:100'],
-            'role' => ['sometimes', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],
-            'department' => ['nullable', 'string', 'max:100'],
-            'custom_permissions' => ['nullable', 'array'],
-            'tags' => ['sometimes', 'nullable', 'array'],
-            'tags.*' => ['string', 'max:100'],
-        ]);
+        $validated = $request->validated();
 
         $oldValues = $user->getOriginal();
         $user->update($validated);
@@ -292,12 +284,9 @@ class UserController extends Controller
      * Super Admin: directly set a specific password for any user.
      * Only accessible by super_admin (enforced at route level).
      */
-    public function setPassword(Request $request, User $user): JsonResponse
+    public function setPassword(\App\Http\Requests\SetPasswordRequest $request, User $user): JsonResponse
     {
-        $validated = $request->validate([
-            'new_password'              => ['required', 'string', 'min:8', 'confirmed'],
-            'new_password_confirmation' => ['required'],
-        ]);
+        $validated = $request->validated();
 
         $user->update([
             'password'             => Hash::make($validated['new_password']),

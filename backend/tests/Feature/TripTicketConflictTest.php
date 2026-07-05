@@ -60,7 +60,7 @@ class TripTicketConflictTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->postJson('/api/trip-tickets', $payload);
+            ->postJson('/api/v1/trip-tickets', $payload);
 
         $response->assertCreated();
     }
@@ -92,7 +92,7 @@ class TripTicketConflictTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->postJson('/api/trip-tickets', $payload);
+            ->postJson('/api/v1/trip-tickets', $payload);
 
         $response->assertStatus(422);
         $response->assertJsonFragment([
@@ -128,7 +128,7 @@ class TripTicketConflictTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->postJson('/api/trip-tickets', $payload);
+            ->postJson('/api/v1/trip-tickets', $payload);
 
         $response->assertStatus(422);
         $this->assertStringContainsString('The selected vehicle is already assigned', $response->json('message'));
@@ -149,7 +149,7 @@ class TripTicketConflictTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->putJson("/api/trip-tickets/{$ticket->id}", [
+            ->putJson("/api/v1/trip-tickets/{$ticket->id}", [
                 'pick_up' => 'New Pick Up Spot',
             ]);
 
@@ -186,7 +186,7 @@ class TripTicketConflictTest extends TestCase
 
         // Try to update Ticket B's driver to Driver 1 (conflicts with Ticket A)
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->putJson("/api/trip-tickets/{$ticketB->id}", [
+            ->putJson("/api/v1/trip-tickets/{$ticketB->id}", [
                 'driver_id' => $this->driver1->id,
             ]);
 
@@ -210,7 +210,7 @@ class TripTicketConflictTest extends TestCase
 
         // Test check-conflict endpoint for Driver 1 on same date
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->getJson("/api/trip-tickets/check-conflict?date_of_travel=2026-06-20&driver_id={$this->driver1->id}");
+            ->getJson("/api/v1/trip-tickets/check-conflict?date_of_travel=2026-06-20&driver_id={$this->driver1->id}");
 
         $response->assertOk();
         $response->assertJsonPath('has_conflict', true);
@@ -219,7 +219,7 @@ class TripTicketConflictTest extends TestCase
 
         // Test check-conflict endpoint for Driver 2 (should be clear)
         $response2 = $this->actingAs($this->admin, 'sanctum')
-            ->getJson("/api/trip-tickets/check-conflict?date_of_travel=2026-06-20&driver_id={$this->driver2->id}");
+            ->getJson("/api/v1/trip-tickets/check-conflict?date_of_travel=2026-06-20&driver_id={$this->driver2->id}");
 
         $response2->assertOk();
         $response2->assertJsonPath('has_conflict', false);

@@ -2,7 +2,7 @@
 
 namespace App\Mail;
 
-use App\Http\Services\ContractPdfService;
+use App\Services\ContractPdfService;
 use App\Models\Contract;
 use App\Models\Invoice;
 use Illuminate\Bus\Queueable;

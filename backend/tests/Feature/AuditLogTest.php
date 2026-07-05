@@ -26,7 +26,7 @@ class AuditLogTest extends TestCase
         AuditLog::factory(10)->create();
 
         $this->actingAs($this->superAdmin)
-             ->getJson('/api/audit-logs')
+             ->getJson('/api/v1/audit-logs')
              ->assertOk()
              ->assertJsonPath('success', true)
              ->assertJsonStructure(['data', 'meta']);
@@ -35,7 +35,7 @@ class AuditLogTest extends TestCase
     public function test_agent_cannot_access_audit_logs()
     {
         $this->actingAs($this->agent)
-             ->getJson('/api/audit-logs')
+             ->getJson('/api/v1/audit-logs')
              ->assertForbidden();
     }
 
@@ -46,7 +46,7 @@ class AuditLogTest extends TestCase
         AuditLog::factory(2)->create(['user_id' => $this->agent->id]);
 
         $this->actingAs($this->superAdmin)
-             ->getJson("/api/audit-logs?user_id={$user->id}")
+             ->getJson("/api/v1/audit-logs?user_id={$user->id}")
              ->assertOk()
              ->assertJsonCount(3, 'data');
     }
@@ -57,7 +57,7 @@ class AuditLogTest extends TestCase
         AuditLog::factory(2)->create(['action' => 'DELETE']);
 
         $this->actingAs($this->superAdmin)
-             ->getJson('/api/audit-logs?action=POST')
+             ->getJson('/api/v1/audit-logs?action=POST')
              ->assertOk()
              ->assertJsonCount(4, 'data');
     }
@@ -71,7 +71,7 @@ class AuditLogTest extends TestCase
         $to   = now()->toDateString();
 
         $this->actingAs($this->superAdmin)
-             ->getJson("/api/audit-logs?date_from={$from}&date_to={$to}")
+             ->getJson("/api/v1/audit-logs?date_from={$from}&date_to={$to}")
              ->assertOk()
              ->assertJsonCount(3, 'data');
     }

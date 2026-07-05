@@ -23,7 +23,7 @@ class InventoryTest extends TestCase
 
         InventoryItem::factory()->count(3)->create();
 
-        $response = $this->actingAs($agent, 'sanctum')->getJson('/api/inventory');
+        $response = $this->actingAs($agent, 'sanctum')->getJson('/api/v1/inventory');
 
         $response->assertStatus(200)
                  ->assertJsonStructure([
@@ -38,7 +38,7 @@ class InventoryTest extends TestCase
     {
         $driver = User::factory()->create(['role' => 'driver']);
 
-        $response = $this->actingAs($driver, 'sanctum')->getJson('/api/inventory');
+        $response = $this->actingAs($driver, 'sanctum')->getJson('/api/v1/inventory');
 
         $response->assertStatus(403);
     }
@@ -70,7 +70,7 @@ class InventoryTest extends TestCase
         ]);
 
         // Approve the PO
-        $response = $this->actingAs($admin, 'sanctum')->postJson("/api/purchase-orders/{$po->id}/approve", [
+        $response = $this->actingAs($admin, 'sanctum')->postJson("/api/v1/purchase-orders/{$po->id}/approve", [
             'approved' => true,
         ]);
 
@@ -120,7 +120,7 @@ class InventoryTest extends TestCase
         $wo->update(['status' => 'in_progress']);
 
         // Complete the WO
-        $response = $this->actingAs($admin, 'sanctum')->putJson("/api/work-orders/{$wo->id}", [
+        $response = $this->actingAs($admin, 'sanctum')->putJson("/api/v1/work-orders/{$wo->id}", [
             'status' => 'completed',
         ]);
 

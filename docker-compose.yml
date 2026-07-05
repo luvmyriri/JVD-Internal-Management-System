@@ -18,6 +18,7 @@ services:
       - DB_USERNAME=postgres
       - DB_PASSWORD=password
       - REDIS_HOST=redis
+      - QUEUE_CONNECTION=redis
     depends_on:
       - postgres
       - redis
@@ -46,6 +47,29 @@ services:
       - "6379:6379"
     volumes:
       - jvd_redisdata:/data
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jvd_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+    environment:
+      - DB_CONNECTION=pgsql
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_DATABASE=jvd_erp
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - QUEUE_CONNECTION=redis
+    depends_on:
+      - postgres
+      - redis
+    command: php artisan queue:work redis --tries=3 --timeout=90 --sleep=3
 
   frontend:
     build:

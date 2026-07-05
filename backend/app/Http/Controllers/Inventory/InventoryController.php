@@ -50,16 +50,9 @@ class InventoryController extends Controller
     /**
      * Create a new inventory item.
      */
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\Inventory\StoreInventoryItemRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'item_name'     => ['required', 'string', 'max:255'],
-            'category'      => ['required', 'string', 'max:100'],
-            'quantity'      => ['required', 'integer', 'min:0'],
-            'reorder_level' => ['required', 'integer', 'min:0'],
-            'unit'          => ['required', 'string', 'max:30'],
-            'unit_cost'     => ['required', 'numeric', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         $item = InventoryItem::create($validated);
 
@@ -85,18 +78,11 @@ class InventoryController extends Controller
     /**
      * Update item details or adjust quantity.
      */
-    public function update(Request $request, $id): JsonResponse
+    public function update(\App\Http\Requests\Inventory\UpdateInventoryItemRequest $request, $id): JsonResponse
     {
         $inventoryItem = InventoryItem::findOrFail($id);
         
-        $validated = $request->validate([
-            'item_name'     => ['sometimes', 'string', 'max:255'],
-            'category'      => ['sometimes', 'string', 'max:100'],
-            'quantity'      => ['sometimes', 'integer', 'min:0'],
-            'reorder_level' => ['sometimes', 'integer', 'min:0'],
-            'unit'          => ['sometimes', 'string', 'max:30'],
-            'unit_cost'     => ['sometimes', 'numeric', 'min:0'],
-        ]);
+        $validated = $request->validated();
 
         $inventoryItem->update($validated);
 

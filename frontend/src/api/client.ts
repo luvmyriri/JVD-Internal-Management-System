@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
 
 const client = axios.create({
   baseURL: API_BASE_URL,
@@ -17,11 +17,6 @@ const client = axios.create({
 // Request interceptor — attach auth token & fix FormData uploads
 client.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
     // Prevent browser/tunnel caching on GET requests
     if (config.method?.toLowerCase() === 'get') {
       config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';

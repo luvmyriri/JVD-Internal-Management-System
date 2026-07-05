@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 use App\Models\RolePermission;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;

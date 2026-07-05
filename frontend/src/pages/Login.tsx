@@ -184,7 +184,7 @@ export default function Login() {
         setUserId(data.user.id);
         setStep('2fa');
       } else {
-        login(data.token, data.user, data.permissions);
+        login(data.user, data.permissions);
         let defaultLandingPage = localStorage.getItem('jvd_landing_page');
         if (!defaultLandingPage || !isPathAllowedForUser(defaultLandingPage, data.user, data.permissions)) {
           defaultLandingPage = getLandingPageForUser(data.user, data.permissions);
@@ -217,7 +217,7 @@ export default function Login() {
         code: totpCode,
       });
       const { data } = response.data;
-      login(data.token, data.user, data.permissions);
+      login(data.user, data.permissions);
       const savedLandingPage = localStorage.getItem('jvd_landing_page');
       const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
         ? savedLandingPage
@@ -243,7 +243,7 @@ export default function Login() {
         secret: setupData!.secret,
       });
       const { data } = response.data;
-      login(data.token, data.user, data.permissions);
+      login(data.user, data.permissions);
       const savedLandingPage = localStorage.getItem('jvd_landing_page');
       const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
         ? savedLandingPage

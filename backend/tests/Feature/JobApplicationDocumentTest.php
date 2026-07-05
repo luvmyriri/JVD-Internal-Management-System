@@ -34,7 +34,7 @@ class JobApplicationDocumentTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/job-applications', $payload)
+             ->postJson('/api/v1/job-applications', $payload)
              ->assertCreated()
              ->assertJsonPath('checklist.Resume/CV', false)
              ->assertJsonPath('checklist.Police Clearance/NBI', false);
@@ -51,7 +51,7 @@ class JobApplicationDocumentTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->patchJson("/api/job-applications/{$app->id}/checklist", [
+             ->patchJson("/api/v1/job-applications/{$app->id}/checklist", [
                  'checklist' => ['Resume/CV' => true, 'NBI' => false]
              ])
              ->assertOk()
@@ -73,7 +73,7 @@ class JobApplicationDocumentTest extends TestCase
         $file = UploadedFile::fake()->create('resume.pdf', 500);
 
         $response = $this->actingAs($this->agent)
-             ->postJson("/api/job-applications/{$app->id}/documents", [
+             ->postJson("/api/v1/job-applications/{$app->id}/documents", [
                  'title' => 'Resume/CV',
                  'file'  => $file,
              ]);
@@ -115,7 +115,7 @@ class JobApplicationDocumentTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->deleteJson("/api/job-applications/{$app->id}/documents/{$doc->id}")
+             ->deleteJson("/api/v1/job-applications/{$app->id}/documents/{$doc->id}")
              ->assertOk()
              ->assertJsonPath('success', true);
 

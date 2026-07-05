@@ -37,21 +37,10 @@ class SystemSettingController extends Controller
     /**
      * Update landing page configurations. Restricted to Super Admin.
      */
-    public function updateLandingPageSettings(Request $request)
+    public function updateLandingPageSettings(\App\Http\Requests\UpdateLandingPageSettingsRequest $request)
     {
         info('Update Landing Page Settings Request:', $request->all());
         info('Uploaded files:', $request->allFiles());
-
-        $request->validate([
-            'logo_file' => 'nullable',
-            'bg_files' => 'nullable|array',
-            'existing_bg_urls' => 'nullable|array',
-            'existing_bg_urls.*' => 'string',
-            'landing_page_btn_color' => 'nullable|string|regex:/^#[0-9a-fA-F]{6}$/',
-            'landing_page_slide_duration' => 'nullable|integer|min:2|max:60',
-            'landing_page_title' => 'nullable|string|max:100',
-            'landing_page_slide_transition' => 'nullable|string|in:fade,slide,zoom,none',
-        ]);
 
         // 1. Handle Logo Upload
         if ($request->hasFile('logo_file')) {

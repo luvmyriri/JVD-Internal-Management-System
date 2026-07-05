@@ -14,14 +14,9 @@ class CustomerKycController extends Controller
         return response()->json($customer->kycs()->latest()->get());
     }
 
-    public function store(Request $request, Customer $customer)
+    public function store(\App\Http\Requests\Travel\StoreCustomerKycRequest $request, Customer $customer)
     {
-        $validated = $request->validate([
-            'document_type'   => 'required|string|max:255',
-            'document_number' => 'nullable|string|max:255',
-            'file_path'       => 'nullable|string',
-            'notes'           => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $kyc = $customer->kycs()->create($validated);
 

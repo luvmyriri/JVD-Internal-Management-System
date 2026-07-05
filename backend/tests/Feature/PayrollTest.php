@@ -56,7 +56,7 @@ class PayrollTest extends TestCase
         ]);
 
         $res = $this->actingAs($this->admin)
-                    ->getJson('/api/payroll/cycles');
+                    ->getJson('/api/v1/payroll/cycles');
 
         $res->assertOk()
             ->assertJsonPath('success', true)
@@ -66,7 +66,7 @@ class PayrollTest extends TestCase
     public function test_unprivileged_user_cannot_list_payroll_cycles()
     {
         $this->actingAs($this->unprivilegedUser)
-             ->getJson('/api/payroll/cycles')
+             ->getJson('/api/v1/payroll/cycles')
              ->assertForbidden();
     }
 
@@ -78,7 +78,7 @@ class PayrollTest extends TestCase
         ];
 
         $res = $this->actingAs($this->admin)
-                    ->postJson('/api/payroll/cycles', $payload);
+                    ->postJson('/api/v1/payroll/cycles', $payload);
 
         $res->assertCreated()
             ->assertJsonPath('success', true)
@@ -132,7 +132,7 @@ class PayrollTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson('/api/payroll/cycles', $payload)
+             ->postJson('/api/v1/payroll/cycles', $payload)
              ->assertStatus(422)
              ->assertJsonPath('success', false);
     }
@@ -160,7 +160,7 @@ class PayrollTest extends TestCase
         ]);
 
         $res = $this->actingAs($this->admin)
-                    ->getJson("/api/payroll/cycles/{$cycle->id}");
+                    ->getJson("/api/v1/payroll/cycles/{$cycle->id}");
 
         $res->assertOk()
             ->assertJsonPath('success', true)
@@ -177,7 +177,7 @@ class PayrollTest extends TestCase
         ];
 
         $res = $this->actingAs($this->admin)
-                    ->putJson("/api/payroll/employees/{$this->employee->id}", $payload);
+                    ->putJson("/api/v1/payroll/employees/{$this->employee->id}", $payload);
 
         $res->assertOk()
             ->assertJsonPath('success', true);
@@ -213,7 +213,7 @@ class PayrollTest extends TestCase
         ]);
 
         $res = $this->actingAs($this->admin)
-                    ->postJson("/api/payroll/cycles/{$cycle->id}/release");
+                    ->postJson("/api/v1/payroll/cycles/{$cycle->id}/release");
 
         $res->assertOk()
             ->assertJsonPath('success', true)
@@ -235,7 +235,7 @@ class PayrollTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)
-             ->deleteJson("/api/payroll/cycles/{$cycle->id}")
+             ->deleteJson("/api/v1/payroll/cycles/{$cycle->id}")
              ->assertOk();
 
         $this->assertDatabaseMissing('payroll_cycles', ['id' => $cycle->id]);
@@ -253,7 +253,7 @@ class PayrollTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)
-             ->deleteJson("/api/payroll/cycles/{$cycle->id}")
+             ->deleteJson("/api/v1/payroll/cycles/{$cycle->id}")
              ->assertStatus(422);
 
         $this->assertDatabaseHas('payroll_cycles', ['id' => $cycle->id]);

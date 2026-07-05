@@ -201,8 +201,8 @@ class WorkOrder extends Model
                     $item->decrement('quantity', $deducted);
                 }
 
-                if (class_exists(\App\Http\Services\AuditLogService::class)) {
-                    \App\Http\Services\AuditLogService::log(
+                if (class_exists(\App\Services\AuditLogService::class)) {
+                    \App\Services\AuditLogService::log(
                         action: 'DEDUCT_INVENTORY_MAINTENANCE',
                         module: 'inventory',
                         entityType: 'inventory_item',

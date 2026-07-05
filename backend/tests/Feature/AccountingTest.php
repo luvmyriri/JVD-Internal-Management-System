@@ -61,7 +61,7 @@ class AccountingTest extends TestCase
 
         // 2. Disburse the cash budget request via controller / API
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 11000,
              ])
@@ -117,7 +117,7 @@ class AccountingTest extends TestCase
 
         // Disburse
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 7000,
              ])
@@ -151,7 +151,7 @@ class AccountingTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->postJson("/api/v1/liquidations/{$liquidation->id}/settle", $payload)
              ->assertOk()
              ->assertJsonPath('data.status', 'settled')
              ->assertJsonPath('data.shortage_amount', 0);
@@ -209,7 +209,7 @@ class AccountingTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 10000,
              ])
@@ -242,7 +242,7 @@ class AccountingTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->postJson("/api/v1/liquidations/{$liquidation->id}/settle", $payload)
              ->assertOk()
              ->assertJsonPath('data.status', 'disputed')
              ->assertJsonPath('data.shortage_amount', 2000);
@@ -307,7 +307,7 @@ class AccountingTest extends TestCase
         ]);
         
         $this->actingAs($this->admin)
-             ->putJson("/api/commissions/{$commission->id}", [
+             ->putJson("/api/v1/commissions/{$commission->id}", [
                  'status' => 'approved',
              ])
              ->assertOk();
@@ -336,7 +336,7 @@ class AccountingTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 3000,
              ])
@@ -360,7 +360,7 @@ class AccountingTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->postJson("/api/v1/liquidations/{$liquidation->id}/settle", $payload)
              ->assertOk();
 
         $liquidation->refresh();
@@ -420,7 +420,7 @@ class AccountingTest extends TestCase
         ]);
 
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 5000,
              ])
@@ -443,7 +443,7 @@ class AccountingTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson("/api/liquidations/{$liquidation->id}/settle", $payload)
+             ->postJson("/api/v1/liquidations/{$liquidation->id}/settle", $payload)
              ->assertOk();
 
         $liquidation->refresh();
@@ -465,7 +465,7 @@ class AccountingTest extends TestCase
 
         // Record a collection payment of 1200
         $this->actingAs($this->admin)
-             ->postJson("/api/collections/{$collection->id}/add-payment", [
+             ->postJson("/api/v1/collections/{$collection->id}/add-payment", [
                  'payment_date' => '2026-06-09',
                  'payment_method' => 'Cash',
                  'amount' => 1200.00,
@@ -483,7 +483,7 @@ class AccountingTest extends TestCase
 
         // Pay the remaining 800
         $this->actingAs($this->admin)
-             ->postJson("/api/collections/{$collection->id}/add-payment", [
+             ->postJson("/api/v1/collections/{$collection->id}/add-payment", [
                  'payment_date' => '2026-06-09',
                  'payment_method' => 'Cash',
                  'amount' => 800.00,
@@ -540,13 +540,13 @@ class AccountingTest extends TestCase
         // intentionally gated behind this step (CashBudgetRequestController STEP 2b/STEP 3),
         // so a budget cannot jump straight from pending_super_admin to disbursed.
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'approved',
              ])
              ->assertOk();
 
         $this->actingAs($this->admin)
-             ->putJson("/api/cash-budgets/{$budget->id}", [
+             ->putJson("/api/v1/cash-budgets/{$budget->id}", [
                  'status' => 'disbursed',
                  'disbursed_amount' => 4500,
              ])

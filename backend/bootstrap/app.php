@@ -7,10 +7,20 @@ use Illuminate\Foundation\Configuration\Middleware;
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
-        api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         channels: __DIR__.'/../routes/channels.php',
         health: '/up',
+        then: function () {
+            $apiPath = __DIR__.'/../routes/api/v1';
+            if (is_dir($apiPath)) {
+                $files = glob($apiPath . '/*.php');
+                foreach ($files as $file) {
+                    \Illuminate\Support\Facades\Route::middleware(['api', 'throttle:api'])
+                        ->prefix('api/v1')
+                        ->group($file);
+                }
+            }
+        }
     )
     ->withMiddleware(function (Middleware $middleware): void {
         // Register custom middleware aliases

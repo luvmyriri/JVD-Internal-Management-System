@@ -75,15 +75,8 @@ class ChatController extends Controller
     /**
      * Send a message.
      */
-    public function sendMessage(Request $request)
+    public function sendMessage(\App\Http\Requests\SendChatMessageRequest $request)
     {
-        $request->validate([
-            'text'        => 'nullable|string',
-            'receiver_id' => 'nullable|exists:users,id',
-            'group_id'    => 'nullable|exists:chat_groups,group_id',
-            'attachment'  => 'nullable|file|max:10240',
-        ]);
-
         $userId = Auth::id();
 
         if (!$request->receiver_id && !$request->group_id) {
@@ -143,14 +136,8 @@ class ChatController extends Controller
     /**
      * Create a group chat.
      */
-    public function createGroup(Request $request)
+    public function createGroup(\App\Http\Requests\CreateChatGroupRequest $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'members' => 'required|array',
-            'members.*' => 'exists:users,id',
-        ]);
-
         $userId = Auth::id();
         $groupId = 'group-' . round(microtime(true) * 1000);
 
@@ -192,13 +179,8 @@ class ChatController extends Controller
     /**
      * Mark messages in a thread as read.
      */
-    public function markAsRead(Request $request)
+    public function markAsRead(\App\Http\Requests\MarkChatAsReadRequest $request)
     {
-        $request->validate([
-            'sender_id' => 'nullable|exists:users,id',
-            'group_id' => 'nullable|exists:chat_groups,group_id',
-        ]);
-
         $userId = Auth::id();
 
         if ($request->group_id) {
@@ -224,13 +206,8 @@ class ChatController extends Controller
     /**
      * Delete a conversation.
      */
-    public function deleteConversation(Request $request)
+    public function deleteConversation(\App\Http\Requests\DeleteChatConversationRequest $request)
     {
-        $request->validate([
-            'sender_id' => 'nullable|exists:users,id',
-            'group_id' => 'nullable|exists:chat_groups,group_id',
-        ]);
-
         $userId = Auth::id();
 
         if ($request->group_id) {

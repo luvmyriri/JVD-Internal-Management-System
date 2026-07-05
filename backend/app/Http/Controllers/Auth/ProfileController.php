@@ -16,15 +16,11 @@ class ProfileController extends Controller
     /**
      * Update user profile information.
      */
-    public function update(Request $request): JsonResponse
+    public function update(\App\Http\Requests\UpdateProfileRequest $request): JsonResponse
     {
         $user = auth()->user();
 
-        $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-        ]);
+
 
         $user->update($request->only('first_name', 'last_name', 'email'));
 
@@ -38,13 +34,11 @@ class ProfileController extends Controller
     /**
      * Update user avatar.
      */
-    public function updateAvatar(Request $request): JsonResponse
+    public function updateAvatar(\App\Http\Requests\UpdateAvatarRequest $request): JsonResponse
     {
         $user = auth()->user();
 
-        $request->validate([
-            'avatar' => 'required|string', // Expecting base64 string from cropper
-        ]);
+
 
         $approxSize = (strlen($request->avatar) * 3) / 4;
         if ($approxSize > 5 * 1024 * 1024) {

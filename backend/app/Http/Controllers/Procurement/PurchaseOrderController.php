@@ -6,12 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StorePurchaseOrderRequest;
 use App\Http\Requests\ReviewPurchaseOrderRequest;
 use App\Http\Resources\PurchaseOrderResource;
-use App\Http\Services\PurchaseOrderService;
+use App\Services\PurchaseOrderService;
 use App\Models\PurchaseOrder;
 use App\Models\InventoryItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 
 class PurchaseOrderController extends Controller
 {
@@ -112,7 +112,7 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->update(['status' => 'pending_accounting_review']);
 
-        \App\Http\Services\NotificationService::notifyPoSubmission($purchaseOrder);
+        \App\Services\NotificationService::notifyPoSubmission($purchaseOrder);
 
         AuditLogService::log(
             action: 'SUBMIT_PO',
@@ -151,7 +151,7 @@ class PurchaseOrderController extends Controller
 
 
         // Inventory update moved to approve method only
-        \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
+        \App\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(
             action: $request->approved ? 'VERIFY_PO' : 'REJECT_PO',
@@ -241,7 +241,7 @@ class PurchaseOrderController extends Controller
             }
         });
 
-        \App\Http\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
+        \App\Services\NotificationService::notifyPoStatusUpdate($purchaseOrder, $purchaseOrder->status);
 
         AuditLogService::log(
             action: $request->approved ? 'APPROVE_PO' : 'REJECT_PO',

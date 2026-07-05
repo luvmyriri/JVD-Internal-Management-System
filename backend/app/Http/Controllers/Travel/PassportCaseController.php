@@ -126,7 +126,7 @@ class PassportCaseController extends Controller
 
         $case = PassportCase::create($data);
         
-        \App\Http\Services\AuditLogService::log('create', 'Travel', 'PassportCase', $case->id, null, $case->toArray());
+        \App\Services\AuditLogService::log('create', 'Travel', 'PassportCase', $case->id, null, $case->toArray());
 
         return response()->json([
             'success' => true,
@@ -171,7 +171,7 @@ class PassportCaseController extends Controller
     /**
      * Update case — field edits and status transitions.
      */
-    public function update(Request $request, PassportCase $passportCase): JsonResponse
+    public function update(\App\Http\Requests\Travel\UpdatePassportCaseRequest $request, PassportCase $passportCase): JsonResponse
     {
         $this->ensureCanAccessCase($passportCase);
 
@@ -190,19 +190,12 @@ class PassportCaseController extends Controller
             }
         }
 
-        $validated = $request->validate([
-            'status'           => ['sometimes', 'string'],
-            'reference_number' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'checklist'        => ['sometimes', 'nullable', 'array'],
-            'submitted_date'   => ['sometimes', 'nullable', 'date'],
-            'release_date'     => ['sometimes', 'nullable', 'date'],
-            'handled_by'       => ['sometimes', 'integer', 'exists:users,id'],
-        ]);
+        $validated = $request->validated();
 
         $old = $passportCase->toArray();
         $passportCase->update($validated);
         
-        \App\Http\Services\AuditLogService::log('update', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+        \App\Services\AuditLogService::log('update', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
 
         return response()->json([
             'success' => true,
@@ -216,11 +209,9 @@ class PassportCaseController extends Controller
     /**
      * Transition status with state machine guard (PATCH /passport-cases/{id}/status).
      */
-    public function updateStatus(Request $request, PassportCase $passportCase): JsonResponse
+    public function updateStatus(\App\Http\Requests\Travel\UpdatePassportCaseStatusRequest $request, PassportCase $passportCase): JsonResponse
     {
         $this->ensureCanAccessCase($passportCase);
-
-        $request->validate(['status' => ['required', 'string']]);
 
         $newStatus = $request->status;
         $current   = $passportCase->status;
@@ -239,7 +230,7 @@ class PassportCaseController extends Controller
             $old = $passportCase->toArray();
             $passportCase->update(['status' => $newStatus]);
 
-            \App\Http\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+            \App\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
 
             // Create an Invoice if the case is released
             if ($newStatus === 'released' && $current !== 'released') {
@@ -279,16 +270,14 @@ class PassportCaseController extends Controller
     /**
      * Update document checklist (PATCH /passport-cases/{id}/checklist).
      */
-    public function updateChecklist(Request $request, PassportCase $passportCase): JsonResponse
+    public function updateChecklist(\App\Http\Requests\Travel\UpdatePassportCaseChecklistRequest $request, PassportCase $passportCase): JsonResponse
     {
         $this->ensureCanAccessCase($passportCase);
-
-        $request->validate(['checklist' => ['required', 'array']]);
 
         $old = $passportCase->toArray();
         $passportCase->update(['checklist' => $request->checklist]);
         
-        \App\Http\Services\AuditLogService::log('update_checklist', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
+        \App\Services\AuditLogService::log('update_checklist', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
 
         return response()->json([
             'success' => true,
@@ -335,15 +324,9 @@ class PassportCaseController extends Controller
     /**
      * Upload a new document for a specific passport case.
      */
-    public function uploadDocument(Request $request, PassportCase $passportCase): JsonResponse
+    public function uploadDocument(\App\Http\Requests\Travel\UploadPassportCaseDocumentRequest $request, PassportCase $passportCase): JsonResponse
     {
         $this->ensureCanAccessCase($passportCase);
-
-        $request->validate([
-            'title' => ['required', 'string', 'max:255'],
-            // C-01: restrict to safe document/image types — never store client-supplied executables.
-            'file'  => ['required', 'file', 'max:10240', 'mimes:pdf,jpg,jpeg,png,doc,docx'], // Max 10MB
-        ]);
 
         $file = $request->file('file');
         // Use the server-resolved extension, not the client-supplied original name.
@@ -399,7 +382,7 @@ class PassportCaseController extends Controller
     /**
      * Send automatic email request with secure upload link to customer.
      */
-    public function sendDocumentRequest(Request $request, PassportCase $passportCase): JsonResponse
+    public function sendDocumentRequest(\App\Http\Requests\Travel\SendDocumentRequestRequest $request, PassportCase $passportCase): JsonResponse
     {
         $this->ensureCanAccessCase($passportCase);
 
@@ -412,11 +395,6 @@ class PassportCaseController extends Controller
             ], 422);
         }
 
-        $request->validate([
-            'requested_docs'   => ['required', 'array'],
-            'requested_docs.*' => ['required', 'string'],
-        ]);
-
         $requestedDocs = $request->input('requested_docs');
 
         // Legacy columns kept in sync for any code still reading them directly, but the
@@ -427,7 +405,7 @@ class PassportCaseController extends Controller
         ]);
 
         $portalToken = \App\Models\CustomerPortalToken::generateFor('PassportCase', $passportCase->id, 'document_upload', $requestedDocs);
-        $link = \App\Http\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
+        $link = \App\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
 
         // Dispatch Email
         $mailError = null;
@@ -439,7 +417,7 @@ class PassportCaseController extends Controller
         }
 
         // Log Audit
-        \App\Http\Services\AuditLogService::log(
+        \App\Services\AuditLogService::log(
             'send_document_request',
             'Travel',
             'PassportCase',
@@ -514,7 +492,7 @@ class PassportCaseController extends Controller
     /**
      * Handle public document uploads using token authentication.
      */
-    public function uploadPublicDocument(Request $request, $token): JsonResponse
+    public function uploadPublicDocument(\App\Http\Requests\Travel\UploadPublicDocumentRequest $request, $token): JsonResponse
     {
         $case = PassportCase::where('upload_token', $token)->first();
 
@@ -524,11 +502,6 @@ class PassportCaseController extends Controller
                 'message' => 'Forbidden: Invalid or expired upload token.',
             ], 403);
         }
-
-        $request->validate([
-            'title' => ['required', 'string'],
-            'file'  => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'], // Max 10MB
-        ]);
 
         $requested = array_map('strtolower', array_map('trim', $case->upload_requested_docs ?? []));
         $uploadTitle = trim($request->input('title'));
@@ -571,10 +544,10 @@ class PassportCaseController extends Controller
         $case->update(['checklist' => $checklist]);
 
         // In-App Alert to Case Handler
-        \App\Http\Services\NotificationService::notifyCustomerDocumentUpload($case, $uploadTitle);
+        \App\Services\NotificationService::notifyCustomerDocumentUpload($case, $uploadTitle);
 
         // Log Audit Trail
-        \App\Http\Services\AuditLogService::log(
+        \App\Services\AuditLogService::log(
             'customer_document_upload',
             'Travel',
             'PassportCase',

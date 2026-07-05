@@ -74,16 +74,9 @@ class PassengerController extends Controller
     /**
      * Update passenger details.
      */
-    public function update(Request $request, Passenger $passenger): JsonResponse
+    public function update(\App\Http\Requests\Travel\UpdatePassengerRequest $request, Passenger $passenger): JsonResponse
     {
-        $validated = $request->validate([
-            'first_name'       => ['sometimes', 'string', 'max:100'],
-            'last_name'        => ['sometimes', 'string', 'max:100'],
-            'birth_date'       => ['nullable', 'date', 'before:today'],
-            'passport_no'      => ['nullable', 'string', 'max:50'],
-            'contact_no'       => ['nullable', 'string', 'max:30'],
-            'checklist_status' => ['nullable', 'array'],
-        ]);
+        $validated = $request->validated();
 
         $passenger->update($validated);
 

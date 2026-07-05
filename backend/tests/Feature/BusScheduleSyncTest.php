@@ -35,7 +35,7 @@ class BusScheduleSyncTest extends TestCase
 
     public function test_trip_ticket_lifecycle_syncs_schedules()
     {
-        // 1. Create domestic trip ticket -> should sync to local_travels
+        // 1. Create domestic trip ticket -> should sync to travels
         $ticket = TripTicket::create([
             'control_no' => 'DTT-2026-9999',
             'issue_date' => '2026-06-23',
@@ -49,45 +49,35 @@ class BusScheduleSyncTest extends TestCase
             'status' => 'approved',
         ]);
 
-        $this->assertDatabaseHas('local_travels', [
+        $this->assertDatabaseHas('travels', [
             'bus_id' => $this->bus->id,
             'reference_type' => 'trip_ticket',
             'reference_id' => $ticket->id,
             'travel_date' => '2026-06-23',
         ]);
 
-        // 2. Change to international -> should remove from local and sync to international_travels
+        // 2. Change to international -> should still exist in travels
         $ticket->update(['trip_type' => 'international']);
-
-        $this->assertDatabaseMissing('local_travels', [
-            'reference_id' => $ticket->id,
-        ]);
-        $this->assertDatabaseHas('international_travels', [
+        $this->assertDatabaseHas('travels', [
             'bus_id' => $this->bus->id,
             'reference_type' => 'trip_ticket',
             'reference_id' => $ticket->id,
             'travel_date' => '2026-06-23',
         ]);
 
-        // 3. Cancel -> should delete from international_travels
+        // 3. Cancel -> should delete from travels
         $ticket->update(['status' => 'cancelled']);
 
-        $this->assertDatabaseMissing('international_travels', [
+        $this->assertDatabaseMissing('travels', [
             'reference_id' => $ticket->id,
         ]);
     }
 
-    public function test_invoice_lifecycle_syncs_schedules()
+    public function test_booking_lifecycle_syncs_schedules()
     {
-        // 1. Create invoice -> should sync to local_travels
         $invoice = Invoice::create([
             'invoice_number' => 'INV-2026-9999',
             'customer_name' => 'John Doe',
-            'travel_date' => '2026-06-24',
-            'bus_id' => $this->bus->id,
-            'driver_id' => $this->driver->id,
-            'pickup_location' => 'Airport',
-            'tour_code' => 'LOCAL-TOUR',
             'status' => 'paid',
             'total_amount' => 5000,
             'subtotal' => 4500,
@@ -96,18 +86,29 @@ class BusScheduleSyncTest extends TestCase
             'created_by' => $this->admin->id,
         ]);
 
-        $this->assertDatabaseHas('local_travels', [
+        // 1. Create booking -> should sync to travels
+        $booking = \App\Models\Booking::create([
+            'invoice_id' => $invoice->id,
             'bus_id' => $this->bus->id,
-            'reference_type' => 'invoice',
-            'reference_id' => $invoice->id,
+            'driver_id' => $this->driver->id,
             'travel_date' => '2026-06-24',
+            'pickup_location' => 'Airport',
+            'tour_code' => 'LOCAL-TOUR',
+            'status' => 'confirmed',
         ]);
 
-        // 2. Cancel invoice -> should delete from local_travels
-        $invoice->update(['status' => 'cancelled']);
+        $this->assertDatabaseHas('travels', [
+            'bus_id' => $this->bus->id,
+            'reference_type' => 'booking',
+            'reference_id' => $booking->id,
+            'travel_date' => '2026-06-24 00:00:00',
+        ]);
 
-        $this->assertDatabaseMissing('local_travels', [
-            'reference_id' => $invoice->id,
+        // 2. Cancel -> should delete from travels
+        $booking->update(['status' => 'cancelled']);
+
+        $this->assertDatabaseMissing('travels', [
+            'reference_id' => $booking->id,
         ]);
     }
 
@@ -187,7 +188,7 @@ class BusScheduleSyncTest extends TestCase
 
         // Query calendar for 2026-06
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->getJson("/api/buses/{$this->bus->id}/calendar?month=6&year=2026");
+            ->getJson("/api/v1/buses/{$this->bus->id}/calendar?month=6&year=2026");
 
         $response->assertOk();
         $response->assertJsonPath('success', true);

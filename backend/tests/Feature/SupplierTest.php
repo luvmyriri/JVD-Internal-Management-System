@@ -27,7 +27,7 @@ class SupplierTest extends TestCase
         Supplier::factory(5)->create();
 
         $this->actingAs($this->accounting)
-             ->getJson('/api/suppliers')
+             ->getJson('/api/v1/suppliers')
              ->assertOk()
              ->assertJsonPath('success', true)
              ->assertJsonStructure(['data', 'meta']);
@@ -36,7 +36,7 @@ class SupplierTest extends TestCase
     public function test_agent_can_access_suppliers()
     {
         $this->actingAs($this->agent)
-             ->getJson('/api/suppliers')
+             ->getJson('/api/v1/suppliers')
              ->assertOk();
     }
 
@@ -51,7 +51,7 @@ class SupplierTest extends TestCase
         ];
 
         $this->actingAs($this->accounting)
-             ->postJson('/api/suppliers', $payload)
+             ->postJson('/api/v1/suppliers', $payload)
              ->assertCreated()
              ->assertJsonPath('data.company_name', 'Acme Parts Co.');
     }
@@ -61,7 +61,7 @@ class SupplierTest extends TestCase
         Supplier::factory()->create(['company_name' => 'Duplicate Corp']);
 
         $this->actingAs($this->accounting)
-             ->postJson('/api/suppliers', ['company_name' => 'Duplicate Corp'])
+             ->postJson('/api/v1/suppliers', ['company_name' => 'Duplicate Corp'])
              ->assertUnprocessable()
              ->assertJsonValidationErrors(['company_name']);
     }
@@ -72,7 +72,7 @@ class SupplierTest extends TestCase
         Supplier::factory()->create(['company_name' => 'Manila Tires']);
 
         $this->actingAs($this->accounting)
-             ->getJson('/api/suppliers?search=JVD')
+             ->getJson('/api/v1/suppliers?search=JVD')
              ->assertOk()
              ->assertJsonCount(1, 'data');
     }
@@ -82,7 +82,7 @@ class SupplierTest extends TestCase
         $supplier = Supplier::factory()->create();
 
         $this->actingAs($this->accounting)
-             ->putJson("/api/suppliers/{$supplier->id}", [
+             ->putJson("/api/v1/suppliers/{$supplier->id}", [
                  'contact_person' => 'Updated Person',
              ])
              ->assertOk()

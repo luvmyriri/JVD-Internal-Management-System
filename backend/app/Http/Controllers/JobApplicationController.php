@@ -258,7 +258,7 @@ class JobApplicationController extends Controller
             // Mark the job application as converted
             $jobApplication->update(['converted_user_id' => $user->id]);
 
-            \App\Http\Services\AuditLogService::log(
+            \App\Services\AuditLogService::log(
                 action: 'RECRUIT_APPLICANT_TO_EMPLOYEE',
                 module: 'hr',
                 entityType: 'user',

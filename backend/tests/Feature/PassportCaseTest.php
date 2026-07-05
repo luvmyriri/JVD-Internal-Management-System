@@ -46,7 +46,7 @@ class PassportCaseTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/passport-cases', $payload)
+             ->postJson('/api/v1/passport-cases', $payload)
              ->assertCreated()
              ->assertJsonPath('success', true)
              ->assertJsonPath('data.customer.id', $customer->id)
@@ -66,7 +66,7 @@ class PassportCaseTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/passport-cases', $payload)
+             ->postJson('/api/v1/passport-cases', $payload)
              ->assertCreated()
              ->assertJsonPath('success', true);
 
@@ -117,7 +117,7 @@ class PassportCaseTest extends TestCase
         $file = UploadedFile::fake()->create('passport_scan.pdf', 500);
 
         $response = $this->actingAs($this->agent)
-             ->postJson("/api/passport-cases/{$case->id}/documents", [
+             ->postJson("/api/v1/passport-cases/{$case->id}/documents", [
                  'title' => 'My Passport Scan',
                  'file'  => $file,
              ]);
@@ -166,7 +166,7 @@ class PassportCaseTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->getJson("/api/passport-cases/{$case->id}/documents")
+             ->getJson("/api/v1/passport-cases/{$case->id}/documents")
              ->assertOk()
              ->assertJsonPath('success', true)
              ->assertJsonCount(1, 'data')
@@ -209,7 +209,7 @@ class PassportCaseTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->deleteJson("/api/passport-cases/{$case->id}/documents/{$doc->id}")
+             ->deleteJson("/api/v1/passport-cases/{$case->id}/documents/{$doc->id}")
              ->assertOk()
              ->assertJsonPath('success', true);
 

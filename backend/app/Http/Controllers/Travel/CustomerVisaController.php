@@ -14,17 +14,9 @@ class CustomerVisaController extends Controller
         return response()->json($customer->visas()->latest()->get());
     }
 
-    public function store(Request $request, Customer $customer)
+    public function store(\App\Http\Requests\Travel\StoreCustomerVisaRequest $request, Customer $customer)
     {
-        $validated = $request->validate([
-            'country'      => 'required|string|max:255',
-            'visa_type'    => 'nullable|string|max:255',
-            'visa_number'  => 'required|string|max:255',
-            'issue_date'   => 'nullable|date',
-            'expiry_date'  => 'nullable|date',
-            'file_path'    => 'nullable|string',
-            'notes'        => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $visa = $customer->visas()->create($validated);
 

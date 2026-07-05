@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Commission;
 use App\Models\CommissionItem;
 use Illuminate\Http\Request;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 use Illuminate\Support\Facades\DB;
 
 class CommissionController extends Controller

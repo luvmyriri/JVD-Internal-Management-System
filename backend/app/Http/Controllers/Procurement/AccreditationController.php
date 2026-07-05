@@ -47,20 +47,9 @@ class AccreditationController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+    public function store(\App\Http\Requests\StoreAccreditationRequest $request)
     {
-        $validated = $request->validate([
-            'entity_type' => 'required|string',
-            'entity_name' => 'required|string',
-            'accreditation_type' => 'required|string',
-            'issuing_body' => 'nullable|string',
-            'issue_date' => 'nullable|date',
-            'expiry_date' => 'nullable|date',
-            'contact_person' => 'required|string',
-            'contact_email' => 'required|email',
-            'custom_documents' => 'nullable|array|max:20',
-            'custom_documents.*' => 'required|string|max:100',
-        ]);
+        $validated = $request->validated();
 
         $validated['status'] = 'pending_renewal'; // Initial state waiting for KYC
 
@@ -179,15 +168,9 @@ class AccreditationController extends Controller
             'data'    => new AccreditationResource($accreditation),
         ]);
     }
-    public function update(Request $request, Accreditation $accreditation)
+    public function update(\App\Http\Requests\UpdateAccreditationRequest $request, Accreditation $accreditation)
     {
-        $validated = $request->validate([
-            'status' => 'string|in:active,expired,pending_renewal',
-            // Allow manual overrides for documents in backend
-            'kyc_document_url' => 'nullable|string',
-            'nda_document_url' => 'nullable|string',
-            'terms_document_url' => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $accreditation->update($validated);
 
@@ -237,7 +220,7 @@ class AccreditationController extends Controller
         $accreditation->update(['kyc_token' => $token]);
 
         $portalToken = \App\Models\CustomerPortalToken::generateFor('Accreditation', $accreditation->id, 'document_upload');
-        $link = \App\Http\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
+        $link = \App\Services\PortalLinkResolver::buildPortalLink($portalToken->token, $request);
 
         // C-10/Phase 3: never let an SMTP failure crash this request — log and report instead.
         $mailError = null;
@@ -278,7 +261,7 @@ class AccreditationController extends Controller
         ]);
     }
 
-    public function submitKyc(Request $request, Accreditation $accreditation)
+    public function submitKyc(\App\Http\Requests\SubmitAccreditationKycRequest $request, Accreditation $accreditation)
     {
         $token = $request->input('token');
         if (empty($accreditation->kyc_token) || $token !== $accreditation->kyc_token) {
@@ -289,14 +272,7 @@ class AccreditationController extends Controller
             return response()->json(['message' => 'This KYC link has expired. Please request a new one.'], 403);
         }
 
-        $validated = $request->validate([
-            'nda_document_url'   => 'nullable|string',
-            'terms_document_url' => 'nullable|string',
-            'kyc_document_url'   => 'nullable|string',
-            'entity_name'        => 'nullable|string|max:255',
-            'contact_person'     => 'nullable|string|max:255',
-            'contact_email'      => 'nullable|string|email|max:255',
-        ]);
+        $validated = $request->validated();
 
         // Validate that all custom documents are uploaded
         $customDocs = $accreditation->custom_documents ?? [];
@@ -325,7 +301,7 @@ class AccreditationController extends Controller
             }
         }
 
-        \App\Http\Services\NotificationService::notifyKycSubmission($accreditation);
+        \App\Services\NotificationService::notifyKycSubmission($accreditation);
 
         return response()->json(['message' => 'KYC documents submitted successfully.']);
     }
@@ -344,11 +320,8 @@ class AccreditationController extends Controller
         return $this->uploadDocument($request, $accreditation, $type);
     }
 
-    public function uploadDocument(Request $request, Accreditation $accreditation, $type)
+    public function uploadDocument(\App\Http\Requests\UploadAccreditationDocumentRequest $request, Accreditation $accreditation, $type)
     {
-        $request->validate([
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:10240', // 10MB max
-        ]);
 
         $customDocs = $accreditation->custom_documents ?? [];
         $customKeys = array_column($customDocs, 'key');

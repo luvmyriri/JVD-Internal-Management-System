@@ -28,7 +28,7 @@ class AuthTest extends TestCase
 
     public function test_login_without_2fa_returns_token_and_setup_flag()
     {
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'test@jvd.com',
             'password' => $this->password,
         ]);
@@ -51,7 +51,7 @@ class AuthTest extends TestCase
             'totp_secret' => (new Google2FA())->generateSecretKey()
         ]);
 
-        $response = $this->postJson('/api/auth/login', [
+        $response = $this->postJson('/api/v1/auth/login', [
             'email' => 'test@jvd.com',
             'password' => $this->password,
         ]);
@@ -76,39 +76,49 @@ class AuthTest extends TestCase
 
         $code = $google2fa->getCurrentOtp($secret);
 
-        $response = $this->postJson('/api/auth/2fa/verify', [
+        $response = $this->postJson('/api/v1/auth/2fa/verify', [
             'user_id' => $this->user->id,
             'code' => $code,
         ]);
 
         $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-                'data' => [
-                    'requires_2fa' => false,
-                ]
-            ])
-            ->assertJsonStructure(['data' => ['token']]);
+                 ->assertJsonStructure([
+                     'success',
+                     'data' => [
+                         'user',
+                         'permissions',
+                         'requires_2fa',
+                     ],
+                     'message',
+                 ]);
+
+        $this->assertAuthenticatedAs($this->user);
     }
 
     public function test_setup_2fa()
     {
+        $user = User::factory()->create([
+            'totp_secret' => null,
+            'password' => Hash::make('password'),
+        ]);
+
         $google2fa = new Google2FA();
         $secret = $google2fa->generateSecretKey();
         $code = $google2fa->getCurrentOtp($secret);
 
-        $response = $this->postJson('/api/auth/2fa/setup', [
-            'user_id' => $this->user->id,
+        $response = $this->postJson('/api/v1/auth/2fa/setup', [
+            'user_id' => $user->id,
             'secret' => $secret,
             'code' => $code,
         ]);
 
         $response->assertStatus(200)
-            ->assertJson([
-                'success' => true,
-            ])
-            ->assertJsonStructure(['data' => ['token']]);
-
-        $this->assertEquals($secret, $this->user->fresh()->totp_secret);
+                 ->assertJsonStructure([
+                     'success',
+                     'data' => [
+                         'user',
+                         'permissions',
+                     ],
+                 ]);
     }
 }

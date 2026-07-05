@@ -29,7 +29,7 @@ class CustomerTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->getJson('/api/customers')
+             ->getJson('/api/v1/customers')
              ->assertOk()
              ->assertJsonPath('success', true);
     }
@@ -46,7 +46,7 @@ class CustomerTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/customers', $payload)
+             ->postJson('/api/v1/customers', $payload)
              ->assertCreated()
              ->assertJsonPath('success', true)
              ->assertJsonPath('data.first_name', 'Juan')
@@ -63,7 +63,7 @@ class CustomerTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/customers', $payload)
+             ->postJson('/api/v1/customers', $payload)
              ->assertUnprocessable()
              ->assertJsonValidationErrors(['phone']);
     }
@@ -78,7 +78,7 @@ class CustomerTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->postJson('/api/customers', $payload)
+             ->postJson('/api/v1/customers', $payload)
              ->assertUnprocessable()
              ->assertJsonValidationErrors(['email']);
     }
@@ -100,7 +100,7 @@ class CustomerTest extends TestCase
         ];
 
         $this->actingAs($this->agent)
-             ->putJson("/api/customers/{$customer->id}", $payload)
+             ->putJson("/api/v1/customers/{$customer->id}", $payload)
              ->assertOk()
              ->assertJsonPath('success', true)
              ->assertJsonPath('data.phone', '0918-765-4321');

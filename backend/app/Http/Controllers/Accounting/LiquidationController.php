@@ -53,19 +53,13 @@ class LiquidationController extends Controller
         return response()->json(['success' => true, 'data' => $liquidation]);
     }
 
-    public function settle(Request $request, Liquidation $liquidation)
+    public function settle(\App\Http\Requests\Accounting\SettleLiquidationRequest $request, Liquidation $liquidation)
     {
         $user = auth()->user();
         if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
             return response()->json(['error' => 'Unauthorized to settle liquidations.'], 403);
         }
-        $request->validate([
-            'items' => 'required|array',
-            'items.*.expense_category' => 'required|string',
-            'items.*.amount' => 'required|numeric|min:0',
-            'total_returned' => 'required|numeric|min:0',
-            'notes' => 'nullable|string',
-        ]);
+        $request->validated();
 
         $settled = $this->service->settleLiquidation(
             $liquidation,
@@ -77,21 +71,14 @@ class LiquidationController extends Controller
         return response()->json(['success' => true, 'data' => $settled->load(['items', 'tripTicket', 'employee', 'workOrder', 'purchaseOrder'])]);
     }
 
-    public function store(Request $request)
+    public function store(\App\Http\Requests\Accounting\StoreLiquidationRequest $request)
     {
         $user = auth()->user();
         if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
             return response()->json(['error' => 'Unauthorized to create liquidations.'], 403);
         }
 
-        $validated = $request->validate([
-            'trip_ticket_id'    => 'nullable|exists:trip_tickets,id',
-            'work_order_id'     => 'nullable|exists:work_orders,id',
-            'purchase_order_id' => 'nullable|exists:purchase_orders,id',
-            'employee_id'       => 'required|exists:users,id',
-            'total_advanced'    => 'required|numeric|min:0',
-            'notes'             => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $sourceType = 'general';
         if (!empty($validated['purchase_order_id']) || !empty($validated['work_order_id'])) {
@@ -113,7 +100,7 @@ class LiquidationController extends Controller
         ], 201);
     }
 
-    public function update(Request $request, Liquidation $liquidation)
+    public function update(\App\Http\Requests\Accounting\UpdateLiquidationRequest $request, Liquidation $liquidation)
     {
         $user = auth()->user();
         if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
@@ -124,11 +111,7 @@ class LiquidationController extends Controller
             return response()->json(['error' => 'Cannot update a settled liquidation.'], 422);
         }
 
-        $validated = $request->validate([
-            'total_advanced' => 'sometimes|numeric|min:0',
-            'notes'          => 'nullable|string',
-            'status'         => 'sometimes|in:pending,under_review,disputed',
-        ]);
+        $validated = $request->validated();
 
         $liquidation->update($validated);
 

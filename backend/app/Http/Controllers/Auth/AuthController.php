@@ -64,7 +64,7 @@ class AuthController extends Controller
 
         // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
         if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
-            $token = $user->createToken('auth-token')->plainTextToken;
+            \Auth::login($user);
             $user->update([
                 'last_login' => now(),
                 'two_factor_verified_at' => now(),
@@ -74,7 +74,6 @@ class AuthController extends Controller
                 'success' => true,
                 'data' => [
                     'user' => new UserResource($user),
-                    'token' => $token,
                     'permissions' => $user->getAllPermissions(),
                     'requires_2fa' => false,
                     'requires_password_change' => $user->must_change_password,
@@ -159,7 +158,7 @@ class AuthController extends Controller
         }
 
         RateLimiter::clear($key);
-        $token = $user->createToken('auth-token')->plainTextToken;
+        \Auth::login($user);
         $user->update([
             'last_login' => now(),
             'two_factor_verified_at' => now(),
@@ -169,7 +168,6 @@ class AuthController extends Controller
             'success' => true,
             'data' => [
                 'user' => new UserResource($user),
-                'token' => $token,
                 'permissions' => $user->getAllPermissions(),
                 'requires_2fa' => false,
                 'requires_password_change' => $user->must_change_password,
@@ -205,13 +203,12 @@ class AuthController extends Controller
             'two_factor_verified_at' => now(),
         ]);
 
-        $token = $user->createToken('auth-token')->plainTextToken;
+        \Auth::login($user);
 
         return response()->json([
             'success' => true,
             'data' => [
                 'user' => new UserResource($user),
-                'token' => $token,
                 'permissions' => $user->getAllPermissions(),
                 'requires_password_change' => $user->must_change_password,
             ],
@@ -234,11 +231,13 @@ class AuthController extends Controller
     }
 
     /**
-     * Logout — revoke current token.
+     * Logout — revoke current token / clear session.
      */
-    public function logout(): JsonResponse
+    public function logout(Request $request): JsonResponse
     {
-        auth()->user()->currentAccessToken()->delete();
+        \Illuminate\Support\Facades\Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json([
             'success' => true,

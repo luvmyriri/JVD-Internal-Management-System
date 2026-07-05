@@ -74,20 +74,9 @@ class SupplierController extends Controller
     /**
      * Update supplier details.
      */
-    public function update(Request $request, Supplier $supplier): JsonResponse
+    public function update(\App\Http\Requests\UpdateSupplierRequest $request, Supplier $supplier): JsonResponse
     {
-        $validated = $request->validate([
-            'company_name'        => ['sometimes', 'string', 'max:255', 'unique:suppliers,company_name,' . $supplier->id],
-            'contact_person'      => ['nullable', 'string', 'max:150'],
-            'phone'               => ['nullable', 'string', 'max:30'],
-            'email'               => ['nullable', 'email', 'max:255'],
-            'address'             => ['nullable', 'string', 'max:500'],
-            'payment_terms'       => ['nullable', 'string', 'max:500'],
-            'is_consignment'      => ['sometimes', 'boolean'],
-            'bank_name'           => ['nullable', 'string', 'max:255'],
-            'bank_account_number' => ['nullable', 'string', 'max:100'],
-            'tin_number'          => ['nullable', 'string', 'max:50'],
-        ]);
+        $validated = $request->validated();
 
         $supplier->update($validated);
 
@@ -144,11 +133,9 @@ class SupplierController extends Controller
     /**
      * Blacklist a supplier (blocks new POs from being issued to them).
      */
-    public function blacklist(Request $request, Supplier $supplier): JsonResponse
+    public function blacklist(\App\Http\Requests\BlacklistSupplierRequest $request, Supplier $supplier): JsonResponse
     {
-        $validated = $request->validate([
-            'reason' => ['required', 'string', 'max:500'],
-        ]);
+        $validated = $request->validated();
 
         $supplier->update([
             'is_verified'          => false,

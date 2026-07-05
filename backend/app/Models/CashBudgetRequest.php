@@ -98,4 +98,9 @@ class CashBudgetRequest extends Model
     {
         return $this->belongsTo(PayrollCycle::class, 'payroll_cycle_id');
     }
+
+    public function workflowInstance()
+    {
+        return $this->morphOne(WorkflowInstance::class, 'subject');
+    }
 }

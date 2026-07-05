@@ -38,7 +38,7 @@ class PurchaseOrderTest extends TestCase
 
     public function test_agent_can_create_po_draft()
     {
-        $res = $this->actingAs($this->agent)->postJson('/api/purchase-orders', [
+        $res = $this->actingAs($this->agent)->postJson('/api/v1/purchase-orders', [
             'supplier_id' => $this->supplier->id,
             'notes'       => 'Urgent spare parts',
             'items'       => [
@@ -56,12 +56,16 @@ class PurchaseOrderTest extends TestCase
 
     public function test_po_number_follows_format()
     {
-        $res = $this->actingAs($this->agent)->postJson('/api/purchase-orders', [
+        $res = $this->actingAs($this->agent)->postJson('/api/v1/purchase-orders', [
             'supplier_id' => $this->supplier->id,
             'items'       => [
                 ['item_name' => 'Wiper Blade', 'quantity' => 2, 'unit_price' => 500],
             ],
         ]);
+
+        if ($res->status() !== 201) {
+            dd($res->json());
+        }
 
         $this->assertMatchesRegularExpression(
             '/^PO-\d{4}-\d{4}$/',
@@ -72,7 +76,7 @@ class PurchaseOrderTest extends TestCase
     public function test_items_are_required()
     {
         $this->actingAs($this->agent)
-             ->postJson('/api/purchase-orders', ['supplier_id' => $this->supplier->id])
+             ->postJson('/api/v1/purchase-orders', ['supplier_id' => $this->supplier->id])
              ->assertUnprocessable()
              ->assertJsonValidationErrors(['items']);
     }
@@ -84,7 +88,7 @@ class PurchaseOrderTest extends TestCase
         PurchaseOrder::factory()->create(['created_by' => $this->agent->id, 'supplier_id' => $this->supplier->id]);
         PurchaseOrder::factory(3)->create(['created_by' => $this->superAdmin->id, 'supplier_id' => $this->supplier->id]);
 
-        $res = $this->actingAs($this->agent)->getJson('/api/purchase-orders');
+        $res = $this->actingAs($this->agent)->getJson('/api/v1/purchase-orders');
 
         $res->assertOk();
         $this->assertCount(1, $res->json('data'));
@@ -96,7 +100,7 @@ class PurchaseOrderTest extends TestCase
         PurchaseOrder::factory()->create(['created_by' => $this->superAdmin->id, 'supplier_id' => $this->supplier->id]);
 
         $this->actingAs($this->superAdmin)
-             ->getJson('/api/purchase-orders')
+             ->getJson('/api/v1/purchase-orders')
              ->assertOk()
              ->assertJsonPath('meta.total', 2);
     }
@@ -112,7 +116,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->postJson("/api/purchase-orders/{$po->id}/submit")
+             ->postJson("/api/v1/purchase-orders/{$po->id}/submit")
              ->assertOk()
              ->assertJsonPath('data.status', 'pending_accounting_review');
     }
@@ -126,7 +130,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->postJson("/api/purchase-orders/{$po->id}/submit")
+             ->postJson("/api/v1/purchase-orders/{$po->id}/submit")
              ->assertUnprocessable();
     }
 
@@ -139,7 +143,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->accounting)
-             ->postJson("/api/purchase-orders/{$po->id}/verify", ['approved' => true])
+             ->postJson("/api/v1/purchase-orders/{$po->id}/verify", ['approved' => true])
              ->assertOk()
              ->assertJsonPath('data.status', 'pending_ceo_approval');
     }
@@ -152,7 +156,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->agent)
-             ->postJson("/api/purchase-orders/{$po->id}/verify", ['approved' => true])
+             ->postJson("/api/v1/purchase-orders/{$po->id}/verify", ['approved' => true])
              ->assertForbidden();
     }
 
@@ -165,7 +169,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->superAdmin)
-             ->postJson("/api/purchase-orders/{$po->id}/approve", ['approved' => true])
+             ->postJson("/api/v1/purchase-orders/{$po->id}/approve", ['approved' => true])
              ->assertOk()
              ->assertJsonPath('data.status', 'approved');
     }
@@ -178,7 +182,7 @@ class PurchaseOrderTest extends TestCase
         ]);
 
         $this->actingAs($this->accounting)
-             ->postJson("/api/purchase-orders/{$po->id}/approve", ['approved' => true])
+             ->postJson("/api/v1/purchase-orders/{$po->id}/approve", ['approved' => true])
              ->assertForbidden();
     }
 }

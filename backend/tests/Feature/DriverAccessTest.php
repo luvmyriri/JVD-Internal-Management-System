@@ -76,7 +76,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_can_only_see_their_assigned_bus(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->getJson('/api/buses');
+            ->getJson('/api/v1/buses');
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -88,7 +88,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_can_view_assigned_bus_details(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->getJson('/api/buses/' . $this->bus1->id);
+            ->getJson('/api/v1/buses/' . $this->bus1->id);
 
         $response->assertStatus(200);
         $this->assertEquals($this->bus1->id, $response->json('data.id'));
@@ -97,7 +97,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_cannot_view_unassigned_bus_details(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->getJson('/api/buses/' . $this->bus2->id);
+            ->getJson('/api/v1/buses/' . $this->bus2->id);
 
         $response->assertStatus(403);
     }
@@ -109,7 +109,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_can_only_see_job_orders_for_assigned_bus(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->getJson('/api/job-orders');
+            ->getJson('/api/v1/job-orders');
 
         $response->assertStatus(200);
         $data = $response->json('data');
@@ -121,7 +121,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_cannot_view_job_order_for_unassigned_bus(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->getJson('/api/job-orders/' . $this->jobOrder2->id);
+            ->getJson('/api/v1/job-orders/' . $this->jobOrder2->id);
 
         $response->assertStatus(403);
     }
@@ -133,7 +133,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_cannot_create_bus(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->postJson('/api/buses', [
+            ->postJson('/api/v1/buses', [
                 'plate_number' => 'CCC-3333',
                 'model' => 'Test Bus',
                 'seating_capacity' => 40,
@@ -147,7 +147,7 @@ class DriverAccessTest extends TestCase
     public function test_driver_cannot_update_bus(): void
     {
         $response = $this->actingAs($this->driver1, 'sanctum')
-            ->putJson('/api/buses/' . $this->bus1->id, [
+            ->putJson('/api/v1/buses/' . $this->bus1->id, [
                 'model' => 'Hacked Model',
             ]);
 
@@ -170,7 +170,7 @@ class DriverAccessTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->putJson('/api/buses/' . $unassignedBus->id, [
+            ->putJson('/api/v1/buses/' . $unassignedBus->id, [
                 'assigned_driver' => $newDriver->id,
             ]);
 
@@ -181,7 +181,7 @@ class DriverAccessTest extends TestCase
     public function test_admin_can_unassign_driver_from_bus(): void
     {
         $response = $this->actingAs($this->admin, 'sanctum')
-            ->putJson('/api/buses/' . $this->bus1->id, [
+            ->putJson('/api/v1/buses/' . $this->bus1->id, [
                 'assigned_driver' => null,
             ]);
 
@@ -201,7 +201,7 @@ class DriverAccessTest extends TestCase
         ]);
 
         $response = $this->actingAs($loneDriver, 'sanctum')
-            ->getJson('/api/buses');
+            ->getJson('/api/v1/buses');
 
         $response->assertStatus(200);
         $this->assertCount(0, $response->json('data'));
@@ -215,7 +215,7 @@ class DriverAccessTest extends TestCase
         ]);
 
         $response = $this->actingAs($loneDriver, 'sanctum')
-            ->getJson('/api/job-orders');
+            ->getJson('/api/v1/job-orders');
 
         $response->assertStatus(200);
         $this->assertCount(0, $response->json('data'));

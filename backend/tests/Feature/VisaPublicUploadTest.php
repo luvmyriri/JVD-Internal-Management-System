@@ -66,7 +66,7 @@ class VisaPublicUploadTest extends TestCase
         ];
 
         $response = $this->actingAs($this->agent)
-            ->postJson("/api/passport-cases/{$this->visaCase->id}/request-documents", $payload);
+            ->postJson("/api/v1/passport-cases/{$this->visaCase->id}/request-documents", $payload);
 
         $response->assertOk()
             ->assertJsonPath('success', true);
@@ -85,7 +85,7 @@ class VisaPublicUploadTest extends TestCase
         $this->assertNotNull($portalToken);
         $this->assertEquals(['Valid Passport', 'Bank Statement'], $portalToken->requested_docs);
 
-        Mail::assertSent(VisaDocumentRequestMail::class, function ($mail) {
+        Mail::assertQueued(VisaDocumentRequestMail::class, function ($mail) {
             return $mail->hasTo($this->customer->email) &&
                    $mail->passportCase->id === $this->visaCase->id &&
                    $mail->requestedDocs === ['Valid Passport', 'Bank Statement'];
@@ -108,7 +108,7 @@ class VisaPublicUploadTest extends TestCase
         ]);
 
         $response = $this->actingAs($this->agent)
-            ->postJson("/api/passport-cases/{$caseNoEmail->id}/request-documents", [
+            ->postJson("/api/v1/passport-cases/{$caseNoEmail->id}/request-documents", [
                 'requested_docs' => ['Valid Passport'],
             ]);
 
@@ -124,7 +124,7 @@ class VisaPublicUploadTest extends TestCase
             'upload_requested_docs' => ['Valid Passport', 'Bank Statement'],
         ]);
 
-        $response = $this->getJson('/api/public/visa-requests/test-token-123');
+        $response = $this->getJson('/api/v1/public/visa-requests/test-token-123');
 
         $response->assertOk()
             ->assertJsonPath('success', true)
@@ -137,7 +137,7 @@ class VisaPublicUploadTest extends TestCase
 
     public function test_guest_cannot_verify_invalid_token()
     {
-        $response = $this->getJson('/api/public/visa-requests/non-existent-token');
+        $response = $this->getJson('/api/v1/public/visa-requests/non-existent-token');
 
         $response->assertStatus(403)
             ->assertJsonPath('success', false)
@@ -155,7 +155,7 @@ class VisaPublicUploadTest extends TestCase
 
         $file = UploadedFile::fake()->create('passport.pdf', 500);
 
-        $response = $this->postJson('/api/public/visa-requests/test-token-123/upload', [
+        $response = $this->postJson('/api/v1/public/visa-requests/test-token-123/upload', [
             'title' => 'Valid Passport',
             'file'  => $file,
         ]);
@@ -186,7 +186,7 @@ class VisaPublicUploadTest extends TestCase
 
         $file = UploadedFile::fake()->create('unrequested.pdf', 500);
 
-        $response = $this->postJson('/api/public/visa-requests/test-token-123/upload', [
+        $response = $this->postJson('/api/v1/public/visa-requests/test-token-123/upload', [
             'title' => 'Bank Statement', // Not in requested_docs
             'file'  => $file,
         ]);

@@ -95,6 +95,7 @@ class LedgerService
             ['code' => '1000', 'name' => 'Cash in Bank', 'type' => 'asset'],
             ['code' => '1100', 'name' => 'Cash on Hand', 'type' => 'asset'],
             ['code' => '1200', 'name' => 'Employee Advances', 'type' => 'asset'],
+            ['code' => '1300', 'name' => 'Accounts Receivable', 'type' => 'asset'],
             ['code' => '2000', 'name' => 'Accounts Payable', 'type' => 'liability'],
             ['code' => '2100', 'name' => 'Due to Employees', 'type' => 'liability'],       // For over-liquidations
             ['code' => '2200', 'name' => 'Accrued Payroll', 'type' => 'liability'],         // Net pay owed to staff

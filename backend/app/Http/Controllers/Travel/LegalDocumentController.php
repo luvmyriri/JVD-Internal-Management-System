@@ -47,16 +47,9 @@ class LegalDocumentController extends Controller
     /**
      * Upload a document.
      */
-    public function store(Request $request): JsonResponse
+    public function store(\App\Http\Requests\Travel\StoreLegalDocumentRequest $request): JsonResponse
     {
-        $request->validate([
-            'job_order_id'  => 'nullable|exists:job_orders,id',
-            'title'         => 'required|string|max:255',
-            'document_type' => 'required|string|max:100',
-            // C-02: restrict to safe document/image types — never store client-supplied executables.
-            'file'          => 'required|file|max:20480|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png', // 20MB
-            'notes'         => 'nullable|string|max:1000',
-        ]);
+        $validated = $request->validated();
 
         $path = $request->file('file')->store('legal_documents', 'public');
 

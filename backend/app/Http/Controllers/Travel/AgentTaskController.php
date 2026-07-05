@@ -14,15 +14,9 @@ class AgentTaskController extends Controller
         return response()->json($customer->tasks()->with('assignee')->latest()->get());
     }
 
-    public function store(Request $request, Customer $customer)
+    public function store(\App\Http\Requests\Travel\StoreAgentTaskRequest $request, Customer $customer)
     {
-        $validated = $request->validate([
-            'title'       => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'status'      => 'nullable|in:pending,in_progress,resolved',
-            'due_date'    => 'nullable|date',
-            'assigned_to' => 'nullable|exists:users,id',
-        ]);
+        $validated = $request->validated();
 
         if (!isset($validated['assigned_to'])) {
             $validated['assigned_to'] = $request->user()->id;
@@ -30,30 +24,24 @@ class AgentTaskController extends Controller
 
         $task = $customer->tasks()->create($validated);
 
-        \App\Http\Services\NotificationService::notifyTaskAssignment($task);
+        \App\Services\NotificationService::notifyTaskAssignment($task);
 
         return response()->json($task->load('assignee'), 201);
     }
 
-    public function update(Request $request, Customer $customer, AgentTask $task)
+    public function update(\App\Http\Requests\Travel\UpdateAgentTaskRequest $request, Customer $customer, AgentTask $task)
     {
         if ($task->customer_id !== $customer->id) {
             abort(404);
         }
 
-        $validated = $request->validate([
-            'title'       => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'status'      => 'sometimes|in:pending,in_progress,resolved',
-            'due_date'    => 'nullable|date',
-            'assigned_to' => 'nullable|exists:users,id',
-        ]);
+        $validated = $request->validated();
 
         $oldAssignedTo = $task->assigned_to;
         $task->update($validated);
 
         if (isset($validated['assigned_to']) && $validated['assigned_to'] != $oldAssignedTo) {
-            \App\Http\Services\NotificationService::notifyTaskAssignment($task);
+            \App\Services\NotificationService::notifyTaskAssignment($task);
         }
 
         return response()->json($task->load('assignee'));

@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Services\InvoiceFinalizationService;
-use App\Http\Services\NotificationService;
-use App\Http\Services\PortalDocumentService;
+use App\Services\InvoiceFinalizationService;
+use App\Services\NotificationService;
+use App\Services\PortalDocumentService;
 use App\Mail\DocumentsCompleteMail;
 use App\Models\Contract;
 use App\Models\ContractAmendment;

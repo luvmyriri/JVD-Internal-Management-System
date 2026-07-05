@@ -9,7 +9,7 @@ use App\Models\Bus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 
 class BusController extends Controller
 {
@@ -167,20 +167,13 @@ class BusController extends Controller
         $start = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
         $end   = $start->copy()->endOfMonth()->endOfDay();
 
-        // Local travels for this bus
-        $localTravels = \DB::table('local_travels')
-            ->join('buses', 'local_travels.bus_id', '=', 'buses.id')
-            ->where('local_travels.bus_id', $bus->id)
-            ->whereBetween('local_travels.travel_date', [$start->toDateString(), $end->toDateString()])
-            ->select('local_travels.*')
-            ->get();
-
-        // International travels for this bus
-        $intlTravels = \DB::table('international_travels')
-            ->join('buses', 'international_travels.bus_id', '=', 'buses.id')
-            ->where('international_travels.bus_id', $bus->id)
-            ->whereBetween('international_travels.travel_date', [$start->toDateString(), $end->toDateString()])
-            ->select('international_travels.*')
+        // Travels for this bus
+        $travels = \DB::table('travels')
+            ->join('buses', 'travels.bus_id', '=', 'buses.id')
+            ->where('travels.bus_id', $bus->id)
+            ->where('travels.status', '!=', 'cancelled')
+            ->whereBetween('travels.travel_date', [$start->toDateString(), $end->toDateString()])
+            ->select('travels.*')
             ->get();
 
         // PMS schedules for this bus
@@ -193,7 +186,7 @@ class BusController extends Controller
 
         $entries = [];
 
-        foreach ($localTravels as $row) {
+        foreach ($travels as $row) {
             if ($row->reference_type === 'invoice') {
                 $inv = \App\Models\Invoice::find($row->reference_id);
                 if ($inv) {
@@ -207,7 +200,7 @@ class BusController extends Controller
                     $entries[] = [
                         'date'          => $row->travel_date,
                         'type'          => 'invoice',
-                        'travel_type'   => 'local',
+                        'travel_type'   => $row->travel_type,
                         'reference_id'  => $inv->id,
                         'reference_no'  => $inv->invoice_number,
                         'customer_name' => $inv->customer_name,
@@ -222,49 +215,7 @@ class BusController extends Controller
                     $entries[] = [
                         'date'         => $row->travel_date,
                         'type'         => 'trip_ticket',
-                        'travel_type'  => 'local',
-                        'reference_id' => $tt->id,
-                        'reference_no' => $tt->control_no,
-                        'pick_up'      => $tt->pick_up,
-                        'drop_off'     => $tt->drop_off,
-                        'pax'          => $tt->no_of_passengers,
-                        'status'       => $tt->status,
-                        'seat_map'     => null,
-                    ];
-                }
-            }
-        }
-
-        foreach ($intlTravels as $row) {
-            if ($row->reference_type === 'invoice') {
-                $inv = \App\Models\Invoice::find($row->reference_id);
-                if ($inv) {
-                    $mappedStatus = 'reserved';
-                    if ($inv->status === 'paid') {
-                        $mappedStatus = 'completed';
-                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
-                        $mappedStatus = 'reserved';
-                    }
-
-                    $entries[] = [
-                        'date'          => $row->travel_date,
-                        'type'          => 'invoice',
-                        'travel_type'   => 'international',
-                        'reference_id'  => $inv->id,
-                        'reference_no'  => $inv->invoice_number,
-                        'customer_name' => $inv->customer_name,
-                        'status'        => $mappedStatus,
-                        'seat_map'      => $inv->seat_map,
-                        'total_amount'  => $inv->total_amount,
-                    ];
-                }
-            } elseif ($row->reference_type === 'trip_ticket') {
-                $tt = \App\Models\TripTicket::find($row->reference_id);
-                if ($tt) {
-                    $entries[] = [
-                        'date'         => $row->travel_date,
-                        'type'         => 'trip_ticket',
-                        'travel_type'  => 'international',
+                        'travel_type'  => $row->travel_type,
                         'reference_id' => $tt->id,
                         'reference_no' => $tt->control_no,
                         'pick_up'      => $tt->pick_up,

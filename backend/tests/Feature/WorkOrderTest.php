@@ -27,7 +27,7 @@ class WorkOrderTest extends TestCase
         WorkOrder::factory(5)->create();
 
         $this->actingAs($this->admin)
-             ->getJson('/api/work-orders')
+             ->getJson('/api/v1/work-orders')
              ->assertOk()
              ->assertJsonPath('meta.total', 5);
     }
@@ -38,7 +38,7 @@ class WorkOrderTest extends TestCase
         WorkOrder::factory(2)->create(['status' => 'in_progress']);
 
         $this->actingAs($this->admin)
-             ->getJson('/api/work-orders?status=open')
+             ->getJson('/api/v1/work-orders?status=open')
              ->assertOk()
              ->assertJsonCount(3, 'data');
     }
@@ -49,7 +49,7 @@ class WorkOrderTest extends TestCase
         WorkOrder::factory(4)->create(['priority' => 'low']);
 
         $this->actingAs($this->admin)
-             ->getJson('/api/work-orders?priority=critical')
+             ->getJson('/api/v1/work-orders?priority=critical')
              ->assertOk()
              ->assertJsonCount(2, 'data');
     }
@@ -59,7 +59,7 @@ class WorkOrderTest extends TestCase
         $wo = WorkOrder::factory()->create(['status' => 'open']);
 
         $this->actingAs($this->admin)
-             ->putJson("/api/work-orders/{$wo->id}", ['status' => 'in_progress'])
+             ->putJson("/api/v1/work-orders/{$wo->id}", ['status' => 'in_progress'])
              ->assertOk()
              ->assertJsonPath('data.status', 'in_progress');
     }
@@ -70,7 +70,7 @@ class WorkOrderTest extends TestCase
 
         // open → completed is not a valid transition (must pass through in_progress)
         $this->actingAs($this->admin)
-             ->putJson("/api/work-orders/{$wo->id}", ['status' => 'completed'])
+             ->putJson("/api/v1/work-orders/{$wo->id}", ['status' => 'completed'])
              ->assertUnprocessable();
     }
 
@@ -80,7 +80,7 @@ class WorkOrderTest extends TestCase
         $mechanic = User::factory()->create(['role' => 'service_adviser']);
 
         $this->actingAs($this->admin)
-             ->putJson("/api/work-orders/{$wo->id}", ['assigned_to' => $mechanic->id])
+             ->putJson("/api/v1/work-orders/{$wo->id}", ['assigned_to' => $mechanic->id])
              ->assertOk()
              ->assertJsonPath('data.assignee.id', $mechanic->id);
     }
@@ -90,7 +90,7 @@ class WorkOrderTest extends TestCase
         $accounting = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($accounting)
-             ->getJson('/api/work-orders')
+             ->getJson('/api/v1/work-orders')
              ->assertForbidden();
     }
 }

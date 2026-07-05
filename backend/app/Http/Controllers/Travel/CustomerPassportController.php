@@ -14,16 +14,9 @@ class CustomerPassportController extends Controller
         return response()->json($customer->passports()->latest()->get());
     }
 
-    public function store(Request $request, Customer $customer)
+    public function store(\App\Http\Requests\Travel\StoreCustomerPassportRequest $request, Customer $customer)
     {
-        $validated = $request->validate([
-            'passport_number' => 'required|string|max:255',
-            'issue_country'   => 'nullable|string|max:255',
-            'issue_date'      => 'nullable|date',
-            'expiry_date'     => 'nullable|date',
-            'file_path'       => 'nullable|string',
-            'notes'           => 'nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $passport = $customer->passports()->create($validated);
 

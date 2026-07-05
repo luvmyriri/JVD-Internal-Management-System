@@ -40,7 +40,7 @@ class AutoGenerationTest extends TestCase
         ];
 
         $response = $this->actingAs($this->admin)
-            ->postJson("/api/job-applications/{$app->id}/convert-to-employee", $payload);
+            ->postJson("/api/v1/job-applications/{$app->id}/convert-to-employee", $payload);
 
         $response->assertCreated()
             ->assertJsonPath('success', true);
@@ -80,7 +80,7 @@ class AutoGenerationTest extends TestCase
 
         // 1. Create first commission
         $response1 = $this->actingAs($this->admin)
-            ->postJson('/api/commissions', $payload);
+            ->postJson('/api/v1/commissions', $payload);
 
         $response1->assertCreated();
         $year = now()->year;
@@ -89,7 +89,7 @@ class AutoGenerationTest extends TestCase
 
         // 2. Create second commission
         $response2 = $this->actingAs($this->admin)
-            ->postJson('/api/commissions', $payload);
+            ->postJson('/api/v1/commissions', $payload);
 
         $response2->assertCreated();
         $serial2 = sprintf('COM-%d-0002', $year);

@@ -7,8 +7,8 @@ use App\Models\WorkOrder;
 use App\Models\PurchaseOrder;
 use App\Models\CashBudgetRequest;
 use App\Models\InventoryItem;
-use App\Http\Services\AuditLogService;
-use App\Http\Services\NotificationService;
+use App\Services\AuditLogService;
+use App\Services\NotificationService;
 use App\Notifications\SystemAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -351,7 +351,7 @@ class PublicRequestActionController extends Controller
                     'message' => 'Accounting verification complete! The P.O. has been successfully verified and forwarded to the CEO for final approval.',
                     'details' => [
                         'P.O. Number' => $purchaseOrder->po_number,
-                        'Grand Total' => '$' . number_format($purchaseOrder->grand_total, 2),
+                        'Grand Total' => '$' . number_format($purchaseOrder->total_amount, 2),
                         'Verified By' => $actor->first_name . ' ' . $actor->last_name,
                         'Supplier' => $purchaseOrder->supplier->name ?? 'N/A',
                     ]
@@ -427,7 +427,7 @@ class PublicRequestActionController extends Controller
                     'details' => [
                         'P.O. Number' => $purchaseOrder->po_number,
                         'Supplier' => $purchaseOrder->supplier->name ?? 'N/A',
-                        'Total Sum' => '$' . number_format($purchaseOrder->grand_total, 2),
+                        'Total Sum' => '$' . number_format($purchaseOrder->total_amount, 2),
                         'Approved By' => $actor->first_name . ' ' . $actor->last_name,
                         'Inventory Status' => 'Quantities Credited Successfully',
                     ]
@@ -484,7 +484,7 @@ class PublicRequestActionController extends Controller
                     'details' => [
                         'P.O. Number' => $purchaseOrder->po_number,
                         'Supplier' => $purchaseOrder->supplier->name ?? 'N/A',
-                        'Total Sum' => '$' . number_format($purchaseOrder->grand_total, 2),
+                        'Total Sum' => '$' . number_format($purchaseOrder->total_amount, 2),
                         'Rejected By' => $actor->first_name . ' ' . $actor->last_name,
                     ]
                 ]);
@@ -518,6 +518,13 @@ class PublicRequestActionController extends Controller
             ]);
         }
 
+        $wfService = app(\App\Services\WorkflowService::class);
+        $wfInstance = $budget->workflowInstance ?? tap($wfService->submit($budget, 'cash_budgets'), function ($inst) use ($budget) {
+            if ($budget->status === 'pending_super_admin') $inst->update(['current_step' => 2]);
+            if ($budget->status === 'approved') $inst->update(['current_step' => 3]);
+            if ($budget->status === 'disbursed') $inst->update(['status' => 'completed']);
+        });
+
         if ($action === 'reject') {
             if (!in_array($budget->status, ['pending_accounting', 'pending_super_admin'])) {
                 return view('action_result', [
@@ -531,6 +538,7 @@ class PublicRequestActionController extends Controller
                 ]);
             }
 
+            $wfService->reject($wfInstance, $actor, 'Rejected remotely via secure email link.');
             $budget->update(['status' => 'draft']);
 
             if ($budget->preparedBy) {
@@ -557,6 +565,7 @@ class PublicRequestActionController extends Controller
         }
 
         if ($action === 'approve' && $budget->status === 'pending_accounting') {
+            $wfService->approve($wfInstance, $actor);
             $budget->update([
                 'approved_by' => $actor->id,
                 'status'      => 'pending_super_admin',
@@ -591,6 +600,7 @@ class PublicRequestActionController extends Controller
         }
 
         if ($action === 'approve' && $budget->status === 'pending_super_admin') {
+            $wfService->approve($wfInstance, $actor);
             $budget->update([
                 'super_admin_approved_by' => $actor->id,
                 'status' => 'approved',

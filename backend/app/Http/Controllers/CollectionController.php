@@ -6,7 +6,7 @@ use App\Models\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Http\Services\AuditLogService;
+use App\Services\AuditLogService;
 use App\Mail\TransactionNotificationMail;
 
 class CollectionController extends Controller
@@ -179,18 +179,6 @@ class CollectionController extends Controller
             }
 
             $collection->recalculate();
-
-            // Sync the linked invoice to paid as well
-            if ($collection->invoice_id) {
-                $invoice = $collection->invoice;
-                if ($invoice) {
-                    $invoice->update([
-                        'status'          => 'paid',
-                        'balance'         => 0,
-                        'amount_received' => $invoice->total_amount,
-                    ]);
-                }
-            }
         });
 
         // Send email outside of transaction
@@ -236,7 +224,7 @@ class CollectionController extends Controller
             ], 422);
         }
 
-        $collection->payments()->create($validated);
+        $payment = $collection->payments()->create($validated);
         
         $collection->recalculate();
 

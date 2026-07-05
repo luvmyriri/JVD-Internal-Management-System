@@ -12,12 +12,9 @@ class VisaRequirementController extends Controller
     /**
      * Proxy request to TravelBuddy Visa Requirements API on RapidAPI.
      */
-    public function getRequirements(Request $request): JsonResponse
+    public function getRequirements(\App\Http\Requests\Travel\GetVisaRequirementsRequest $request): JsonResponse
     {
-        $request->validate([
-            'passport'    => ['nullable', 'string', 'max:5'],
-            'destination' => ['required', 'string', 'max:5'],
-        ]);
+        $request->validated();
 
         $passport = $request->input('passport', 'PH');
         $destination = $request->input('destination');

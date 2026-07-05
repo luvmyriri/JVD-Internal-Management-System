@@ -10,12 +10,9 @@ use Illuminate\Support\Facades\Mail;
 
 class CustomerEmailController extends Controller
 {
-    public function send(Request $request, Customer $customer)
+    public function send(\App\Http\Requests\Travel\SendCustomerEmailRequest $request, Customer $customer)
     {
-        $validated = $request->validate([
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         if (empty($customer->email)) {
             return response()->json(['message' => 'Customer has no email address.'], 400);

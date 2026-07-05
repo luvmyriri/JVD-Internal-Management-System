@@ -28,7 +28,7 @@ class UserManagementTest extends TestCase
         User::factory(5)->create();
 
         $res = $this->actingAs($this->admin)
-                    ->getJson('/api/users');
+                    ->getJson('/api/v1/users');
 
         $res->assertOk()
             ->assertJsonPath('success', true)
@@ -38,7 +38,7 @@ class UserManagementTest extends TestCase
     public function test_agent_cannot_list_users()
     {
         $this->actingAs($this->agent)
-             ->getJson('/api/users')
+             ->getJson('/api/v1/users')
              ->assertForbidden();
     }
 
@@ -57,7 +57,7 @@ class UserManagementTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson('/api/users', $payload)
+             ->postJson('/api/v1/users', $payload)
              ->assertCreated()
              ->assertJsonPath('data.user.email', 'maria.santos@jvd.com');
     }
@@ -67,7 +67,7 @@ class UserManagementTest extends TestCase
         $existing = User::factory()->create(['email' => 'dup@jvd.com']);
 
         $this->actingAs($this->admin)
-             ->postJson('/api/users', [
+             ->postJson('/api/v1/users', [
                  'employee_id' => 'EMP-9902',
                  'first_name'  => 'Juan',
                  'last_name'   => 'Dela Cruz',
@@ -86,7 +86,7 @@ class UserManagementTest extends TestCase
         $target = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($this->admin)
-             ->postJson("/api/users/{$target->id}/deactivate")
+             ->postJson("/api/v1/users/{$target->id}/deactivate")
              ->assertOk()
              ->assertJsonPath('success', true);
 
@@ -98,7 +98,7 @@ class UserManagementTest extends TestCase
         $superAdmin = User::factory()->superAdmin()->create();
 
         $this->actingAs($this->admin)
-             ->postJson("/api/users/{$superAdmin->id}/deactivate")
+             ->postJson("/api/v1/users/{$superAdmin->id}/deactivate")
              ->assertForbidden();
     }
 
@@ -107,7 +107,7 @@ class UserManagementTest extends TestCase
         $target = User::factory()->inactive()->create();
 
         $this->actingAs($this->admin)
-             ->postJson("/api/users/{$target->id}/activate")
+             ->postJson("/api/v1/users/{$target->id}/activate")
              ->assertOk()
              ->assertJsonPath('success', true);
              
@@ -121,7 +121,7 @@ class UserManagementTest extends TestCase
         $target = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($this->admin)
-             ->postJson("/api/users/{$target->id}/reset-password", [
+             ->postJson("/api/v1/users/{$target->id}/reset-password", [
                  'password' => 'NewPass123!',
              ])
              ->assertOk()
@@ -136,14 +136,14 @@ class UserManagementTest extends TestCase
 
         // Test set-password route (Super Admin exclusive)
         $this->actingAs($this->agent)
-             ->patchJson("/api/users/{$target->id}/set-password", [
+             ->patchJson("/api/v1/users/{$target->id}/set-password", [
                  'password' => 'NewPass123!',
              ])
              ->assertForbidden();
 
         // Test role-permissions route (Super Admin exclusive)
         $this->actingAs($this->agent)
-             ->getJson('/api/role-permissions')
+             ->getJson('/api/v1/role-permissions')
              ->assertForbidden();
     }
 
@@ -169,7 +169,7 @@ class UserManagementTest extends TestCase
         );
 
         $this->actingAs($manager)
-             ->postJson('/api/users', $payload)
+             ->postJson('/api/v1/users', $payload)
              ->assertForbidden();
     }
 
@@ -185,7 +185,7 @@ class UserManagementTest extends TestCase
         ];
 
         $this->actingAs($this->admin)
-             ->postJson('/api/users', $payload)
+             ->postJson('/api/v1/users', $payload)
              ->assertCreated();
     }
 
@@ -195,7 +195,7 @@ class UserManagementTest extends TestCase
         $target = User::factory()->create(['role' => 'reservation_officer']);
 
         $this->actingAs($manager)
-             ->putJson("/api/users/{$target->id}", [
+             ->putJson("/api/v1/users/{$target->id}", [
                  'role' => 'super_admin',
              ])
              ->assertForbidden();
@@ -206,7 +206,7 @@ class UserManagementTest extends TestCase
         $manager = User::factory()->create(['role' => 'operations_manager']);
 
         $this->actingAs($manager)
-             ->putJson("/api/users/{$this->admin->id}", [
+             ->putJson("/api/v1/users/{$this->admin->id}", [
                  'first_name' => 'HackName',
              ])
              ->assertForbidden();
@@ -217,7 +217,7 @@ class UserManagementTest extends TestCase
         $otherAdmin = User::factory()->superAdmin()->create();
 
         $this->actingAs($this->admin)
-             ->putJson("/api/users/{$otherAdmin->id}", [
+             ->putJson("/api/v1/users/{$otherAdmin->id}", [
                  'first_name' => 'NewName',
              ])
              ->assertOk();

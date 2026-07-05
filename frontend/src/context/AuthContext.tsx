@@ -6,10 +6,9 @@ import type { User, RolePermissions } from '../types/auth';
 interface AuthContextType {
   user: User | null;
   permissions: RolePermissions | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (token: string, user: User, permissions?: RolePermissions) => void;
+  login: (user: User, permissions?: RolePermissions) => void;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (user: User | null) => void;
@@ -21,7 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<RolePermissions | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
@@ -29,26 +28,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await authApi.me();
       setUser(response.data.data);
       setPermissions(response.data.permissions || null);
+      setIsAuthenticated(true);
     } catch {
       setUser(null);
       setPermissions(null);
-      setToken(null);
-      localStorage.removeItem('auth_token');
+      setIsAuthenticated(false);
     }
   }, []);
 
   useEffect(() => {
-    if (token) {
-      refreshUser().finally(() => setIsLoading(false));
-    } else {
-      setIsLoading(false);
-    }
-  }, [token, refreshUser]);
+    // Attempt to fetch user on initial load
+    refreshUser().finally(() => setIsLoading(false));
+  }, [refreshUser]);
 
-  const login = useCallback((newToken: string, userData: User, perms?: RolePermissions) => {
-    localStorage.setItem('auth_token', newToken);
-    setToken(newToken);
+  const login = useCallback((userData: User, perms?: RolePermissions) => {
     setUser(userData);
+    setIsAuthenticated(true);
     if (perms) setPermissions(perms);
   }, []);
 
@@ -58,8 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await authApi.logout();
     } finally {
-      localStorage.removeItem('auth_token');
-      setToken(null);
+      setIsAuthenticated(false);
       setUser(null);
       setPermissions(null);
       queryClient.clear();
@@ -118,8 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         permissions,
-        token,
-        isAuthenticated: !!user && !!token,
+        isAuthenticated,
         isLoading,
         login,
         logout,

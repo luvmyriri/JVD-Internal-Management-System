@@ -66,59 +66,28 @@ class TripTicket extends Model
             return;
         }
 
-        $isInternational = ($tripTicket->trip_type === 'international');
+        $travelType = $tripTicket->trip_type === 'international' ? 'international' : 'local';
 
-        if ($isInternational) {
-            \DB::table('local_travels')
-                ->where('reference_type', 'trip_ticket')
-                ->where('reference_id', $tripTicket->id)
-                ->delete();
-
-            \DB::table('international_travels')->updateOrInsert(
-                ['reference_type' => 'trip_ticket', 'reference_id' => $tripTicket->id],
-                [
-                    'bus_id' => $tripTicket->bus_id,
-                    'driver_id' => $tripTicket->driver_id,
-                    'travel_date' => $tripTicket->date_of_travel,
-                    'duration' => $tripTicket->duration ?? '1 day',
-                    'pick_up' => $tripTicket->pick_up,
-                    'drop_off' => $tripTicket->drop_off,
-                    'status' => $tripTicket->status ?? 'draft',
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
-        } else {
-            \DB::table('international_travels')
-                ->where('reference_type', 'trip_ticket')
-                ->where('reference_id', $tripTicket->id)
-                ->delete();
-
-            \DB::table('local_travels')->updateOrInsert(
-                ['reference_type' => 'trip_ticket', 'reference_id' => $tripTicket->id],
-                [
-                    'bus_id' => $tripTicket->bus_id,
-                    'driver_id' => $tripTicket->driver_id,
-                    'travel_date' => $tripTicket->date_of_travel,
-                    'duration' => $tripTicket->duration ?? '1 day',
-                    'pick_up' => $tripTicket->pick_up,
-                    'drop_off' => $tripTicket->drop_off,
-                    'status' => $tripTicket->status ?? 'draft',
-                    'updated_at' => now(),
-                    'created_at' => now(),
-                ]
-            );
-        }
+        \DB::table('travels')->updateOrInsert(
+            ['reference_type' => 'trip_ticket', 'reference_id' => $tripTicket->id],
+            [
+                'bus_id' => $tripTicket->bus_id,
+                'driver_id' => $tripTicket->driver_id,
+                'travel_date' => $tripTicket->date_of_travel,
+                'duration' => $tripTicket->duration ?? '1 day',
+                'pick_up' => $tripTicket->pick_up,
+                'drop_off' => $tripTicket->drop_off,
+                'status' => $tripTicket->status ?? 'draft',
+                'travel_type' => $travelType,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
     }
 
     public static function deleteFromTravelSchedules($tripTicket): void
     {
-        \DB::table('local_travels')
-            ->where('reference_type', 'trip_ticket')
-            ->where('reference_id', $tripTicket->id)
-            ->delete();
-
-        \DB::table('international_travels')
+        \DB::table('travels')
             ->where('reference_type', 'trip_ticket')
             ->where('reference_id', $tripTicket->id)
             ->delete();

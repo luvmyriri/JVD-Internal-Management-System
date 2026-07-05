@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Sales;
 
 use App\Exceptions\MaxPaxExceededException;
 use App\Http\Controllers\Controller;
-use App\Http\Services\ContractPdfService;
-use App\Http\Services\InvoiceFinalizationService;
+use App\Services\ContractPdfService;
+use App\Services\InvoiceFinalizationService;
 use App\Mail\ContractSentForSignatureMail;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
@@ -62,91 +62,9 @@ class ContractController extends Controller
      * auto-JobOrder-creation — those only happen once the contract is signed (see
      * CustomerPortalController::signContract / signAtCounter below).
      */
-    public function draft(Request $request): JsonResponse
+    public function draft(\App\Http\Requests\Sales\DraftContractRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'customer_id' => 'nullable|exists:customers,id',
-            'customer_name' => 'nullable|string|max:255',
-            'customer_address' => 'nullable|string|max:255',
-            'customer_email' => 'nullable|string|email|max:255',
-            'customer_contact' => 'nullable|string',
-            'payment_method' => 'required|string',
-            'payment_type' => 'nullable|string|in:full,downpayment',
-            'amount_received' => 'nullable|numeric',
-            'tax_rate' => 'nullable|numeric|min:0|max:1',
-            'due_date' => 'nullable|date',
-            'travel_date' => 'nullable|date',
-            'arrival_datetime' => 'nullable|date',
-            'departure_datetime' => 'nullable|date',
-            'pickup_location' => 'nullable|string|max:255',
-            'tour_code' => 'nullable|string|max:255',
-            'pax_count' => 'nullable|integer|min:1',
-            'bus_id' => 'nullable|integer|exists:buses,id',
-            'driver_id' => 'nullable|integer|exists:users,id',
-            'seat_map' => 'nullable|array',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.service_id' => 'required|exists:services,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.unit_price' => 'nullable|numeric',
-            'items.*.adults' => 'nullable|integer',
-            'items.*.children' => 'nullable|integer',
-            'items.*.service_date' => 'nullable|date',
-            'items.*.destination' => 'nullable|string',
-            // C-NOTE: Laravel's validate() strips any nested key not explicitly listed here —
-            // every custom_transaction_detail/itinerary/passenger field must be named below or
-            // it silently drops from $validated even though it was present in the raw request.
-            'custom_transaction_detail' => 'required|array',
-            'custom_transaction_detail.category' => 'required|string',
-            'custom_transaction_detail.vehicle_type' => 'nullable|string|max:100',
-            'custom_transaction_detail.route' => 'nullable|string|max:255',
-            'custom_transaction_detail.rental_days' => 'nullable|integer|min:1',
-            'custom_transaction_detail.plate_number' => 'nullable|string|max:50',
-            'custom_transaction_detail.inclusion_driver' => 'nullable|boolean',
-            'custom_transaction_detail.inclusion_fuel' => 'nullable|boolean',
-            'custom_transaction_detail.inclusion_toll' => 'nullable|boolean',
-            'custom_transaction_detail.inclusion_insurance' => 'nullable|boolean',
-            'custom_transaction_detail.school_name' => 'nullable|string|max:255',
-            'custom_transaction_detail.grade_level' => 'nullable|string|max:100',
-            'custom_transaction_detail.expected_pax' => 'nullable|integer|min:0',
-            'custom_transaction_detail.itinerary_stops' => 'nullable|string',
-            'custom_transaction_detail.edu_inclusion_meals' => 'nullable|boolean',
-            'custom_transaction_detail.edu_inclusion_coordinator' => 'nullable|boolean',
-            'custom_transaction_detail.edu_inclusion_insurance' => 'nullable|boolean',
-            'custom_transaction_detail.edu_inclusion_tshirt' => 'nullable|boolean',
-            'custom_transaction_detail.destination' => 'nullable|string|max:255',
-            'custom_transaction_detail.accommodation_type' => 'nullable|string|max:100',
-            'custom_transaction_detail.visa_country' => 'nullable|string|max:100',
-            'custom_transaction_detail.visa_type' => 'nullable|string|max:100',
-            'custom_transaction_detail.visa_req_passport' => 'nullable|boolean',
-            'custom_transaction_detail.visa_req_photo' => 'nullable|boolean',
-            'custom_transaction_detail.visa_req_bank_cert' => 'nullable|boolean',
-            'custom_transaction_detail.visa_req_itr' => 'nullable|boolean',
-            'custom_transaction_detail.visa_req_birth_cert' => 'nullable|boolean',
-            'custom_transaction_detail.joiner_tour_code' => 'nullable|string|max:255',
-            'custom_transaction_detail.booking_type' => 'nullable|string|max:100',
-            'custom_transaction_detail.booking_reference_code' => 'nullable|string|max:255',
-            'custom_transaction_detail.booking_details' => 'nullable|string',
-            'custom_transaction_detail.category_meta' => 'nullable|array',
-            'custom_transaction_detail.additional_remarks' => 'nullable|string',
-            'itinerary' => 'nullable|array',
-            'itinerary.*.day_number' => 'required_with:itinerary|integer|min:1',
-            'itinerary.*.date' => 'nullable|date',
-            'itinerary.*.location' => 'nullable|string|max:255',
-            'itinerary.*.activity_description' => 'nullable|string',
-            'itinerary.*.meal_plan' => 'nullable|string|max:255',
-            'itinerary.*.accommodation_name' => 'nullable|string|max:255',
-            'itinerary.*.check_in_time' => 'nullable|string',
-            'itinerary.*.check_out_time' => 'nullable|string',
-            'passengers' => 'nullable|array',
-            'passengers.*.first_name' => 'required_with:passengers|string|max:255',
-            'passengers.*.date_of_birth' => 'nullable|date',
-            'passengers.*.passport_number' => 'nullable|string|max:100',
-            'passengers.*.dietary_restrictions' => 'nullable|string|max:255',
-            'passengers.*.emergency_contact' => 'nullable|string|max:255',
-            'passengers.*.special_needs' => 'nullable|string',
-            'passengers.*.last_name' => 'required_with:passengers|string|max:255',
-        ]);
+        $validated = $request->validated();
 
         $finalizer = app(InvoiceFinalizationService::class);
 
@@ -256,39 +174,26 @@ class ContractController extends Controller
         }
     }
 
-    public function updateDraft(Request $request, Contract $contract): JsonResponse
+    public function updateDraft(\App\Http\Requests\Sales\UpdateContractDraftRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'draft') {
             return response()->json(['success' => false, 'message' => 'Only draft contracts can be edited.'], 422);
         }
 
-        $validated = $request->validate([
-            'terms_snapshot' => 'sometimes|string',
-            'deposit_required_percent' => 'sometimes|nullable|numeric',
-            'deposit_required_amount' => 'sometimes|nullable|numeric',
-            'cancellation_policy_key' => 'sometimes|nullable|string',
-        ]);
+        $validated = $request->validated();
 
         $contract->update($validated);
 
         return response()->json(['success' => true, 'data' => $contract->fresh()]);
     }
 
-    public function attachPaymentSchedule(Request $request, Contract $contract): JsonResponse
+    public function attachPaymentSchedule(\App\Http\Requests\Sales\AttachPaymentScheduleRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'draft') {
             return response()->json(['success' => false, 'message' => 'Only draft contracts can have a payment schedule attached.'], 422);
         }
 
-        $validated = $request->validate([
-            'mode' => 'required|in:auto,manual',
-            'count' => 'required_if:mode,auto|integer|min:1',
-            'first_due_date' => 'required_if:mode,auto|date',
-            'interval_days' => 'nullable|integer|min:1',
-            'rows' => 'required_if:mode,manual|array|min:1',
-            'rows.*.due_date' => 'required_with:rows|date',
-            'rows.*.amount_due' => 'required_with:rows|numeric|min:0',
-        ]);
+        $validated = $request->validated();
 
         PaymentSchedule::where('invoice_id', $contract->invoice_id)->delete();
 
@@ -333,7 +238,7 @@ class ContractController extends Controller
             'expires_at' => now()->addDays($expiresInDays),
         ]);
 
-        $signingLink = \App\Http\Services\PortalLinkResolver::buildPortalLink($token->token, $request);
+        $signingLink = \App\Services\PortalLinkResolver::buildPortalLink($token->token, $request);
 
         $mailError = null;
         if ($contract->invoice->customer_email) {
@@ -357,16 +262,13 @@ class ContractController extends Controller
      * Staff-authenticated in-person signing — same capture/finalize logic as the public
      * portal path, but witnessed by a logged-in staff member at the counter.
      */
-    public function signAtCounter(Request $request, Contract $contract): JsonResponse
+    public function signAtCounter(\App\Http\Requests\Sales\SignContractAtCounterRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status === 'signed') {
             return response()->json(['success' => false, 'message' => 'This contract has already been signed.'], 422);
         }
 
-        $validated = $request->validate([
-            'signature_image' => 'required|string',
-            'signature_typed_name' => 'required|string|max:255',
-        ]);
+        $validated = $request->validated();
 
         $finalizer = app(InvoiceFinalizationService::class);
         $invoice = $contract->invoice;
@@ -417,17 +319,13 @@ class ContractController extends Controller
         return response()->json(['success' => true, 'message' => 'Contract voided.']);
     }
 
-    public function createAmendment(Request $request, Contract $contract): JsonResponse
+    public function createAmendment(\App\Http\Requests\Sales\CreateContractAmendmentRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'signed') {
             return response()->json(['success' => false, 'message' => 'Only a signed contract can be amended.'], 422);
         }
 
-        $validated = $request->validate([
-            'reason' => 'required|string',
-            'changes_summary' => 'required|string',
-            'terms_snapshot' => 'required|string',
-        ]);
+        $validated = $request->validated();
 
         $nextNumber = ($contract->latestAmendment()?->amendment_number ?? 0) + 1;
 
@@ -446,7 +344,7 @@ class ContractController extends Controller
     public function sendAmendmentForSignature(ContractAmendment $amendment): JsonResponse
     {
         $token = CustomerPortalToken::generateFor('ContractAmendment', $amendment->id, 'contract_signature', null, 14);
-        $signingLink = \App\Http\Services\PortalLinkResolver::buildPortalLink($token->token);
+        $signingLink = \App\Services\PortalLinkResolver::buildPortalLink($token->token);
 
         $mailError = null;
         if ($amendment->contract->invoice->customer_email) {
