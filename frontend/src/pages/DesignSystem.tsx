@@ -42,7 +42,7 @@ export default function DesignSystem() {
   };
 
   return (
-    <div className="min-h-screen bg-bg text-ink font-sans">
+    <div className="jvd min-h-screen bg-bg text-ink font-sans">
       <div className="mx-auto max-w-4xl px-6 py-10">
         <div className="mb-8 flex items-center justify-between">
           <div>

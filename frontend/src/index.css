@@ -227,9 +227,13 @@
   background-image: radial-gradient(rgba(0,0,0,0.01) 1px, transparent 0) !important;
 }
 
-/* Force all text in the system to be black, but only in light mode and not in dark containers */
+/* Force all text in the system to be black, but only in light mode and not in dark containers.
+   NOTE (roadmap 3.1): this is a legacy band-aid the design system replaces. Tokenized content
+   lives under `.jvd` and is excluded here so design tokens (text-ink/text-muted/...) win.
+   Delete this whole rule once every page has migrated to the component library. */
 body:not(.dark) *:not(
   svg, path, rect, circle, line, polyline, polygon, g,
+  .jvd, .jvd *,
   aside, aside *,
   .bg-slate-950, .bg-slate-950 *,
   .bg-slate-900, .bg-slate-900 *,
