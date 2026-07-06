@@ -10,7 +10,7 @@ const MAP: Record<string, Tone> = {
   // success / approved / active / paid / completed
   approved: 'success', active: 'success', paid: 'success', completed: 'success',
   accredited: 'success', confirmed: 'success', settled: 'success', disbursed: 'success',
-  received: 'success', signed: 'success', new: 'success',
+  received: 'success', signed: 'success', new: 'success', hired: 'success',
   // warning / pending / in-progress / partial
   pending: 'warning', partial: 'warning', draft: 'warning', processing: 'warning',
   interviewing: 'warning', pending_payment: 'warning', pending_accounting: 'warning',
@@ -24,6 +24,7 @@ const MAP: Record<string, Tone> = {
   offline: 'neutral',
   // info / interactive
   info: 'info', open: 'info', sent: 'info', submitted: 'info',
+  reviewed: 'info', interviewed: 'info',
 };
 
 /** Resolve a raw status string to its semantic tone (defaults to neutral). */
