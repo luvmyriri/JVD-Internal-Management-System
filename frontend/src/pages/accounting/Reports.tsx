@@ -6,9 +6,7 @@ import {
 } from 'react-icons/lu';
 import { billingApi } from '../../api/billing';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import ExcelJS from 'exceljs';
+import { loadJsPDF, loadExcelJS } from '../../utils/lazyExport';
 import { useAuth } from '../../context/AuthContext';
 
 // Replaced seed data with real backend data mappin
@@ -185,12 +183,13 @@ export default function Reports() {
   }, [filteredTransactions, range]);
 
   // PDF Export
-  const handlePDFExport = () => {
+  const handlePDFExport = async () => {
     if (filteredTransactions.length === 0) {
       alert("No data available to export.");
       return;
     }
     try {
+      const { jsPDF, autoTable } = await loadJsPDF();
       const doc = new jsPDF('l', 'mm', 'a4');
 
       // Add Logo
@@ -281,7 +280,7 @@ export default function Reports() {
       return;
     }
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new (await loadExcelJS()).Workbook();
       const worksheet = workbook.addWorksheet('Agent Sales Log');
 
       // Setup columns

@@ -32,9 +32,7 @@ import {
 import { StatusBadge } from '../../components/ui';
 import { formatDate } from '../../utils';
 
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import ExcelJS from 'exceljs';
+import { loadJsPDF, loadExcelJS } from '../../utils/lazyExport';
 import { loadLogoAsBase64 } from '../../utils/pdfHelpers';
 
 const DEPARTMENTS = [
@@ -228,6 +226,7 @@ export default function HRDashboard() {
 
   const exportToPDF = async (title: string, data: any[]) => {
     try {
+      const { jsPDF, autoTable } = await loadJsPDF();
       const doc = new jsPDF();
 
       // Add Logo (loaded as base64 to work in all environments including production)
@@ -337,7 +336,7 @@ export default function HRDashboard() {
 
   const exportToExcel = async (title: string, data: any[]) => {
     try {
-      const workbook = new ExcelJS.Workbook();
+      const workbook = new (await loadExcelJS()).Workbook();
       const worksheet = workbook.addWorksheet('JVD Report');
 
       // 1. Setup Columns (Improved Auto-fit estimation)

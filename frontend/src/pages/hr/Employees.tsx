@@ -37,7 +37,7 @@ import { type UserRole } from '../../types/auth';
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
-import ExcelJS from 'exceljs';
+import { loadExcelJS } from '../../utils/lazyExport';
 import toast from 'react-hot-toast';
 
 // ── Temp Password Modal ───────────────────────────────────────────────────────
@@ -222,7 +222,7 @@ export default function Employees() {
   };
 
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     const worksheet = workbook.addWorksheet('Employees');
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
@@ -333,7 +333,7 @@ export default function Employees() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     try {
       const arrayBuffer = await file.arrayBuffer();
       await workbook.xlsx.load(arrayBuffer);
