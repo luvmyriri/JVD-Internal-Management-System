@@ -9,3 +9,5 @@ export { default as StatusPill } from './StatusPill';
 export { default as Card } from './Card';
 export { default as EmptyState } from './EmptyState';
 export { default as DataTable, CategoryDot, type Column } from './DataTable';
+export { default as Modal, type ModalSize } from './Modal';
+export { default as Drawer } from './Drawer';

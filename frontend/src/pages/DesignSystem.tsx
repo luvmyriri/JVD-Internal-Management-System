@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LuInbox, LuHash, LuMail, LuBuilding2, LuUser } from 'react-icons/lu';
-import { Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, type Column } from '../components/ds';
+import { Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer, type Column } from '../components/ds';
 
 type Emp = { id: string; dept: string; deptColor: string; email: string; years: number; first: string; status: string };
 const EMPLOYEES: Emp[] = [
@@ -57,6 +57,8 @@ function Swatch({ name, cls, border }: { name: string; cls: string; border?: boo
 export default function DesignSystem() {
   const [dark, setDark] = useState(document.documentElement.classList.contains('dark'));
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
+  const [modalOpen, setModalOpen] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const toggleDark = () => {
     document.documentElement.classList.toggle('dark');
@@ -132,6 +134,47 @@ export default function DesignSystem() {
             action={<Button variant="primary">Create listing</Button>}
           />
         </Card>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">Overlays — Modal &amp; Drawer</h2>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => setModalOpen(true)}>Open modal</Button>
+            <Button variant="secondary" onClick={() => setDrawerOpen(true)}>Open drawer</Button>
+          </div>
+        </section>
+
+        <Modal
+          isOpen={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title="Create new listing"
+          footer={<><Button variant="ghost" onClick={() => setModalOpen(false)}>Cancel</Button><Button variant="primary" onClick={() => setModalOpen(false)}>Create</Button></>}
+        >
+          <div className="space-y-3 text-sm text-ink">
+            <p className="text-muted">A compact centered modal for creating one small thing or a wizard step.</p>
+            <input className="w-full rounded-[var(--radius-control)] border border-border bg-surface px-3 py-2 text-sm" placeholder="Listing title" />
+          </div>
+        </Modal>
+
+        <Drawer isOpen={drawerOpen} onClose={() => setDrawerOpen(false)} title="Proposal Activity">
+          <div className="rounded-[var(--radius-control)] bg-brand-tint px-3 py-2 text-xs text-brand">
+            This proposal is pending review. All changes are prepared and ready to be implemented upon approval.
+          </div>
+          <div className="mt-4 space-y-4">
+            {[
+              { t: 'Proposal submitted to update contract info', who: 'Andy Smith', when: '4 hours ago' },
+              { t: 'Data accuracy review', who: 'Andy, Maya', when: '2 days ago' },
+              { t: 'Security audit finalized', who: 'Andy, Maya', when: '7 days ago' },
+            ].map((e, i) => (
+              <div key={i} className="border-l-2 border-border pl-4">
+                <p className="text-sm font-medium text-ink">{e.t}</p>
+                <p className="text-xs text-muted">{e.when}</p>
+                <div className="mt-2 rounded-[var(--radius-control)] border border-border p-3 text-xs">
+                  <span className="text-muted">Contributors </span><span className="text-ink">{e.who}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Drawer>
 
         <section className="mb-10">
           <h2 className="mb-4 text-sm font-medium text-brand">DataTable (3.2) — the workhorse</h2>
