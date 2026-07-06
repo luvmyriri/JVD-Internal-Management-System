@@ -8,7 +8,7 @@ import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
-import { Toaster } from 'react-hot-toast';
+import { JvdToaster } from './components/ds';
 import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation';
 
 // Pages
@@ -200,7 +200,7 @@ export default function App() {
 
               <Route path="*" element={<DefaultRedirect />} />
             </Routes>
-            <Toaster position="top-right" />
+            <JvdToaster />
             <ForceChangePasswordModal />
             <EntityPreviewPanel />
             <FloatingCrossChecker />

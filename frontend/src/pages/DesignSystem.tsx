@@ -1,6 +1,10 @@
 import { useState } from 'react';
-import { LuInbox, LuHash, LuMail, LuBuilding2, LuUser } from 'react-icons/lu';
-import { Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer, type Column } from '../components/ds';
+import { LuInbox, LuHash, LuMail, LuBuilding2, LuUser, LuUsers, LuFileText, LuDollarSign, LuPlus, LuSettings } from 'react-icons/lu';
+import {
+  Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer,
+  ConfirmDialog, StatCard, Chart, OnboardingChecklist, SharePopover, CommandPalette, useCommandPalette,
+  notify, type Column, type Command, type ChecklistItem, type ShareMember,
+} from '../components/ds';
 
 type Emp = { id: string; dept: string; deptColor: string; email: string; years: number; first: string; status: string };
 const EMPLOYEES: Emp[] = [
@@ -45,6 +49,16 @@ const STATUS: { label: string; tint: string; text: string; meaning: string }[] =
   { label: 'overdue', tint: 'bg-danger-tint', text: 'text-danger', meaning: 'danger / red — status only' },
 ];
 
+const CHART_DATA = [
+  { label: 'Jan', value: 42 }, { label: 'Feb', value: 58 }, { label: 'Mar', value: 35 },
+  { label: 'Apr', value: 71 }, { label: 'May', value: 64 }, { label: 'Jun', value: 88 },
+];
+
+const SHARE_MEMBERS: ShareMember[] = [
+  { id: '1', name: 'Andy Smith', email: 'andy@jvd.com', role: 'Admin' },
+  { id: '2', name: 'Maya Cruz', email: 'maya@jvd.com', role: 'Editor' },
+];
+
 function Swatch({ name, cls, border }: { name: string; cls: string; border?: boolean }) {
   return (
     <div className="flex flex-col gap-1">
@@ -59,6 +73,26 @@ export default function DesignSystem() {
   const [selected, setSelected] = useState<Set<string | number>>(new Set());
   const [modalOpen, setModalOpen] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [access, setAccess] = useState<'restricted' | 'anyone'>('restricted');
+  const [paletteOpen, openPalette, closePalette] = useCommandPalette();
+  const [steps, setSteps] = useState<ChecklistItem[]>([
+    { id: '1', label: 'Complete your profile', done: true },
+    { id: '2', label: 'Invite a teammate', done: true },
+    { id: '3', label: 'Create your first invoice', done: false },
+    { id: '4', label: 'Set up a workflow', done: false },
+  ]);
+  const toggleStep = (id: string) =>
+    setSteps((s) => s.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
+
+  const COMMANDS: Command[] = [
+    { id: 'nav-dash', group: 'Navigation', label: 'Go to Dashboard', icon: <LuUser size={15} />, onSelect: () => notify.info('Would navigate to Dashboard') },
+    { id: 'nav-emp', group: 'Navigation', label: 'Go to Employees', icon: <LuUsers size={15} />, onSelect: () => notify.info('Would navigate to Employees') },
+    { id: 'nav-inv', group: 'Navigation', label: 'Go to Invoices', icon: <LuFileText size={15} />, onSelect: () => notify.info('Would navigate to Invoices') },
+    { id: 'act-add', group: 'Actions', label: 'Create new invoice', icon: <LuPlus size={15} />, keywords: 'new billing', onSelect: () => notify.success('New invoice action') },
+    { id: 'act-set', group: 'Actions', label: 'Open settings', icon: <LuSettings size={15} />, onSelect: () => notify.info('Would open settings') },
+  ];
 
   const toggleDark = () => {
     document.documentElement.classList.toggle('dark');
@@ -175,6 +209,78 @@ export default function DesignSystem() {
             ))}
           </div>
         </Drawer>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">Toasts (3.2) — outcomes only, no decisions</h2>
+          <div className="flex flex-wrap gap-3">
+            <Button variant="secondary" onClick={() => notify.success('Invoice INV-2026-0142 saved')}>Success toast</Button>
+            <Button variant="secondary" onClick={() => notify.error('Could not reach the server')}>Error toast</Button>
+            <Button variant="secondary" onClick={() => notify.warning('This contract expires in 3 days')}>Warning toast</Button>
+            <Button variant="secondary" onClick={() => notify.info('Draft autosaved')}>Info toast</Button>
+          </div>
+        </section>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">ConfirmDialog (3.2) — one irreversible yes/no</h2>
+          <Button variant="danger" onClick={() => setConfirmOpen(true)}>Delete supplier…</Button>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="mb-4 text-sm font-medium text-brand">StatCard + Chart (3.2) — dashboard widgets</h2>
+          <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <StatCard label="Total employees" value="214" unit="Total" icon={<LuUsers size={16} />} delta={12} onViewAll={() => notify.info('View employees')} />
+            <StatCard label="Open invoices" value="38" icon={<LuFileText size={16} />} delta={-4} />
+            <StatCard label="Revenue (MTD)" value="₱1.2M" icon={<LuDollarSign size={16} />} delta={8} />
+            <StatCard label="Pending approvals" value="7" icon={<LuInbox size={16} />} />
+          </div>
+          <Card>
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-ink">Bookings by month</p>
+                <p className="text-xs text-muted">Last 6 months</p>
+              </div>
+              <span className="text-xs font-medium text-brand">View all ›</span>
+            </div>
+            <Chart data={CHART_DATA} />
+          </Card>
+        </section>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">OnboardingChecklist + SharePopover + ⌘K (3.2)</h2>
+          <div className="flex flex-wrap items-start gap-6">
+            <OnboardingChecklist
+              items={steps.map((s) => ({ ...s, onClick: () => toggleStep(s.id) }))}
+              onWatchTutorial={() => notify.info('Play tutorial')}
+            />
+            <div className="relative">
+              <Button variant="secondary" onClick={() => setShareOpen((o) => !o)}>Share…</Button>
+              <SharePopover
+                open={shareOpen}
+                onClose={() => setShareOpen(false)}
+                className="absolute left-0 top-full mt-2"
+                members={SHARE_MEMBERS}
+                generalAccess={access}
+                onGeneralAccessChange={setAccess}
+                onInvite={(email) => notify.success(`Invited ${email}`)}
+                onCopyLink={() => notify.success('Link copied')}
+              />
+            </div>
+            <Button variant="secondary" onClick={openPalette}>Open ⌘K palette</Button>
+          </div>
+          <p className="mt-3 text-xs text-muted">Tip: press ⌘K (or Ctrl+K) anywhere on this page. Click a checklist row to toggle it.</p>
+        </section>
+
+        <ConfirmDialog
+          isOpen={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={() => { setConfirmOpen(false); notify.success('Supplier deleted'); }}
+          destructive
+          title="Delete this supplier?"
+          description="This removes the supplier and its contact details. This action cannot be undone."
+          confirmLabel="Delete"
+        />
+
+        <CommandPalette isOpen={paletteOpen} onClose={closePalette} commands={COMMANDS} />
 
         <section className="mb-10">
           <h2 className="mb-4 text-sm font-medium text-brand">DataTable (3.2) — the workhorse</h2>
