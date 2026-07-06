@@ -1,6 +1,25 @@
 import { useState } from 'react';
-import { LuInbox } from 'react-icons/lu';
-import { Button, StatusPill, Card, EmptyState } from '../components/ds';
+import { LuInbox, LuHash, LuMail, LuBuilding2, LuUser } from 'react-icons/lu';
+import { Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, type Column } from '../components/ds';
+
+type Emp = { id: string; dept: string; deptColor: string; email: string; years: number; first: string; status: string };
+const EMPLOYEES: Emp[] = [
+  { id: 'EMP001', dept: 'Finance', deptColor: '#16A34A', email: 'alfred.white@zipper.com', years: 3, first: 'Alfred', status: 'active' },
+  { id: 'EMP002', dept: 'HR', deptColor: '#D97706', email: 'alex.reed@zipper.com', years: 7, first: 'Alex', status: 'active' },
+  { id: 'EMP003', dept: 'Marketing', deptColor: '#7C3AED', email: 'blake.cole@zipper.com', years: 2, first: 'Blake', status: 'active' },
+  { id: 'EMP008', dept: 'Sales', deptColor: '#1D4ED8', email: 'grace.kent@zipper.com', years: 1, first: 'Grace', status: 'inactive' },
+  { id: 'EMP009', dept: 'Engineering', deptColor: '#0891B2', email: 'jack.nyberg@zipper.com', years: 10, first: 'Jack', status: 'active' },
+  { id: 'EMP011', dept: 'HR', deptColor: '#D97706', email: 'norah.page@zipper.com', years: 7, first: 'Norah', status: 'inactive' },
+];
+
+const EMP_COLUMNS: Column<Emp>[] = [
+  { key: 'id', header: 'Employees', icon: <LuUser size={13} />, sortable: true },
+  { key: 'dept', header: 'Department', icon: <LuBuilding2 size={13} />, render: (r) => <CategoryDot color={r.deptColor} label={r.dept} /> },
+  { key: 'email', header: 'Email', icon: <LuMail size={13} />, render: (r) => <span className="text-muted">{r.email}</span> },
+  { key: 'status', header: 'Employment', render: (r) => <StatusPill status={r.status} /> },
+  { key: 'years', header: 'Years', icon: <LuHash size={13} />, align: 'right', sortable: true },
+  { key: 'first', header: 'First Name', icon: <LuUser size={13} />, sortable: true },
+];
 
 /**
  * Design-system showcase (roadmap 3.1). Renders every JVD design token so the
@@ -37,6 +56,7 @@ function Swatch({ name, cls, border }: { name: string; cls: string; border?: boo
 
 export default function DesignSystem() {
   const [dark, setDark] = useState(document.documentElement.classList.contains('dark'));
+  const [selected, setSelected] = useState<Set<string | number>>(new Set());
 
   const toggleDark = () => {
     document.documentElement.classList.toggle('dark');
@@ -112,6 +132,20 @@ export default function DesignSystem() {
             action={<Button variant="primary">Create listing</Button>}
           />
         </Card>
+
+        <section className="mb-10">
+          <h2 className="mb-4 text-sm font-medium text-brand">DataTable (3.2) — the workhorse</h2>
+          <DataTable
+            columns={EMP_COLUMNS}
+            data={EMPLOYEES}
+            rowKey={(r) => r.id}
+            selectable
+            selected={selected}
+            onSelectedChange={setSelected}
+            isRowMuted={(r) => r.status === 'inactive'}
+            onRowClick={() => {}}
+          />
+        </section>
 
         <section className="rounded-[var(--radius-card)] border border-border bg-surface p-6">
           <h2 className="mb-4 text-sm font-medium text-brand">Card &amp; row example</h2>
