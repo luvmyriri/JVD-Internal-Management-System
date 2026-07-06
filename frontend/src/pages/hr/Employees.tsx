@@ -34,7 +34,7 @@ import {
 import { useHasRole } from '../../hooks/useHasRole';
 import { type UserRole } from '../../types/auth';
 import { Modal, Pagination, Button, Dropdown } from '../../components/ui';
-import { StatCard, DataTable, CategoryDot, StatusPill, EmptyState, type Column } from '../../components/ds';
+import { StatCard, DataTable, CategoryDot, StatusPill, EmptyState, EmployeeName, type Column } from '../../components/ds';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import { loadExcelJS } from '../../utils/lazyExport';
@@ -498,20 +498,7 @@ export default function Employees() {
       sortable: true,
       sortValue: (u) => fullName(u).toLowerCase(),
       render: (u) => (
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <img
-              src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.first_name}+${u.last_name}&background=f5f5f5&color=1D4ED8&bold=true`}
-              className="h-9 w-9 rounded-full border border-border object-cover"
-              alt=""
-            />
-            {u.is_online && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-success" />}
-          </div>
-          <div className="min-w-0">
-            <div className="font-medium text-ink">{fullName(u)}</div>
-            <div className="text-xs text-muted">{u.employee_id}</div>
-          </div>
-        </div>
+        <EmployeeName name={fullName(u)} src={u.avatar_url} subtitle={u.employee_id} online={u.is_online} />
       ),
     },
     {

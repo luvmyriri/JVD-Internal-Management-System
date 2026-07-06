@@ -17,8 +17,7 @@ import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation'
 // initial bundle carries only the shell + the first route, not all ~40 pages + exceljs/jspdf.
 const Login = lazy(() => import('./pages/Login'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
-const FixedPackages = lazy(() => import('./pages/sales/FixedPackages'));
-const CustomTransactions = lazy(() => import('./pages/sales/CustomTransactions'));
+const Sales = lazy(() => import('./pages/sales/Sales'));
 const Billing = lazy(() => import('./pages/accounting/Billing'));
 const Reports = lazy(() => import('./pages/accounting/Reports'));
 const JournalEntries = lazy(() => import('./pages/accounting/JournalEntries'));
@@ -39,7 +38,6 @@ const PMS = lazy(() => import('./pages/inventory/PMS'));
 const Passporting = lazy(() => import('./pages/travel/Passporting'));
 const VisaProcessing = lazy(() => import('./pages/travel/VisaProcessing'));
 const Customers = lazy(() => import('./pages/operations/Customers'));
-const CustomerProfile = lazy(() => import('./pages/operations/CustomerProfile'));
 const Employees = lazy(() => import('./pages/hr/Employees'));
 const Applications = lazy(() => import('./pages/hr/Applications'));
 const Internships = lazy(() => import('./pages/hr/Internships'));
@@ -138,7 +136,6 @@ export default function App() {
                 {/* Operations */}
                 <Route path="/operations" element={<Navigate to="/operations/customers" replace />} />
                 <Route path="/operations/customers" element={<Customers />} />
-                <Route path="/operations/customers/:id" element={<CustomerProfile />} />
                 <Route path="/operations/accreditations" element={<Accreditations />} />
                 <Route path="/operations/documents" element={<CompanyDocuments />} />
                 <Route path="/operations/commissions" element={<Navigate to="/accounting/commissions" replace />} />
@@ -167,16 +164,14 @@ export default function App() {
                 <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
 
                 {/* Sales */}
-                <Route path="/sales" element={<Navigate to="/sales/fixed-packages" replace />} />
-                <Route path="/sales/fixed-packages" element={<FixedPackages />} />
-                <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/sales/*" element={<Navigate to="/sales" replace />} />
 
                 {/* Travel Assistance */}
                 <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />
                 <Route path="/travel/passporting" element={<Passporting />} />
                 <Route path="/travel/visa-processing" element={<VisaProcessing />} />
                 <Route path="/travel/customers" element={<Navigate to="/operations/customers" replace />} />
-                <Route path="/travel/customers/:id" element={<Navigate to="/operations/customers/:id" replace />} />
                 <Route path="/travel/documents" element={<Navigate to="/operations/documents" replace />} />
 
                 {/* HR */}

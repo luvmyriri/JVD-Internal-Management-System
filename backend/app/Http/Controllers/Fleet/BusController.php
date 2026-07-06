@@ -209,6 +209,29 @@ class BusController extends Controller
                         'total_amount'  => $inv->total_amount,
                     ];
                 }
+            } elseif ($row->reference_type === 'booking') {
+                $booking = \App\Models\Booking::with('invoice')->find($row->reference_id);
+                if ($booking && $booking->invoice) {
+                    $inv = $booking->invoice;
+                    $mappedStatus = 'reserved';
+                    if ($inv->status === 'paid') {
+                        $mappedStatus = 'completed';
+                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
+                        $mappedStatus = 'reserved';
+                    }
+
+                    $entries[] = [
+                        'date'          => $row->travel_date,
+                        'type'          => 'booking',
+                        'travel_type'   => $row->travel_type,
+                        'reference_id'  => $booking->id,
+                        'reference_no'  => $inv->invoice_number,
+                        'customer_name' => $inv->customer_name,
+                        'status'        => $mappedStatus,
+                        'seat_map'      => $booking->seat_map,
+                        'total_amount'  => $inv->total_amount,
+                    ];
+                }
             } elseif ($row->reference_type === 'trip_ticket') {
                 $tt = \App\Models\TripTicket::find($row->reference_id);
                 if ($tt) {

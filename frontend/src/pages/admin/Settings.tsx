@@ -109,17 +109,6 @@ export default function Settings() {
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    // Load local landing page redirect config
-    const saved = localStorage.getItem('jvd_landing_page');
-    if (saved) {
-      setLandingPage(saved);
-    }
-
-    // Load active system-wide branding configurations
-    fetchLandingPageSettings();
-  }, []);
-
   const fetchLandingPageSettings = async () => {
     setLoading(true);
     try {
@@ -140,6 +129,17 @@ export default function Settings() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Load local landing page redirect config
+    const saved = localStorage.getItem('jvd_landing_page');
+    if (saved) {
+      setLandingPage(saved);
+    }
+
+    // Load active system-wide branding configurations
+    fetchLandingPageSettings();
+  }, []);
 
   const handleLandingPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const value = e.target.value;

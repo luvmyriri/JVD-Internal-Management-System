@@ -45,6 +45,7 @@ import { rolePermissionsApi, type ModulePermission } from '../../api/rolePermiss
 import { type UserRole } from '../../types/auth';
 
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
+import { EmployeeName } from '../../components/ds';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import { loadExcelJS } from '../../utils/lazyExport';
@@ -760,20 +761,13 @@ export default function Users() {
                     >
                       <td className="px-8 py-6">
                         <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <img 
-                              src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f8fafc&color=3b82f6&bold=true`} 
-                              className="w-11 h-11 rounded-2xl border-2 border-white dark:border-gray-800 shadow-sm object-cover" 
-                              alt="" 
-                            />
-                            {user.is_online && (
-                              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-gray-800 rounded-full shadow-sm" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-gray-900 dark:text-white text-base">{fullName(user)}</div>
-                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{user.employee_id}</div>
-                          </div>
+                          <EmployeeName 
+                            name={fullName(user)} 
+                            src={user.avatar_url} 
+                            subtitle={user.employee_id} 
+                            online={user.is_online} 
+                            size="lg" 
+                          />
                         </div>
                       </td>
                       <td className="px-8 py-6">

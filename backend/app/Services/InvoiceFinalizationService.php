@@ -59,8 +59,9 @@ class InvoiceFinalizationService
 
                 $alreadyBooked = DB::table('invoice_items')
                     ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                    ->leftJoin('bookings', 'invoices.id', '=', 'bookings.invoice_id')
                     ->where('invoice_items.service_id', $service->id)
-                    ->where('invoices.travel_date', $travelDate)
+                    ->where('bookings.travel_date', $travelDate)
                     ->where('invoices.status', '!=', 'cancelled')
                     ->lockForUpdate()
                     ->sum(DB::raw('CASE WHEN invoice_items.adults IS NOT NULL OR invoice_items.children IS NOT NULL THEN COALESCE(invoice_items.adults, 0) + COALESCE(invoice_items.children, 0) ELSE invoice_items.quantity END'));

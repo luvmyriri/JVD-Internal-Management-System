@@ -8,6 +8,7 @@ import { billingApi } from '../../api/billing';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { loadJsPDF, loadExcelJS } from '../../utils/lazyExport';
 import { useAuth } from '../../context/AuthContext';
+import { EmployeeName } from '../../components/ds';
 
 // Replaced seed data with real backend data mappin
 
@@ -592,13 +593,7 @@ export default function Reports() {
                             {txn.id}
                           </td>
                           <td className="py-3">
-                            <div className="flex items-center gap-2">
-                              <img src={getAvatarUrl(txn.agentName, txn.agentEmail)} alt={txn.agentName} className="w-5.5 h-5.5 rounded-full border border-gray-100 dark:border-gray-700/50 object-cover shadow-sm group-hover:scale-105 transition-transform" />
-                              <div className="leading-tight">
-                                <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.agentName}</p>
-                                <p className="text-[7.5px] text-gray-400 tracking-wider">{txn.agentEmail}</p>
-                              </div>
-                            </div>
+                            <EmployeeName name={txn.agentName} subtitle={txn.agentEmail} size="xs" />
                           </td>
                           <td className="py-3">
                             <p className="text-[10px] font-bold text-gray-800 dark:text-gray-200">{txn.clientName}</p>
@@ -649,13 +644,7 @@ export default function Reports() {
                       <div className="flex justify-between items-start gap-3">
                         <div className="overflow-hidden flex-1">
                           <p className="text-[10px] font-bold text-blue-600 dark:text-blue-400">{txn.id}</p>
-                          <div className="flex items-center gap-2 mt-1 overflow-hidden">
-                            <img src={getAvatarUrl(txn.agentName, txn.agentEmail)} alt={txn.agentName} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 object-cover shrink-0" />
-                            <div className="overflow-hidden">
-                              <p className="text-[11px] font-bold text-gray-900 dark:text-white leading-tight truncate">{txn.agentName}</p>
-                              <p className="text-[9px] text-gray-500 truncate">{txn.serviceType}</p>
-                            </div>
-                          </div>
+                          <EmployeeName name={txn.agentName} subtitle={txn.serviceType} size="xs" />
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold border ${txn.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : txn.status === 'Partial' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : txn.status === 'Pending' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
