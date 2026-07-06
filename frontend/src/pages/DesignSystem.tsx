@@ -3,7 +3,7 @@ import { Inbox, Hash, Mail, Building2, User, Users, FileText, DollarSign, Plus, 
 import {
   Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer,
   ConfirmDialog, StatCard, Chart, OnboardingChecklist, SharePopover, CommandPalette, useCommandPalette,
-  notify, type Column, type Command, type ChecklistItem, type ShareMember,
+  notify, confirm, promptText, type Column, type Command, type ChecklistItem, type ShareMember,
 } from '../components/ds';
 
 type Emp = { id: string; dept: string; deptColor: string; email: string; years: number; first: string; status: string };
@@ -223,6 +223,31 @@ export default function DesignSystem() {
         <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
           <h2 className="mb-4 text-sm font-medium text-brand">ConfirmDialog (3.2) — one irreversible yes/no</h2>
           <Button variant="danger" onClick={() => setConfirmOpen(true)}>Delete supplier…</Button>
+        </section>
+
+        <section className="mb-10 rounded-[var(--radius-card)] border border-border bg-surface p-6">
+          <h2 className="mb-4 text-sm font-medium text-brand">Imperative helpers (3.3) — await confirm() / promptText()</h2>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                const ok = await confirm({ title: 'Approve this request?', description: 'The requester will be notified.', confirmLabel: 'Approve' });
+                ok ? notify.success('Approved') : notify.info('Cancelled');
+              }}
+            >
+              await confirm()
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                const notes = await promptText({ title: 'Reject request', placeholder: 'Reason (optional)…', confirmLabel: 'Reject', destructive: true });
+                notes === null ? notify.info('Cancelled') : notify.error(`Rejected${notes ? `: ${notes}` : ''}`);
+              }}
+            >
+              await promptText()
+            </Button>
+          </div>
+          <p className="mt-3 text-xs text-muted">These bridge the old imperative <code>Swal.fire</code> pattern — they mount a tokenized ConfirmDialog/Modal and resolve a promise. Used to retire all sweetalert2 call sites.</p>
         </section>
 
         <section className="mb-10">

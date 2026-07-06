@@ -18,3 +18,4 @@ export { default as OnboardingChecklist, type ChecklistItem } from './Onboarding
 export { default as SharePopover, type ShareMember, type GeneralAccess } from './SharePopover';
 export { default as CommandPalette, useCommandPalette, type Command } from './CommandPalette';
 export { JvdToaster, notify } from './Toast';
+export { confirm, promptText, type ConfirmOptions, type PromptOptions } from './imperative';
