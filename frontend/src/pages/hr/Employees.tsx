@@ -24,9 +24,8 @@ import {
   LuCheckCheck,
   LuChevronRight,
 } from 'react-icons/lu';
-import { motion } from 'framer-motion';
-import { 
-  useUsers, 
+import {
+  useUsers,
   useCreateUser, 
   useUpdateUser, 
   useDeactivateUser, 
@@ -34,7 +33,8 @@ import {
 } from '../../hooks/useUsers';
 import { useHasRole } from '../../hooks/useHasRole';
 import { type UserRole } from '../../types/auth';
-import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
+import { Modal, Pagination, Button, Dropdown } from '../../components/ui';
+import { StatCard, DataTable, CategoryDot, StatusPill, EmptyState, type Column } from '../../components/ds';
 import { cn, fullName, formatDate } from '../../utils';
 import { useForm } from 'react-hook-form';
 import { loadExcelJS } from '../../utils/lazyExport';
@@ -135,6 +135,19 @@ const DEPARTMENTS = [
   'Human Resources',
   'Logistics',
 ];
+
+/** Category-dot color per department for the DataTable (roadmap 3.7 / DESIGN_DIRECTION Attio table). */
+const DEPT_COLORS: Record<string, string> = {
+  Administration: '#1D4ED8',
+  Accounting: '#16A34A',
+  Operations: '#0891B2',
+  Maintenance: '#D97706',
+  'Human Resources': '#7C3AED',
+  Logistics: '#0D9488',
+};
+const deptColor = (dept: string) => DEPT_COLORS[dept] ?? '#737373';
+/** Employment status label the StatusPill resolves to a tone (active→success, offline→neutral, deactivated→danger). */
+const statusLabel = (u: User) => (!u.is_active ? 'Deactivated' : u.is_online ? 'Active' : 'Offline');
 
 export default function Employees() {
   const [search, setSearch] = useState('');
@@ -478,8 +491,77 @@ export default function Employees() {
     }
   };
 
+  const columns: Column<User>[] = [
+    {
+      key: 'name',
+      header: 'Employee & ID',
+      sortable: true,
+      sortValue: (u) => fullName(u).toLowerCase(),
+      render: (u) => (
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <img
+              src={u.avatar_url || `https://ui-avatars.com/api/?name=${u.first_name}+${u.last_name}&background=f5f5f5&color=1D4ED8&bold=true`}
+              className="h-9 w-9 rounded-full border border-border object-cover"
+              alt=""
+            />
+            {u.is_online && <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface bg-success" />}
+          </div>
+          <div className="min-w-0">
+            <div className="font-medium text-ink">{fullName(u)}</div>
+            <div className="text-xs text-muted">{u.employee_id}</div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      sortable: true,
+      render: (u) => <CategoryDot color={deptColor(u.department)} label={u.department} />,
+    },
+    {
+      key: 'role',
+      header: 'Role',
+      sortable: true,
+      render: (u) => <span className="capitalize text-ink">{u.role.replace(/_/g, ' ')}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (u) => <StatusPill status={statusLabel(u)} />,
+    },
+    {
+      key: 'actions',
+      header: '',
+      align: 'center',
+      render: (u) => (
+        <span onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            items={[
+              { label: 'View Profile', icon: <LuEye size={16} />, onClick: () => handleViewProfile(u) },
+              ...(canManage
+                ? [
+                    { label: 'Edit Employee', icon: <LuPencil size={16} />, onClick: () => handleOpenModal(u) },
+                    {
+                      label: u.is_active ? 'Deactivate' : 'Activate',
+                      icon: u.is_active ? <LuUserX size={16} /> : <LuUserCheck size={16} />,
+                      onClick: () => toggleStatus(u),
+                      variant: u.is_active ? ('danger' as const) : ('default' as const),
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </span>
+      ),
+    },
+  ];
+
+  const employees: User[] = usersData?.data ?? [];
+
   return (
-    <div className="space-y-10 pb-12">
+    <div className="jvd space-y-10 pb-12">
       {/* Header Actions */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
@@ -529,32 +611,10 @@ export default function Employees() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {[
-          { label: 'Active Staff', value: usersData?.meta?.total || 0, icon: LuUsers, from: 'from-blue-500', to: 'to-blue-700', shadow: 'shadow-blue-300/40 dark:shadow-blue-900/40' },
-          { label: 'On Duty', value: usersData?.data?.filter((u: User) => u.is_active).length || 0, icon: LuUserCheck, from: 'from-emerald-400', to: 'to-emerald-600', shadow: 'shadow-emerald-300/40 dark:shadow-emerald-900/40' },
-          { label: 'Departments', value: DEPARTMENTS.length, icon: LuBriefcase, from: 'from-violet-500', to: 'to-purple-700', shadow: 'shadow-violet-300/40 dark:shadow-violet-900/40' },
-          { label: 'Access Control', value: ROLES.length, icon: LuLock, from: 'from-amber-400', to: 'to-orange-600', shadow: 'shadow-amber-300/40 dark:shadow-amber-900/40' },
-        ].map((stat, i) => (
-          <motion.div
-            key={stat.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.1 }}
-            className={`relative overflow-hidden rounded-[2rem] p-6 bg-gradient-to-br ${stat.from} ${stat.to} text-white shadow-xl ${stat.shadow} flex flex-col gap-4 group hover:scale-[1.02] transition-all cursor-default`}
-          >
-            <div className="absolute -top-5 -right-5 w-28 h-28 rounded-full bg-white/20" />
-            <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
-            <div className="flex items-start justify-between relative z-10">
-              <div className="w-11 h-11 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                <stat.icon size={22} className="text-white" />
-              </div>
-            </div>
-            <div className="relative z-10">
-              <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-1">{stat.label}</p>
-              <p className="text-3xl font-black tracking-tight">{stat.value}</p>
-            </div>
-          </motion.div>
-        ))}
+        <StatCard label="Active Staff" value={usersData?.meta?.total ?? 0} icon={<LuUsers size={16} />} />
+        <StatCard label="On Duty" value={employees.filter((u) => u.is_active).length} icon={<LuUserCheck size={16} />} />
+        <StatCard label="Departments" value={DEPARTMENTS.length} icon={<LuBriefcase size={16} />} />
+        <StatCard label="Access Control" value={ROLES.length} icon={<LuLock size={16} />} />
       </div>
 
       {/* Filters & Table */}
@@ -581,120 +641,23 @@ export default function Employees() {
           </select>
         </div>
 
-        <div className={`bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm ${usersData?.data?.length > 0 ? 'min-h-[350px]' : ''}`}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left">
-              <thead>
-                <tr className="border-b border-gray-100 dark:border-gray-800">
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Employee & ID</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Department</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Role</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                  <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50 dark:divide-gray-800">
-                {isLoading ? (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
-                      <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
-                      <p className="text-sm font-medium">Syncing directory...</p>
-                    </td>
-                  </tr>
-                ) : usersData?.data?.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
-                      <LuUsers size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                      <p className="text-sm font-medium">No personnel found.</p>
-                    </td>
-                  </tr>
-                ) : (
-                  usersData?.data?.map((user: User) => (
-                    <tr key={user.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all group border-b border-gray-50 dark:border-gray-800/60 last:border-0">
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className="relative">
-                            <img 
-                              src={user.avatar_url || `https://ui-avatars.com/api/?name=${user.first_name}+${user.last_name}&background=f8fafc&color=3b82f6&bold=true`} 
-                              className="w-11 h-11 rounded-2xl border-2 border-white shadow-sm object-cover" 
-                              alt="" 
-                            />
-                            {user.is_online && (
-                              <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white rounded-full shadow-sm" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold text-gray-900 dark:text-white text-base">{fullName(user)}</div>
-                            <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">{user.employee_id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
-                          {user.department}
-                        </span>
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center gap-3">
-                          {(() => {
-                            const role = ROLES.find(r => r.value === user.role);
-                            const Icon = role?.icon || LuShield;
-                            return (
-                              <>
-                                <div className={cn("w-8 h-8 rounded-xl flex items-center justify-center border shadow-sm", {
-                                  'bg-blue-50 dark:bg-blue-950/30 border-blue-100 dark:border-blue-900/30 text-blue-500 dark:text-blue-400': ['super_admin', 'executive_vice_president', 'operations_manager', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic'].includes(user.role),
-                                  'bg-purple-50 dark:bg-purple-950/30 border-purple-100 dark:border-purple-900/30 text-purple-500 dark:text-purple-400': ['corporate_secretary'].includes(user.role),
-                                  'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-100 dark:border-emerald-900/30 text-emerald-500 dark:text-emerald-400': ['accounting_executive'].includes(user.role),
-                                  'bg-amber-50 dark:bg-amber-950/30 border-amber-100 dark:border-amber-900/30 text-amber-500 dark:text-amber-400': ['reservation_officer', 'office_staff'].includes(user.role),
-                                  'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-100 dark:border-indigo-900/30 text-indigo-500 dark:text-indigo-400': user.role === 'driver',
-                                })}>
-                                  <Icon size={14} />
-                                </div>
-                                <span className="text-sm font-bold text-gray-700 dark:text-gray-200 capitalize">{user.role.replace('_', ' ')}</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-8 py-6">
-                        <StatusBadge 
-                          status={!user.is_active ? 'Deactivated' : (user.is_online ? 'Active' : 'Offline')}
-                          variant={!user.is_active ? 'danger' : (user.is_online ? 'success' : 'neutral')}
-                        />
-                      </td>
-                      <td className="px-8 py-6">
-                        <div className="flex items-center justify-center gap-2">
-                          <Dropdown 
-                            items={[
-                              { 
-                                label: 'View Profile', 
-                                icon: <LuEye size={16} />, 
-                                onClick: () => handleViewProfile(user) 
-                              },
-                              ...(canManage ? [
-                                { 
-                                  label: 'Edit Employee', 
-                                  icon: <LuPencil size={16} />, 
-                                  onClick: () => handleOpenModal(user) 
-                                },
-                                { 
-                                  label: user.is_active ? 'Deactivate' : 'Activate', 
-                                  icon: user.is_active ? <LuUserX size={16} /> : <LuUserCheck size={16} />, 
-                                  onClick: () => toggleStatus(user),
-                                  variant: user.is_active ? 'danger' as const : 'default' as const
-                                }
-                              ] : [])
-                            ]}
-                          />
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <DataTable
+          columns={columns}
+          data={employees}
+          rowKey={(u) => u.id}
+          onRowClick={(u) => handleViewProfile(u)}
+          isRowMuted={(u) => !u.is_active}
+          empty={
+            isLoading ? (
+              <div className="flex flex-col items-center py-16 text-muted">
+                <LuLoaderCircle size={22} className="mb-2 animate-spin text-brand" />
+                <p className="text-sm">Syncing directory…</p>
+              </div>
+            ) : (
+              <EmptyState icon={<LuUsers size={22} />} title="No personnel found" description="Try adjusting your search or role filter." />
+            )
+          }
+        />
       </div>
 
         {usersData?.meta?.last_page > 1 && (

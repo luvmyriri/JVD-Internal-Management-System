@@ -19,7 +19,9 @@ const MAP: Record<string, Tone> = {
   // danger / rejected / cancelled / overdue / inactive
   rejected: 'danger', cancelled: 'danger', canceled: 'danger', overdue: 'danger',
   inactive: 'danger', void: 'danger', blacklisted: 'danger', suspended: 'danger',
-  failed: 'danger', expired: 'danger',
+  failed: 'danger', expired: 'danger', deactivated: 'danger',
+  // neutral / idle
+  offline: 'neutral',
   // info / interactive
   info: 'info', open: 'info', sent: 'info', submitted: 'info',
 };
