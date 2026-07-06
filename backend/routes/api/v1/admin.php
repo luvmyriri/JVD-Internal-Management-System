@@ -62,14 +62,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // DASHBOARD AGGREGATIONS (role-specific)
     // ──────────────────────────────────────
     Route::prefix('dashboards')->group(function () {
-        Route::get('/layout', [DashboardController::class, 'layout'])->name('dashboards.layout');
-        Route::get('/widgets/revenue', [DashboardController::class, 'widgetRevenue'])->name('dashboards.widgets.revenue');
-        Route::get('/widgets/fleet', [DashboardController::class, 'widgetFleet'])->name('dashboards.widgets.fleet');
-        Route::get('/widgets/tasks', [DashboardController::class, 'widgetTasks'])->name('dashboards.widgets.tasks');
-        Route::get('/widgets/approvals', [DashboardController::class, 'widgetApprovals'])->name('dashboards.widgets.approvals');
+        Route::get('/admin', [DashboardController::class, 'admin'])->name('dashboards.admin');
+        Route::get('/accounting', [DashboardController::class, 'accounting'])->name('dashboards.accounting');
+        Route::get('/agent', [DashboardController::class, 'agent'])->name('dashboards.agent');
+        Route::get('/driver', [DashboardController::class, 'driver'])->name('dashboards.driver');
+        Route::get('/hr', [DashboardController::class, 'hr'])->name('dashboards.hr');
         
-        Route::get('/approvals',  [\App\Http\Controllers\Workflow\ApprovalsController::class, 'inbox'])
-            ->name('dashboards.approvals_inbox');
+        Route::get('/approvals', [DashboardController::class, 'approvals'])->name('dashboards.approvals');
     });
 });
 
