@@ -501,7 +501,7 @@ class DashboardService
 
     private function isLocalBooking($inv): bool
     {
-        $lower = strtolower($inv->tour_code ?? $inv->description ?? '');
+        $lower = strtolower($inv->getRawOriginal('notes') ?? '');
         if (str_contains($lower, 'bus rental')) {
             return true;
         }
@@ -529,7 +529,7 @@ class DashboardService
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'destination' => $inv->getRawOriginal('notes') ?? 'N/A',
                     'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
@@ -556,7 +556,7 @@ class DashboardService
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'destination' => $inv->getRawOriginal('notes') ?? 'N/A',
                     'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
@@ -583,7 +583,7 @@ class DashboardService
                 return [
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
+                    'destination' => $inv->getRawOriginal('notes') ?? 'N/A',
                     'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
@@ -603,8 +603,8 @@ class DashboardService
                 'Customer ID' => "CUST-{$c->id}",
                 'Name'        => trim("{$c->first_name} {$c->last_name}"),
                 'Email'       => $c->email ?? 'N/A',
-                'Plan Type'   => $c->plan_type ?? $c->type ?? 'Standard',
-                'Status'      => $c->is_active ? 'Active' : 'Inactive',
+                'Phone'       => $c->phone ?? 'N/A',
+                'Address'     => $c->address ?? 'N/A',
                 'Join Date'   => optional($c->created_at)->format('Y-m-d') ?? 'N/A',
             ])
             ->toArray();
