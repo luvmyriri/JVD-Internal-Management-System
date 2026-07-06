@@ -106,4 +106,10 @@ export const dashboardApi = {
 
   getHr: () =>
     client.get<{ success: boolean; data: DashboardData }>('/dashboards/hr').then(r => r.data.data),
+
+  // Widget Endpoints
+  getWidgetRevenue: () => client.get('/dashboards/widgets/revenue').then(res => res.data),
+  getWidgetFleet: () => client.get('/dashboards/widgets/fleet').then(res => res.data),
+  getWidgetTasks: () => client.get('/dashboards/widgets/tasks').then(res => res.data),
+  getWidgetApprovals: () => client.get('/dashboards/widgets/approvals').then(res => res.data),
 };
