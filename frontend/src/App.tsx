@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,54 +9,56 @@ import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { LoadingScreen } from './components/ui/LoadingScreen';
 import { JvdToaster } from './components/ds';
 import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation';
 
-// Pages
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import FixedPackages from './pages/sales/FixedPackages';
-import CustomTransactions from './pages/sales/CustomTransactions';
-import Billing from './pages/accounting/Billing';
-import Reports from './pages/accounting/Reports';
-import JournalEntries from './pages/accounting/JournalEntries';
-import Liquidations from './pages/accounting/Liquidations';
-import PurchaseOrders from './pages/procurement/PurchaseOrders';
-import JobOrders from './pages/procurement/JobOrders';
-import WorkOrders from './pages/procurement/WorkOrders';
-import Commissions from './pages/operations/Commissions';
-import TripTickets from './pages/logistics/TripTickets';
-import CashBudgets from './pages/accounting/CashBudgets';
-import Collections from './pages/accounting/Collections';
-import Accreditations from './pages/operations/Accreditations';
-import Suppliers from './pages/procurement/Suppliers';
-import CompanyDocuments from './pages/operations/CompanyDocuments';
-import Supplies from './pages/inventory/Supplies';
-import Fleet from './pages/inventory/Fleet';
-import PMS from './pages/inventory/PMS';
-import Passporting from './pages/travel/Passporting';
-import VisaProcessing from './pages/travel/VisaProcessing';
-import Customers from './pages/operations/Customers';
-import CustomerProfile from './pages/operations/CustomerProfile';
-import Employees from './pages/hr/Employees';
-import Applications from './pages/hr/Applications';
-import Internships from './pages/hr/Internships';
-import Payroll from './pages/hr/Payroll';
-import Users from './pages/admin/Users';
-import AuditLogs from './pages/admin/AuditLogs';
-import Settings from './pages/admin/Settings';
-import RolePermissions from './pages/admin/RolePermissions';
-import DriverSchedule from './pages/driver/Schedule';
-import DriverTrips from './pages/driver/Trips';
-import DriverBus from './pages/driver/Bus';
-import KycSubmission from './pages/KycSubmission';
-import VisaUploadPublic from './pages/travel/VisaUploadPublic';
-import CustomerPortal from './pages/portal/CustomerPortal';
-import Profile from './pages/Profile';
-import SetPassword from './pages/SetPassword';
-import DesignSystem from './pages/DesignSystem';
+// Pages — route-level code splitting (roadmap 3.4). Each becomes its own chunk so the
+// initial bundle carries only the shell + the first route, not all ~40 pages + exceljs/jspdf.
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const FixedPackages = lazy(() => import('./pages/sales/FixedPackages'));
+const CustomTransactions = lazy(() => import('./pages/sales/CustomTransactions'));
+const Billing = lazy(() => import('./pages/accounting/Billing'));
+const Reports = lazy(() => import('./pages/accounting/Reports'));
+const JournalEntries = lazy(() => import('./pages/accounting/JournalEntries'));
+const Liquidations = lazy(() => import('./pages/accounting/Liquidations'));
+const PurchaseOrders = lazy(() => import('./pages/procurement/PurchaseOrders'));
+const JobOrders = lazy(() => import('./pages/procurement/JobOrders'));
+const WorkOrders = lazy(() => import('./pages/procurement/WorkOrders'));
+const Commissions = lazy(() => import('./pages/operations/Commissions'));
+const TripTickets = lazy(() => import('./pages/logistics/TripTickets'));
+const CashBudgets = lazy(() => import('./pages/accounting/CashBudgets'));
+const Collections = lazy(() => import('./pages/accounting/Collections'));
+const Accreditations = lazy(() => import('./pages/operations/Accreditations'));
+const Suppliers = lazy(() => import('./pages/procurement/Suppliers'));
+const CompanyDocuments = lazy(() => import('./pages/operations/CompanyDocuments'));
+const Supplies = lazy(() => import('./pages/inventory/Supplies'));
+const Fleet = lazy(() => import('./pages/inventory/Fleet'));
+const PMS = lazy(() => import('./pages/inventory/PMS'));
+const Passporting = lazy(() => import('./pages/travel/Passporting'));
+const VisaProcessing = lazy(() => import('./pages/travel/VisaProcessing'));
+const Customers = lazy(() => import('./pages/operations/Customers'));
+const CustomerProfile = lazy(() => import('./pages/operations/CustomerProfile'));
+const Employees = lazy(() => import('./pages/hr/Employees'));
+const Applications = lazy(() => import('./pages/hr/Applications'));
+const Internships = lazy(() => import('./pages/hr/Internships'));
+const Payroll = lazy(() => import('./pages/hr/Payroll'));
+const Users = lazy(() => import('./pages/admin/Users'));
+const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
+const Settings = lazy(() => import('./pages/admin/Settings'));
+const RolePermissions = lazy(() => import('./pages/admin/RolePermissions'));
+const DriverSchedule = lazy(() => import('./pages/driver/Schedule'));
+const DriverTrips = lazy(() => import('./pages/driver/Trips'));
+const DriverBus = lazy(() => import('./pages/driver/Bus'));
+const KycSubmission = lazy(() => import('./pages/KycSubmission'));
+const VisaUploadPublic = lazy(() => import('./pages/travel/VisaUploadPublic'));
+const CustomerPortal = lazy(() => import('./pages/portal/CustomerPortal'));
+const Profile = lazy(() => import('./pages/Profile'));
+const SetPassword = lazy(() => import('./pages/SetPassword'));
+const DesignSystem = lazy(() => import('./pages/DesignSystem'));
+const LogisticsOverview = lazy(() => import('./pages/logistics/Overview'));
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
-import LogisticsOverview from './pages/logistics/Overview';
 
 
 const queryClient = new QueryClient({
@@ -100,6 +103,7 @@ export default function App() {
         <BrowserRouter>
           <EntityPreviewProvider>
             <AuthProvider>
+              <Suspense fallback={<LoadingScreen />}>
               <Routes>
                 {/* Public */}
               <Route path="/login" element={<Login />} />
@@ -200,6 +204,7 @@ export default function App() {
 
               <Route path="*" element={<DefaultRedirect />} />
             </Routes>
+              </Suspense>
             <JvdToaster />
             <ForceChangePasswordModal />
             <EntityPreviewPanel />
