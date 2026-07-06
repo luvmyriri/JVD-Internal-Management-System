@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Inbox, Hash, Mail, Building2, User, Users, FileText, DollarSign, Plus, Settings } from 'lucide-react';
+import { Inbox, Hash, Mail, Building2, User, Users, FileText, DollarSign, Plus, Settings, Star, Ellipsis } from 'lucide-react';
 import {
-  Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer,
+  Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer, ListRow,
   ConfirmDialog, StatCard, Chart, OnboardingChecklist, SharePopover, CommandPalette, useCommandPalette,
   notify, confirm, promptText, type Column, type Command, type ChecklistItem, type ShareMember,
 } from '../components/ds';
@@ -306,6 +306,37 @@ export default function DesignSystem() {
         />
 
         <CommandPalette isOpen={paletteOpen} onClose={closePalette} commands={COMMANDS} />
+
+        <section className="mb-10">
+          <h2 className="mb-4 text-sm font-medium text-brand">ListRow (3.2) — record cards (HR Applications pattern)</h2>
+          <div className="space-y-3">
+            {[
+              { name: 'Alfred White', role: 'Reservation Officer', status: 'new', when: '2h ago', muted: false },
+              { name: 'Grace Kent', role: 'Accounting Executive', status: 'interviewing', when: '1d ago', muted: false },
+              { name: 'Norah Page', role: 'Office Staff', status: 'rejected', when: '5d ago', muted: true },
+            ].map((a) => (
+              <ListRow
+                key={a.name}
+                onClick={() => {}}
+                muted={a.muted}
+                leading={
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-tint text-xs font-medium text-brand">
+                    {a.name.split(' ').map((p) => p[0]).join('')}
+                  </span>
+                }
+                title={a.name}
+                status={<StatusPill status={a.status} />}
+                subtitle={<><Mail size={12} /> {a.role} · applied {a.when}</>}
+                actions={
+                  <>
+                    <Button variant="ghost" size="sm" onClick={() => notify.success(`Shortlisted ${a.name}`)}><Star size={14} /> Shortlist</Button>
+                    <Button variant="ghost" size="sm" aria-label="More"><Ellipsis size={16} /></Button>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        </section>
 
         <section className="mb-10">
           <h2 className="mb-4 text-sm font-medium text-brand">DataTable (3.2) — the workhorse</h2>
