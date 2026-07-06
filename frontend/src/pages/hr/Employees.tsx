@@ -598,10 +598,10 @@ export default function Employees() {
 
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard label="Active Staff" value={usersData?.meta?.total ?? 0} icon={<LuUsers size={16} />} />
-        <StatCard label="On Duty" value={employees.filter((u) => u.is_active).length} icon={<LuUserCheck size={16} />} />
-        <StatCard label="Departments" value={DEPARTMENTS.length} icon={<LuBriefcase size={16} />} />
-        <StatCard label="Access Control" value={ROLES.length} icon={<LuLock size={16} />} />
+        <StatCard label="Active Staff" value={usersData?.meta?.total ?? 0} icon={<LuUsers size={16} />} variant="blue" />
+        <StatCard label="On Duty" value={employees.filter((u) => u.is_active).length} icon={<LuUserCheck size={16} />} variant="emerald" />
+        <StatCard label="Departments" value={DEPARTMENTS.length} icon={<LuBriefcase size={16} />} variant="amber" />
+        <StatCard label="Access Control" value={ROLES.length} icon={<LuLock size={16} />} variant="violet" />
       </div>
 
       {/* Filters & Table */}
