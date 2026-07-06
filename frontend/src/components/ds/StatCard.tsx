@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { LuArrowDownRight, LuArrowUpRight } from 'react-icons/lu';
+import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 import { cn } from '../../utils';
 
 /**
@@ -35,7 +35,7 @@ export default function StatCard({ label, value, unit, icon, delta, deltaSuffix 
       <div className="mt-3 flex items-center justify-between">
         {delta !== undefined ? (
           <span className={cn('inline-flex items-center gap-1 text-xs font-medium', up ? 'text-success' : 'text-danger')}>
-            {up ? <LuArrowUpRight size={14} /> : <LuArrowDownRight size={14} />}
+            {up ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             {Math.abs(delta)}{deltaSuffix}
           </span>
         ) : <span />}

@@ -1,7 +1,7 @@
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuTriangleAlert } from 'react-icons/lu';
+import { TriangleAlert } from 'lucide-react';
 import Button from './Button';
 
 /**
@@ -71,7 +71,7 @@ export default function ConfirmDialog({
             <div className="flex items-start gap-3">
               {destructive && (
                 <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-danger-tint text-danger">
-                  <LuTriangleAlert size={18} />
+                  <TriangleAlert size={18} />
                 </span>
               )}
               <div className="flex-1">

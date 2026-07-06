@@ -1,6 +1,6 @@
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuCircleCheck, LuCircleX, LuInfo, LuTriangleAlert, LuX } from 'react-icons/lu';
+import { CircleCheck, CircleX, Info, TriangleAlert, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '../../utils';
 
@@ -20,10 +20,10 @@ import { cn } from '../../utils';
 type ToastTone = 'success' | 'error' | 'warning' | 'info';
 
 const toneStyle: Record<ToastTone, { icon: ReactNode; accent: string }> = {
-  success: { icon: <LuCircleCheck size={18} />, accent: 'text-success' },
-  error: { icon: <LuCircleX size={18} />, accent: 'text-danger' },
-  warning: { icon: <LuTriangleAlert size={18} />, accent: 'text-warning' },
-  info: { icon: <LuInfo size={18} />, accent: 'text-brand' },
+  success: { icon: <CircleCheck size={18} />, accent: 'text-success' },
+  error: { icon: <CircleX size={18} />, accent: 'text-danger' },
+  warning: { icon: <TriangleAlert size={18} />, accent: 'text-warning' },
+  info: { icon: <Info size={18} />, accent: 'text-brand' },
 };
 
 function Surface({ tone, message, onDismiss }: { tone: ToastTone; message: ReactNode; onDismiss: () => void }) {
@@ -40,7 +40,7 @@ function Surface({ tone, message, onDismiss }: { tone: ToastTone; message: React
       <span className={cn('mt-0.5 shrink-0', s.accent)}>{s.icon}</span>
       <div className="flex-1 text-sm text-ink">{message}</div>
       <button onClick={onDismiss} className="mt-0.5 shrink-0 text-muted transition-colors hover:text-ink" aria-label="Dismiss">
-        <LuX size={15} />
+        <X size={15} />
       </button>
     </motion.div>
   );

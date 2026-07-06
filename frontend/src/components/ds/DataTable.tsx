@@ -1,5 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
-import { LuChevronsUpDown, LuChevronUp, LuChevronDown } from 'react-icons/lu';
+import { ChevronsUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { cn } from '../../utils';
 
 /**
@@ -111,9 +111,9 @@ export default function DataTable<T>({
                   {col.sortable && (
                     <span className="text-muted/60">
                       {sort?.key === col.key ? (
-                        sort.dir === 'asc' ? <LuChevronUp size={13} /> : <LuChevronDown size={13} />
+                        sort.dir === 'asc' ? <ChevronUp size={13} /> : <ChevronDown size={13} />
                       ) : (
-                        <LuChevronsUpDown size={13} />
+                        <ChevronsUpDown size={13} />
                       )}
                     </span>
                   )}

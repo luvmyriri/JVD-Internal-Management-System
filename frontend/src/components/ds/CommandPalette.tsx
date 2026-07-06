@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuSearch, LuCornerDownLeft } from 'react-icons/lu';
+import { Search, CornerDownLeft } from 'lucide-react';
 import { cn } from '../../utils';
 
 /**
@@ -120,7 +120,7 @@ export default function CommandPalette({ isOpen, onClose, commands, placeholder 
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
           >
             <div className="flex items-center gap-3 border-b border-border px-4">
-              <LuSearch size={18} className="shrink-0 text-muted" />
+              <Search size={18} className="shrink-0 text-muted" />
               <input
                 ref={inputRef}
                 value={query}
@@ -154,7 +154,7 @@ export default function CommandPalette({ isOpen, onClose, commands, placeholder 
                       >
                         {cmd.icon && <span className="shrink-0 text-muted">{cmd.icon}</span>}
                         <span className="flex-1 truncate">{cmd.label}</span>
-                        {idx === active && <LuCornerDownLeft size={14} className="shrink-0 text-muted" />}
+                        {idx === active && <CornerDownLeft size={14} className="shrink-0 text-muted" />}
                       </button>
                     </div>
                   );

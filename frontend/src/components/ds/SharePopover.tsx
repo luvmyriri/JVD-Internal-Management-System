@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuGlobe, LuLink, LuLock } from 'react-icons/lu';
+import { Globe, Link, Lock } from 'lucide-react';
 import Button from './Button';
 import { cn } from '../../utils';
 
@@ -112,7 +112,7 @@ export default function SharePopover({
             className="mt-4 flex w-full items-center gap-3 rounded-[var(--radius-control)] px-1 py-2 text-left transition-colors hover:bg-surface-muted"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-muted text-muted">
-              {generalAccess === 'anyone' ? <LuGlobe size={16} /> : <LuLock size={16} />}
+              {generalAccess === 'anyone' ? <Globe size={16} /> : <Lock size={16} />}
             </span>
             <span className="flex-1">
               <span className="block text-sm text-ink">{generalAccess === 'anyone' ? 'Anyone with the link' : 'Restricted'}</span>
@@ -152,7 +152,7 @@ export default function SharePopover({
           <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
             <span className="text-xs text-muted">Members can share with others</span>
             <Button variant="secondary" size="sm" onClick={onCopyLink}>
-              <LuLink size={14} /> Copy link
+              <Link size={14} /> Copy link
             </Button>
           </div>
         </motion.div>

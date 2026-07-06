@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LuCheck, LuChevronDown, LuPlay } from 'react-icons/lu';
+import { Check, ChevronDown, Play } from 'lucide-react';
 import { cn } from '../../utils';
 
 /**
@@ -42,7 +42,7 @@ export default function OnboardingChecklist({
         className="flex w-full items-center justify-between px-4 py-3 text-left"
       >
         <span className="text-sm font-medium text-ink">{title}</span>
-        <LuChevronDown size={16} className={cn('text-muted transition-transform', collapsed && '-rotate-90')} />
+        <ChevronDown size={16} className={cn('text-muted transition-transform', collapsed && '-rotate-90')} />
       </button>
 
       <AnimatePresence initial={false}>
@@ -66,7 +66,7 @@ export default function OnboardingChecklist({
                         item.done ? 'border-brand bg-brand text-white' : 'border-border text-transparent',
                       )}
                     >
-                      <LuCheck size={12} />
+                      <Check size={12} />
                     </span>
                     <span className={cn('text-sm', item.done ? 'text-muted line-through' : 'text-ink')}>{item.label}</span>
                   </button>
@@ -79,7 +79,7 @@ export default function OnboardingChecklist({
                 onClick={onWatchTutorial}
                 className="mx-2 mb-1 flex items-center gap-2 rounded-[var(--radius-control)] px-2 py-2 text-sm text-muted transition-colors hover:bg-surface-muted hover:text-ink"
               >
-                <LuPlay size={14} /> Watch tutorial
+                <Play size={14} /> Watch tutorial
               </button>
             )}
 

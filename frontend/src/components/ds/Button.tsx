@@ -1,5 +1,5 @@
 import { cn } from '../../utils';
-import { LuLoaderCircle } from 'react-icons/lu';
+import { LoaderCircle } from 'lucide-react';
 
 /**
  * Design-system button (roadmap 3.2). Token-based, sentence-case, medium weight.
@@ -52,7 +52,7 @@ export default function Button({
       disabled={disabled || isLoading}
       {...props}
     >
-      {isLoading && <LuLoaderCircle className="animate-spin" size={16} aria-hidden />}
+      {isLoading && <LoaderCircle className="animate-spin" size={16} aria-hidden />}
       {children}
     </button>
   );

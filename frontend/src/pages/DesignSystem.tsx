@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LuInbox, LuHash, LuMail, LuBuilding2, LuUser, LuUsers, LuFileText, LuDollarSign, LuPlus, LuSettings } from 'react-icons/lu';
+import { Inbox, Hash, Mail, Building2, User, Users, FileText, DollarSign, Plus, Settings } from 'lucide-react';
 import {
   Button, StatusPill, Card, EmptyState, DataTable, CategoryDot, Modal, Drawer,
   ConfirmDialog, StatCard, Chart, OnboardingChecklist, SharePopover, CommandPalette, useCommandPalette,
@@ -17,12 +17,12 @@ const EMPLOYEES: Emp[] = [
 ];
 
 const EMP_COLUMNS: Column<Emp>[] = [
-  { key: 'id', header: 'Employees', icon: <LuUser size={13} />, sortable: true },
-  { key: 'dept', header: 'Department', icon: <LuBuilding2 size={13} />, render: (r) => <CategoryDot color={r.deptColor} label={r.dept} /> },
-  { key: 'email', header: 'Email', icon: <LuMail size={13} />, render: (r) => <span className="text-muted">{r.email}</span> },
+  { key: 'id', header: 'Employees', icon: <User size={13} />, sortable: true },
+  { key: 'dept', header: 'Department', icon: <Building2 size={13} />, render: (r) => <CategoryDot color={r.deptColor} label={r.dept} /> },
+  { key: 'email', header: 'Email', icon: <Mail size={13} />, render: (r) => <span className="text-muted">{r.email}</span> },
   { key: 'status', header: 'Employment', render: (r) => <StatusPill status={r.status} /> },
-  { key: 'years', header: 'Years', icon: <LuHash size={13} />, align: 'right', sortable: true },
-  { key: 'first', header: 'First Name', icon: <LuUser size={13} />, sortable: true },
+  { key: 'years', header: 'Years', icon: <Hash size={13} />, align: 'right', sortable: true },
+  { key: 'first', header: 'First Name', icon: <User size={13} />, sortable: true },
 ];
 
 /**
@@ -87,11 +87,11 @@ export default function DesignSystem() {
     setSteps((s) => s.map((it) => (it.id === id ? { ...it, done: !it.done } : it)));
 
   const COMMANDS: Command[] = [
-    { id: 'nav-dash', group: 'Navigation', label: 'Go to Dashboard', icon: <LuUser size={15} />, onSelect: () => notify.info('Would navigate to Dashboard') },
-    { id: 'nav-emp', group: 'Navigation', label: 'Go to Employees', icon: <LuUsers size={15} />, onSelect: () => notify.info('Would navigate to Employees') },
-    { id: 'nav-inv', group: 'Navigation', label: 'Go to Invoices', icon: <LuFileText size={15} />, onSelect: () => notify.info('Would navigate to Invoices') },
-    { id: 'act-add', group: 'Actions', label: 'Create new invoice', icon: <LuPlus size={15} />, keywords: 'new billing', onSelect: () => notify.success('New invoice action') },
-    { id: 'act-set', group: 'Actions', label: 'Open settings', icon: <LuSettings size={15} />, onSelect: () => notify.info('Would open settings') },
+    { id: 'nav-dash', group: 'Navigation', label: 'Go to Dashboard', icon: <User size={15} />, onSelect: () => notify.info('Would navigate to Dashboard') },
+    { id: 'nav-emp', group: 'Navigation', label: 'Go to Employees', icon: <Users size={15} />, onSelect: () => notify.info('Would navigate to Employees') },
+    { id: 'nav-inv', group: 'Navigation', label: 'Go to Invoices', icon: <FileText size={15} />, onSelect: () => notify.info('Would navigate to Invoices') },
+    { id: 'act-add', group: 'Actions', label: 'Create new invoice', icon: <Plus size={15} />, keywords: 'new billing', onSelect: () => notify.success('New invoice action') },
+    { id: 'act-set', group: 'Actions', label: 'Open settings', icon: <Settings size={15} />, onSelect: () => notify.info('Would open settings') },
   ];
 
   const toggleDark = () => {
@@ -162,7 +162,7 @@ export default function DesignSystem() {
         <Card className="mb-10">
           <h2 className="mb-4 text-sm font-medium text-brand">Card + EmptyState</h2>
           <EmptyState
-            icon={<LuInbox size={22} />}
+            icon={<Inbox size={22} />}
             title="No applicants yet"
             description="Start posting job listings to begin receiving applications."
             action={<Button variant="primary">Create listing</Button>}
@@ -228,10 +228,10 @@ export default function DesignSystem() {
         <section className="mb-10">
           <h2 className="mb-4 text-sm font-medium text-brand">StatCard + Chart (3.2) — dashboard widgets</h2>
           <div className="mb-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <StatCard label="Total employees" value="214" unit="Total" icon={<LuUsers size={16} />} delta={12} onViewAll={() => notify.info('View employees')} />
-            <StatCard label="Open invoices" value="38" icon={<LuFileText size={16} />} delta={-4} />
-            <StatCard label="Revenue (MTD)" value="₱1.2M" icon={<LuDollarSign size={16} />} delta={8} />
-            <StatCard label="Pending approvals" value="7" icon={<LuInbox size={16} />} />
+            <StatCard label="Total employees" value="214" unit="Total" icon={<Users size={16} />} delta={12} onViewAll={() => notify.info('View employees')} />
+            <StatCard label="Open invoices" value="38" icon={<FileText size={16} />} delta={-4} />
+            <StatCard label="Revenue (MTD)" value="₱1.2M" icon={<DollarSign size={16} />} delta={8} />
+            <StatCard label="Pending approvals" value="7" icon={<Inbox size={16} />} />
           </div>
           <Card>
             <div className="mb-4 flex items-center justify-between">
