@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { ledgerApi } from '../../api/operations';
 import { Modal } from '../../components/ui';
-import { LuSearch, LuCalendar, LuPrinter, LuTrendingUp, LuTrendingDown, LuCheck, LuTriangleAlert } from 'react-icons/lu';
+import { DataTable, EmptyState, type Column } from '../../components/ds';
+import { LuSearch, LuCalendar, LuPrinter, LuTrendingUp, LuTrendingDown, LuCheck, LuTriangleAlert, LuBookOpen } from 'react-icons/lu';
 
 function formatCurrency(value: number | string) {
   const num = typeof value === 'number' ? value : parseFloat(value || '0');
@@ -221,6 +222,86 @@ export default function JournalEntries() {
   const entries = response?.data?.data || [];
   const meta = response?.data || { current_page: 1, last_page: 1 };
 
+  const columns: Column<any>[] = [
+    {
+      key: 'date',
+      header: 'Date',
+      sortable: true,
+      sortValue: (entry) => entry.date,
+      render: (entry) => <span className="text-gray-900 dark:text-white font-semibold">{entry.date}</span>,
+    },
+    {
+      key: 'reference',
+      header: 'JV Reference',
+      render: (entry) => (
+        <div>
+          <div className="font-bold text-blue-600 dark:text-blue-400">JV-{entry.id}</div>
+          <div className="text-[10px] text-gray-400 mt-0.5">
+            {entry.reference_type ? `${entry.reference_type.split('\\').pop()} #${entry.reference_id}` : 'Manual'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'notes',
+      header: 'Description / Notes',
+      render: (entry) => <span className="text-gray-600 dark:text-gray-300 max-w-xs truncate font-medium block">{entry.notes || '—'}</span>,
+    },
+    {
+      key: 'debit',
+      header: 'Debit',
+      align: 'right',
+      render: (entry) => {
+        const debits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
+        return <span className="font-black text-gray-900 dark:text-white">{formatCurrency(debits)}</span>;
+      },
+    },
+    {
+      key: 'credit',
+      header: 'Credit',
+      align: 'right',
+      render: (entry) => {
+        const credits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
+        return <span className="font-black text-gray-900 dark:text-white">{formatCurrency(credits)}</span>;
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (entry) => {
+        const debits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
+        const credits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
+        // C-09: empty entries must not display as balanced.
+        const isBalanced = (entry.ledger_lines?.length ?? 0) >= 2 && debits > 0 && Math.abs(debits - credits) < 0.01;
+        return (
+          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+            isBalanced
+              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200/50'
+              : 'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 border border-red-200/50'
+          }`}>
+            {isBalanced ? <LuTrendingUp className="w-3 h-3" /> : <LuTrendingDown className="w-3 h-3" />}
+            {isBalanced ? 'Balanced' : 'Unbalanced'}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (entry) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => setSelectedEntry(entry)}
+            className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+          >
+            Audit Details
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -283,67 +364,23 @@ export default function JournalEntries() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-              <tr>
-                <th className="px-8 py-6 rounded-tl-[2rem]">Date</th>
-                <th className="px-8 py-6">JV Reference</th>
-                <th className="px-8 py-6">Description / Notes</th>
-                <th className="px-8 py-6 text-right">Debit</th>
-                <th className="px-8 py-6 text-right">Credit</th>
-                <th className="px-8 py-6">Status</th>
-                <th className="px-8 py-6 text-right rounded-tr-[2rem]">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-8 py-12 text-center text-gray-500">Loading General Ledger...</td></tr>
-              ) : entries.length === 0 ? (
-                <tr><td colSpan={7} className="px-8 py-12 text-center text-gray-500">No journal postings found.</td></tr>
+        <div className={`jvd overflow-x-auto transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+          <DataTable
+            columns={columns}
+            data={entries}
+            rowKey={(entry: any) => entry.id}
+            className="border-0 rounded-none bg-transparent"
+            empty={
+              isLoading ? (
+                <div className="flex flex-col items-center py-16 text-muted">
+                  <LuBookOpen size={22} className="mb-2 animate-spin text-brand" />
+                  <p className="text-sm">Loading General Ledger…</p>
+                </div>
               ) : (
-                entries.map((entry: any) => {
-                  const debits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.debit || 0), 0) || 0;
-                  const credits = entry.ledger_lines?.reduce((sum: number, line: any) => sum + parseFloat(line.credit || 0), 0) || 0;
-                  // C-09: empty entries must not display as balanced.
-                  const isBalanced = (entry.ledger_lines?.length ?? 0) >= 2 && debits > 0 && Math.abs(debits - credits) < 0.01;
-
-                  return (
-                    <tr key={entry.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="px-8 py-5 text-gray-900 dark:text-white font-semibold">{entry.date}</td>
-                      <td className="px-8 py-5">
-                        <div className="font-bold text-blue-600 dark:text-blue-400">JV-{entry.id}</div>
-                        <div className="text-[10px] text-gray-400 mt-0.5">
-                          {entry.reference_type ? `${entry.reference_type.split('\\').pop()} #${entry.reference_id}` : 'Manual'}
-                        </div>
-                      </td>
-                      <td className="px-8 py-5 text-gray-600 dark:text-gray-300 max-w-xs truncate font-medium">{entry.notes || '—'}</td>
-                      <td className="px-8 py-5 text-right font-black text-gray-900 dark:text-white">{formatCurrency(debits)}</td>
-                      <td className="px-8 py-5 text-right font-black text-gray-900 dark:text-white">{formatCurrency(credits)}</td>
-                      <td className="px-8 py-5">
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          isBalanced
-                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-200/50'
-                            : 'bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 border border-red-200/50'
-                        }`}>
-                          {isBalanced ? <LuTrendingUp className="w-3 h-3" /> : <LuTrendingDown className="w-3 h-3" />}
-                          {isBalanced ? 'Balanced' : 'Unbalanced'}
-                        </span>
-                      </td>
-                      <td className="px-8 py-5 text-right">
-                        <button
-                          onClick={() => setSelectedEntry(entry)}
-                          className="px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
-                        >
-                          Audit Details
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                <EmptyState icon={<LuBookOpen size={22} />} title="No journal postings found" description="Journal entries appear here as sub-ledgers post." />
+              )
+            }
+          />
         </div>
 
         {/* Pagination controls */}

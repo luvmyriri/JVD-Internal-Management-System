@@ -36,9 +36,9 @@ class InvoiceResource extends JsonResource
             'cash_budget_request_id' => $this->cash_budget_request_id,
             'bus_id' => $this->booking?->bus_id,
             'driver_id' => $this->booking?->driver_id,
-            'seat_map' => $this->booking?->seat_map ?? $this->seat_map,
+            'seat_map' => $this->booking?->seat_map,
             'travel_date' => $this->booking?->travel_date,
-            'pickup_location' => $this->booking?->pickup_location ?? $this->pickup_location,
+            'pickup_location' => $this->booking?->pickup_location,
             'tour_code' => $this->booking?->tour_code,
             'pax_count' => $this->booking?->pax_count,
             'driver' => $this->booking && $this->booking->relationLoaded('driver') && $this->booking->driver ? [

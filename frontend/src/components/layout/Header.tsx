@@ -33,6 +33,7 @@ import {
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 import { CreateCommissionForm } from '../../pages/operations/Commissions';
+import HeaderWidgetsMenu from '../HeaderWidgetsMenu';
 
 interface NotificationItem {
   id: string;
@@ -1028,6 +1029,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <LuSignature className="w-3.5 h-3.5" /> Request Commission
           </button>
         )}
+        {/* Widgets menu (dashboard only) */}
+        {location.pathname === '/dashboard' && <HeaderWidgetsMenu />}
         {/* Messages Dropdown */}
         <div className="relative">
           <button

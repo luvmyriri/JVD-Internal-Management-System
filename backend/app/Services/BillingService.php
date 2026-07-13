@@ -26,7 +26,7 @@ class BillingService
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'driver']);
+        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'booking.driver']);
 
         // Search
         if ($request->has('search')) {
@@ -368,7 +368,7 @@ class BillingService
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'driver'])->find($id);
+        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'booking.driver'])->find($id);
 
         if (!$invoice) {
             return response()->json([

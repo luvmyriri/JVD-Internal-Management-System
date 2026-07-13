@@ -55,7 +55,6 @@ import Profile from './pages/Profile';
 import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
 import LogisticsOverview from './pages/logistics/Overview';
-import FloatingWidgetDock from './components/FloatingWidgetDock';
 
 
 const queryClient = new QueryClient({
@@ -203,7 +202,6 @@ export default function App() {
             <ForceChangePasswordModal />
             <EntityPreviewPanel />
             <FloatingCrossChecker />
-            <FloatingWidgetDock />
           </AuthProvider>
         </EntityPreviewProvider>
       </BrowserRouter>
