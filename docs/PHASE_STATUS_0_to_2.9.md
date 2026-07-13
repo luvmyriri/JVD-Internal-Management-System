@@ -5,6 +5,20 @@
 
 ---
 
+## ✅ Update — 2026-07-13: all outstanding work committed and merged to `main`
+
+The single biggest risk flagged below — "Phase 2 is entirely uncommitted" — is resolved. Current state of `main` (`603868b`, verified: backend 159/159, frontend `tsc -b` clean):
+
+- **`feat/2.9-thin-controllers`** merged via PR #1 (`23e949a`) — `DashboardController` and `ProcurementDocumentController` thinning both landed.
+- **`feat/3.1-design-tokens`** (~25 commits: design tokens, the `ds/` component library, dashboard widgets, sales checkout wizard, accounting module rework — i.e. the start of Phase 3) merged directly into `main` (`603868b`).
+- **`origin/Val`, `origin/Greg`, `origin/greg_Backend`** carry no commits that aren't already in `main` — effectively stale, safe to delete once confirmed unneeded.
+- **`origin/Emman`** has one unique commit left un-merged: it points `BillingService`/`InvoiceResource` at a direct `Invoice::driver()` relation. That relation doesn't exist post-2.5b — migration `2026_07_04_182136_create_bookings_table.php` dropped `driver_id` from `invoices` and moved it to `bookings`, and `Invoice` only exposes `booking()`, not `driver()`. The commit was written against the pre-split schema; `main` correctly keeps `booking.driver` throughout. Worth a quick sync with Emman before that branch is deleted, in case the direct-relation intent was real and just needs redoing against the current schema.
+- **0.5 (branch migration + protect `main`) is still open** — the personal branches above still exist on the remote; protecting `main` on GitHub is still a manual, non-code action for you.
+
+---
+
+---
+
 ## ✅ PHASE 2 COMPLETE — final status (2026-07-05, Claude)
 
 All Phase 2 backend items are done and tested. **Backend suite 126 → 158 (32 new tests); every slice shipped as its own tested, reviewed feature branch.** The item-by-item verdict further down is the *original* audit snapshot and is now superseded by this section.
@@ -103,7 +117,7 @@ Legend: ✅ done · 🟡 partial · ❌ not started · ❓ can't verify from cod
 
 ## What to close before calling Phase 2 done
 
-1. **Commit everything now** onto feature branches per `TEAM_WORKFLOW.md` (e.g. `feat/2.4-workflow-engine`, `feat/2.7-dms`, `feat/2.5-ledger`), open PRs, review, squash-merge. Un-reviewed uncommitted work is the single biggest risk on the board.
+1. ~~Commit everything now onto feature branches per `TEAM_WORKFLOW.md`, open PRs, review, squash-merge.~~ **Done 2026-07-13** — see the update at the top of this doc. `main` is current.
 2. **2.3 abilities/roles-as-data** — start it; the workflow engine (2.4) is targeting roles instead of abilities until this lands, and it's a core client ask.
 3. **2.5 finish** — Collections → ledger postings, and finalization snapshots (immutability).
 4. **2.6 finish** — `notification_preferences` table + make it event-driven (the "email flooding" fix depends on this).
