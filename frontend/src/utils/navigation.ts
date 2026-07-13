@@ -13,8 +13,6 @@ export function isPathAllowedForUser(path: string, user?: User | null, permissio
   let checkPath = cleanPath;
   if (checkPath === '/procurement/overview') {
     checkPath = '/logistics';
-  } else if (checkPath === '/sales') {
-    checkPath = '/sales/fixed-packages';
   } else if (checkPath === '/accounting') {
     checkPath = '/accounting/billing';
   } else if (checkPath === '/operations') {

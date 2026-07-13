@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 import { Dropdown } from '../../components/ui';
+import { DataTable, EmptyState, type Column } from '../../components/ds';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 
 export default function Billing() {
@@ -91,6 +92,120 @@ export default function Billing() {
       </span>
     );
   };
+
+  const columns: Column<Invoice>[] = [
+    {
+      key: 'invoice_number',
+      header: 'Invoice Details',
+      sortable: true,
+      sortValue: (invoice) => invoice.invoice_number,
+      render: (invoice) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 shadow-sm">
+            <LuPrinter className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{invoice.invoice_number}</p>
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">{invoice.payment_method}</p>
+              {invoice.cash_budget_request_id && (
+                <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
+                  From Cash Budget
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'customer_name',
+      header: 'Customer',
+      sortable: true,
+      sortValue: (invoice) => invoice.customer_name || 'Walk-in Customer',
+      render: (invoice) => (
+        <div>
+          {invoice.customer_id ? (
+            <button
+              onClick={() => showPreview('customer', invoice.customer_id!)}
+              className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-left hover:underline leading-tight focus:outline-none"
+            >
+              {invoice.customer_name || 'Walk-in Customer'}
+            </button>
+          ) : (
+            <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+              {invoice.customer_name || 'Walk-in Customer'}
+            </p>
+          )}
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Verified Account</p>
+        </div>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Date',
+      sortable: true,
+      sortValue: (invoice) => invoice.created_at,
+      render: (invoice) => (
+        <div>
+          <p className="text-xs font-bold text-gray-950 dark:text-gray-200 leading-tight">
+            {new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">
+            {new Date(invoice.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'total_amount',
+      header: 'Total Amount',
+      sortable: true,
+      sortValue: (invoice) => Number(invoice.total_amount),
+      render: (invoice) => (
+        <div>
+          <p className="text-base font-black text-gray-950 dark:text-white leading-tight">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">PHP Current</p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (invoice) => (
+        <div>
+          <StatusBadge status={invoice.status} />
+          {invoice.collection && invoice.status !== 'paid' && (
+            <div className="mt-2">
+              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${invoice.collection.collection_status === 'overdue' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
+                  invoice.collection.collection_status === 'pending' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
+                    'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                }`}>
+                Collection: {invoice.collection.collection_status}
+              </span>
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (invoice) => (
+        <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
+          <Dropdown
+            items={[
+              { label: 'View Invoice', icon: <LuEye className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } },
+              ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : []),
+              ...(invoice.collection ? [{ label: 'View Collection', icon: <LuBanknote className="w-4 h-4" />, onClick: () => window.location.href = '/accounting/collections' }] : [])
+            ]}
+          />
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -189,112 +304,28 @@ export default function Billing() {
           </div>
         </div>
         {/* Data Table */}
-        <div className={`relative hidden md:block overflow-x-auto custom-scrollbar ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
+        <div className={`jvd relative hidden md:block ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>
           {/* Background sweep bar while refetching */}
           {isPlaceholderData && (
             <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <table className="w-full min-w-[700px] text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Invoice Details</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800/50">
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                  </tr>
-                ))
-              ) : invoices.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No transactions found</td>
-                </tr>
+          <DataTable
+            columns={columns}
+            data={invoices}
+            rowKey={(invoice) => invoice.id}
+            empty={
+              isLoading ? (
+                <div className="flex flex-col items-center py-16 text-muted">
+                  <LuActivity size={22} className="mb-2 animate-spin text-brand" />
+                  <p className="text-sm">Loading transactions…</p>
+                </div>
               ) : (
-                invoices.map((invoice) => (
-                  <tr key={invoice.id} className="group hover:bg-blue-50/20 dark:hover:bg-blue-900/5 transition-colors">
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                          <LuPrinter className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{invoice.invoice_number}</p>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider">{invoice.payment_method}</p>
-                            {invoice.cash_budget_request_id && (
-                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400">
-                                From Cash Budget
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      {invoice.customer_id ? (
-                        <button
-                          onClick={() => showPreview('customer', invoice.customer_id!)}
-                          className="font-bold text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 text-left hover:underline leading-tight focus:outline-none"
-                        >
-                          {invoice.customer_name || 'Walk-in Customer'}
-                        </button>
-                      ) : (
-                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                          {invoice.customer_name || 'Walk-in Customer'}
-                        </p>
-                      )}
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Verified Account</p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-xs font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                        {new Date(invoice.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">
-                        {new Date(invoice.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-base font-black text-gray-950 dark:text-white leading-tight">₱{Number(invoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">PHP Current</p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <StatusBadge status={invoice.status} />
-                      {invoice.collection && invoice.status !== 'paid' && (
-                        <div className="mt-2">
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-widest ${invoice.collection.collection_status === 'overdue' ? 'bg-rose-50 text-rose-600 dark:bg-rose-900/30 dark:text-rose-400' :
-                              invoice.collection.collection_status === 'pending' ? 'bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400' :
-                                'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
-                            }`}>
-                            Collection: {invoice.collection.collection_status}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <div className="flex items-center justify-end">
-                        <Dropdown
-                          items={[
-                            { label: 'View Invoice', icon: <LuEye className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } },
-                            ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : []),
-                            ...(invoice.collection ? [{ label: 'View Collection', icon: <LuBanknote className="w-4 h-4" />, onClick: () => window.location.href = '/accounting/collections' }] : [])
-                          ]}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <EmptyState icon={<LuPrinter size={22} />} title="No transactions found" description="Try adjusting your search or status filter." />
+              )
+            }
+          />
         </div>
 
         {/* Mobile Card Layout */}

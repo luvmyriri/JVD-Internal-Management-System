@@ -48,6 +48,11 @@ class Service extends Model
         'max_pax' => 'integer',
     ];
 
+    public function serviceCategory()
+    {
+        return $this->belongsTo(ServiceCategory::class, 'service_category_id');
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

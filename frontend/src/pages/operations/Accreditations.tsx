@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import ExcelJS from 'exceljs';
+import { loadExcelJS } from '../../utils/lazyExport';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
@@ -699,7 +699,7 @@ export default function Accreditations() {
   const qc = useQueryClient();
 
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     const worksheet = workbook.addWorksheet('Accreditations');
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
@@ -783,7 +783,7 @@ export default function Accreditations() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     try {
       const arrayBuffer = await file.arrayBuffer();
       await workbook.xlsx.load(arrayBuffer);

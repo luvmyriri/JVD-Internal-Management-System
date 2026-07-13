@@ -501,19 +501,40 @@ class DashboardService
 
     private function isLocalBooking($inv): bool
     {
-        $lower = strtolower($inv->tour_code ?? $inv->description ?? '');
-        if (str_contains($lower, 'bus rental')) {
-            return true;
+        // Check via first service item's category/name
+        $firstItem = $inv->items->first();
+        if ($firstItem && $firstItem->service) {
+            $cat  = strtolower($firstItem->service->category ?? '');
+            $name = strtolower($firstItem->service->name ?? '');
+            if (str_contains($cat, 'bus rental') || str_contains($name, 'bus rental')) {
+                return true;
+            }
+            // Check service name for Philippine destinations
+            foreach (self::LOCAL_DESTINATION_KEYWORDS as $kw) {
+                if (str_contains($name, $kw)) return true;
+            }
         }
+        // Fallback: check customer_name/notes for destination hints
+        $lower = strtolower($inv->getRawOriginal('notes') ?? '');
         foreach (self::LOCAL_DESTINATION_KEYWORDS as $kw) {
             if (str_contains($lower, $kw)) return true;
         }
         return false;
     }
 
+    /** Get a human-readable destination label from invoice items or notes. */
+    private function getBookingDestination($inv): string
+    {
+        $firstItem = $inv->items->first();
+        if ($firstItem && $firstItem->service) {
+            return $firstItem->service->name;
+        }
+        return $inv->getRawOriginal('notes') ?? 'N/A';
+    }
+
     private function localTravelBookings(int $limit = 6): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking', 'items.service'])
             ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
@@ -529,8 +550,8 @@ class DashboardService
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $this->getBookingDestination($inv),
+                    'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
@@ -540,7 +561,7 @@ class DashboardService
 
     private function internationalTravelBookings(int $limit = 5): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking', 'items.service'])
             ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
@@ -556,8 +577,8 @@ class DashboardService
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $this->getBookingDestination($inv),
+                    'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
@@ -567,7 +588,7 @@ class DashboardService
 
     private function pendingReservedBookings(int $limit = 6): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking', 'items.service'])
             ->whereNull('cash_budget_request_id')
             ->whereNotIn('status', ['paid', 'cancelled'])
             ->orderByDesc('created_at')
@@ -583,8 +604,8 @@ class DashboardService
                 return [
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $this->getBookingDestination($inv),
+                    'date'        => optional(optional($inv->booking)->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                     'type'        => $isLocal ? 'Local' : 'International',
@@ -603,8 +624,8 @@ class DashboardService
                 'Customer ID' => "CUST-{$c->id}",
                 'Name'        => trim("{$c->first_name} {$c->last_name}"),
                 'Email'       => $c->email ?? 'N/A',
-                'Plan Type'   => $c->plan_type ?? $c->type ?? 'Standard',
-                'Status'      => $c->is_active ? 'Active' : 'Inactive',
+                'Phone'       => $c->phone ?? 'N/A',
+                'Address'     => $c->address ?? 'N/A',
                 'Join Date'   => optional($c->created_at)->format('Y-m-d') ?? 'N/A',
             ])
             ->toArray();

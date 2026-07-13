@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import * as ExcelJS from 'exceljs';
+import { loadExcelJS } from '../../utils/lazyExport';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { jobOrderApi } from '../../api/jobOrders';
@@ -695,7 +695,7 @@ export default function PMS() {
   const itemsPerPage = 10;
 
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     const worksheet = workbook.addWorksheet('PMS Log');
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 

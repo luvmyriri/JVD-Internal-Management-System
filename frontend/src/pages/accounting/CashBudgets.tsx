@@ -11,6 +11,7 @@ import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { workOrderApi } from '../../api/workOrders';
 import type { CashBudgetRequest } from '../../types';
 import { Modal, Button, PipelineVisualizer } from '../../components/ui';
+import { DataTable, EmptyState, type Column } from '../../components/ds';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -1445,9 +1446,95 @@ export default function CashBudgets() {
     disbursed: budgets.filter(b => b.status === 'disbursed').length,
   };
 
-  const getRowIndicatorStyle = (_status?: string) => {
-    return '';
-  };
+  const columns: Column<CashBudgetRequest>[] = [
+    {
+      key: 'id',
+      header: 'ID & Source',
+      sortable: true,
+      sortValue: (budget) => budget.id,
+      render: (budget) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 shadow-sm">
+            <LuWallet className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">#{budget.id}</p>
+            {budget.purchase_order_id ? (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 uppercase tracking-widest">
+                P.O. #{budget.purchase_order_id}
+              </span>
+            ) : budget.work_order_id ? (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 uppercase tracking-widest">
+                W.O. #{(budget.workOrder as any)?.wo_number || budget.work_order_id}
+              </span>
+            ) : budget.trip_ticket_id ? (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
+                DTT #{(budget.trip_ticket ?? budget.tripTicket)?.control_no || budget.trip_ticket_id}
+              </span>
+            ) : (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">
+                General
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'travel_date',
+      header: 'Travel Date',
+      sortable: true,
+      sortValue: (budget) => budget.travel_date || '',
+      render: (budget) => (
+        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">{budget.travel_date || '—'}</p>
+      ),
+    },
+    {
+      key: 'destination',
+      header: 'Destination',
+      sortable: true,
+      sortValue: (budget) => budget.destination || '',
+      render: (budget) => (
+        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">{budget.destination || '—'}</p>
+      ),
+    },
+    {
+      key: 'plate_number',
+      header: 'Plate No',
+      render: (budget) => (
+        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">{budget.plate_number || '—'}</p>
+      ),
+    },
+    {
+      key: 'total_amount',
+      header: 'Total Amount',
+      sortable: true,
+      sortValue: (budget) => Number(budget.total_amount || 0),
+      render: (budget) => (
+        <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">
+          ₱{Number(budget.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </p>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      render: (budget) => <StatusBadge status={budget.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (budget) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Button size="sm" variant="secondary" onClick={() => setSelectedBudget(budget)}>
+            <LuEye className="w-4 h-4 mr-2" /> Details
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -1565,102 +1652,27 @@ export default function CashBudgets() {
         </div>
 
         {/* Data Table */}
-        <div className={`relative overflow-x-auto custom-scrollbar ${filtered.length > 0 ? 'min-h-[350px]' : ''}`}>
+        <div className={`jvd relative ${filtered.length > 0 ? 'min-h-[350px]' : ''} ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50 transition-all duration-300' : 'transition-all duration-300'}`}>
           {isPlaceholderData && (
             <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <table className="w-full min-w-[900px] text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">ID & Source</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Destination</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Plate No</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={7} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                  </tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
-                </tr>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            rowKey={(budget) => budget.id}
+            empty={
+              isLoading ? (
+                <div className="flex flex-col items-center py-16 text-muted">
+                  <LuActivity size={22} className="mb-2 animate-spin text-brand" />
+                  <p className="text-sm">Loading cash budgets…</p>
+                </div>
               ) : (
-                filtered.map((budget) => (
-                  <tr key={budget.id} className={`group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${getRowIndicatorStyle(budget.status)}`}>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                          <LuWallet className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">#{budget.id}</p>
-                          {budget.purchase_order_id ? (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-violet-50 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 uppercase tracking-widest">
-                              P.O. #{budget.purchase_order_id}
-                            </span>
-                          ) : budget.work_order_id ? (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 uppercase tracking-widest">
-                              W.O. #{(budget.workOrder as any)?.wo_number || budget.work_order_id}
-                            </span>
-                          ) : budget.trip_ticket_id ? (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
-                              DTT #{(budget.trip_ticket ?? budget.tripTicket)?.control_no || budget.trip_ticket_id}
-                            </span>
-                          ) : (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">
-                              General
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                        {budget.travel_date || '—'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                        {budget.destination || '—'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                        {budget.plate_number || '—'}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">
-                        ₱{Number(budget.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <StatusBadge status={budget.status} />
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => setSelectedBudget(budget)}
-                      >
-                        <LuEye className="w-4 h-4 mr-2" /> Details
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <EmptyState icon={<LuWallet size={22} />} title="No records found" description="Try adjusting your search or status filter." />
+              )
+            }
+          />
         </div>
       </div>
 

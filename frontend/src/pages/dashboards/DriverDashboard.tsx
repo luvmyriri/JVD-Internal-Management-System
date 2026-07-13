@@ -72,8 +72,7 @@ export default function DriverDashboard() {
   const pendingAndReservedBookings = dashboardData?.pending_reserved_bookings ?? [];
   const detailedEmployeeData       = dashboardData?.employee_list ?? [];
   const detailedCustomerData        = dashboardData?.customer_list ?? [];
-  // @ts-expect-error unused until future reporting feature
-  const _detailedRevenueData        = dashboardData?.revenue_export ?? [];
+    const _detailedRevenueData        = dashboardData?.revenue_export ?? [];
 
 
   const exportToPDF = async (title: string, data: any[]) => {
@@ -224,7 +223,7 @@ export default function DriverDashboard() {
       // 3. Add the Data Table (Starts at row 8)
       worksheet.getRow(8).values = Object.keys(data[0] || {}).map(k => k.toUpperCase());
 
-      data.forEach((item) => {
+      data.forEach((item: any) => {
         const cleanedItem = { ...item };
         Object.keys(cleanedItem).forEach(key => {
           if (typeof cleanedItem[key] === 'string') {
@@ -352,7 +351,7 @@ export default function DriverDashboard() {
           className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${
             variant === 'light'
               ? 'bg-white/20 hover:bg-white/30 text-white'
-              : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
+              : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-muted hover:text-blue-600 dark:hover:text-blue-400'
           }`}
         >
           <LuDownload className="w-3.5 h-3.5" />
@@ -360,17 +359,17 @@ export default function DriverDashboard() {
 
         {isOpen && (
           <div className="absolute top-full right-0 pt-2 z-[100]">
-              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
+              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-border py-2">
                 <button
                   onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
                 >
                   <LuFileText className="w-3.5 h-3.5" />
                   Export PDF
                 </button>
                 <button
                   onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
                 >
                   <LuFileSpreadsheet className="w-3.5 h-3.5" />
                   Export Excel
@@ -470,21 +469,21 @@ export default function DriverDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
 
           {/* Local Travel Bookings List */}
-          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col animate-fadeIn">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
+          <div className="flex-[4] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col animate-fadeIn">
+            <div className="flex items-center justify-between pb-1.5 border-b border-border shrink-0">
               <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                   <LuGlobe className="w-3 h-3 text-emerald-500" />
                   Local Travel Bookings
                 </h3>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">Active Domestic Tours & Packages</p>
+                <p className="text-[8px] text-muted font-bold uppercase tracking-wider">Active Domestic Tours & Packages</p>
               </div>
               <DownloadActions variant="dark" title="Local Bookings Report" data={localBookings} />
             </div>
 
             <div className="space-y-1 overflow-y-auto flex-1 mt-3 pr-0.5 custom-scrollbar">
-              {localBookings.map((item, idx) => (
-                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+              {localBookings.map((item: any, idx: number) => (
+                <div key={item.id} className="flex items-center gap-2 bg-surface-elevated rounded-xl p-1.5 border border-border hover:bg-surface-elevated transition-all">
                   <div className="w-5 h-5 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
                   </div>
@@ -493,14 +492,14 @@ export default function DriverDashboard() {
                       <span className="text-[7px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded">
                         {item.id}
                       </span>
-                      <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
+                      <span className="text-[7px] text-muted font-bold">{item.date}</span>
                     </div>
-                    <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                    <h4 className="text-[9.5px] font-black text-ink mt-0.5 truncate">
                       {item.customer} {'->'} <span className="text-emerald-600 dark:text-emerald-400">{item.destination}</span>
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
+                    <p className="text-[9.5px] font-black text-ink">{item.amount}</p>
                     <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
                       item.status === 'Confirmed' ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' :
                       item.status === 'Pending'   ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
@@ -515,9 +514,9 @@ export default function DriverDashboard() {
           </div>
 
           {/* Buses Under Maintenance List */}
-          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+          <div className="flex-[6] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1.5 border-b border-border shrink-0">
+              <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuBus className="w-3 h-3 text-amber-500" />
                 Buses Under Maintenance
               </h3>
@@ -536,7 +535,7 @@ export default function DriverDashboard() {
 
             <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5 custom-scrollbar">
               {busesUnderMaintenance.slice(0, 6).map((item: any, idx: number) => (
-                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <div key={item.id} className="flex items-center gap-2 bg-surface-elevated rounded-xl p-1.5 border border-border hover:bg-surface-elevated transition-all">
                   <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
                   </div>
@@ -545,14 +544,14 @@ export default function DriverDashboard() {
                       <span className="text-[7px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
                         {item.plate_number}
                       </span>
-                      <span className="text-[7px] text-gray-400 font-bold">{item.bus_category}</span>
+                      <span className="text-[7px] text-muted font-bold">{item.bus_category}</span>
                     </div>
-                    <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                    <h4 className="text-[9.5px] font-black text-ink mt-0.5 truncate">
                       {item.model}
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.total_mileage?.toLocaleString() ?? 0} km</p>
+                    <p className="text-[9.5px] font-black text-ink">{item.total_mileage?.toLocaleString() ?? 0} km</p>
                     <span className="text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
                       Maintenance
                     </span>
@@ -560,7 +559,7 @@ export default function DriverDashboard() {
                 </div>
               ))}
               {busesUnderMaintenance.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-gray-400 dark:text-gray-500">
+                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-muted">
                   <LuBus className="w-8 h-8 mb-2 opacity-50 text-gray-300 animate-pulse" />
                   <p className="text-[10px] font-black uppercase tracking-wider">No Buses Under Maintenance</p>
                 </div>
@@ -573,9 +572,9 @@ export default function DriverDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
 
           {/* Top Performers / Travel */}
-          <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+          <div className="flex-[4.5] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1 border-b border-border shrink-0">
+              <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuGlobe className="w-3 h-3 text-rose-500" />
                 Travel & Performance
               </h3>
@@ -587,8 +586,8 @@ export default function DriverDashboard() {
               <div>
                 <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">International Travel Bookings</h4>
                 <div className="space-y-0.5">
-                  {internationalBookings.map((item, idx) => (
-                    <div key={item.id} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  {internationalBookings.map((item: any, idx: number) => (
+                    <div key={item.id} className="flex items-center gap-1.5 bg-surface-elevated rounded-xl p-1 border border-border hover:bg-surface-elevated transition-all">
                       <div className="w-4 h-4 rounded-full bg-rose-105 dark:bg-rose-950/40 text-rose-600 dark:text-rose-455 flex items-center justify-center text-[8px] font-black shrink-0">
                         {idx + 1}
                       </div>
@@ -597,9 +596,9 @@ export default function DriverDashboard() {
                           <span className="text-[6.5px] font-black text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-500/10 px-1 py-0.2 rounded">
                             {item.id}
                           </span>
-                          <span className="text-[6.5px] text-gray-400 font-bold">{item.date}</span>
+                          <span className="text-[6.5px] text-muted font-bold">{item.date}</span>
                         </div>
-                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate mt-0.5">
+                        <h4 className="text-[9px] font-black text-ink truncate mt-0.5">
                           {item.customer} {'->'} <span className="text-rose-600 dark:text-rose-400">{item.destination}</span>
                         </h4>
                       </div>
@@ -623,8 +622,8 @@ export default function DriverDashboard() {
           </div>
 
           {/* Pending & Reserved widget */}
-          <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
+          <div className="flex-[5.5] min-h-0 bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1 border-b border-border shrink-0">
               <div className="flex items-center gap-3">
                 <span className="text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 text-blue-600 dark:text-white">
                   <LuTicket className="w-3 h-3 text-blue-500" />
@@ -638,8 +637,8 @@ export default function DriverDashboard() {
 
             <div className="flex-1 min-h-0 mt-3 overflow-y-auto custom-scrollbar">
               <div className="space-y-1 pr-0.5">
-                {pendingAndReservedBookings.map((item, idx) => (
-                  <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all animate-fadeIn">
+                {pendingAndReservedBookings.map((item: any, idx: number) => (
+                  <div key={item.id} className="flex items-center gap-2 bg-surface-elevated rounded-xl p-1.5 border border-border hover:bg-surface-elevated transition-all animate-fadeIn">
                     <div className="w-5 h-5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-[9px] font-black shrink-0">
                       {idx + 1}
                     </div>
@@ -648,17 +647,17 @@ export default function DriverDashboard() {
                         <span className="text-[7px] font-black text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-500/10 px-1.5 py-0.5 rounded">
                           {item.id}
                         </span>
-                        <span className="text-[7px] text-gray-400 font-bold">{item.date}</span>
-                        <span className="text-[6.5px] font-black text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1 py-0.2 rounded uppercase">
+                        <span className="text-[7px] text-muted font-bold">{item.date}</span>
+                        <span className="text-[6.5px] font-black text-muted bg-surface-elevated px-1 py-0.2 rounded uppercase">
                           {item.type}
                         </span>
                       </div>
-                      <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                      <h4 className="text-[9.5px] font-black text-ink mt-0.5 truncate">
                         {item.customer} {'->'} <span className="text-blue-600 dark:text-blue-400">{item.destination}</span>
                       </h4>
                     </div>
                     <div className="text-right shrink-0">
-                      <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.amount}</p>
+                      <p className="text-[9.5px] font-black text-ink">{item.amount}</p>
                       <span className={`text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 ${
                         item.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400' :
                         'bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400'

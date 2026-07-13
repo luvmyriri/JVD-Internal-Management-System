@@ -113,6 +113,12 @@ class ContractController extends Controller
                 'contract_gate_status' => 'pending_signature',
                 'created_by' => auth()->id() ?? 1,
                 'notes' => $validated['notes'] ?? null,
+            ]);
+
+            // Booking-specific fields live on the Booking model, not the Invoice (strict mode
+            // rejects them on Invoice). Mirror BillingService::store's invoice→booking split.
+            \App\Models\Booking::create([
+                'invoice_id' => $invoice->id,
                 'bus_id' => $validated['bus_id'] ?? null,
                 'driver_id' => $validated['driver_id'] ?? null,
                 'seat_map' => $validated['seat_map'] ?? null,
@@ -303,7 +309,7 @@ class ContractController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Contract signed at counter.',
-            'data' => (new \App\Http\Resources\InvoiceResource($invoice->load(['items.service', 'driver'])))->resolve(),
+            'data' => (new \App\Http\Resources\InvoiceResource($invoice->load(['items.service', 'booking.driver'])))->resolve(),
         ]);
     }
 

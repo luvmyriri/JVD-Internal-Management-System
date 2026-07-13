@@ -62,18 +62,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // DASHBOARD AGGREGATIONS (role-specific)
     // ──────────────────────────────────────
     Route::prefix('dashboards')->group(function () {
-        Route::get('/admin',      [DashboardController::class, 'admin'])
-            ->middleware('role:super_admin,executive_vice_president,operations_manager,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic')->name('dashboards.admin');
-        Route::get('/accounting', [DashboardController::class, 'accounting'])
-            ->middleware('role:super_admin,executive_vice_president,accounting_executive')->name('dashboards.accounting');
-        Route::get('/agent',      [DashboardController::class, 'agent'])
-            ->middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff')->name('dashboards.agent');
-        Route::get('/driver',     [DashboardController::class, 'driver'])
-            ->middleware('role:super_admin,executive_vice_president,driver')->name('dashboards.driver');
-        Route::get('/hr',         [DashboardController::class, 'hr'])
-            ->middleware('role:super_admin,executive_vice_president,operations_manager,corporate_secretary')->name('dashboards.hr');
-        Route::get('/approvals',  [\App\Http\Controllers\Workflow\ApprovalsController::class, 'inbox'])
-            ->name('dashboards.approvals');
+        Route::get('/admin', [DashboardController::class, 'admin'])->name('dashboards.admin');
+        Route::get('/accounting', [DashboardController::class, 'accounting'])->name('dashboards.accounting');
+        Route::get('/agent', [DashboardController::class, 'agent'])->name('dashboards.agent');
+        Route::get('/driver', [DashboardController::class, 'driver'])->name('dashboards.driver');
+        Route::get('/hr', [DashboardController::class, 'hr'])->name('dashboards.hr');
+        
+        Route::get('/approvals', [DashboardController::class, 'approvals'])->name('dashboards.approvals');
     });
 });
 

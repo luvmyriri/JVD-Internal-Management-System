@@ -312,6 +312,14 @@ export default function Login() {
         {/* Right Form Section (Premium Card) */}
         <div className="lg:w-1/2 flex justify-center lg:justify-end w-full max-w-lg relative z-10">
           <div className="w-full bg-white p-12 md:p-16 rounded-[4rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.55)] border border-white/10">
+            <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: 24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -24 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            >
             {step === 'credentials' ? (
               <form onSubmit={handleCredentials} className="space-y-10">
                 <div className="text-left">
@@ -526,6 +534,8 @@ export default function Login() {
                 </div>
               </form>
             )}
+            </motion.div>
+            </AnimatePresence>
           </div>
         </div>
       </div>

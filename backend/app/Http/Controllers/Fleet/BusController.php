@@ -188,7 +188,7 @@ class BusController extends Controller
 
         foreach ($travels as $row) {
             if ($row->reference_type === 'invoice') {
-                $inv = \App\Models\Invoice::find($row->reference_id);
+                $inv = \App\Models\Invoice::with('booking')->find($row->reference_id);
                 if ($inv) {
                     $mappedStatus = 'reserved';
                     if ($inv->status === 'paid') {
@@ -205,7 +205,30 @@ class BusController extends Controller
                         'reference_no'  => $inv->invoice_number,
                         'customer_name' => $inv->customer_name,
                         'status'        => $mappedStatus,
-                        'seat_map'      => $inv->seat_map,
+                        'seat_map'      => $inv->booking?->seat_map,
+                        'total_amount'  => $inv->total_amount,
+                    ];
+                }
+            } elseif ($row->reference_type === 'booking') {
+                $booking = \App\Models\Booking::with('invoice')->find($row->reference_id);
+                if ($booking && $booking->invoice) {
+                    $inv = $booking->invoice;
+                    $mappedStatus = 'reserved';
+                    if ($inv->status === 'paid') {
+                        $mappedStatus = 'completed';
+                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
+                        $mappedStatus = 'reserved';
+                    }
+
+                    $entries[] = [
+                        'date'          => $row->travel_date,
+                        'type'          => 'booking',
+                        'travel_type'   => $row->travel_type,
+                        'reference_id'  => $booking->id,
+                        'reference_no'  => $inv->invoice_number,
+                        'customer_name' => $inv->customer_name,
+                        'status'        => $mappedStatus,
+                        'seat_map'      => $booking->seat_map,
                         'total_amount'  => $inv->total_amount,
                     ];
                 }

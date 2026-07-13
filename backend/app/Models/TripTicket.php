@@ -66,6 +66,19 @@ class TripTicket extends Model
             return;
         }
 
+        if ($tripTicket->invoice_id) {
+            $booking = \App\Models\Booking::where('invoice_id', $tripTicket->invoice_id)->first();
+            if ($booking) {
+                \DB::table('travels')
+                    ->where('reference_type', 'booking')
+                    ->where('reference_id', $booking->id)
+                    ->update([
+                        'reference_type' => 'trip_ticket',
+                        'reference_id' => $tripTicket->id
+                    ]);
+            }
+        }
+
         $travelType = $tripTicket->trip_type === 'international' ? 'international' : 'local';
 
         \DB::table('travels')->updateOrInsert(

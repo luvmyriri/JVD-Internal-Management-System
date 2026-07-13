@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { accountingApi } from '../../api/accounting';
 import type { Liquidation, LiquidationItem } from '../../api/accounting';
 import { useAuth } from '../../context/AuthContext';
+import { DataTable, EmptyState, type Column } from '../../components/ds';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import {
   LuReceipt,
@@ -225,6 +226,123 @@ export default function Liquidations() {
   const ledgerTotalCredits = ledgerEntries.reduce((sum, r) => sum + r.credit, 0);
   const ledgerIsBalanced = Math.abs(ledgerTotalDebits - ledgerTotalCredits) < 0.01;
 
+  const liquidationColumns: Column<Liquidation>[] = [
+    {
+      key: 'employee',
+      header: 'Driver / Employee',
+      sortable: true,
+      sortValue: (liq) => (liq.employee ? `${liq.employee.first_name} ${liq.employee.last_name}` : 'Unassigned'),
+      render: (liq) => {
+        const employeeName = liq.employee ? `${liq.employee.first_name} ${liq.employee.last_name}` : 'Unassigned';
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 shadow-sm">
+              <LuUser className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{employeeName}</p>
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize mt-0.5">{liq.employee?.role?.replace('_', ' ') || 'Staff'}</p>
+            </div>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'trip_ticket',
+      header: 'Trip Control No.',
+      render: (liq) => (
+        <span className="font-bold text-blue-600 dark:text-blue-400">{liq.trip_ticket?.control_no || `Ref #${liq.id}`}</span>
+      ),
+    },
+    {
+      key: 'total_advanced',
+      header: 'Advanced',
+      align: 'right',
+      sortable: true,
+      sortValue: (liq) => liq.total_advanced,
+      render: (liq) => (
+        <span className="font-bold text-gray-955 dark:text-white">
+          ₱{liq.total_advanced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: 'total_spent',
+      header: 'Liquidated Spent',
+      align: 'right',
+      sortable: true,
+      sortValue: (liq) => liq.total_spent,
+      render: (liq) => (
+        <span className="text-gray-650 dark:text-gray-400">
+          ₱{liq.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: 'total_returned',
+      header: 'Cash Returned',
+      align: 'right',
+      sortable: true,
+      sortValue: (liq) => liq.total_returned,
+      render: (liq) => (
+        <span className="text-emerald-600 dark:text-emerald-450 font-bold">
+          ₱{liq.total_returned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: 'shortage_amount',
+      header: 'Shortage / Dispute',
+      align: 'right',
+      sortable: true,
+      sortValue: (liq) => liq.shortage_amount,
+      render: (liq) => (
+        <span className={`font-bold ${liq.shortage_amount > 0 ? 'text-rose-600 dark:text-rose-450' : 'text-gray-450 dark:text-gray-655'}`}>
+          ₱{liq.shortage_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      sortable: true,
+      render: (liq) => (
+        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
+          liq.status === 'settled'
+            ? 'bg-emerald-50 text-emerald-650 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50'
+            : liq.status === 'disputed'
+            ? 'bg-rose-50 text-rose-650 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50'
+            : 'bg-amber-50 text-amber-650 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50'
+        }`}>
+          {liq.status === 'settled' && <LuCircleCheck className="w-3.5 h-3.5" />}
+          {liq.status === 'disputed' && <LuTriangleAlert className="w-3.5 h-3.5" />}
+          {(liq.status === 'pending' || liq.status === 'under_review') && <LuClock className="w-3.5 h-3.5" />}
+          {liq.status.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (liq) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <button
+            onClick={() => handleOpenReview(liq)}
+            className={`px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${
+              liq.status === 'pending' || liq.status === 'under_review' || liq.status === 'disputed'
+                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 active:scale-95'
+                : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95'
+            }`}
+          >
+            {liq.status === 'settled' ? 'Re-Review' : 'Review'}
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* ── Top Header and Actions Bar ── */}
@@ -416,97 +534,22 @@ export default function Liquidations() {
             </div>
 
             {/* Liquidations Data Table */}
-            <div className={`relative overflow-x-auto custom-scrollbar ${filteredLiquidations.length > 0 ? 'min-h-[350px]' : ''}`}>
-              <table className="w-full min-w-[900px] text-left border-collapse">
-                <thead>
-                  <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Driver / Employee</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Trip Control No.</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Advanced</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Liquidated Spent</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Cash Returned</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Shortage / Dispute</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Status</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {isLoadingLiqs ? (
-                    [...Array(5)].map((_, i) => (
-                      <tr key={i} className="animate-pulse">
-                        <td colSpan={8} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                      </tr>
-                    ))
-                  ) : filteredLiquidations.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
-                    </tr>
+            <div className={`jvd relative ${filteredLiquidations.length > 0 ? 'min-h-[350px]' : ''}`}>
+              <DataTable
+                columns={liquidationColumns}
+                data={filteredLiquidations}
+                rowKey={(liq) => liq.id}
+                empty={
+                  isLoadingLiqs ? (
+                    <div className="flex flex-col items-center py-16 text-muted">
+                      <LuReceipt size={22} className="mb-2 animate-spin text-brand" />
+                      <p className="text-sm">Loading liquidations…</p>
+                    </div>
                   ) : (
-                    filteredLiquidations.map((liq) => {
-                      const employeeName = liq.employee 
-                        ? `${liq.employee.first_name} ${liq.employee.last_name}`
-                        : 'Unassigned';
-                      
-                      return (
-                        <tr key={liq.id} className="group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                          <td className="px-6 py-5">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 shadow-sm">
-                                <LuUser className="w-5 h-5" />
-                              </div>
-                              <div>
-                                <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{employeeName}</p>
-                                <p className="text-[10px] text-gray-500 dark:text-gray-400 capitalize mt-0.5">{liq.employee?.role?.replace('_', ' ') || 'Staff'}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-5 font-bold text-blue-600 dark:text-blue-400">
-                            {liq.trip_ticket?.control_no || `Ref #${liq.id}`}
-                          </td>
-                          <td className="px-6 py-5 text-right font-bold text-gray-955 dark:text-white">
-                            ₱{liq.total_advanced.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-6 py-5 text-right text-gray-650 dark:text-gray-400">
-                            ₱{liq.total_spent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-6 py-5 text-right text-emerald-600 dark:text-emerald-450 font-bold">
-                            ₱{liq.total_returned.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className={`px-6 py-5 text-right font-bold ${liq.shortage_amount > 0 ? 'text-rose-600 dark:text-rose-450' : 'text-gray-450 dark:text-gray-655'}`}>
-                            ₱{liq.shortage_amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-6 py-5 text-center">
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
-                              liq.status === 'settled' 
-                                ? 'bg-emerald-50 text-emerald-650 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50'
-                                : liq.status === 'disputed'
-                                ? 'bg-rose-50 text-rose-650 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50'
-                                : 'bg-amber-50 text-amber-650 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50'
-                            }`}>
-                              {liq.status === 'settled' && <LuCircleCheck className="w-3.5 h-3.5" />}
-                              {liq.status === 'disputed' && <LuTriangleAlert className="w-3.5 h-3.5" />}
-                              {(liq.status === 'pending' || liq.status === 'under_review') && <LuClock className="w-3.5 h-3.5" />}
-                              {liq.status.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-6 py-5 text-right">
-                            <button
-                              onClick={() => handleOpenReview(liq)}
-                              className={`px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest transition-all cursor-pointer ${
-                                liq.status === 'pending' || liq.status === 'under_review' || liq.status === 'disputed'
-                                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/30 active:scale-95'
-                                  : 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 active:scale-95'
-                              }`}
-                            >
-                              {liq.status === 'settled' ? 'Re-Review' : 'Review'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                    <EmptyState icon={<LuReceipt size={22} />} title="No records found" description="Try adjusting your search or status filter." />
+                  )
+                }
+              />
             </div>
           </>
         )}

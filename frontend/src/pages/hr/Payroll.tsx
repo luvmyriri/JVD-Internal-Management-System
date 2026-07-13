@@ -236,7 +236,7 @@ export default function Payroll() {
    */
   const computeBirTax = (monthlyBase: number): number => {
     const annual = monthlyBase * 12;
-    let annualTax = 0;
+    let annualTax: number;
     if (annual <= 250000) {
       annualTax = 0;
     } else if (annual <= 400000) {

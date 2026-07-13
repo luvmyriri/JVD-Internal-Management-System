@@ -10,6 +10,7 @@ import { fleetApi } from '../../api/fleet';
 import BusLayout from '../../components/ui/BusLayout';
 import type { TripTicket } from '../../types';
 import { cn, fullName } from '../../utils';
+import { EmployeeName } from '../../components/ds';
 
 // Status badge helper compatible with global styles
 const statusStyles: Record<string, string> = {
@@ -940,23 +941,13 @@ export default function LogisticsOverview() {
                           <tr key={driver.id} className="hover:bg-blue-50/20 dark:hover:bg-gray-800/30 transition-all border-b border-gray-50 dark:border-gray-800/40 last:border-0">
                             <td className="px-8 py-6">
                               <div className="flex items-center gap-4">
-                                <div className="relative">
-                                  <img
-                                    src={driver.avatar_url || `https://ui-avatars.com/api/?name=${driver.first_name}+${driver.last_name}&background=f8fafc&color=3b82f6&bold=true`}
-                                    className="w-12 h-12 rounded-2xl border border-white dark:border-gray-800 shadow-sm object-cover bg-gray-50 dark:bg-gray-800"
-                                    alt=""
-                                    onError={(e) => {
-                                      e.currentTarget.src = `https://ui-avatars.com/api/?name=${driver.first_name}+${driver.last_name}&background=f8fafc&color=3b82f6&bold=true`;
-                                    }}
-                                  />
-                                  {driver.is_online && (
-                                    <div className="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 border-2 border-white dark:border-gray-900 rounded-full shadow-sm" />
-                                  )}
-                                </div>
-                                <div>
-                                  <div className="font-bold text-gray-900 dark:text-white text-base leading-snug">{fullName(driver)}</div>
-                                  <div className="text-[10px] text-gray-400 font-bold tracking-wider mt-0.5">{driver.email}</div>
-                                </div>
+                                <EmployeeName 
+                                  name={fullName(driver)} 
+                                  src={driver.avatar_url} 
+                                  subtitle={driver.email} 
+                                  online={driver.is_online} 
+                                  size="lg" 
+                                />
                               </div>
                             </td>
                             <td className="px-8 py-6">

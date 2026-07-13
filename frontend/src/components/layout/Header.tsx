@@ -1,6 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
-import Swal from 'sweetalert2';
+import { confirm, promptText, notify } from '../ds';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials, getAvatarUrl } from '../../utils';
 import client from '../../api/client';
@@ -33,6 +33,7 @@ import {
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 import { CreateCommissionForm } from '../../pages/operations/Commissions';
+import HeaderWidgetsMenu from '../HeaderWidgetsMenu';
 
 interface NotificationItem {
   id: string;
@@ -332,19 +333,14 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleDeleteConversation = async (msg: MessageItem, e: React.MouseEvent) => {
     e.stopPropagation();
 
-    const result = await Swal.fire({
-      title: 'Are you sure?',
-      text: 'Do you want to delete this conversation?',
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#ef4444',
-      cancelButtonColor: '#6b7280',
-      confirmButtonText: 'Yes, delete it!',
-      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    const confirmed = await confirm({
+      title: 'Delete this conversation?',
+      description: 'This removes the conversation from your inbox. This action cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
     });
 
-    if (!result.isConfirmed) return;
+    if (!confirmed) return;
 
     // Optimistically update frontend state
     setMessages(prev => prev.filter(m => m.id !== msg.id));
@@ -1033,6 +1029,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
             <LuSignature className="w-3.5 h-3.5" /> Request Commission
           </button>
         )}
+        {/* Widgets menu (dashboard only) */}
+        {location.pathname === '/dashboard' && <HeaderWidgetsMenu />}
         {/* Messages Dropdown */}
         <div className="relative">
           <button
@@ -1955,40 +1953,20 @@ function NotificationModal({
 
   const handleApproveCb = async () => {
     if (!cashBudgetDetails) return;
-    const confirm = await Swal.fire({
-      title: 'Approve Cash Budget?',
-      text: `Approve cash budget of ₱${Number(cashBudgetDetails.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}?`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Approve',
-      confirmButtonColor: '#2563eb',
-      cancelButtonText: 'Cancel',
-      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    const confirmed = await confirm({
+      title: 'Approve cash budget?',
+      description: `Approve cash budget of ₱${Number(cashBudgetDetails.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}?`,
+      confirmLabel: 'Approve',
     });
-    if (!confirm.isConfirmed) return;
+    if (!confirmed) return;
     try {
       setIsActionPending(true);
       await client.put(`/cash-budgets/${cashBudgetDetails.id}`, { status: 'approved' });
-      Swal.fire({
-        title: 'Approved!',
-        text: 'Cash budget has been approved and is ready for disbursement.',
-        icon: 'success',
-        timer: 2500,
-        showConfirmButton: false,
-        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-      });
+      notify.success('Cash budget approved and ready for disbursement.');
       if (onRefreshNotifications) onRefreshNotifications();
       onClose();
     } catch (err: any) {
-      Swal.fire({
-        title: 'Error',
-        text: err?.response?.data?.message || 'Failed to approve cash budget.',
-        icon: 'error',
-        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-      });
+      notify.error(err?.response?.data?.message || 'Failed to approve cash budget.');
     } finally {
       setIsActionPending(false);
     }
@@ -1997,46 +1975,25 @@ function NotificationModal({
   const handleApprovePo = async () => {
     if (!poDetails) return;
     
-    const confirm = await Swal.fire({
-      title: 'Approve Purchase Order?',
-      text: `Are you sure you want to approve ${poDetails.po_number} of amount ₱${Number(poDetails.total_amount || poDetails.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}? This will automatically generate the corresponding Cash Budget Request.`,
-      icon: 'question',
-      showCancelButton: true,
-      confirmButtonText: 'Yes, Approve',
-      confirmButtonColor: '#10b981',
-      cancelButtonText: 'Cancel',
-      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    const confirmed = await confirm({
+      title: 'Approve purchase order?',
+      description: `Approve ${poDetails.po_number} of ₱${Number(poDetails.total_amount || poDetails.grand_total).toLocaleString(undefined, { minimumFractionDigits: 2 })}? This automatically generates the corresponding Cash Budget Request.`,
+      confirmLabel: 'Approve',
     });
 
-    if (!confirm.isConfirmed) return;
+    if (!confirmed) return;
 
     try {
       setIsActionPending(true);
       const res = await purchaseOrderApi.approve(poDetails.id, { approved: true });
       if (res.data.success || res.status === 200) {
-        Swal.fire({
-          title: 'Approved!',
-          text: `Purchase Order ${poDetails.po_number} approved successfully.`,
-          icon: 'success',
-          timer: 2000,
-          showConfirmButton: false,
-          background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-          color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-        });
-        
+        notify.success(`Purchase Order ${poDetails.po_number} approved successfully.`);
         if (onRefreshNotifications) onRefreshNotifications();
         onClose();
       }
     } catch (err: any) {
       console.error("Failed to approve PO from notification", err);
-      Swal.fire({
-        title: 'Error',
-        text: err?.response?.data?.message || 'Failed to approve purchase order.',
-        icon: 'error',
-        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-      });
+      notify.error(err?.response?.data?.message || 'Failed to approve purchase order.');
     } finally {
       setIsActionPending(false);
     }
@@ -2045,46 +2002,27 @@ function NotificationModal({
   const handleRejectPo = async () => {
     if (!poDetails) return;
     
-    const { value: notes, isConfirmed } = await Swal.fire({
-      title: 'Reject Purchase Order',
-      input: 'text',
-      inputPlaceholder: 'Provide reason for rejection (optional)...',
-      showCancelButton: true,
-      confirmButtonText: 'Reject PO',
-      confirmButtonColor: '#ef4444',
-      cancelButtonText: 'Cancel',
-      background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-      color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
+    const notes = await promptText({
+      title: 'Reject purchase order',
+      placeholder: 'Provide reason for rejection (optional)…',
+      confirmLabel: 'Reject PO',
+      cancelLabel: 'Cancel',
+      destructive: true,
     });
 
-    if (!isConfirmed) return;
+    if (notes === null) return;
 
     try {
       setIsActionPending(true);
       const res = await purchaseOrderApi.approve(poDetails.id, { approved: false, notes: notes || '' });
       if (res.data.success || res.status === 200) {
-        Swal.fire({
-          title: 'Rejected',
-          text: `Purchase Order ${poDetails.po_number} has been rejected.`,
-          icon: 'error',
-          timer: 2000,
-          showConfirmButton: false,
-          background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-          color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-        });
-        
+        notify.error(`Purchase Order ${poDetails.po_number} has been rejected.`);
         if (onRefreshNotifications) onRefreshNotifications();
         onClose();
       }
     } catch (err: any) {
       console.error("Failed to reject PO from notification", err);
-      Swal.fire({
-        title: 'Error',
-        text: err?.response?.data?.message || 'Failed to reject purchase order.',
-        icon: 'error',
-        background: document.documentElement.classList.contains('dark') ? '#1e293b' : '#ffffff',
-        color: document.documentElement.classList.contains('dark') ? '#f8fafc' : '#0f172a',
-      });
+      notify.error(err?.response?.data?.message || 'Failed to reject purchase order.');
     } finally {
       setIsActionPending(false);
     }
