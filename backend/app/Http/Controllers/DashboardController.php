@@ -239,7 +239,8 @@ class DashboardController extends Controller
 
     private function isLocalBooking($inv): bool
     {
-        $lower = strtolower($inv->tour_code ?? $inv->description ?? '');
+        $tourCode = $inv->booking?->tour_code ?? $inv->tour_code ?? null;
+        $lower = strtolower($tourCode ?? $inv->description ?? '');
         // If it's explicitly a bus rental, we consider it local
         if (str_contains($lower, 'bus rental')) {
             return true;
@@ -252,7 +253,7 @@ class DashboardController extends Controller
 
     private function localTravelBookings(int $limit = 6): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking'])
             ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
@@ -264,12 +265,14 @@ class DashboardController extends Controller
                     ? "{$inv->customer->first_name} {$inv->customer->last_name}"
                     : ($inv->customer_name ?? 'N/A');
                 $status = $this->mapInvoiceStatus($inv->status ?? 'pending');
+                $tourCode = $inv->booking?->tour_code ?? $inv->tour_code ?? null;
+                $travelDate = $inv->booking?->travel_date ?? null;
                 return [
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $tourCode ?? $inv->description ?? 'N/A',
+                    'date'        => $travelDate ? $travelDate->format('Y-m-d') : $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
@@ -279,7 +282,7 @@ class DashboardController extends Controller
 
     private function internationalTravelBookings(int $limit = 5): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking'])
             ->whereNull('cash_budget_request_id')
             ->orderByDesc('created_at')
             ->get()
@@ -291,12 +294,14 @@ class DashboardController extends Controller
                     ? "{$inv->customer->first_name} {$inv->customer->last_name}"
                     : ($inv->customer_name ?? 'N/A');
                 $status = $this->mapInvoiceStatus($inv->status ?? 'pending');
+                $tourCode = $inv->booking?->tour_code ?? $inv->tour_code ?? null;
+                $travelDate = $inv->booking?->travel_date ?? null;
                 return [
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'db_id'       => $inv->id,
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $tourCode ?? $inv->description ?? 'N/A',
+                    'date'        => $travelDate ? $travelDate->format('Y-m-d') : $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                 ];
@@ -306,7 +311,7 @@ class DashboardController extends Controller
 
     private function pendingReservedBookings(int $limit = 6): array
     {
-        return Invoice::with(['customer:id,first_name,last_name'])
+        return Invoice::with(['customer:id,first_name,last_name', 'booking'])
             ->whereNull('cash_budget_request_id')
             ->whereNotIn('status', ['paid', 'cancelled']) // Not fully paid or cancelled
             ->orderByDesc('created_at')
@@ -319,11 +324,13 @@ class DashboardController extends Controller
                 $isLocal = $this->isLocalBooking($inv);
                 $rawStatus = $inv->status ?? 'pending';
                 $status = in_array($rawStatus, ['partial']) ? 'Reserved' : 'Pending';
+                $tourCode = $inv->booking?->tour_code ?? $inv->tour_code ?? null;
+                $travelDate = $inv->booking?->travel_date ?? null;
                 return [
                     'id'          => $inv->invoice_number ?? "INV-{$inv->id}",
                     'customer'    => $customer,
-                    'destination' => $inv->tour_code ?? $inv->description ?? 'N/A',
-                    'date'        => optional($inv->travel_date)->format('Y-m-d') ?? $inv->created_at->format('Y-m-d'),
+                    'destination' => $tourCode ?? $inv->description ?? 'N/A',
+                    'date'        => $travelDate ? $travelDate->format('Y-m-d') : $inv->created_at->format('Y-m-d'),
                     'status'      => $status,
                     'amount'      => '₱' . number_format($inv->total_amount ?? 0, 0),
                     'type'        => $isLocal ? 'Local' : 'International',
@@ -343,7 +350,7 @@ class DashboardController extends Controller
                 'Name'        => trim("{$c->first_name} {$c->last_name}"),
                 'Email'       => $c->email ?? 'N/A',
                 'Plan Type'   => $c->plan_type ?? $c->type ?? 'Standard',
-                'Status'      => $c->is_active ? 'Active' : 'Inactive',
+                'Status'      => 'Active',
                 'Join Date'   => optional($c->created_at)->format('Y-m-d') ?? 'N/A',
             ])
             ->toArray();
