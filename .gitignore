@@ -47,3 +47,7 @@ Project Adherence/JVD_Travel_Management_System_Proposal.pdf
 *.log
 php83/
 tools/
+
+# Playwright test artifacts
+frontend/test-results/
+frontend/playwright-report/
