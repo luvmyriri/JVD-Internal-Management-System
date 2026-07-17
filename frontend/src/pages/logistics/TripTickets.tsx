@@ -8,6 +8,7 @@ import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 import type { TripTicket } from '../../types';
 import { Modal, Button } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { useBuses } from '../../hooks/useFleet';
 import { useUsers } from '../../hooks/useUsers';
 
@@ -945,6 +946,63 @@ export default function TripTickets() {
     return matchSearch && matchType;
   });
 
+  const columns: Column<TripTicket>[] = [
+    {
+      key: 'control_no',
+      header: 'Control No.',
+      render: (ticket) => (
+        <span className="font-bold text-gray-900 dark:text-white">{ticket.control_no}</span>
+      ),
+    },
+    {
+      key: 'date_of_travel',
+      header: 'Travel Date',
+      render: (ticket) => (
+        <span className="text-gray-600 dark:text-gray-300">{ticket.date_of_travel}</span>
+      ),
+    },
+    {
+      key: 'route',
+      header: 'Route',
+      render: (ticket) => (
+        <>
+          <div className="text-gray-900 dark:text-gray-300 font-medium">{ticket.pick_up}</div>
+          <div className="text-gray-500 text-xs">to {ticket.drop_off}</div>
+        </>
+      ),
+    },
+    {
+      key: 'bus_driver',
+      header: 'Bus/Driver',
+      render: (ticket) => (
+        <div className="text-gray-600 dark:text-gray-300">
+          <div>{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</div>
+          <div className="text-xs text-gray-500">{ticket.driver?.name || 'TBA'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'trip_type',
+      header: 'Trip Type',
+      render: (ticket) => <TripTypeBadge type={(ticket as any).trip_type} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (ticket) => <StatusBadge status={ticket.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (ticket) => (
+        <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
+          Details
+        </button>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-4 md:space-y-8 pb-12">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
@@ -996,52 +1054,19 @@ export default function TripTickets() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest rounded-tl-3xl">Control No.</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Travel Date</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Route</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Bus/Driver</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Trip Type</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right rounded-tr-3xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-8 py-12 text-center text-gray-500">Loading trip tickets...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-8 py-12 text-center text-gray-500">No trip tickets found.</td></tr>
-              ) : (
-                filtered.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-8 py-5 font-bold text-gray-900 dark:text-white">{ticket.control_no}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{ticket.date_of_travel}</td>
-                    <td className="px-8 py-5">
-                      <div className="text-gray-900 dark:text-gray-300 font-medium">{ticket.pick_up}</div>
-                      <div className="text-gray-500 text-xs">to {ticket.drop_off}</div>
-                    </td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">
-                      <div>{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</div>
-                      <div className="text-xs text-gray-500">{ticket.driver?.name || 'TBA'}</div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <TripTypeBadge type={(ticket as any).trip_type} />
-                    </td>
-                    <td className="px-8 py-5"><StatusBadge status={ticket.status} /></td>
-                    <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
-                        Details
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={isLoading ? [] : filtered}
+          rowKey={(ticket) => ticket.id}
+          empty={
+            isLoading ? (
+              <div className="px-8 py-12 text-center text-gray-500">Loading trip tickets...</div>
+            ) : (
+              <div className="px-8 py-12 text-center text-gray-500">No trip tickets found.</div>
+            )
+          }
+          className="border-0 rounded-none bg-transparent"
+        />
       </div>
 
       {selectedTicket && (
