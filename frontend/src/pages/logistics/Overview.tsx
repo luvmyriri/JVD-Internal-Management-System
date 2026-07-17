@@ -10,7 +10,7 @@ import { fleetApi } from '../../api/fleet';
 import BusLayout from '../../components/ui/BusLayout';
 import type { TripTicket } from '../../types';
 import { cn, fullName } from '../../utils';
-import { EmployeeName } from '../../components/ds';
+import { EmployeeName, DataTable, type Column } from '../../components/ds';
 import { StatusBadge } from './StatusBadge';
 import { MONTH_NAMES } from './monthNames';
 import { printTripTicket } from './printTripTicket';
@@ -106,6 +106,166 @@ export default function LogisticsOverview() {
   const activeBuses = buses.filter(b => b.status === 'available' || b.status === 'in_service').length;
   const ongoingTrips = tripsList.filter(t => t.status === 'approved').length;
   const completedTrips = tripsList.filter(t => t.status === 'completed').length;
+
+  const driverColumns: Column<any>[] = [
+    {
+      key: 'driver',
+      header: 'Coach Captain',
+      render: (driver) => (
+        <div className="flex items-center gap-4">
+          <EmployeeName
+            name={fullName(driver)}
+            src={driver.avatar_url}
+            subtitle={driver.email}
+            online={driver.is_online}
+            size="lg"
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'employee_id',
+      header: 'Employee ID',
+      render: (driver) => (
+        <span className="font-mono font-bold text-gray-600 dark:text-gray-300 text-sm">
+          {driver.employee_id}
+        </span>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      render: (driver) => (
+        <span className="px-3 py-1.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase border border-blue-100/30 dark:border-blue-900/30">
+          {driver.department || 'Logistics'}
+        </span>
+      ),
+    },
+    {
+      key: 'assigned_vehicle',
+      header: 'Assigned Vehicle',
+      render: (driver) => {
+        const driverBus = buses.find(b => b.driver?.id === driver.id);
+        return driverBus ? (
+          <div className="space-y-0.5">
+            <div className="text-sm font-bold text-gray-900 dark:text-white">
+              {driverBus.plate_number}
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{driverBus.model}</div>
+          </div>
+        ) : (
+          <span className="text-xs font-bold text-gray-400 italic">No assigned bus</span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (driver) => (
+        <span className={cn(
+          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm",
+          !driver.is_active
+            ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
+            : (driver.is_online
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20'
+                : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700')
+        )}>
+          {!driver.is_active ? 'Suspended' : (driver.is_online ? 'Active' : 'Offline')}
+        </span>
+      ),
+    },
+  ];
+
+  const tripColumns: Column<TripTicket>[] = [
+    {
+      key: 'control_no',
+      header: 'Control No.',
+      render: (trip) => (
+        <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
+          #{trip.control_no}
+        </span>
+      ),
+    },
+    {
+      key: 'date_of_travel',
+      header: 'Travel Date',
+      render: (trip) => (
+        <>
+          <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
+            {trip.date_of_travel}
+          </span>
+          {trip.duration && <div className="text-[10px] text-gray-400 font-bold mt-0.5">{trip.duration}</div>}
+        </>
+      ),
+    },
+    {
+      key: 'route',
+      header: 'Route (Pick Up → Drop Off)',
+      render: (trip) => (
+        <div className="flex flex-col gap-1 max-w-xs">
+          <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-350">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            <span className="font-semibold truncate">{trip.pick_up}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-800 dark:text-gray-100 font-black">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="truncate">{trip.drop_off}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'driver_vehicle',
+      header: 'Driver & Vehicle',
+      render: (trip) => (
+        <div className="space-y-0.5">
+          <div className="text-sm font-bold text-gray-900 dark:text-white">
+            {trip.driver?.name || 'TBA'}
+          </div>
+          <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+            {trip.bus?.plate_number || trip.plate_no || 'TBA'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'no_of_passengers',
+      header: 'Passengers',
+      render: (trip) => (
+        <span className="text-sm font-black text-gray-900 dark:text-white">
+          {trip.no_of_passengers} pax
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (trip) => <StatusBadge status={trip.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'center',
+      render: (trip) => (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setSelectedTicket(trip); }}
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+            title="View Details"
+          >
+            Details
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); printTripTicket(trip); }}
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+            title="Print DTT"
+          >
+            Print
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -256,86 +416,24 @@ export default function LogisticsOverview() {
                 transition={{ duration: 0.2 }}
                 className="overflow-x-auto"
               >
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Coach Captain</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Employee ID</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Department</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Assigned Vehicle</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
-                    {isDriversLoading ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Driver Database...</p>
-                        </td>
-                      </tr>
-                    ) : filteredDrivers.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <p className="text-sm font-bold text-gray-500">No captain records matched the query.</p>
-                        </td>
-                      </tr>
+                <DataTable
+                  columns={driverColumns}
+                  data={filteredDrivers}
+                  rowKey={(driver) => driver.id}
+                  empty={
+                    isDriversLoading ? (
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Driver Database...</p>
+                      </div>
                     ) : (
-                      filteredDrivers.map((driver: any) => {
-                        const driverBus = buses.find(b => b.driver?.id === driver.id);
-                        return (
-                          <tr key={driver.id} className="hover:bg-blue-50/20 dark:hover:bg-gray-800/30 transition-all border-b border-gray-50 dark:border-gray-800/40 last:border-0">
-                            <td className="px-8 py-6">
-                              <div className="flex items-center gap-4">
-                                <EmployeeName 
-                                  name={fullName(driver)} 
-                                  src={driver.avatar_url} 
-                                  subtitle={driver.email} 
-                                  online={driver.is_online} 
-                                  size="lg" 
-                                />
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className="font-mono font-bold text-gray-600 dark:text-gray-300 text-sm">
-                                {driver.employee_id}
-                              </span>
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className="px-3 py-1.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase border border-blue-100/30 dark:border-blue-900/30">
-                                {driver.department || 'Logistics'}
-                              </span>
-                            </td>
-                            <td className="px-8 py-6">
-                              {driverBus ? (
-                                <div className="space-y-0.5">
-                                  <div className="text-sm font-bold text-gray-900 dark:text-white">
-                                    {driverBus.plate_number}
-                                  </div>
-                                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{driverBus.model}</div>
-                                </div>
-                              ) : (
-                                <span className="text-xs font-bold text-gray-400 italic">No assigned bus</span>
-                              )}
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm",
-                                !driver.is_active
-                                  ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
-                                  : (driver.is_online
-                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20'
-                                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700')
-                              )}>
-                                {!driver.is_active ? 'Suspended' : (driver.is_online ? 'Active' : 'Offline')}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <p className="text-sm font-bold text-gray-500">No captain records matched the query.</p>
+                      </div>
+                    )
+                  }
+                  className="border-0 rounded-none bg-transparent"
+                />
               </motion.div>
             ) : activeTab === 'trips' ? (
               <motion.div
@@ -346,99 +444,24 @@ export default function LogisticsOverview() {
                 transition={{ duration: 0.2 }}
                 className="overflow-x-auto"
               >
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Control No.</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Travel Date</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Route (Pick Up → Drop Off)</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Driver & Vehicle</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Passengers</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
-                    {isTripsLoading ? (
-                      <tr>
-                        <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Trip Schedule...</p>
-                        </td>
-                      </tr>
-                    ) : filteredTrips.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <p className="text-sm font-bold text-gray-500">No scheduled trips matched the search criteria.</p>
-                        </td>
-                      </tr>
+                <DataTable
+                  columns={tripColumns}
+                  data={filteredTrips}
+                  rowKey={(trip) => trip.id}
+                  empty={
+                    isTripsLoading ? (
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Trip Schedule...</p>
+                      </div>
                     ) : (
-                      filteredTrips.map((trip) => (
-                        <tr key={trip.id} className="hover:bg-blue-50/20 dark:hover:bg-gray-800/30 transition-all border-b border-gray-50 dark:border-gray-800/40 last:border-0">
-                          <td className="px-8 py-6">
-                            <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
-                              #{trip.control_no}
-                            </span>
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                              {trip.date_of_travel}
-                            </span>
-                            {trip.duration && <div className="text-[10px] text-gray-400 font-bold mt-0.5">{trip.duration}</div>}
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="flex flex-col gap-1 max-w-xs">
-                              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-350">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                                <span className="font-semibold truncate">{trip.pick_up}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-800 dark:text-gray-100 font-black">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                <span className="truncate">{trip.drop_off}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="space-y-0.5">
-                              <div className="text-sm font-bold text-gray-900 dark:text-white">
-                                {trip.driver?.name || 'TBA'}
-                              </div>
-                              <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                                {trip.bus?.plate_number || trip.plate_no || 'TBA'}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className="text-sm font-black text-gray-900 dark:text-white">
-                              {trip.no_of_passengers} pax
-                            </span>
-                          </td>
-                          <td className="px-8 py-6">
-                            <StatusBadge status={trip.status} />
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => setSelectedTicket(trip)}
-                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
-                                title="View Details"
-                              >
-                                Details
-                              </button>
-                              <button
-                                onClick={() => printTripTicket(trip)}
-                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
-                                title="Print DTT"
-                              >
-                                Print
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <p className="text-sm font-bold text-gray-500">No scheduled trips matched the search criteria.</p>
+                      </div>
+                    )
+                  }
+                  className="border-0 rounded-none bg-transparent"
+                />
               </motion.div>
             ) : (
               <motion.div
