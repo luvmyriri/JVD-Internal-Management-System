@@ -8,6 +8,8 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { customerApi } from '../../api/customers';
 import { Pagination, Modal, Button } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
+import { cn } from '../../utils';
 
 interface Customer {
   id: number;
@@ -244,6 +246,96 @@ export default function Customers() {
   const customers: Customer[] = response?.data?.data ?? [];
   const meta = response?.data?.meta;
 
+  const columns: Column<Customer>[] = [
+    {
+      key: 'customer',
+      header: 'Customer',
+      render: (c) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center font-black text-sm border border-rose-100 dark:border-rose-800 shrink-0">
+            {(c.first_name?.[0] || '')}{(c.last_name?.[0] || '')}
+          </div>
+          <div>
+            <p className="font-bold text-gray-900 dark:text-white text-sm">{c.first_name} {c.last_name}</p>
+            <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID #{c.id}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'contact',
+      header: 'Contact',
+      render: (c) => (
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+            <LuMail size={11} className="text-gray-400" /> {c.email}
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
+            <LuPhone size={11} className="text-gray-400" /> {c.phone}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'address',
+      header: 'Address',
+      render: (c) => (
+        <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
+          <LuMapPin size={11} className="text-gray-400 shrink-0" />
+          <span>{c.address || <span className="italic text-gray-300">—</span>}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'notes',
+      header: 'Notes',
+      render: (c) => (
+        <div className="max-w-[200px]">
+          <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">
+            {c.notes || <span className="italic text-gray-300">No notes</span>}
+          </p>
+        </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'center',
+      render: (c) => (
+        <div className="flex items-center justify-center gap-2 transition-opacity">
+          <button
+            onClick={() => navigate(`/operations/customers/${c.id}`)}
+            className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 hover:bg-purple-100 transition"
+            title="View Profile"
+          >
+            <LuUser size={14} />
+          </button>
+          <button
+            onClick={() => setModalConfig({ mode: 'view', data: c })}
+            className="p-2 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 transition"
+            title="Quick View"
+          >
+            <LuSearch size={14} />
+          </button>
+          <button
+            onClick={() => setModalConfig({ mode: 'edit', data: c })}
+            className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"
+            title="Edit"
+          >
+            <LuPencil size={14} />
+          </button>
+          <button
+            onClick={() => setDeleteTarget(c)}
+            className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"
+            title="Delete"
+          >
+            <LuTrash2 size={14} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-8 pb-12">
       {/* Header */}
@@ -285,103 +377,25 @@ export default function Customers() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/60 text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-                <th className="px-8 py-5">Customer</th>
-                <th className="px-8 py-5">Contact</th>
-                <th className="px-8 py-5">Address</th>
-                <th className="px-8 py-5">Notes</th>
-                <th className="px-8 py-5 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
-                    <LuLoaderCircle size={28} className="animate-spin mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm font-medium">Loading customers...</p>
-                  </td>
-                </tr>
-              ) : customers.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400">
-                    <LuUsers size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                    <p className="text-sm font-medium">No customers found.</p>
-                  </td>
-                </tr>
-              ) : customers.map(c => (
-                <tr key={c.id} className="hover:bg-blue-50/20 dark:hover:bg-blue-900/10 transition-all group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-rose-50 dark:bg-rose-900/20 text-rose-500 flex items-center justify-center font-black text-sm border border-rose-100 dark:border-rose-800 shrink-0">
-                        {(c.first_name?.[0] || '')}{(c.last_name?.[0] || '')}
-                      </div>
-                      <div>
-                        <p className="font-bold text-gray-900 dark:text-white text-sm">{c.first_name} {c.last_name}</p>
-                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">ID #{c.id}</p>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex flex-col gap-1">
-                      <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                        <LuMail size={11} className="text-gray-400" /> {c.email}
-                      </div>
-                      <div className="flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400">
-                        <LuPhone size={11} className="text-gray-400" /> {c.phone}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300">
-                      <LuMapPin size={11} className="text-gray-400 shrink-0" />
-                      <span>{c.address || <span className="italic text-gray-300">—</span>}</span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 max-w-[200px]">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed line-clamp-2">
-                      {c.notes || <span className="italic text-gray-300">No notes</span>}
-                    </p>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center justify-center gap-2 transition-opacity">
-                      <button
-                        onClick={() => navigate(`/operations/customers/${c.id}`)}
-                        className="p-2 rounded-xl bg-purple-50 dark:bg-purple-900/20 text-purple-600 hover:bg-purple-100 transition"
-                        title="View Profile"
-                      >
-                        <LuUser size={14} />
-                      </button>
-                      <button
-                        onClick={() => setModalConfig({ mode: 'view', data: c })}
-                        className="p-2 rounded-xl bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 transition"
-                        title="Quick View"
-                      >
-                        <LuSearch size={14} />
-                      </button>
-                      <button
-                        onClick={() => setModalConfig({ mode: 'edit', data: c })}
-                        className="p-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition"
-                        title="Edit"
-                      >
-                        <LuPencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => setDeleteTarget(c)}
-                        className="p-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-500 hover:bg-red-100 transition"
-                        title="Delete"
-                      >
-                        <LuTrash2 size={14} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={isLoading ? [] : customers}
+          rowKey={(c) => c.id}
+          className={cn('border-0 rounded-none', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+          empty={
+            isLoading ? (
+              <div className="px-8 py-20 text-center text-gray-400">
+                <LuLoaderCircle size={28} className="animate-spin mx-auto mb-2 text-blue-500" />
+                <p className="text-sm font-medium">Loading customers...</p>
+              </div>
+            ) : (
+              <div className="px-8 py-20 text-center text-gray-400">
+                <LuUsers size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
+                <p className="text-sm font-medium">No customers found.</p>
+              </div>
+            )
+          }
+        />
       </div>
 
       {meta && meta.last_page > 1 && (

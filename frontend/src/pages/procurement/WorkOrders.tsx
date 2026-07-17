@@ -16,9 +16,10 @@ import { fleetApi } from '../../api/fleet';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -483,87 +484,12 @@ function EditWOModal({ wo, onClose }: { wo: WorkOrder; onClose: () => void }) {
   );
 }
 
-// ── WO Row ───────────────────────────────────────────────────────────────────
-
-function WORow({ 
-  wo, 
-  onReview, 
-  onDetail, 
-  onComplete,
-  onGenerateJO,
-  onEdit,
-}: { 
-  wo: WorkOrder; 
-  onReview: (wo: WorkOrder) => void;
-  onDetail: (wo: WorkOrder) => void;
-  onComplete: (wo: WorkOrder) => void;
-  onGenerateJO: (wo: WorkOrder) => void;
-  onEdit: (wo: WorkOrder) => void;
-}) {
-  const { user } = useAuth();
-  const canApproveOrEdit = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.role === 'head_mechanic' || user?.role === 'service_adviser';
-
-  return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
-            <LuWrench size={18} />
-          </div>
-          <div>
-            <p className="font-black text-gray-900 dark:text-white tracking-tight">{wo.wo_number}</p>
-            {wo.auto_generated && (
-              <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest mt-1">Auto-generated (PMS)</span>
-            )}
-          </div>
-        </div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'} {wo.bus?.bus_category ? `• ${wo.bus.bus_category}` : ''}</div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><PriorityBadge priority={wo.priority} /></td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><StatusBadge status={wo.status} /></td>
-      <td className="px-8 py-6 text-xs text-gray-500 dark:text-gray-400 max-w-[300px] leading-relaxed border-b border-gray-50 dark:border-gray-800">{wo.description}</td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <Dropdown 
-          items={[
-            { 
-              label: 'View Details', 
-              icon: <Eye size={14} />, 
-              onClick: () => onDetail(wo) 
-            },
-            ...((wo.status === 'pending_validation' || wo.status === 'pending_approval' || wo.status === 'verified') && canApproveOrEdit ? [{
-              label: 'Review Order',
-              icon: <ShieldCheck size={14} />,
-              onClick: () => onReview(wo)
-            }] : []),
-            ...(wo.status === 'open' ? [{ 
-              label: 'Generate J.O.', 
-              icon: <LuArrowRight size={14} />, 
-              onClick: () => onGenerateJO(wo)
-            }] : []),
-            ...(wo.status === 'in_progress' ? [{ 
-              label: 'Mark Completed', 
-              icon: <CheckCircle size={14} />, 
-              onClick: () => onComplete(wo)
-            }] : []),
-            ...(wo.status !== 'completed' && wo.status !== 'cancelled' && canApproveOrEdit ? [{ 
-              label: 'Edit Request', 
-              icon: <FileEdit size={14} />, 
-              onClick: () => onEdit(wo)
-            }] : []),
-          ]}
-        />
-      </td>
-    </tr>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function WorkOrders() {
   const qc = useQueryClient();
+  const { user } = useAuth();
+  const canApproveOrEdit = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.role === 'head_mechanic' || user?.role === 'service_adviser';
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [showCreate, setShowCreate] = useState(false);
@@ -613,6 +539,88 @@ export default function WorkOrders() {
   const wos = data?.data?.data ?? [];
   const meta = data?.data?.meta;
   const pendingCount = wos.filter(w => w.status === 'pending_validation' || w.status === 'pending_approval' || w.status === 'verified').length;
+
+  const columns: Column<WorkOrder>[] = [
+    {
+      key: 'wo_number',
+      header: 'W.O. Number',
+      render: (wo) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 shadow-sm shadow-purple-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
+            <LuWrench size={18} />
+          </div>
+          <div>
+            <p className="font-black text-gray-900 dark:text-white tracking-tight">{wo.wo_number}</p>
+            {wo.auto_generated && (
+              <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest mt-1">Auto-generated (PMS)</span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'bus',
+      header: 'Bus',
+      render: (wo) => (
+        <>
+          <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{wo.bus?.plate_number ?? `Bus #${wo.bus_id}`}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{wo.bus?.model ?? 'Vehicle Details'} {wo.bus?.bus_category ? `• ${wo.bus.bus_category}` : ''}</div>
+        </>
+      ),
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      render: (wo) => <PriorityBadge priority={wo.priority} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (wo) => <StatusBadge status={wo.status} />,
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      render: (wo) => (
+        <span className="text-xs text-gray-500 dark:text-gray-400 max-w-[300px] leading-relaxed">{wo.description}</span>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (wo) => (
+        <Dropdown
+          items={[
+            {
+              label: 'View Details',
+              icon: <Eye size={14} />,
+              onClick: () => setDetailWO(wo)
+            },
+            ...((wo.status === 'pending_validation' || wo.status === 'pending_approval' || wo.status === 'verified') && canApproveOrEdit ? [{
+              label: 'Review Order',
+              icon: <ShieldCheck size={14} />,
+              onClick: () => setReviewWO(wo)
+            }] : []),
+            ...(wo.status === 'open' ? [{
+              label: 'Generate J.O.',
+              icon: <LuArrowRight size={14} />,
+              onClick: () => setConfirmJO(wo)
+            }] : []),
+            ...(wo.status === 'in_progress' ? [{
+              label: 'Mark Completed',
+              icon: <CheckCircle size={14} />,
+              onClick: () => setConfirmComplete(wo)
+            }] : []),
+            ...(wo.status !== 'completed' && wo.status !== 'cancelled' && canApproveOrEdit ? [{
+              label: 'Edit Request',
+              icon: <FileEdit size={14} />,
+              onClick: () => setEditWO(wo)
+            }] : []),
+          ]}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-10 pb-12">
@@ -673,39 +681,22 @@ export default function WorkOrders() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
-        ) : wos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
-            <LuClipboardList size={40} strokeWidth={1} />
-            <p className="text-sm font-medium">No work orders found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[800px]">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
-                <tr>
-                  {['W.O. Number', 'Bus', 'Priority', 'Status', 'Description', 'Action'].map(h => (
-                    <th key={h} className="px-8 py-5 text-left font-black text-gray-400">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-                {wos.map(wo => (
-                  <WORow 
-                    key={wo.id} 
-                    wo={wo} 
-                    onReview={setReviewWO} 
-                    onDetail={setDetailWO}
-                    onComplete={(item) => setConfirmComplete(item)}
-                    onGenerateJO={(item) => setConfirmJO(item)}
-                    onEdit={setEditWO}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          columns={columns}
+          data={wos}
+          rowKey={(wo) => wo.id}
+          className={cn('border-0 rounded-none [&_table]:min-w-[800px]', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+          empty={
+            isLoading ? (
+              <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
+                <LuClipboardList size={40} strokeWidth={1} />
+                <p className="text-sm font-medium">No work orders found</p>
+              </div>
+            )
+          }
+        />
       </div>
 
       {showCreate && <CreateWOModal onClose={() => setShowCreate(false)} />}

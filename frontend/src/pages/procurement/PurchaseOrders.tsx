@@ -11,8 +11,9 @@ import { supplierApi } from '../../api/suppliers';
 import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../types/procurement';
 import { PO_STATUS_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import toast from 'react-hot-toast';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -358,69 +359,6 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
   );
 }
 
-// ── PO Row ───────────────────────────────────────────────────────────────────
-
-function PORow({
-  po,
-  onDetail,
-  onSubmitReview,
-  onVerify,
-  onApprove
-}: {
-  po: PurchaseOrder;
-  onDetail: (po: PurchaseOrder) => void;
-  onSubmitReview: (id: number) => void;
-  onVerify: (id: number) => void;
-  onApprove: (id: number) => void;
-}) {
-  return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all border-b border-gray-50/50 dark:border-gray-800 group last:border-0">
-      <td className="px-8 py-6">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-sm shadow-blue-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
-          <span className="font-black text-gray-900 dark:text-white tracking-tight">{po.po_number}</span>
-        </div>
-      </td>
-      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</td>
-      <td className="px-8 py-6"><StatusBadge status={po.status} /></td>
-      <td className="px-8 py-6">
-        <div className="text-gray-900 dark:text-white font-black text-base">{fmt(po.total_amount)}</div>
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
-      </td>
-      <td className="px-8 py-6">
-        <div className="text-gray-700 dark:text-gray-200 font-medium text-xs">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Date Issued</div>
-      </td>
-      <td className="px-8 py-6">
-        <Dropdown
-          items={[
-            {
-              label: 'View Details',
-              icon: <Eye size={14} />,
-              onClick: () => onDetail(po)
-            },
-            ...(po.status === 'draft' ? [{
-              label: 'Submit for Review',
-              icon: <Send size={14} />,
-              onClick: () => onSubmitReview(po.id)
-            }] : []),
-            ...(po.status === 'pending_accounting_review' ? [{
-              label: 'Verify PO',
-              icon: <CheckCircle size={14} />,
-              onClick: () => onVerify(po.id)
-            }] : []),
-            ...(po.status === 'pending_ceo_approval' ? [{
-              label: 'Approve PO',
-              icon: <CheckCircle size={14} />,
-              onClick: () => onApprove(po.id)
-            }] : []),
-          ]}
-        />
-      </td>
-    </tr>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function PurchaseOrders() {
@@ -484,6 +422,81 @@ export default function PurchaseOrders() {
 
   const statuses = ['', 'draft', 'pending_accounting_review', 'verified', 'pending_ceo_approval', 'approved', 'rejected'];
 
+  const columns: Column<PurchaseOrder>[] = [
+    {
+      key: 'po_number',
+      header: 'PO Number',
+      render: (po) => (
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0 shadow-sm shadow-blue-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all"><LuFileText size={18} /></div>
+          <span className="font-black text-gray-900 dark:text-white tracking-tight">{po.po_number}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'supplier',
+      header: 'Supplier',
+      render: (po) => (
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">{po.supplier?.company_name ?? `Supplier #${po.supplier_id}`}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (po) => <StatusBadge status={po.status} />,
+    },
+    {
+      key: 'total_amount',
+      header: 'Amount',
+      render: (po) => (
+        <>
+          <div className="text-gray-900 dark:text-white font-black text-base">{fmt(po.total_amount)}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
+        </>
+      ),
+    },
+    {
+      key: 'created_at',
+      header: 'Date',
+      render: (po) => (
+        <>
+          <div className="text-gray-700 dark:text-gray-200 font-medium text-xs">{new Date(po.created_at).toLocaleDateString('en-PH', { day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Date Issued</div>
+        </>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (po) => (
+        <Dropdown
+          items={[
+            {
+              label: 'View Details',
+              icon: <Eye size={14} />,
+              onClick: () => setSelectedPO(po)
+            },
+            ...(po.status === 'draft' ? [{
+              label: 'Submit for Review',
+              icon: <Send size={14} />,
+              onClick: () => submitMutation.mutate(po.id)
+            }] : []),
+            ...(po.status === 'pending_accounting_review' ? [{
+              label: 'Verify PO',
+              icon: <CheckCircle size={14} />,
+              onClick: () => verifyMutation.mutate(po.id)
+            }] : []),
+            ...(po.status === 'pending_ceo_approval' ? [{
+              label: 'Approve PO',
+              icon: <CheckCircle size={14} />,
+              onClick: () => approveMutation.mutate(po.id)
+            }] : []),
+          ]}
+        />
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-10 pb-12">
       {/* Header Actions */}
@@ -542,36 +555,22 @@ export default function PurchaseOrders() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
-        ) : pos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
-            <LuPackage size={40} strokeWidth={1} />
-            <p className="text-sm font-medium">No purchase orders found</p>
-          </div>
-        ) : (
-          <table className="w-full">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-              <tr>
-                {['PO Number', 'Supplier', 'Status', 'Amount', 'Date', ''].map(h => (
-                  <th key={h} className="px-8 py-5 text-left text-[10px] font-black uppercase tracking-[0.2em] text-gray-400">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {pos.map(po => (
-                <PORow
-                  key={po.id}
-                  po={po}
-                  onDetail={setSelectedPO}
-                  onSubmitReview={(id) => submitMutation.mutate(id)}
-                  onVerify={(id) => verifyMutation.mutate(id)}
-                  onApprove={(id) => approveMutation.mutate(id)}
-                />
-              ))}
-            </tbody>
-          </table>
-        )}
+        <DataTable
+          columns={columns}
+          data={pos}
+          rowKey={(po) => po.id}
+          className={cn('border-0 rounded-none', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+          empty={
+            isLoading ? (
+              <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
+                <LuPackage size={40} strokeWidth={1} />
+                <p className="text-sm font-medium">No purchase orders found</p>
+              </div>
+            )
+          }
+        />
       </div>
 
       {showCreate && <CreatePOModal onClose={() => setShowCreate(false)} />}

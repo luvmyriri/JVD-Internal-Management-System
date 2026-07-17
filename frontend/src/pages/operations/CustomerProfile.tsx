@@ -9,6 +9,25 @@ import KycManager from '../../components/travel/KycManager';
 import PassportManager from '../../components/travel/PassportManager';
 import VisaManager from '../../components/travel/VisaManager';
 import { Button } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
+
+interface CustomerInvoice {
+  id: number;
+  invoice_number?: string;
+  tour_code?: string;
+  pickup_location?: string;
+  travel_date?: string;
+  status?: string;
+  total_amount: number | string;
+  balance?: number | string | null;
+}
+
+interface CustomerJobOrder {
+  id: number;
+  jo_number?: string;
+  status?: string;
+  start_date?: string;
+}
 
 const DashboardCard = ({ title, children, action, icon: Icon, className = '' }: any) => (
   <div className={`bg-white dark:bg-gray-900 border border-slate-300 dark:border-slate-700 rounded-xl shadow-md flex flex-col overflow-hidden ${className}`}>
@@ -47,6 +66,106 @@ export default function CustomerProfile() {
   if (!customer) {
     return <div className="p-10 text-center text-rose-500">Customer not found.</div>;
   }
+
+  const invoices: CustomerInvoice[] = customer.invoices ?? [];
+  const jobOrders: CustomerJobOrder[] = (customer.job_orders || customer.jobOrders) ?? [];
+
+  const invoiceColumns: Column<CustomerInvoice>[] = [
+    {
+      key: 'invoice_number',
+      header: 'Invoice No',
+      render: (inv) => (
+        <span className="font-mono font-bold text-[12px] text-indigo-600 dark:text-indigo-400 whitespace-nowrap">#{inv.invoice_number || inv.id}</span>
+      ),
+    },
+    {
+      key: 'reference',
+      header: 'Reference',
+      render: (inv) => (
+        <div className="text-[13px] font-medium text-slate-700 dark:text-slate-300 max-w-[140px] truncate">
+          {inv.tour_code || inv.pickup_location || <span className="text-slate-400 italic font-normal">—</span>}
+        </div>
+      ),
+    },
+    {
+      key: 'travel_date',
+      header: 'Travel Date',
+      render: (inv) => (
+        <span className="text-[13px] text-slate-500 whitespace-nowrap">
+          {inv.travel_date ? new Date(inv.travel_date).toLocaleDateString() : <span className="text-slate-400 italic">—</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (inv) => (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border tracking-wider ${
+          inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50' :
+          inv.status === 'partial' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' :
+          'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800/50'
+        }`}>
+          {inv.status}
+        </span>
+      ),
+    },
+    {
+      key: 'total_amount',
+      header: 'Total',
+      align: 'right',
+      render: (inv) => (
+        <span className="font-bold text-[13px] text-slate-800 dark:text-slate-200 whitespace-nowrap">
+          ₱{Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </span>
+      ),
+    },
+    {
+      key: 'balance',
+      header: 'Balance',
+      align: 'right',
+      render: (inv) => (
+        <span className="text-[13px] whitespace-nowrap">
+          {inv.balance != null
+            ? <span className={Number(inv.balance) > 0 ? 'text-rose-500 font-bold' : 'text-emerald-500 font-bold'}>₱{Number(inv.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            : <span className="text-slate-400 italic">—</span>
+          }
+        </span>
+      ),
+    },
+  ];
+
+  const jobOrderColumns: Column<CustomerJobOrder>[] = [
+    {
+      key: 'jo_number',
+      header: 'JO Number',
+      render: (jo) => (
+        <span className="font-mono font-bold text-[12px] text-indigo-600 dark:text-indigo-400">#{jo.jo_number}</span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (jo) => (
+        <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border tracking-wider ${
+          jo.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50' :
+          jo.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50' :
+          'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'
+        }`}>
+          {jo.status?.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'start_date',
+      header: 'Start Date',
+      align: 'right',
+      render: (jo) => (
+        <span className="text-[12px] text-slate-500 font-medium">
+          {jo.start_date ? new Date(jo.start_date).toLocaleDateString() : 'N/A'}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6 w-full max-w-[1600px] mx-auto pb-12">
@@ -135,58 +254,18 @@ export default function CustomerProfile() {
             icon={LuFileSpreadsheet} 
             action={<button className="px-2.5 py-1 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 text-[11px] font-bold tracking-wide transition-colors border border-indigo-100 dark:border-indigo-800 hover:bg-indigo-100 dark:hover:bg-indigo-900/50">Details</button>}
           >
-            <div className="overflow-x-auto">
-              {!customer.invoices || customer.invoices.length === 0 ? (
+            <DataTable
+              columns={invoiceColumns}
+              data={invoices}
+              rowKey={(inv) => inv.id}
+              className="border-0 rounded-none bg-transparent"
+              empty={
                 <div className="py-10 flex flex-col items-center justify-center text-[13px] text-slate-400 gap-2">
                   <LuFileSpreadsheet size={24} className="text-slate-300 opacity-50 mb-2" />
                   <span className="italic">No billing history found for this customer.</span>
                 </div>
-              ) : (
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800">
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Invoice No</th>
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Reference</th>
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Travel Date</th>
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</th>
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider text-right">Total</th>
-                      <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider text-right">Balance</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                    {customer.invoices.map((inv: any) => (
-                      <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="px-2 py-3 font-mono font-bold text-[12px] text-indigo-600 dark:text-indigo-400 whitespace-nowrap">#{inv.invoice_number || inv.id}</td>
-                        <td className="px-2 py-3 text-[13px] font-medium text-slate-700 dark:text-slate-300 max-w-[140px] truncate">
-                          {inv.tour_code || inv.pickup_location || <span className="text-slate-400 italic font-normal">—</span>}
-                        </td>
-                        <td className="px-2 py-3 text-[13px] text-slate-500 whitespace-nowrap">
-                          {inv.travel_date ? new Date(inv.travel_date).toLocaleDateString() : <span className="text-slate-400 italic">—</span>}
-                        </td>
-                        <td className="px-2 py-3">
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border tracking-wider ${
-                            inv.status === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50' :
-                            inv.status === 'partial' ? 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50' :
-                            'bg-rose-50 text-rose-600 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800/50'
-                          }`}>
-                            {inv.status}
-                          </span>
-                        </td>
-                        <td className="px-2 py-3 font-bold text-[13px] text-slate-800 dark:text-slate-200 whitespace-nowrap text-right">
-                          ₱{Number(inv.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </td>
-                        <td className="px-2 py-3 text-[13px] text-right whitespace-nowrap">
-                          {inv.balance != null
-                            ? <span className={inv.balance > 0 ? 'text-rose-500 font-bold' : 'text-emerald-500 font-bold'}>₱{Number(inv.balance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                            : <span className="text-slate-400 italic">—</span>
-                          }
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
+              }
+            />
           </DashboardCard>
 
           <DashboardCard title="Travel Documents & Processing" icon={LuFileText} action={<button className="px-2.5 py-1 rounded bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[11px] font-bold tracking-wide transition-colors border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700">Manage</button>}>
@@ -204,36 +283,12 @@ export default function CustomerProfile() {
                   No job orders linked to this customer.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-100 dark:border-slate-800">
-                        <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">JO Number</th>
-                        <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider">Status</th>
-                        <th className="px-2 py-2 text-[10px] uppercase font-bold text-slate-400 tracking-wider text-right">Start Date</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
-                      {(customer.job_orders || customer.jobOrders).map((jo: any) => (
-                        <tr key={jo.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="px-2 py-3 font-mono font-bold text-[12px] text-indigo-600 dark:text-indigo-400">#{jo.jo_number}</td>
-                          <td className="px-2 py-3">
-                            <span className={`inline-flex px-2 py-0.5 rounded-full text-[9px] font-bold uppercase border tracking-wider ${
-                              jo.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800/50' :
-                              jo.status === 'in_progress' ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800/50' :
-                              'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800/50'
-                            }`}>
-                              {jo.status?.replace('_', ' ')}
-                            </span>
-                          </td>
-                          <td className="px-2 py-3 text-right text-[12px] text-slate-500 font-medium">
-                            {jo.start_date ? new Date(jo.start_date).toLocaleDateString() : 'N/A'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={jobOrderColumns}
+                  data={jobOrders}
+                  rowKey={(jo) => jo.id}
+                  className="border-0 rounded-none bg-transparent"
+                />
               )}
             </DashboardCard>
 

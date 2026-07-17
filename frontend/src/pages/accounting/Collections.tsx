@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
 import client from '../../api/client';
 import { customerApi } from '../../api/customers';
-import type { Collection } from '../../types';
+import type { Collection, CollectionPayment } from '../../types';
 import { Modal, Button } from '../../components/ui';
 import { DataTable, EmptyState, type Column } from '../../components/ds';
 import { useAuth } from '../../context/AuthContext';
@@ -25,6 +25,26 @@ const SERVICE_TYPES = [
   'Booking',
   'Other',
 ] as const;
+
+/** Payment History sub-table inside the Collection Details modal (roadmap 3.7). */
+const paymentColumns: Column<CollectionPayment>[] = [
+  {
+    key: 'payment_date',
+    header: 'Date',
+    render: (p) => <span className="font-medium">{new Date(p.payment_date).toLocaleDateString()}</span>,
+  },
+  {
+    key: 'payment_method',
+    header: 'Method',
+    render: (p) => <span className="font-medium">{p.payment_method}</span>,
+  },
+  {
+    key: 'amount',
+    header: 'Amount',
+    align: 'right',
+    render: (p) => <span className="font-black">₱{Number(p.amount).toLocaleString()}</span>,
+  },
+];
 
 function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -797,26 +817,12 @@ export default function Collections() {
               </div>
 
               {selectedCollection.payments && selectedCollection.payments.length > 0 ? (
-                <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-4 py-3 font-bold text-gray-500">Date</th>
-                        <th className="px-4 py-3 font-bold text-gray-500">Method</th>
-                        <th className="px-4 py-3 font-bold text-gray-500 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {selectedCollection.payments.map((p: any) => (
-                        <tr key={p.id}>
-                          <td className="px-4 py-3 font-medium">{new Date(p.payment_date).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 font-medium">{p.payment_method}</td>
-                          <td className="px-4 py-3 font-black text-right">₱{Number(p.amount).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={paymentColumns}
+                  data={selectedCollection.payments}
+                  rowKey={(p) => p.id}
+                  className="jvd"
+                />
               ) : (
                 <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
                   <p className="text-sm font-bold text-gray-400">No payments recorded yet.</p>

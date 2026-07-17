@@ -5,8 +5,9 @@ import {
 } from 'react-icons/lu';
 import { inventoryApi } from '../../api/inventory';
 import { Pagination } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import type { InventoryItem, InventoryItemFormData } from '../../types/inventory';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 
 // ── Add/Edit Item Modal ──────────────────────────────────────────────────────
@@ -164,6 +165,80 @@ export default function Supplies() {
 
   const categories = Array.from(new Set(items.map(i => i.category))).filter(Boolean);
 
+  const columns: Column<InventoryItem>[] = [
+    {
+      key: 'item_name',
+      header: 'Item Name',
+      render: (item) => (
+        <div className="font-bold text-gray-900 dark:text-white text-base">{item.item_name}</div>
+      ),
+    },
+    {
+      key: 'category',
+      header: 'Category',
+      render: (item) => (
+        <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold tracking-widest uppercase border border-gray-100 dark:border-gray-800">{item.category}</span>
+      ),
+    },
+    {
+      key: 'quantity',
+      header: 'In Stock',
+      align: 'center',
+      render: (item) => (
+        <>
+          <div className="font-black text-gray-900 dark:text-white text-xl tracking-tight">{item.quantity}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{item.unit}</div>
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      align: 'center',
+      render: (item) => (
+        item.is_low_stock ? (
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-50 text-red-700 text-[10px] font-black uppercase tracking-widest border border-red-100 shadow-sm shadow-red-200/20">
+            <LuArrowDownToLine size={14} /> Reorder (≤{item.reorder_level})
+          </div>
+        ) : (
+          <div className="inline-flex items-center px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm shadow-emerald-200/20">
+            Sufficient
+          </div>
+        )
+      ),
+    },
+    {
+      key: 'unit_cost',
+      header: 'Unit Price',
+      align: 'right',
+      render: (item) => (
+        <>
+          <div className="text-gray-900 dark:text-white font-bold text-base">₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
+          <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Per {item.unit}</div>
+        </>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'center',
+      render: (item) => (
+        <div className="flex items-center justify-center gap-2">
+          <button onClick={() => { setEditingItem(item); setModalMode('view'); setShowModal(true); }}
+            title="View Details"
+            className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-blue-100 dark:hover:border-gray-700">
+            <LuSearch size={18} />
+          </button>
+          <button onClick={() => { setEditingItem(item); setModalMode('edit'); setShowModal(true); }}
+            title="Edit Item"
+            className="p-3 text-gray-400 hover:text-amber-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-amber-100 dark:hover:border-gray-700">
+            <LuSettings size={18} />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-10 pb-12">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -212,81 +287,28 @@ export default function Supplies() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Item Name</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Category</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">In Stock</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">Unit Price</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2" />
-                    Loading inventory data...
-                  </td>
-                </tr>
-              ) : items.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
-                    <LuPackage size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                    No items found matching your criteria.
-                  </td>
-                </tr>
-              ) : (
-                items.map(item => (
-                  <tr key={item.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50/50 last:border-0">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 dark:text-white text-base">{item.item_name}</div>
-                    </td>
-                    <td className="px-8 py-6 font-medium text-gray-600 dark:text-gray-300">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold tracking-widest uppercase border border-gray-100 dark:border-gray-800">{item.category}</span>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <div className="font-black text-gray-900 dark:text-white text-xl tracking-tight">{item.quantity}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">{item.unit}</div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      {item.is_low_stock ? (
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-50 text-red-700 text-[10px] font-black uppercase tracking-widest border border-red-100 shadow-sm shadow-red-200/20">
-                          <LuArrowDownToLine size={14} /> Reorder (≤{item.reorder_level})
-                        </div>
-                      ) : (
-                        <div className="inline-flex items-center px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm shadow-emerald-200/20">
-                          Sufficient
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="text-gray-900 dark:text-white font-bold text-base">₱{item.unit_cost.toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                      <div className="text-[10px] text-gray-400 font-medium uppercase mt-0.5">Per {item.unit}</div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <button onClick={() => { setEditingItem(item); setModalMode('view'); setShowModal(true); }}
-                          title="View Details"
-                          className="p-3 text-gray-400 hover:text-blue-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-blue-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-blue-100 dark:hover:border-gray-700">
-                          <LuSearch size={18} />
-                        </button>
-                        <button onClick={() => { setEditingItem(item); setModalMode('edit'); setShowModal(true); }}
-                          title="Edit Item"
-                          className="p-3 text-gray-400 hover:text-amber-600 hover:bg-white dark:hover:bg-gray-900 hover:shadow-lg hover:shadow-amber-200/50 dark:hover:shadow-none rounded-2xl transition-all border border-transparent hover:border-amber-100 dark:hover:border-gray-700">
-                          <LuSettings size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={isLoading ? [] : items}
+          rowKey={(item) => item.id}
+          className={cn(
+            'border-0 rounded-none shadow-none transition-all duration-300',
+            isPlaceholderData && 'opacity-60 pointer-events-none saturate-50',
+          )}
+          empty={
+            isLoading ? (
+              <div className="px-6 py-12 text-center text-gray-400">
+                <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2" />
+                Loading inventory data...
+              </div>
+            ) : (
+              <div className="px-6 py-12 text-center text-gray-400">
+                <LuPackage size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
+                No items found matching your criteria.
+              </div>
+            )
+          }
+        />
       </div>
 
       {showModal && <ItemModal item={editingItem} mode={modalMode} onClose={() => setShowModal(false)} />}
