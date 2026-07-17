@@ -9,6 +9,7 @@ import {
 import { supplierApi } from '../../api/suppliers';
 import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { LoadingScreen, RequestCommissionModal } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 
 export default function ProcurementDashboard() {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
@@ -30,6 +31,42 @@ export default function ProcurementDashboard() {
   const pendingPos = purchaseOrders.filter((po: any) => po.status === 'pending');
   
   if (loadingSuppliers || loadingPos) return <LoadingScreen />;
+
+  const columns: Column<any>[] = [
+    {
+      key: 'po_number',
+      header: 'PO Number',
+      render: (po) => <span className="font-medium text-slate-800">{po.po_number}</span>,
+    },
+    {
+      key: 'supplier',
+      header: 'Supplier',
+      render: (po) => <span className="text-slate-600">{po.supplier?.company_name || po.supplier?.name || 'TBD'}</span>,
+    },
+    {
+      key: 'created_at',
+      header: 'Date',
+      render: (po) => <span className="text-slate-600">{po.created_at ? po.created_at.split('T')[0] : ''}</span>,
+    },
+    {
+      key: 'total_amount',
+      header: 'Amount',
+      render: (po) => (
+        <span className="text-slate-600">
+          ₱{parseFloat(po.total_amount).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: () => (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+          PENDING
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -102,39 +139,14 @@ export default function ProcurementDashboard() {
           </div>
         </div>
         
-        <div className="p-0 overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                <th className="p-4 pl-6">PO Number</th>
-                <th className="p-4">Supplier</th>
-                <th className="p-4">Date</th>
-                <th className="p-4">Amount</th>
-                <th className="p-4 pr-6">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {pendingPos.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-500">No pending purchase orders at the moment.</td>
-                </tr>
-              ) : (
-                pendingPos.map((po: any) => (
-                  <tr key={po.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 pl-6 font-medium text-slate-800">{po.po_number}</td>
-                    <td className="p-4 text-slate-600">{po.supplier?.company_name || po.supplier?.name || 'TBD'}</td>
-                    <td className="p-4 text-slate-600">{po.created_at ? po.created_at.split('T')[0] : ''}</td>
-                    <td className="p-4 text-slate-600">₱{parseFloat(po.total_amount).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}</td>
-                    <td className="p-4 pr-6">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                        PENDING
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-0">
+          <DataTable
+            columns={columns}
+            data={pendingPos}
+            rowKey={(po) => po.id}
+            empty={<div className="p-8 text-center text-slate-500">No pending purchase orders at the moment.</div>}
+            className="border-0 rounded-none bg-transparent [&_table]:min-w-[800px]"
+          />
         </div>
       </div>
 

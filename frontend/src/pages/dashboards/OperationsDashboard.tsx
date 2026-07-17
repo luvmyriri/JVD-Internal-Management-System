@@ -10,6 +10,7 @@ import { dashboardApi } from '../../api/dashboards';
 import { tripTicketApi } from '../../api/operations';
 import { fleetApi } from '../../api/fleet';
 import { LoadingScreen, RequestCommissionModal } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 
 export default function OperationsDashboard() {
   const [showCommissionModal, setShowCommissionModal] = useState(false);
@@ -40,6 +41,47 @@ export default function OperationsDashboard() {
   const activeTickets = tickets.filter(t => t.status === 'in_progress');
   
   if (isLoading) return <LoadingScreen />;
+
+  const columns: Column<any>[] = [
+    {
+      key: 'control_no',
+      header: 'Control No.',
+      render: (ticket) => <span className="font-medium text-slate-800">{ticket.control_no}</span>,
+    },
+    {
+      key: 'date_of_travel',
+      header: 'Travel Date',
+      render: (ticket) => <span className="text-slate-600">{ticket.date_of_travel}</span>,
+    },
+    {
+      key: 'drop_off',
+      header: 'Destination',
+      render: (ticket) => <span className="block text-slate-600 truncate max-w-[200px]">{ticket.drop_off}</span>,
+    },
+    {
+      key: 'bus',
+      header: 'Bus',
+      render: (ticket) => <span className="text-slate-600">{ticket.bus?.plate_number || 'TBD'}</span>,
+    },
+    {
+      key: 'driver',
+      header: 'Driver',
+      render: (ticket) => (
+        <span className="text-slate-600">
+          {ticket.driver ? `${ticket.driver.first_name} ${ticket.driver.last_name}` : 'TBD'}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (ticket) => (
+        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
+          {ticket.status.replace('_', ' ').toUpperCase()}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -112,41 +154,14 @@ export default function OperationsDashboard() {
           </div>
         </div>
         
-        <div className="p-0 overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                <th className="p-4 pl-6">Control No.</th>
-                <th className="p-4">Travel Date</th>
-                <th className="p-4">Destination</th>
-                <th className="p-4">Bus</th>
-                <th className="p-4">Driver</th>
-                <th className="p-4 pr-6">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {activeTickets.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">No active trips at the moment.</td>
-                </tr>
-              ) : (
-                activeTickets.map((ticket: any) => (
-                  <tr key={ticket.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 pl-6 font-medium text-slate-800">{ticket.control_no}</td>
-                    <td className="p-4 text-slate-600">{ticket.date_of_travel}</td>
-                    <td className="p-4 text-slate-600 truncate max-w-[200px]">{ticket.drop_off}</td>
-                    <td className="p-4 text-slate-600">{ticket.bus?.plate_number || 'TBD'}</td>
-                    <td className="p-4 text-slate-600">{ticket.driver ? `${ticket.driver.first_name} ${ticket.driver.last_name}` : 'TBD'}</td>
-                    <td className="p-4 pr-6">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-                        {ticket.status.replace('_', ' ').toUpperCase()}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-0">
+          <DataTable
+            columns={columns}
+            data={activeTickets}
+            rowKey={(ticket) => ticket.id}
+            empty={<div className="p-8 text-center text-slate-500">No active trips at the moment.</div>}
+            className="border-0 rounded-none bg-transparent [&_table]:min-w-[800px]"
+          />
         </div>
       </div>
 
