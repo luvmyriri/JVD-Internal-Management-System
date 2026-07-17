@@ -12,6 +12,7 @@ import {
 } from 'react-icons/lu';
 import { useAuditLogs, type AuditLog } from '../../hooks/useAuditLogs';
 import { StatusBadge, Modal, Pagination, Button } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { formatDate, timeAgo } from '../../utils';
 
 const getActionVariant = (action: string): 'success' | 'info' | 'danger' | 'neutral' => {
@@ -54,6 +55,75 @@ export default function AuditLogs() {
     setDateTo('');
     setPage(1);
   };
+
+  const columns: Column<AuditLog>[] = [
+    {
+      key: 'user',
+      header: 'Timestamp & User',
+      render: (log) => (
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-400 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:scale-110 transition-transform">
+            <LuUser size={18} />
+          </div>
+          <div>
+            <div className="font-bold text-gray-900 dark:text-white text-base">
+              {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System Process'}
+            </div>
+            <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
+              {formatDate(log.created_at, 'MMM dd, yyyy HH:mm')}
+              <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+              {timeAgo(log.created_at)}
+            </div>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (log) => (
+        <StatusBadge
+          status={log.action}
+          variant={getActionVariant(log.action)}
+        />
+      ),
+    },
+    {
+      key: 'module',
+      header: 'Module',
+      render: (log) => (
+        <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-700">
+          {log.module.replace(/-/g, ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'origin',
+      header: 'Origin',
+      align: 'right',
+      render: (log) => (
+        <>
+          <div className="text-gray-900 dark:text-white font-black text-base tracking-tight">{log.ip_address}</div>
+          <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">IPv4 Address</div>
+        </>
+      ),
+    },
+    {
+      key: 'details',
+      header: 'Details',
+      align: 'center',
+      render: (log) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => handleViewDetails(log)}
+          className="p-3"
+        >
+          <LuEye size={20} />
+        </Button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-10 pb-12">
@@ -137,85 +207,24 @@ export default function AuditLogs() {
       </div>
 
       {/* Logs Table */}
-      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2.5rem] shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-400 dark:text-gray-400 font-bold border-b border-gray-100 dark:border-gray-800 uppercase tracking-widest text-[10px]">
-                <th className="px-8 py-5">Timestamp & User</th>
-                <th className="px-8 py-5">Action</th>
-                <th className="px-8 py-5">Module</th>
-                <th className="px-8 py-5 text-right">Origin</th>
-                <th className="px-8 py-5 text-center">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-800/50">
-              {isLoading ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
-                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm font-medium">Retrieving audit trail...</p>
-                  </td>
-                </tr>
-              ) : logsData?.data?.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
-                    <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600 dark:text-gray-300" />
-                    <p className="text-sm font-medium">No logs found matching filters.</p>
-                  </td>
-                </tr>
-              ) : (
-                logsData?.data?.map((log) => (
-                  <tr key={log.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-500/5 transition-all group border-b border-gray-50 dark:border-gray-800/50 last:border-0">
-                    <td className="px-8 py-6">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-2xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400 dark:text-gray-400 border border-gray-100 dark:border-gray-700 shadow-sm group-hover:scale-110 transition-transform">
-                          <LuUser size={18} />
-                        </div>
-                        <div>
-                          <div className="font-bold text-gray-900 dark:text-white text-base">
-                            {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System Process'}
-                          </div>
-                          <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-1 flex items-center gap-2">
-                            {formatDate(log.created_at, 'MMM dd, yyyy HH:mm')}
-                            <span className="w-1 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
-                            {timeAgo(log.created_at)}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <StatusBadge 
-                        status={log.action}
-                        variant={getActionVariant(log.action)}
-                      />
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-700">
-                        {log.module.replace(/-/g, ' ')}
-                      </span>
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="text-gray-900 dark:text-white font-black text-base tracking-tight">{log.ip_address}</div>
-                      <div className="text-[10px] text-gray-400 dark:text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest mt-0.5">IPv4 Address</div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <Button 
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewDetails(log)}
-                        className="p-3"
-                      >
-                        <LuEye size={20} />
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <DataTable
+        columns={columns}
+        data={logsData?.data ?? []}
+        rowKey={(log) => log.id}
+        empty={
+          isLoading ? (
+            <div className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
+              <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
+              <p className="text-sm font-medium">Retrieving audit trail...</p>
+            </div>
+          ) : (
+            <div className="px-8 py-20 text-center text-gray-400 dark:text-gray-500 dark:text-gray-400">
+              <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300 dark:text-gray-600 dark:text-gray-300" />
+              <p className="text-sm font-medium">No logs found matching filters.</p>
+            </div>
+          )
+        }
+      />
 
       {/* Pagination */}
       {logsData?.meta && logsData.meta.last_page > 1 && (
