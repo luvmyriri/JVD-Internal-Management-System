@@ -68,12 +68,7 @@
                     <!-- Footer -->
                     <tr>
                         <td style="background-color: #f9fafb; border-top: 1px solid #e5e7eb; padding: 30px 40px; text-align: center;">
-                            <p style="margin: 0 0 8px 0; font-size: 12px; color: #6b7280; font-weight: 700;">
-                                &copy; {{ date('Y') }} JVD Event and Travel Management Company
-                            </p>
-                            <p style="margin: 0; font-size: 11px; color: #9ca3af;">
-                                This is an automated system message.<br>Please do not reply directly to this email.
-                            </p>
+                            @include('emails.partials.footer')
                         </td>
                     </tr>
                 </table>
