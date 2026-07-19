@@ -45,9 +45,8 @@ class DashboardService
 
         $totalUsers    = User::count();
         $totalCustomers = Customer::count();
-        $monthlyRevenue = Invoice::whereIn('status', ['paid', 'partial'])
-            ->whereNull('cash_budget_request_id')
-            ->where('created_at', '>=', $month)->sum('total_amount');
+        $monthlyRevenue = Invoice::revenueBearing()
+            ->where('created_at', '>=', $month)->sum(Invoice::collectedRevenueExpr());
 
         $roleGroups = User::select('role', DB::raw('COUNT(*) as count'))
             ->groupBy('role')
@@ -84,9 +83,8 @@ class DashboardService
         $pendingInvoices     = Invoice::where('status', 'pending')->count();
         $pendingBudgets      = CashBudgetRequest::where('status', 'pending_accounting')->count();
         $processedCollections = Collection::where('collection_status', 'completed')->count();
-        $monthlyRevenue      = Invoice::whereIn('status', ['paid', 'partial'])
-            ->whereNull('cash_budget_request_id')
-            ->where('created_at', '>=', $month)->sum('total_amount');
+        $monthlyRevenue      = Invoice::revenueBearing()
+            ->where('created_at', '>=', $month)->sum(Invoice::collectedRevenueExpr());
 
         $recentInvoices = Invoice::with(['customer:id,first_name,last_name'])
             ->orderByDesc('created_at')
@@ -361,11 +359,10 @@ class DashboardService
 
         $revenueRows = Invoice::select(
                 DB::raw("{$monthExpr} as month_num"),
-                DB::raw('SUM(total_amount) as revenue'),
+                DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as revenue'),
                 DB::raw('COUNT(*) as bookings')
             )
-            ->whereIn('status', ['paid', 'partial'])
-            ->whereNull('cash_budget_request_id')
+            ->revenueBearing()
             ->whereYear('created_at', $year)
             ->groupBy(DB::raw($monthExpr))
             ->get()
@@ -405,8 +402,8 @@ class DashboardService
     private function topAgents(int $limit = 3): array
     {
         $start = Carbon::now()->startOfMonth();
-        $rows = Invoice::select('created_by', DB::raw('SUM(total_amount) as total'))
-            ->whereIn('status', ['paid', 'partial'])
+        $rows = Invoice::select('created_by', DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as total'))
+            ->revenueBearing()
             ->where('created_at', '>=', $start)
             ->groupBy('created_by')
             ->orderByDesc('total')
@@ -648,33 +645,64 @@ class DashboardService
             ->toArray();
     }
 
-    /** Revenue export data from invoices. */
+    /**
+     * Monthly revenue export from invoices (cash-basis) vs. real expenses.
+     *
+     * Revenue = money actually collected on revenue-bearing invoices.
+     * Expenses = disbursed cash-budget invoices + committed purchase orders,
+     * matching the definition used by ReportController so the two agree.
+     * (Previously this mislabelled collected tax as "expenses", producing a
+     * meaningless Net Profit — see the model's COLLECTED_REVENUE_SQL note.)
+     */
     private function revenueExportData(): array
     {
         $months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
         $year = Carbon::now()->year;
         $driver = DB::connection()->getDriverName();
-        $monthExpr = match ($driver) {
-            'sqlite' => "strftime('%m', created_at)",
-            'mysql'  => "DATE_FORMAT(created_at, '%m')",
-            default  => "to_char(created_at, 'MM')"
+        $monthExpr = fn (string $col) => match ($driver) {
+            'sqlite' => "strftime('%m', {$col})",
+            'mysql'  => "DATE_FORMAT({$col}, '%m')",
+            default  => "to_char({$col}, 'MM')"
         };
-        $rows = Invoice::select(
-                DB::raw("{$monthExpr} as month_num"),
-                DB::raw('SUM(total_amount) as gross'),
-                DB::raw('SUM(COALESCE(tax_amount, 0)) as expenses')
+
+        $revenueRows = Invoice::select(
+                DB::raw("{$monthExpr('created_at')} as month_num"),
+                DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as gross')
             )
+            ->revenueBearing()
             ->whereYear('created_at', $year)
-            ->groupBy(DB::raw($monthExpr))
+            ->groupBy(DB::raw($monthExpr('created_at')))
+            ->get()
+            ->keyBy('month_num');
+
+        // Budget disbursements booked as invoices (matches ReportController).
+        $budgetExpenseRows = Invoice::select(
+                DB::raw("{$monthExpr('created_at')} as month_num"),
+                DB::raw('SUM(total_amount) as spent')
+            )
+            ->where('status', 'disbursed_budget')
+            ->whereYear('created_at', $year)
+            ->groupBy(DB::raw($monthExpr('created_at')))
+            ->get()
+            ->keyBy('month_num');
+
+        // Committed purchase orders (matches ReportController).
+        $poExpenseRows = PurchaseOrder::select(
+                DB::raw("{$monthExpr('created_at')} as month_num"),
+                DB::raw('SUM(total_amount) as spent')
+            )
+            ->whereIn('status', ['approved', 'completed', 'delivered'])
+            ->whereYear('created_at', $year)
+            ->groupBy(DB::raw($monthExpr('created_at')))
             ->get()
             ->keyBy('month_num');
 
         $result = [];
         foreach ($months as $i => $label) {
             $num = str_pad($i + 1, 2, '0', STR_PAD_LEFT);
-            $row = $rows->get($num);
-            $gross = $row ? (float) $row->gross : 0;
-            $expenses = $row ? (float) $row->expenses : 0;
+            $gross = ($r = $revenueRows->get($num)) ? (float) $r->gross : 0;
+            $expenses = (($b = $budgetExpenseRows->get($num)) ? (float) $b->spent : 0)
+                + (($p = $poExpenseRows->get($num)) ? (float) $p->spent : 0);
             $result[] = [
                 'Month'         => $label,
                 'Gross Revenue' => '₱' . number_format($gross, 0),

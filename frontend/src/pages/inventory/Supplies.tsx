@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   LuPackage, LuPlus, LuSearch, LuSettings, LuTriangleAlert, LuX, LuLoaderCircle, LuArrowDownToLine
 } from 'react-icons/lu';
 import { inventoryApi } from '../../api/inventory';
-import { Pagination } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ds';
 import type { InventoryItem, InventoryItemFormData } from '../../types/inventory';
 import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
@@ -138,37 +137,31 @@ function ItemModal({ item, mode = 'create', onClose }: ItemModalProps) {
 
 // ── Main Page ────────────────────────────────────────────────────────────────
 export default function Supplies() {
-  const [search, setSearch] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState('');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
   const [editingItem, setEditingItem] = useState<InventoryItem | undefined>();
+  const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  const [page, setPage] = useState(1);
-
-  const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['inventory', search, categoryFilter, lowStockOnly, page],
-    queryFn: () => inventoryApi.list({ 
-      search: search || undefined, 
-      category: categoryFilter || undefined, 
-      low_stock: lowStockOnly ? true : undefined,
-      page,
-      per_page: 10
-    }),
+  // Load the full supply list once; search / category filtering is handled by the
+  // shared DataTable toolbar (client-side) for a consistent experience. The Low Stock
+  // quick-filter is kept as an explicit toggle.
+  const { data, isLoading } = useQuery({
+    queryKey: ['inventory', 'all'],
+    queryFn: () => inventoryApi.list({ per_page: 1000 }),
     staleTime: 10_000,
-    placeholderData: keepPreviousData,
   });
 
-  const items = data?.data?.data ?? [];
-  const meta = data?.data?.meta;
-
-  const categories = Array.from(new Set(items.map(i => i.category))).filter(Boolean);
+  const allItems = data?.data?.data ?? [];
+  const items = lowStockOnly ? allItems.filter((i) => i.is_low_stock) : allItems;
+  const total = data?.data?.meta?.total ?? allItems.length;
 
   const columns: Column<InventoryItem>[] = [
     {
       key: 'item_name',
       header: 'Item Name',
+      sortable: true,
+      sortValue: (item) => item.item_name,
+      filterValue: (item) => item.item_name,
       render: (item) => (
         <div className="font-bold text-gray-900 dark:text-white text-base">{item.item_name}</div>
       ),
@@ -176,6 +169,8 @@ export default function Supplies() {
     {
       key: 'category',
       header: 'Category',
+      filter: 'select',
+      filterValue: (item) => item.category ?? '',
       render: (item) => (
         <span className="px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-bold tracking-widest uppercase border border-gray-100 dark:border-gray-800">{item.category}</span>
       ),
@@ -198,7 +193,7 @@ export default function Supplies() {
       render: (item) => (
         item.is_low_stock ? (
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-50 text-red-700 text-[10px] font-black uppercase tracking-widest border border-red-100 shadow-sm shadow-red-200/20">
-            <LuArrowDownToLine size={14} /> Reorder (≤{item.reorder_level})
+            <LuArrowDownToLine size={14} /> Low stock — reorder at {item.reorder_level}
           </div>
         ) : (
           <div className="inline-flex items-center px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 text-[10px] font-black uppercase tracking-widest border border-emerald-200 shadow-sm shadow-emerald-200/20">
@@ -244,7 +239,7 @@ export default function Supplies() {
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
-            {meta?.total ?? '0'} Items
+            {total} Items
           </div>
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
             Parts, Fluids & Consumables
@@ -257,24 +252,7 @@ export default function Supplies() {
       </div>
 
       <div className="flex flex-wrap gap-4 items-center">
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 dark:border-gray-800 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-            <LuSearch size={18} />
-          </div>
-          <input
-            type="text"
-            placeholder="Search item name..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-          className="px-4 py-2.5 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-900 font-medium text-gray-600 dark:text-gray-300">
-          <option value="">All Categories</option>
-          {categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
-        </select>
-        <button onClick={() => setLowStockOnly(!lowStockOnly)}
+        <button onClick={() => setLowStockOnly(v => !v)}
           className={`px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 border ${lowStockOnly ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30 shadow-sm' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
           <LuTriangleAlert size={14} className={lowStockOnly ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400'} />
           Low Stock Only
@@ -282,19 +260,13 @@ export default function Supplies() {
       </div>
 
       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-[2rem] shadow-sm overflow-hidden relative">
-        {isPlaceholderData && (
-          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
-            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
-          </div>
-        )}
         <DataTable
           columns={columns}
           data={isLoading ? [] : items}
           rowKey={(item) => item.id}
-          className={cn(
-            'border-0 rounded-none shadow-none transition-all duration-300',
-            isPlaceholderData && 'opacity-60 pointer-events-none saturate-50',
-          )}
+          searchable
+          searchPlaceholder="Search item name…"
+          className={cn('border-0 rounded-none shadow-none')}
           empty={
             isLoading ? (
               <div className="px-6 py-12 text-center text-gray-400">
@@ -312,16 +284,6 @@ export default function Supplies() {
       </div>
 
       {showModal && <ItemModal item={editingItem} mode={modalMode} onClose={() => setShowModal(false)} />}
-
-      {meta && meta.last_page > 1 && (
-        <Pagination
-          currentPage={page}
-          lastPage={meta.last_page}
-          total={meta.total}
-          perPage={meta.per_page}
-          onPageChange={setPage}
-        />
-      )}
     </div>
   );
 }

@@ -16,7 +16,7 @@ import { fleetApi } from '../../api/fleet';
 import type { WorkOrder, WorkOrderFormData } from '../../types/procurement';
 import { WO_STATUS_LABELS, WO_PRIORITY_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
-import { DataTable, type Column } from '../../components/ds';
+import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
@@ -492,6 +492,7 @@ export default function WorkOrders() {
   const canApproveOrEdit = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.role === 'head_mechanic' || user?.role === 'service_adviser';
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [editWO, setEditWO] = useState<WorkOrder | null>(null);
   const [reviewWO, setReviewWO] = useState<WorkOrder | null>(null);
@@ -502,10 +503,12 @@ export default function WorkOrders() {
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['work-orders', search, status, page],
-    queryFn: () => workOrderApi.list({ 
-      search: search || undefined, 
+    queryKey: ['work-orders', search, status, dateRange.from, dateRange.to, page],
+    queryFn: () => workOrderApi.list({
+      search: search || undefined,
       status: status || undefined,
+      date_from: dateRange.from || undefined,
+      date_to: dateRange.to || undefined,
       page,
       per_page: 10
     }),
@@ -672,6 +675,7 @@ export default function WorkOrders() {
           </select>
           <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
+        <TimeframeFilter value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} className="w-full sm:w-auto sm:ml-auto" />
       </div>
 
       {/* Table */}

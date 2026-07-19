@@ -8,7 +8,7 @@ import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 import type { TripTicket } from '../../types';
 import { Modal, Button } from '../../components/ui';
-import { DataTable, type Column } from '../../components/ds';
+import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import { useBuses } from '../../hooks/useFleet';
 import { useUsers } from '../../hooks/useUsers';
 
@@ -924,6 +924,7 @@ export default function TripTickets() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'domestic' | 'international'>('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TripTicket | null>(null);
@@ -943,7 +944,9 @@ export default function TripTickets() {
       t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchType = tripTypeFilter === 'all' || (t as any).trip_type === tripTypeFilter;
-    return matchSearch && matchType;
+    const travel = (t.date_of_travel ?? '').slice(0, 10);
+    const matchDate = (!dateRange.from || travel >= dateRange.from) && (!dateRange.to || travel <= dateRange.to);
+    return matchSearch && matchType && matchDate;
   });
 
   const columns: Column<TripTicket>[] = [
@@ -1040,6 +1043,7 @@ export default function TripTickets() {
               </button>
             ))}
           </div>
+          <TimeframeFilter value={dateRange} onChange={setDateRange} />
           {user?.role !== 'driver' && (
             <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
               + New Trip Ticket

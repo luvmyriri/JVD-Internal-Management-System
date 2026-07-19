@@ -47,6 +47,14 @@ class PurchaseOrderController extends Controller
             });
         }
 
+        // Date range on issue date (inclusive), used by the shared table timeframe filter.
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         $pos = $query->orderByDesc('created_at')
                      ->paginate($request->per_page ?? 20);
 

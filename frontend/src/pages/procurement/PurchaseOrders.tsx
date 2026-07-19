@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
-  LuPlus, LuSearch, LuLoaderCircle, LuX,
+  LuPlus, LuLoaderCircle, LuX,
   LuTrash2, LuChevronDown, LuSendHorizontal, LuCheck, LuTriangleAlert,
   LuFileText, LuHash, LuPackage, LuArrowRight, LuChevronRight,
 } from 'react-icons/lu';
@@ -11,7 +11,8 @@ import { supplierApi } from '../../api/suppliers';
 import type { PurchaseOrder, PurchaseOrderFormData, POLineItem } from '../../types/procurement';
 import { PO_STATUS_LABELS } from '../../constants';
 import { Pagination, Dropdown } from '../../components/ui';
-import { DataTable, type Column } from '../../components/ds';
+import { DataTable, ExportButton, type Column } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import toast from 'react-hot-toast';
 import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -26,6 +27,15 @@ const statusStyles: Record<string, string> = {
   approved:                  'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
   rejected:                  'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
 };
+
+// The approval journey a PO travels, in order. Dot colors mirror the status pills.
+const PO_PIPELINE = [
+  { label: 'Draft',            hint: 'Created',           dot: 'bg-gray-400' },
+  { label: 'Accounting Review', hint: 'Checked by finance', dot: 'bg-amber-500' },
+  { label: 'Verified',         hint: 'Finance approved',   dot: 'bg-blue-500' },
+  { label: 'CEO Approval',     hint: 'Awaiting CEO',       dot: 'bg-purple-500' },
+  { label: 'Approved',         hint: 'Ready to order',     dot: 'bg-emerald-500' },
+];
 
 function StatusBadge({ status }: { status: string }) {
   return (
@@ -365,15 +375,44 @@ export default function PurchaseOrders() {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
   const [page, setPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+
+  // Export every PO matching the active filters (all pages), not just the current page.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await purchaseOrderApi.list({
+        search: search || undefined,
+        status: status || undefined,
+        date_from: dateFrom || undefined,
+        date_to: dateTo || undefined,
+        per_page: 100000,
+      });
+      const all: PurchaseOrder[] = res.data?.data ?? [];
+      exportToCsv(datedFilename('purchase_orders'), all, [
+        { header: 'PO Number', value: (po) => po.po_number },
+        { header: 'Supplier', value: (po) => po.supplier?.company_name ?? `Supplier #${po.supplier_id}` },
+        { header: 'Status', value: (po) => PO_STATUS_LABELS[po.status] ?? po.status },
+        { header: 'Total Amount', value: (po) => po.total_amount },
+        { header: 'Date Issued', value: (po) => String(po.created_at ?? '').slice(0, 10) },
+      ]);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['purchase-orders', search, status, page],
-    queryFn: () => purchaseOrderApi.list({ 
-      search: search || undefined, 
+    queryKey: ['purchase-orders', search, status, dateFrom, dateTo, page],
+    queryFn: () => purchaseOrderApi.list({
+      search: search || undefined,
       status: status || undefined,
+      date_from: dateFrom || undefined,
+      date_to: dateTo || undefined,
       page,
       per_page: 10
     }),
@@ -499,52 +538,43 @@ export default function PurchaseOrders() {
 
   return (
     <div className="space-y-10 pb-12">
-      {/* Header Actions */}
+      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <div className="flex items-center gap-4">
-          <div className="px-3 py-1 bg-gray-50 dark:bg-gray-800 text-gray-400 rounded-lg text-[10px] font-black uppercase tracking-widest border border-gray-100 dark:border-gray-800">
-            {meta?.total ?? '0'} Records
-          </div>
-          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.2em]">
-            Draft → Accounting → CEO
+        <div>
+          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Purchase Orders</h1>
+          <p className="text-sm text-gray-400 font-medium mt-0.5">
+            {meta?.total ?? 0} total · approval workflow below
           </p>
         </div>
-        <button onClick={() => setShowCreate(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
-          <LuPlus size={16} /> New PO
-        </button>
-      </div>
-
-      {/* Pipeline legend */}
-      <div className="flex items-center gap-4 overflow-x-auto pb-2 scrollbar-hide">
-        {['Draft', 'Accounting Review', 'Verified', 'CEO Approval', 'Approved'].map((s, i, arr) => (
-          <div key={s} className="flex items-center gap-4 shrink-0">
-            <span className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 dark:text-gray-500 whitespace-nowrap">{s}</span>
-            {i < arr.length - 1 && <LuArrowRight size={14} className="text-gray-200 dark:text-gray-700" />}
-          </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-4 bg-white dark:bg-gray-800 p-2.5 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 max-w-md flex-1">
-          <div className="w-10 h-10 rounded-xl bg-gray-50 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-            <LuSearch size={18} />
-          </div>
-          <input
-            type="text"
-            placeholder="PO number or supplier..."
-            className="flex-1 bg-transparent border-none focus:ring-0 text-sm font-medium"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+        <div className="flex items-center gap-3">
+          <ExportButton onClick={handleExport} loading={exporting} disabled={pos.length === 0} className="rounded-2xl" />
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-blue-600 text-white text-sm font-bold hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200/50 dark:shadow-blue-900/20">
+            <LuPlus size={16} /> New PO
+          </button>
         </div>
-        <div className="relative">
-          <select value={status} onChange={e => setStatus(e.target.value)}
-            className="pl-5 pr-10 py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-700 dark:text-white font-bold">
-            {statuses.map(s => <option key={s} value={s}>{s ? PO_STATUS_LABELS[s] : 'All Statuses'}</option>)}
-          </select>
-          <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      </div>
+
+      {/* Approval pipeline — the journey every PO travels, left to right */}
+      <div className="rounded-2xl border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 shadow-sm px-5 py-4">
+        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-4">Approval Flow</p>
+        <div className="flex items-start overflow-x-auto scrollbar-hide">
+          {PO_PIPELINE.map((stage, i, arr) => (
+            <div key={stage.label} className="flex items-start shrink-0">
+              <div className="flex flex-col items-center text-center gap-1.5 w-[92px]">
+                <span className={cn('flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-black text-white shadow-sm', stage.dot)}>
+                  {i + 1}
+                </span>
+                <span className="text-xs font-bold text-gray-700 dark:text-gray-200 leading-tight">{stage.label}</span>
+                <span className="text-[10px] text-gray-400 leading-tight">{stage.hint}</span>
+              </div>
+              {i < arr.length - 1 && (
+                <div className="h-7 flex items-center px-1">
+                  <LuArrowRight size={14} className="text-gray-300 dark:text-gray-600" />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -559,6 +589,27 @@ export default function PurchaseOrders() {
           columns={columns}
           data={pos}
           rowKey={(po) => po.id}
+          serverToolbar={{
+            search: {
+              value: search,
+              placeholder: 'PO number or supplier…',
+              onChange: (v) => { setSearch(v); setPage(1); },
+            },
+            selects: [{
+              key: 'status',
+              label: 'Statuses',
+              value: status,
+              onChange: (v) => { setStatus(v); setPage(1); },
+              options: statuses.filter(Boolean).map((s) => ({ value: s, label: PO_STATUS_LABELS[s] ?? s })),
+            }],
+            date: {
+              from: dateFrom,
+              to: dateTo,
+              onChange: ({ from, to }) => { setDateFrom(from); setDateTo(to); setPage(1); },
+            },
+            total: meta?.total,
+            onClear: () => { setSearch(''); setStatus(''); setDateFrom(''); setDateTo(''); setPage(1); },
+          }}
           className={cn('border-0 rounded-none', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
           empty={
             isLoading ? (

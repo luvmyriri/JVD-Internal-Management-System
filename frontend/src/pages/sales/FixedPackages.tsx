@@ -24,7 +24,7 @@ import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { getBreakdownSum, type NewServiceForm } from './fixedPackagesUtils';
-import { buildServiceQuotationHtml } from './FixedPackageQuotationPrint';
+import QuotationRecipientModal from './QuotationRecipientModal';
 import FixedPackageServiceFormModal from './FixedPackageServiceFormModal';
 
 export default function FixedPackages() {
@@ -351,32 +351,13 @@ export default function FixedPackages() {
       : Number(selectedServiceForDetail.price) * (1 - (selectedDetailChildDiscount / 100)))
     : 0;
 
+  const [showQuotationModal, setShowQuotationModal] = useState(false);
+
+  // Open the recipient step; the modal persists the quotation (sequential number,
+  // VAT breakdown) and then prints the finished business quotation.
   const handlePrintService = () => {
     if (!selectedServiceForDetail) return;
-
-    const service = selectedServiceForDetail;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      alert('Please allow popups to print the brochure.');
-      return;
-    }
-
-    const agentName = user ? `${user.first_name} ${user.last_name}` : 'JVD Events Agent';
-
-    printWindow.document.write(buildServiceQuotationHtml({
-      service,
-      bookingTourVehicle,
-      bookingTourExtraDays,
-      bookingTourExtraHours,
-      bookingAdults,
-      bookingChildren,
-      selectedDetailAdultPrice,
-      selectedDetailChildPrice,
-      selectedDetailChildDiscount,
-      agentName,
-    }));
-
-    printWindow.document.close();
+    setShowQuotationModal(true);
   };
 
   const filteredServices = useMemo(() => {
@@ -1639,7 +1620,7 @@ export default function FixedPackages() {
                   onClick={handlePrintService}
                   className="w-full py-5 bg-slate-800 dark:bg-gray-800 text-white rounded-2xl text-xs uppercase tracking-widest shadow-xl shadow-slate-900/10 hover:bg-slate-700 dark:hover:bg-gray-700 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
-                  <LuPrinter className="w-5 h-5" /> Print Brochure / Quotation
+                  <LuPrinter className="w-5 h-5" /> Prepare Quotation
                 </button>
                 <button
                   type="button"
@@ -1652,6 +1633,25 @@ export default function FixedPackages() {
             </div>
           </div>
         </div>
+      )}
+
+      {showQuotationModal && selectedServiceForDetail && (
+        <QuotationRecipientModal
+          service={selectedServiceForDetail}
+          agentName={user ? `${user.first_name} ${user.last_name}` : 'JVD Events Agent'}
+          pricing={{
+            service: selectedServiceForDetail,
+            bookingTourVehicle,
+            bookingTourExtraDays,
+            bookingTourExtraHours,
+            bookingAdults,
+            bookingChildren,
+            selectedDetailAdultPrice,
+            selectedDetailChildPrice,
+            selectedDetailChildDiscount,
+          }}
+          onClose={() => setShowQuotationModal(false)}
+        />
       )}
 
       {/* Confirm Delete Dialog */}

@@ -30,6 +30,14 @@ class CollectionController extends Controller
             $query->where('collection_status', $request->status);
         }
 
+        // Filter by created date range (inclusive) for the shared timeframe filter.
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         // Hide fully-settled (zero balance) records unless the user explicitly views 'completed'
         $isViewingCompleted = $request->has('status') && $request->status === 'completed';
         if (!$isViewingCompleted) {

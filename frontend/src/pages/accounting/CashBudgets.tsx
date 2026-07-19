@@ -11,7 +11,8 @@ import { purchaseOrderApi } from '../../api/purchaseOrders';
 import { workOrderApi } from '../../api/workOrders';
 import type { CashBudgetRequest } from '../../types';
 import { Modal, Button, PipelineVisualizer } from '../../components/ui';
-import { DataTable, EmptyState, type Column } from '../../components/ds';
+import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import CashBudgetDetailModal from './CashBudgetDetailModal';
@@ -51,6 +52,7 @@ export default function CashBudgets() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [selectedBudget, setSelectedBudget] = useState<CashBudgetRequest | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -77,7 +79,9 @@ export default function CashBudgets() {
       b.tripTicket?.control_no?.toLowerCase().includes(q) ||
       b.preparedBy?.name?.toLowerCase().includes(q);
     const matchStatus = statusFilter === 'all' || b.status === statusFilter;
-    return matchSearch && matchStatus;
+    const created = (b.created_at ?? '').slice(0, 10);
+    const matchDate = (!dateRange.from || created >= dateRange.from) && (!dateRange.to || created <= dateRange.to);
+    return matchSearch && matchStatus && matchDate;
   });
 
   // Summary counts
@@ -291,6 +295,22 @@ export default function CashBudgets() {
               </button>
             ))}
           </div>
+
+          {/* Timeframe filter */}
+          <TimeframeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-auto sm:ml-auto" />
+          <ExportButton
+            disabled={filtered.length === 0}
+            onClick={() => exportToCsv(datedFilename('cash_budgets'), filtered, [
+              { header: 'ID', value: (b) => b.id },
+              { header: 'Destination', value: (b) => b.destination ?? '' },
+              { header: 'Plate #', value: (b) => b.plate_number ?? '' },
+              { header: 'DTT', value: (b) => b.tripTicket?.control_no ?? '' },
+              { header: 'Prepared By', value: (b) => b.preparedBy?.name ?? '' },
+              { header: 'Total Amount', value: (b) => b.total_amount ?? '' },
+              { header: 'Status', value: (b) => b.status },
+              { header: 'Date', value: (b) => (b.created_at ?? '').slice(0, 10) },
+            ])}
+          />
         </div>
 
         {/* Data Table */}

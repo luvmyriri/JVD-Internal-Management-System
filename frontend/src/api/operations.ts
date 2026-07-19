@@ -29,7 +29,30 @@ export const cashBudgetApi = {
   delete: (id: number) => client.delete(`/cash-budgets/${id}`).then((res) => res.data),
 };
 
+export interface JournalEntryLineInput {
+  account_id: number | '';
+  debit: number | string;
+  credit: number | string;
+  description?: string;
+}
+
+export interface JournalImportResult {
+  posted_count: number;
+  failed_count: number;
+  posted: Array<{ entry_ref: string; id: number }>;
+  failed: Array<{ entry_ref: string; error: string }>;
+}
+
 export const ledgerApi = {
   getJournalEntries: (params?: any) => client.get('/accounting/journal-entries', { params }).then((res) => res.data),
   getJournalEntry: (id: number) => client.get(`/accounting/journal-entries/${id}`).then((res) => res.data),
+  createJournalEntry: (payload: { date: string; notes: string; lines: JournalEntryLineInput[] }) =>
+    client.post('/accounting/journal-entries', payload).then((res) => res.data),
+  importJournalEntries: (file: File) => {
+    const form = new FormData();
+    form.append('file', file);
+    return client
+      .post<{ success: boolean; message: string; data: JournalImportResult }>('/accounting/journal-entries/import', form)
+      .then((res) => res.data);
+  },
 };

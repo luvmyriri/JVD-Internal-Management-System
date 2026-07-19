@@ -55,6 +55,14 @@ class WorkOrderController extends Controller
             });
         }
 
+        // Date range (inclusive) for the shared timeframe filter.
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         $wos = $query->orderByDesc('created_at')
                      ->paginate($request->per_page ?? 20);
 

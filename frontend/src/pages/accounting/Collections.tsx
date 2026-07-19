@@ -12,7 +12,8 @@ import client from '../../api/client';
 import { customerApi } from '../../api/customers';
 import type { Collection, CollectionPayment } from '../../types';
 import { Modal, Button } from '../../components/ui';
-import { DataTable, EmptyState, type Column } from '../../components/ds';
+import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -252,6 +253,7 @@ export default function Collections() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
 
   // Modal States
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -277,12 +279,14 @@ export default function Collections() {
   }, [searchTerm]);
 
   const { data: responseData, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['collections', { search: debouncedSearch, status: statusFilter }],
+    queryKey: ['collections', { search: debouncedSearch, status: statusFilter, from: dateRange.from, to: dateRange.to }],
     queryFn: async () => {
       if (!hasGeneralAccess) return { data: [], stats: null };
       const response = await collectionApi.getAll({
         search: debouncedSearch,
-        status: statusFilter
+        status: statusFilter,
+        date_from: dateRange.from || undefined,
+        date_to: dateRange.to || undefined,
       });
       return response;
     },
@@ -674,6 +678,22 @@ export default function Collections() {
               </button>
             ))}
           </div>
+
+          {/* Timeframe filter */}
+          <TimeframeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-auto sm:ml-auto" />
+          <ExportButton
+            disabled={collections.length === 0}
+            onClick={() => exportToCsv(datedFilename('collections'), collections, [
+              { header: 'Client', value: (c) => c.client_name },
+              { header: 'Service Type', value: (c) => (c.service_type === 'Other' && c.other_service_type ? c.other_service_type : c.service_type) },
+              { header: 'Invoice #', value: (c) => c.invoice?.invoice_number ?? '' },
+              { header: 'Billing Amount', value: (c) => c.billing_amount ?? c.rate ?? '' },
+              { header: 'Paid', value: (c) => c.paid_amount ?? '' },
+              { header: 'Remaining', value: (c) => c.remaining_balance ?? '' },
+              { header: 'Status', value: (c) => c.collection_status },
+              { header: 'Date', value: (c) => (c.created_at ?? '').slice(0, 10) },
+            ])}
+          />
         </div>
 
         {/* Data Table */}

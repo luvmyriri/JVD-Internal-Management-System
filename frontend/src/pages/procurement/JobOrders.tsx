@@ -18,7 +18,7 @@ import { supplierApi } from '../../api/suppliers';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
-import { DataTable, type Column } from '../../components/ds';
+import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import toast from 'react-hot-toast';
 import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -509,6 +509,7 @@ export default function JobOrders() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [serviceType, setServiceType] = useState('');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [detailJO, setDetailJO] = useState<JobOrder | null>(null);
   const [generatePOJO, setGeneratePOJO] = useState<JobOrder | null>(null);
@@ -518,11 +519,13 @@ export default function JobOrders() {
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['job-orders', search, status, serviceType, page],
+    queryKey: ['job-orders', search, status, serviceType, dateRange.from, dateRange.to, page],
     queryFn: () => jobOrderApi.list({
       search: search || undefined,
       status: status || undefined,
       service_type: serviceType || undefined,
+      date_from: dateRange.from || undefined,
+      date_to: dateRange.to || undefined,
       page,
       per_page: 10
     }),
@@ -707,6 +710,7 @@ export default function JobOrders() {
           </select>
           <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
+        <TimeframeFilter value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} className="w-full sm:w-auto sm:ml-auto" />
       </div>
 
       {/* Table */}
