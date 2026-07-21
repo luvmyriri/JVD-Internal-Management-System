@@ -260,7 +260,7 @@ class InvoiceFinalizationService
         );
         $invoice->update($statusResult);
 
-        if (in_array($invoice->payment_method, ['GCash', 'Card']) && !$invoice->payment_id) {
+        if (in_array($invoice->payment_method, ['GCash', 'Card', 'PayMaya']) && !$invoice->payment_id) {
             $paymongo = new \App\Services\PayMongoService();
             $payData = [
                 'line_items' => array_map(function ($item) {
@@ -279,7 +279,7 @@ class InvoiceFinalizationService
                     ];
                 }, $processedItems),
                 'description' => "JVD Order #{$invoice->invoice_number}",
-                'payment_method_types' => $invoice->payment_method === 'GCash' ? ['gcash'] : ['card'],
+                'payment_method_types' => $invoice->payment_method === 'GCash' ? ['gcash'] : ($invoice->payment_method === 'PayMaya' ? ['paymaya'] : ['card']),
             ];
 
             $session = $paymongo->createCheckoutSession($payData);

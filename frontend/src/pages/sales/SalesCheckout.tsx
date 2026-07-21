@@ -14,7 +14,8 @@ import {
   LuMail,
   LuWallet,
   LuLoaderCircle,
-  LuPenLine
+  LuPenLine,
+  LuSmartphone
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
@@ -282,13 +283,13 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
       } as any);
 
-      setLastInvoice(response.data.data);
-      setReceiptAmountReceived(amountReceived);
-      setReceiptChange(change);
-      setShowReceipt(true);
-
       if (response.data.data.payment_url) {
         window.open(response.data.data.payment_url, '_blank');
+      } else {
+        setLastInvoice(response.data.data);
+        setReceiptAmountReceived(amountReceived);
+        setReceiptChange(change);
+        setShowReceipt(true);
       }
 
       resetCheckoutForm();
@@ -532,7 +533,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment Method</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <button
               onClick={() => setPaymentMethod('Cash')}
               className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'Cash'
@@ -550,8 +551,28 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                 }`}
             >
-              <LuCreditCard className="w-5 h-5" />
+              <LuSmartphone className="w-5 h-5" />
               <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
+            </button>
+            <button
+              onClick={() => setPaymentMethod('PayMaya')}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'PayMaya'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                }`}
+            >
+              <LuSmartphone className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">PayMaya</span>
+            </button>
+            <button
+              onClick={() => setPaymentMethod('Card')}
+              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'Card'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                }`}
+            >
+              <LuCreditCard className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">Card</span>
             </button>
           </div>
           {paymentMethod === 'Cash' && (

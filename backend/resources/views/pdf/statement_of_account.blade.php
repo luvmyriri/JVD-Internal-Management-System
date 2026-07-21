@@ -85,7 +85,7 @@
         $serviceType    = $invoice->service_type ?? null;
         $serviceLabel   = ($serviceType === 'Other' ? ($invoice->other_service_type ?? 'Other Service') : $serviceType) ?? 'General Service';
         $paymentHistory = $invoice->payments ?? collect([]);
-        $travelDate     = isset($invoice->travel_date) ? $invoice->travel_date : ($invoice->due_date ?? null);
+        $travelDate     = optional($invoice->booking)->travel_date ?? ($invoice->due_date ?? null);
     @endphp
 
     {{-- ── HEADER ── --}}
@@ -154,36 +154,39 @@
         </tr>
     </table>
 
-    @if($invoice->travel_date || $invoice->bus_id || $invoice->driver_id || $invoice->tour_code || $invoice->pickup_location || $invoice->pax_count)
+    @php
+        $b = $invoice->booking;
+    @endphp
+    @if($b && ($b->travel_date || $b->bus_id || $b->driver_id || $b->tour_code || $b->pickup_location || $b->pax_count))
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 14px; margin-bottom: 20px; font-size: 10px;">
         <div style="font-size: 8px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;">Travel &amp; Assignment Details</div>
         <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
             <tr>
-                @if($invoice->travel_date)
-                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Travel Date:</strong> {{ \Carbon\Carbon::parse($invoice->travel_date)->format('F d, Y') }}</td>
+                @if($b->travel_date)
+                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Travel Date:</strong> {{ \Carbon\Carbon::parse($b->travel_date)->format('F d, Y') }}</td>
                 @endif
-                @if($invoice->tour_code)
-                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Tour/Joiner Code:</strong> {{ $invoice->tour_code }}</td>
+                @if($b->tour_code)
+                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Tour/Joiner Code:</strong> {{ $b->tour_code }}</td>
                 @endif
-                @if($invoice->pax_count)
-                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Pax Count:</strong> {{ $invoice->pax_count }} Pax</td>
+                @if($b->pax_count)
+                <td style="width: 33.3%; padding: 3px 0; vertical-align: top;"><strong>Pax Count:</strong> {{ $b->pax_count }} Pax</td>
                 @endif
             </tr>
-            @if($invoice->pickup_location)
+            @if($b->pickup_location)
             <tr>
-                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Pickup Location:</strong> {{ $invoice->pickup_location }}</td>
+                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Pickup Location:</strong> {{ $b->pickup_location }}</td>
             </tr>
             @endif
-            @if($invoice->bus_id || $invoice->driver_id)
+            @if($b->bus_id || $b->driver_id)
             <tr>
-                @if($invoice->bus)
-                <td style="padding: 3px 0; vertical-align: top;"><strong>Bus Assigned:</strong> {{ $invoice->bus->plate_number }} ({{ $invoice->bus->model }})</td>
+                @if($b->bus)
+                <td style="padding: 3px 0; vertical-align: top;"><strong>Bus Assigned:</strong> {{ $b->bus->plate_number }} ({{ $b->bus->model }})</td>
                 @endif
-                @if($invoice->driver)
-                <td style="padding: 3px 0; vertical-align: top;"><strong>Driver:</strong> {{ $invoice->driver->first_name }} {{ $invoice->driver->last_name }}</td>
+                @if($b->driver)
+                <td style="padding: 3px 0; vertical-align: top;"><strong>Driver:</strong> {{ $b->driver->first_name }} {{ $b->driver->last_name }}</td>
                 @endif
-                @if($invoice->seat_map && count($invoice->seat_map) > 0)
-                <td style="padding: 3px 0; vertical-align: top;"><strong>Selected Seats:</strong> {{ implode(', ', $invoice->seat_map) }}</td>
+                @if($b->seat_map && count($b->seat_map) > 0)
+                <td style="padding: 3px 0; vertical-align: top;"><strong>Selected Seats:</strong> {{ implode(', ', $b->seat_map) }}</td>
                 @endif
             </tr>
             @endif
