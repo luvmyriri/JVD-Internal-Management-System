@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
+import {
   LuScrollText, 
   LuFilter, 
   LuCalendar,
@@ -14,6 +13,7 @@ import {
 } from 'react-icons/lu';
 import { useAuditLogs, type AuditLog } from '../../hooks/useAuditLogs';
 import { Button, StatusBadge, Modal } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { formatDate, timeAgo } from '../../utils';
 
 export default function ActivityLogs() {
@@ -44,6 +44,82 @@ export default function ActivityLogs() {
       default: return 'indigo';
     }
   };
+
+  const columns: Column<AuditLog>[] = [
+    {
+      key: 'timestamp',
+      header: 'Timestamp',
+      render: (log) => (
+        <div className="flex flex-col">
+          <span className="text-sm font-semibold text-gray-300">{formatDate(log.created_at)}</span>
+          <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+            <LuCalendar size={10} />
+            {timeAgo(log.created_at)}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'user',
+      header: 'User',
+      render: (log) => (
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
+            <LuUser size={16} />
+          </div>
+          <div>
+            <p className="text-sm font-bold text-gray-200">
+              {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System'}
+            </p>
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono tracking-tighter uppercase">{log.performed_by?.role || 'SYSTEM'}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      render: (log) => (
+        <StatusBadge
+          status={log.action}
+          variant={getActionColor(log.action) as any}
+          className="font-mono text-[10px]"
+        />
+      ),
+    },
+    {
+      key: 'module',
+      header: 'Module',
+      render: (log) => (
+        <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded capitalize tracking-tight">
+          {log.module.replace('-', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'ip_address',
+      header: 'IP Address',
+      render: (log) => (
+        <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-mono text-xs">
+          <LuGlobe size={12} />
+          {log.ip_address}
+        </div>
+      ),
+    },
+    {
+      key: 'details',
+      header: 'Details',
+      align: 'right',
+      render: (log) => (
+        <button
+          onClick={() => handleViewDetails(log)}
+          className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-xl transition-all"
+        >
+          <LuEye size={18} />
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-6">
@@ -100,88 +176,25 @@ export default function ActivityLogs() {
 
       {/* Logs Table */}
       <div className="bg-gray-900/50 border border-gray-800 rounded-2xl overflow-hidden backdrop-blur-sm shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="bg-gray-800/30 text-gray-400 text-[10px] uppercase tracking-[0.2em] font-black border-b border-gray-800">
-                <th className="px-6 py-4">Timestamp</th>
-                <th className="px-6 py-4">User</th>
-                <th className="px-6 py-4">Action</th>
-                <th className="px-6 py-4">Module</th>
-                <th className="px-6 py-4">IP Address</th>
-                <th className="px-6 py-4 text-right">Details</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-800/50">
-              {isLoading ? (
-                Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8 bg-gray-900/20" />
-                  </tr>
-                ))
-              ) : (
-                logsData?.data?.map((log, i) => (
-                  <motion.tr 
-                    key={log.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.03 }}
-                    className="hover:bg-white dark:bg-gray-900/5 transition-colors group"
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold text-gray-300">{formatDate(log.created_at)}</span>
-                        <span className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                          <LuCalendar size={10} />
-                          {timeAgo(log.created_at)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-400 border border-indigo-500/20">
-                          <LuUser size={16} />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-gray-200">
-                            {log.performed_by ? `${log.performed_by.first_name} ${log.performed_by.last_name}` : 'System'}
-                          </p>
-                          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-mono tracking-tighter uppercase">{log.performed_by?.role || 'SYSTEM'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <StatusBadge 
-                        status={log.action} 
-                        variant={getActionColor(log.action) as any} 
-                        className="font-mono text-[10px]"
-                      />
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-xs font-bold text-gray-400 bg-gray-800 px-2 py-1 rounded capitalize tracking-tight">
-                        {log.module.replace('-', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5 text-gray-500 dark:text-gray-400 font-mono text-xs">
-                        <LuGlobe size={12} />
-                        {log.ip_address}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => handleViewDetails(log)}
-                        className="p-2 text-gray-400 hover:text-indigo-400 hover:bg-indigo-400/10 rounded-xl transition-all"
-                      >
-                        <LuEye size={18} />
-                      </button>
-                    </td>
-                  </motion.tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={logsData?.data ?? []}
+          rowKey={(log) => log.id}
+          empty={
+            isLoading ? (
+              <div className="divide-y divide-gray-800/50">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="animate-pulse px-6 py-8 bg-gray-900/20" />
+                ))}
+              </div>
+            ) : (
+              <div className="px-6 py-20 text-center text-gray-500 dark:text-gray-400">
+                <LuScrollText size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-600" />
+                <p className="text-sm font-medium">No activity logs found.</p>
+              </div>
+            )
+          }
+        />
 
         {/* Pagination */}
         <div className="p-4 border-t border-gray-800 flex items-center justify-between">

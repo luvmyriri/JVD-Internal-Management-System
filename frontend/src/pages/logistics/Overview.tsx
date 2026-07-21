@@ -10,667 +10,13 @@ import { fleetApi } from '../../api/fleet';
 import BusLayout from '../../components/ui/BusLayout';
 import type { TripTicket } from '../../types';
 import { cn, fullName } from '../../utils';
-import { EmployeeName } from '../../components/ds';
-
-// Status badge helper compatible with global styles
-const statusStyles: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700/50',
-  approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30',
-  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/30',
-};
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
-];
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span className={cn(
-      "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm",
-      statusStyles[status] ?? 'bg-gray-100 text-gray-600'
-    )}>
-      {status}
-    </span>
-  );
-}
-
-// Print logic extracted and matched from TripTickets
-function printTripTicket(ticket: TripTicket) {
-  const win = window.open('', '_blank', 'width=800,height=1100');
-  if (!win) return;
-
-  const driverName = ticket.driver?.name || 'TBA';
-  const plateNo = ticket.bus?.plate_number || ticket.plate_no || 'TBA';
-  const unitBus = ticket.bus?.plate_number || plateNo;
-
-  const html = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Driver's Trip Ticket - ${ticket.control_no}</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: Arial, sans-serif;
-      font-size: 11px;
-      color: #000;
-      background: #fff;
-      padding: 18px 24px;
-    }
-    .dtt-wrap {
-      width: 100%;
-      max-width: 680px;
-      margin: 0 auto;
-      border: 2px solid #000;
-    }
-    .dtt-header {
-      display: flex;
-      align-items: stretch;
-      border-bottom: 2px solid #000;
-    }
-    .dtt-logo-cell {
-      padding: 8px 12px;
-      border-right: 2px solid #000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 80px;
-    }
-    .dtt-logo-box {
-      width: 52px; height: 52px;
-      border: 3px solid #1a56db;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: 900;
-      color: #1a56db;
-      letter-spacing: -1px;
-    }
-    .dtt-title-cell {
-      flex: 1;
-      padding: 8px 14px;
-      border-right: 2px solid #000;
-      text-align: center;
-    }
-    .dtt-title-cell h1 {
-      font-size: 16px;
-      font-weight: 900;
-      letter-spacing: 0.5px;
-    }
-    .dtt-title-cell p {
-      font-size: 13px;
-      font-weight: 700;
-    }
-    .dtt-control-cell {
-      padding: 8px 12px;
-      min-width: 160px;
-      font-size: 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .dtt-control-cell span { font-weight: 700; }
-    .dtt-grid { width: 100%; border-collapse: collapse; }
-    .dtt-grid td, .dtt-grid th {
-      border: 1px solid #000;
-      padding: 5px 8px;
-      vertical-align: top;
-      font-size: 11px;
-    }
-    .dtt-grid td.label { font-weight: 700; white-space: nowrap; }
-    .dtt-grid td.val { min-width: 140px; }
-    .sig-section {
-      display: flex;
-      border-top: 2px solid #000;
-    }
-    .sig-half {
-      flex: 1;
-      padding: 10px 14px;
-      min-height: 80px;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-end;
-      gap: 4px;
-      font-size: 10px;
-    }
-    .sig-half:first-child { border-right: 1px solid #000; }
-    .sig-half .sig-line { border-top: 1px solid #000; margin-top: 20px; padding-top: 3px; text-align: center; }
-    .sig-half .title-bold { font-weight: 900; font-size: 11px; text-align: center; margin-bottom: 2px; }
-    .sig-half .approver-name { font-weight: 700; font-size: 11px; }
-    .sig-half .approver-role { font-size: 10px; }
-    .section-header {
-      background: #e8e8e8;
-      text-align: center;
-      font-weight: 900;
-      font-size: 11.5px;
-      padding: 5px;
-      border-top: 2px solid #000;
-      border-bottom: 1px solid #000;
-      letter-spacing: 0.5px;
-    }
-    .liq-wrap {
-      display: flex;
-      border-top: 1px solid #000;
-    }
-    .liq-left {
-      flex: 1;
-      border-right: 1px solid #000;
-      padding: 8px 12px;
-    }
-    .liq-left .liq-title { font-weight: 900; font-size: 12px; margin-bottom: 6px; }
-    .liq-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      margin-bottom: 5px;
-      font-size: 11px;
-    }
-    .liq-row .liq-label { min-width: 110px; }
-    .liq-row .liq-underline {
-      flex: 1;
-      border-bottom: 1px solid #000;
-      padding-bottom: 2px;
-      text-align: right;
-      font-weight: 700;
-    }
-    .liq-sig { margin-top: 14px; border-top: 1px solid #000; padding-top: 4px; text-align: center; font-size: 10px; }
-    .liq-right {
-      flex: 1;
-      padding: 8px 12px;
-    }
-    .liq-right .fuel-title { font-weight: 900; font-size: 12px; margin-bottom: 6px; }
-    .gauge-row {
-      display: flex;
-      gap: 20px;
-      align-items: flex-end;
-      margin: 8px 0;
-      font-size: 10.5px;
-    }
-    .gauge-item { text-align: center; }
-    .gauge-label { font-weight: 700; margin-bottom: 4px; font-size: 10.5px; }
-    .gauge-svg { display: block; margin: 0 auto; }
-    .odometer-row { margin-top: 10px; }
-    .odometer-row .od-label { font-weight: 700; font-size: 11px; margin-bottom: 4px; }
-    .od-line { border-bottom: 1px solid #000; min-height: 18px; margin-bottom: 3px; }
-    .certify-row {
-      border-top: 1px solid #000;
-      padding: 8px 12px;
-      font-size: 10.5px;
-      font-style: italic;
-      text-align: center;
-    }
-    .certify-sig-line {
-      border-top: 1px solid #000;
-      margin-top: 18px;
-      padding-top: 3px;
-      text-align: center;
-      font-size: 10px;
-      font-style: normal;
-    }
-    .pax-header {
-      background: #e8e8e8;
-      text-align: center;
-      font-weight: 900;
-      font-size: 11.5px;
-      padding: 5px;
-      border-top: 2px solid #000;
-      border-bottom: 1px solid #000;
-      letter-spacing: 0.5px;
-    }
-    .pax-body { padding: 10px 16px; }
-    .pax-body p { font-size: 11px; margin-bottom: 10px; }
-    .pax-ratings { display: flex; gap: 18px; margin-bottom: 10px; font-size: 11px; }
-    .pax-ratings span { display: flex; align-items: center; gap: 5px; }
-    .pax-box { display: inline-block; width: 12px; height: 12px; border: 1.5px solid #000; vertical-align: middle; }
-    .pax-sig-line { border-top: 1px solid #000; padding-top: 3px; text-align: center; font-size: 10px; margin-top: 10px; }
-    @media print {
-      body { padding: 0; }
-      .dtt-wrap { border: 2px solid #000; }
-      .no-print { display: none; }
-    }
-  </style>
-</head>
-<body>
-
-  <div class="no-print" style="text-align:right; margin-bottom:10px;">
-    <button onclick="window.print()" style="padding:8px 20px; background:#1a56db; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">🖨️ Print</button>
-    <button onclick="window.close()" style="margin-left:10px; padding:8px 20px; background:#6b7280; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">✕ Close</button>
-  </div>
-
-  <div class="dtt-wrap">
-    <div class="dtt-header">
-      <div class="dtt-logo-cell">
-        <img src="/JVDlogo-removebg-preview.png" style="width: 64px; height: 64px; object-fit: contain;" alt="JVD Logo" />
-      </div>
-      <div class="dtt-title-cell">
-        <h1>DRIVER'S TRIP TICKET</h1>
-        <p>(DTT)</p>
-      </div>
-      <div class="dtt-control-cell">
-        <div><span>Control No.:</span> ${ticket.control_no}</div>
-        <div><span>Issue Date:</span> ${ticket.issue_date || ''}</div>
-      </div>
-    </div>
-
-    <table class="dtt-grid">
-      <tr>
-        <td class="label">Date of Travel:</td>
-        <td class="val">${ticket.date_of_travel}</td>
-        <td class="label">Duration:</td>
-        <td class="val">${ticket.duration || ''}</td>
-      </tr>
-      <tr>
-        <td class="label">Pick Up:</td>
-        <td class="val">${ticket.pick_up}</td>
-        <td class="label">Drop Off:</td>
-        <td class="val">${ticket.drop_off}</td>
-      </tr>
-      <tr>
-        <td class="label">Unit/Bus:</td>
-        <td class="val">${unitBus}</td>
-        <td class="label">Plate No.:</td>
-        <td class="val">${plateNo}</td>
-      </tr>
-      <tr>
-        <td class="label">No of Passengers:</td>
-        <td class="val">${ticket.no_of_passengers}${ticket.passenger_name ? ' — ' + ticket.passenger_name : ''}</td>
-        <td class="label">Driver:</td>
-        <td class="val">${driverName}</td>
-      </tr>
-    </table>
-
-    <div class="sig-section">
-      <div class="sig-half">
-        <div class="title-bold">Requested By:</div>
-        <div class="sig-line">Name in Print/Signature</div>
-      </div>
-      <div class="sig-half">
-        <div class="title-bold">Approved By:</div>
-        <div style="text-align:center; margin-top:24px;">
-          <div class="approver-name">Rhean O. Umali</div>
-          <div class="approver-role">Executive Vice President</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="section-header">DRIVER'S TRAVEL COMPLETION REPORT</div>
-
-    <div class="liq-wrap">
-      <div class="liq-left">
-        <div class="liq-title">Liquidation</div>
-        <div class="liq-row">
-          <span class="liq-label">Meal Allowance</span>
-          <span class="liq-underline">${ticket.meal_allowance ? '₱ ' + Number(ticket.meal_allowance).toLocaleString() : '₱ 0.00'}</span>
-        </div>
-        <div class="liq-row">
-          <span class="liq-label">Diesel</span>
-          <span class="liq-underline">${ticket.diesel ? '₱ ' + Number(ticket.diesel).toLocaleString() : '₱ 0.00'}</span>
-        </div>
-        <div class="liq-row">
-          <span class="liq-label">SOP</span>
-          <span class="liq-underline">${ticket.sop ? '₱ ' + Number(ticket.sop).toLocaleString() : '₱ 0.00'}</span>
-        </div>
-        <div class="liq-row">
-          <span class="liq-label">Easy Trip</span>
-          <span class="liq-underline">${ticket.easy_trip ? '₱ ' + Number(ticket.easy_trip).toLocaleString() : '₱ 0.00'}</span>
-        </div>
-        <div class="liq-row">
-          <span class="liq-label">Autosweep</span>
-          <span class="liq-underline">${ticket.autosweep ? '₱ ' + Number(ticket.autosweep).toLocaleString() : '₱ 0.00'}</span>
-        </div>
-        <div class="liq-sig">Signature</div>
-      </div>
-
-      <div class="liq-right">
-        <div class="fuel-title">Fuel Consumed for the Trip</div>
-        <div style="font-size:10.5px; margin-bottom:6px;">Fuel Gauge Reading</div>
-        <div class="gauge-row">
-          <div class="gauge-item">
-            <div class="gauge-label">Before</div>
-            <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
-              <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <line x1="40" y1="44" x2="10" y2="20" stroke="#000" stroke-width="2" stroke-linecap="round"/>
-              <text x="2" y="47" font-size="9" font-weight="700">E</text>
-              <text x="70" y="47" font-size="9" font-weight="700">F</text>
-            </svg>
-          </div>
-          <div class="gauge-item">
-            <div class="gauge-label">After</div>
-            <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
-              <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <line x1="40" y1="44" x2="10" y2="20" stroke="#000" stroke-width="2" stroke-linecap="round"/>
-              <text x="2" y="47" font-size="9" font-weight="700">E</text>
-              <text x="70" y="47" font-size="9" font-weight="700">F</text>
-            </svg>
-          </div>
-        </div>
-        <div class="odometer-row">
-          <div class="od-label">Odometer (Km) Reading</div>
-          <div style="display:flex; gap:14px;">
-            <div style="flex:1;">
-              <div style="font-size:9.5px;">Before</div>
-              <div class="od-line"></div>
-            </div>
-            <div style="flex:1;">
-              <div style="font-size:9.5px;">After</div>
-              <div class="od-line"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="certify-row">
-      I hereby certify to the correctness of the above statement of the record travel
-      <div class="certify-sig-line">Driver's Name in Print and Signature</div>
-    </div>
-
-    <div class="pax-header">PASSENGER CERTIFICATION</div>
-    <div class="pax-body">
-      <p>
-        I hereby certify that I used this vehicle on _______________ from _____________ to _____________ I also rate the service provided as:
-      </p>
-      <div class="pax-ratings">
-        <span><span class="pax-box"></span> Outstanding</span>
-        <span><span class="pax-box"></span> Satisfactory</span>
-        <span><span class="pax-box"></span> Needs Improvement</span>
-        <span><span class="pax-box"></span> Poor</span>
-      </div>
-      <div class="pax-sig-line">Passenger's Name in Print and Signature</div>
-    </div>
-  </div>
-</body>
-</html>
-`;
-  win.document.write(html);
-  win.document.close();
-}
-
-function TripTicketDetailModal({ ticket, onClose }: { ticket: TripTicket; onClose: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
-          <div>
-            <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
-            <div className="flex items-center gap-2 mt-1">
-              <StatusBadge status={ticket.status} />
-            </div>
-          </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm">
-            ✕
-          </button>
-        </div>
-
-        <div className="p-10 overflow-y-auto space-y-8 custom-scrollbar">
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.date_of_travel}</h3>
-              {ticket.duration && <p className="text-xs text-gray-500 mt-1">{ticket.duration}</p>}
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Passengers</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.no_of_passengers} pax</h3>
-              {ticket.passenger_name && <p className="text-xs text-gray-500 mt-1">{ticket.passenger_name}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Route</p>
-              <div className="mt-2 space-y-3">
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center mt-1">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-900 shadow-sm z-10" />
-                    <div className="w-0.5 h-6 bg-gray-200 dark:bg-gray-800" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Pick Up</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.pick_up}</p>
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center mt-1">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-900 shadow-sm" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Drop Off</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.drop_off}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vehicle & Driver</p>
-              <div className="mt-2 space-y-2">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{ticket.driver?.name || 'TBA'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Allowances</p>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 grid grid-cols-2 gap-4">
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Meal</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.meal_allowance?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Diesel</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.diesel?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">SOP</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.sop?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Tolls</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((ticket.easy_trip || 0) + (ticket.autosweep || 0)).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between">
-          <button
-            onClick={() => printTripTicket(ticket)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 active:scale-95 border border-blue-500/20"
-          >
-            Print DTT
-          </button>
-          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CalendarDayDetailModal({
-  day,
-  month,
-  year,
-  entries,
-  bus,
-  onClose,
-}: {
-  day: number;
-  month: number;
-  year: number;
-  entries: any[];
-  bus: any;
-  onClose: () => void;
-}) {
-  const monthName = MONTH_NAMES[month - 1];
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh]">
-        
-        {/* Modal Header */}
-        <div className="p-8 border-b border-gray-105 dark:border-gray-800 flex items-center justify-between shrink-0 bg-white dark:bg-gray-900">
-          <div>
-            <h2 className="text-xl font-black text-gray-900 dark:text-white tracking-tight">
-              Assignments for {monthName} {day}, {year}
-            </h2>
-            <p className="text-[10px] text-gray-450 uppercase font-black tracking-widest mt-0.5">
-              Bus: {bus ? `${bus.plate_number} (${bus.model})` : 'TBA'}
-            </p>
-          </div>
-          <button 
-            onClick={onClose} 
-            className="p-3 bg-gray-50 dark:bg-gray-850 rounded-2xl text-gray-450 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Modal Body */}
-        <div className="p-8 overflow-y-auto flex-1 space-y-8 custom-scrollbar">
-          {entries.map((entry, idx) => (
-            <div 
-              key={idx} 
-              className="p-6 bg-gray-50/50 dark:bg-gray-800/30 rounded-[2rem] border border-gray-100 dark:border-gray-800 flex flex-col lg:flex-row gap-8"
-            >
-              <div className="flex-1 space-y-5">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block shadow-sm",
-                      entry.type === 'invoice' 
-                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/30"
-                        : entry.type === 'pms'
-                        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400 border border-red-200/50 dark:border-red-800/30"
-                        : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-855/30"
-                    )}>
-                      {entry.type === 'invoice' ? 'POS Invoice' : entry.type === 'pms' ? 'PMS Maintenance' : entry.travel_type === 'international' ? 'International Travel' : 'Local Travel'}
-                    </span>
-                    <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase mt-2 font-mono">
-                      {entry.type === 'invoice' ? `INV-${entry.reference_no}` : entry.type === 'pms' ? `${entry.reference_no}` : `DTT-${entry.reference_no}`}
-                    </h3>
-                  </div>
-                  {entry.type === 'invoice' && (
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Total Amount</p>
-                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-450 mt-0.5">
-                        ₱{Number(entry.total_amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  {entry.type === 'invoice' ? (
-                    <>
-                      <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Customer Name</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{entry.customer_name || 'Walk-in'}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Status</span>
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-block shadow-sm",
-                          entry.status === 'completed'
-                            ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/30"
-                            : "bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 border-blue-100 dark:border-blue-800/30"
-                        )}>
-                          {entry.status === 'completed' ? 'Completed' : 'Reserved'}
-                        </span>
-                      </div>
-                    </>
-                  ) : entry.type === 'pms' ? (
-                    <>
-                      <div className="col-span-2">
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Description / Notes</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200 block mt-1">{entry.description || 'No description provided.'}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Status</span>
-                        <span className={cn(
-                          "px-2.5 py-1 rounded-xl text-[10px] font-black uppercase tracking-wider border inline-block shadow-sm",
-                          entry.status === 'completed'
-                            ? "bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/30"
-                            : "bg-amber-50 dark:bg-amber-900/10 text-amber-600 dark:text-amber-400 border-amber-100 dark:border-amber-800/30"
-                        )}>
-                          {entry.status}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Driver</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{bus?.driver ? `${bus.driver.first_name} ${bus.driver.last_name}` : 'TBA'}</span>
-                      </div>
-                      <div>
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Passengers</span>
-                        <span className="font-bold text-gray-800 dark:text-gray-200">{entry.pax} pax</span>
-                      </div>
-                      <div className="col-span-2 space-y-2">
-                        <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider">Route</span>
-                        <div className="p-3 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800/80">
-                          <div className="flex items-center gap-2 text-xs">
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                            <span className="font-bold text-gray-600 dark:text-gray-350">{entry.pick_up}</span>
-                            <span className="text-gray-400">→</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                            <span className="font-black text-gray-800 dark:text-white">{entry.drop_off}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {entry.type === 'invoice' && entry.seat_map && entry.seat_map.length > 0 ? (
-                <div className="lg:w-[320px] shrink-0 space-y-3">
-                  <span className="block text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Selected Seating Chart</span>
-                  <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 flex justify-center">
-                    <BusLayout
-                      hasRestroom={bus?.bus_category === 'VIP'}
-                      seats={bus?.custom_seats || []}
-                      totalSeats={bus?.seating_capacity || 49}
-
-                      selectedSeats={entry.seat_map || []}
-                      viewOnly={true}
-                      compact={true}
-                    />
-                  </div>
-                  <p className="text-[9px] font-black text-blue-600 uppercase tracking-wider text-center">
-                    Booked Seats ({entry.seat_map.length}): {entry.seat_map.join(', ')}
-                  </p>
-                </div>
-              ) : entry.type === 'invoice' ? (
-                <div className="lg:w-[320px] shrink-0 flex items-center justify-center p-6 border-2 border-dashed border-gray-200 dark:border-gray-850 rounded-3xl text-gray-400 italic text-xs text-center font-bold">
-                  No seats assigned for this invoice.
-                </div>
-              ) : null}
-            </div>
-          ))}
-        </div>
-
-        {/* Modal Footer */}
-        <div className="p-8 border-t border-gray-105 dark:border-gray-850 bg-white dark:bg-gray-900 flex justify-end shrink-0">
-          <button 
-            onClick={onClose} 
-            className="px-8 py-3.5 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all cursor-pointer"
-          >
-            Close Window
-          </button>
-        </div>
-
-      </div>
-    </div>
-  );
-}
+import { EmployeeName, DataTable, type Column } from '../../components/ds';
+import { StatusBadge } from './StatusBadge';
+import { MONTH_NAMES } from './monthNames';
+import { printTripTicket } from './printTripTicket';
+import TripTicketDetailModal from './TripTicketDetailModal';
+import CalendarDayDetailModal from './CalendarDayDetailModal';
+import FleetCalendarView from './FleetCalendarView';
 
 export default function LogisticsOverview() {
   const [activeTab, setActiveTab] = useState<'drivers' | 'trips' | 'fleet'>('drivers');
@@ -760,6 +106,166 @@ export default function LogisticsOverview() {
   const activeBuses = buses.filter(b => b.status === 'available' || b.status === 'in_service').length;
   const ongoingTrips = tripsList.filter(t => t.status === 'approved').length;
   const completedTrips = tripsList.filter(t => t.status === 'completed').length;
+
+  const driverColumns: Column<any>[] = [
+    {
+      key: 'driver',
+      header: 'Coach Captain',
+      render: (driver) => (
+        <div className="flex items-center gap-4">
+          <EmployeeName
+            name={fullName(driver)}
+            src={driver.avatar_url}
+            subtitle={driver.email}
+            online={driver.is_online}
+            size="lg"
+          />
+        </div>
+      ),
+    },
+    {
+      key: 'employee_id',
+      header: 'Employee ID',
+      render: (driver) => (
+        <span className="font-mono font-bold text-gray-600 dark:text-gray-300 text-sm">
+          {driver.employee_id}
+        </span>
+      ),
+    },
+    {
+      key: 'department',
+      header: 'Department',
+      render: (driver) => (
+        <span className="px-3 py-1.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase border border-blue-100/30 dark:border-blue-900/30">
+          {driver.department || 'Logistics'}
+        </span>
+      ),
+    },
+    {
+      key: 'assigned_vehicle',
+      header: 'Assigned Vehicle',
+      render: (driver) => {
+        const driverBus = buses.find(b => b.driver?.id === driver.id);
+        return driverBus ? (
+          <div className="space-y-0.5">
+            <div className="text-sm font-bold text-gray-900 dark:text-white">
+              {driverBus.plate_number}
+            </div>
+            <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{driverBus.model}</div>
+          </div>
+        ) : (
+          <span className="text-xs font-bold text-gray-400 italic">No assigned bus</span>
+        );
+      },
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (driver) => (
+        <span className={cn(
+          "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm",
+          !driver.is_active
+            ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
+            : (driver.is_online
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20'
+                : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700')
+        )}>
+          {!driver.is_active ? 'Suspended' : (driver.is_online ? 'Active' : 'Offline')}
+        </span>
+      ),
+    },
+  ];
+
+  const tripColumns: Column<TripTicket>[] = [
+    {
+      key: 'control_no',
+      header: 'Control No.',
+      render: (trip) => (
+        <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
+          #{trip.control_no}
+        </span>
+      ),
+    },
+    {
+      key: 'date_of_travel',
+      header: 'Travel Date',
+      render: (trip) => (
+        <>
+          <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
+            {trip.date_of_travel}
+          </span>
+          {trip.duration && <div className="text-[10px] text-gray-400 font-bold mt-0.5">{trip.duration}</div>}
+        </>
+      ),
+    },
+    {
+      key: 'route',
+      header: 'Route (Pick Up → Drop Off)',
+      render: (trip) => (
+        <div className="flex flex-col gap-1 max-w-xs">
+          <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-350">
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
+            <span className="font-semibold truncate">{trip.pick_up}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-gray-800 dark:text-gray-100 font-black">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+            <span className="truncate">{trip.drop_off}</span>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'driver_vehicle',
+      header: 'Driver & Vehicle',
+      render: (trip) => (
+        <div className="space-y-0.5">
+          <div className="text-sm font-bold text-gray-900 dark:text-white">
+            {trip.driver?.name || 'TBA'}
+          </div>
+          <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+            {trip.bus?.plate_number || trip.plate_no || 'TBA'}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'no_of_passengers',
+      header: 'Passengers',
+      render: (trip) => (
+        <span className="text-sm font-black text-gray-900 dark:text-white">
+          {trip.no_of_passengers} pax
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (trip) => <StatusBadge status={trip.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'center',
+      render: (trip) => (
+        <div className="flex items-center justify-center gap-2">
+          <button
+            onClick={(e) => { e.stopPropagation(); setSelectedTicket(trip); }}
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+            title="View Details"
+          >
+            Details
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); printTripTicket(trip); }}
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+            title="Print DTT"
+          >
+            Print
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -910,86 +416,24 @@ export default function LogisticsOverview() {
                 transition={{ duration: 0.2 }}
                 className="overflow-x-auto"
               >
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Coach Captain</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Employee ID</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Department</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Assigned Vehicle</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
-                    {isDriversLoading ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Driver Database...</p>
-                        </td>
-                      </tr>
-                    ) : filteredDrivers.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="px-8 py-24 text-center text-gray-400">
-                          <p className="text-sm font-bold text-gray-500">No captain records matched the query.</p>
-                        </td>
-                      </tr>
+                <DataTable
+                  columns={driverColumns}
+                  data={filteredDrivers}
+                  rowKey={(driver) => driver.id}
+                  empty={
+                    isDriversLoading ? (
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Driver Database...</p>
+                      </div>
                     ) : (
-                      filteredDrivers.map((driver: any) => {
-                        const driverBus = buses.find(b => b.driver?.id === driver.id);
-                        return (
-                          <tr key={driver.id} className="hover:bg-blue-50/20 dark:hover:bg-gray-800/30 transition-all border-b border-gray-50 dark:border-gray-800/40 last:border-0">
-                            <td className="px-8 py-6">
-                              <div className="flex items-center gap-4">
-                                <EmployeeName 
-                                  name={fullName(driver)} 
-                                  src={driver.avatar_url} 
-                                  subtitle={driver.email} 
-                                  online={driver.is_online} 
-                                  size="lg" 
-                                />
-                              </div>
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className="font-mono font-bold text-gray-600 dark:text-gray-300 text-sm">
-                                {driver.employee_id}
-                              </span>
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className="px-3 py-1.5 rounded-xl bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 text-[10px] font-black tracking-widest uppercase border border-blue-100/30 dark:border-blue-900/30">
-                                {driver.department || 'Logistics'}
-                              </span>
-                            </td>
-                            <td className="px-8 py-6">
-                              {driverBus ? (
-                                <div className="space-y-0.5">
-                                  <div className="text-sm font-bold text-gray-900 dark:text-white">
-                                    {driverBus.plate_number}
-                                  </div>
-                                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{driverBus.model}</div>
-                                </div>
-                              ) : (
-                                <span className="text-xs font-bold text-gray-400 italic">No assigned bus</span>
-                              )}
-                            </td>
-                            <td className="px-8 py-6">
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest inline-block shadow-sm",
-                                !driver.is_active
-                                  ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
-                                  : (driver.is_online
-                                      ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20'
-                                      : 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400 border border-gray-200/50 dark:border-gray-700')
-                              )}>
-                                {!driver.is_active ? 'Suspended' : (driver.is_online ? 'Active' : 'Offline')}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <p className="text-sm font-bold text-gray-500">No captain records matched the query.</p>
+                      </div>
+                    )
+                  }
+                  className="border-0 rounded-none bg-transparent"
+                />
               </motion.div>
             ) : activeTab === 'trips' ? (
               <motion.div
@@ -1000,99 +444,24 @@ export default function LogisticsOverview() {
                 transition={{ duration: 0.2 }}
                 className="overflow-x-auto"
               >
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/20">
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Control No.</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Travel Date</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Route (Pick Up → Drop Off)</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Driver & Vehicle</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Passengers</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                      <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50 dark:divide-gray-850">
-                    {isTripsLoading ? (
-                      <tr>
-                        <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Trip Schedule...</p>
-                        </td>
-                      </tr>
-                    ) : filteredTrips.length === 0 ? (
-                      <tr>
-                        <td colSpan={7} className="px-8 py-24 text-center text-gray-400">
-                          <p className="text-sm font-bold text-gray-500">No scheduled trips matched the search criteria.</p>
-                        </td>
-                      </tr>
+                <DataTable
+                  columns={tripColumns}
+                  data={filteredTrips}
+                  rowKey={(trip) => trip.id}
+                  empty={
+                    isTripsLoading ? (
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+                        <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Syncing Trip Schedule...</p>
+                      </div>
                     ) : (
-                      filteredTrips.map((trip) => (
-                        <tr key={trip.id} className="hover:bg-blue-50/20 dark:hover:bg-gray-800/30 transition-all border-b border-gray-50 dark:border-gray-800/40 last:border-0">
-                          <td className="px-8 py-6">
-                            <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
-                              #{trip.control_no}
-                            </span>
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                              {trip.date_of_travel}
-                            </span>
-                            {trip.duration && <div className="text-[10px] text-gray-400 font-bold mt-0.5">{trip.duration}</div>}
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="flex flex-col gap-1 max-w-xs">
-                              <div className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-350">
-                                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
-                                <span className="font-semibold truncate">{trip.pick_up}</span>
-                              </div>
-                              <div className="flex items-center gap-1.5 text-xs text-gray-800 dark:text-gray-100 font-black">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                                <span className="truncate">{trip.drop_off}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="space-y-0.5">
-                              <div className="text-sm font-bold text-gray-900 dark:text-white">
-                                {trip.driver?.name || 'TBA'}
-                              </div>
-                              <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                                {trip.bus?.plate_number || trip.plate_no || 'TBA'}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-8 py-6">
-                            <span className="text-sm font-black text-gray-900 dark:text-white">
-                              {trip.no_of_passengers} pax
-                            </span>
-                          </td>
-                          <td className="px-8 py-6">
-                            <StatusBadge status={trip.status} />
-                          </td>
-                          <td className="px-8 py-6">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => setSelectedTicket(trip)}
-                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
-                                title="View Details"
-                              >
-                                Details
-                              </button>
-                              <button
-                                onClick={() => printTripTicket(trip)}
-                                className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
-                                title="Print DTT"
-                              >
-                                Print
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      <div className="px-8 py-24 text-center text-gray-400">
+                        <p className="text-sm font-bold text-gray-500">No scheduled trips matched the search criteria.</p>
+                      </div>
+                    )
+                  }
+                  className="border-0 rounded-none bg-transparent"
+                />
               </motion.div>
             ) : (
               <motion.div
@@ -1102,205 +471,18 @@ export default function LogisticsOverview() {
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.2 }}
               >
-                {!selectedBusId ? (
-                  /* BUSES GRID */
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-8">
-                    {filteredBuses.length === 0 ? (
-                      <div className="col-span-full py-16 text-center text-gray-400">
-                        <p className="text-sm font-bold text-gray-500">No buses matched the search criteria.</p>
-                      </div>
-                    ) : (
-                      filteredBuses.map((bus: any) => (
-                        <div 
-                          key={bus.id} 
-                          onClick={() => {
-                            setSelectedBusId(bus.id);
-                            setCalendarMonth(new Date().getMonth() + 1);
-                            setCalendarYear(new Date().getFullYear());
-                          }}
-                          className="p-6 bg-gray-50/50 dark:bg-gray-800/25 border border-gray-100 dark:border-gray-800/80 rounded-[2.2rem] hover:border-blue-400/40 hover:shadow-lg hover:-translate-y-0.5 transition-all cursor-pointer flex flex-col justify-between"
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-4">
-                              <div className="px-3.5 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-gray-150 dark:border-gray-700 flex items-center gap-2 shadow-sm">
-                                <LuBus className="text-blue-600 dark:text-blue-400 w-4 h-4" />
-                                <span className="font-mono font-black text-gray-900 dark:text-white text-xs uppercase">{bus.plate_number}</span>
-                              </div>
-                              <span className={cn(
-                                "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest inline-block shadow-sm",
-                                bus.status === 'available' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-900/20' :
-                                bus.status === 'in_service' ? 'bg-blue-100 text-blue-700 dark:bg-blue-955/30 dark:text-blue-400 border border-blue-200/50 dark:border-blue-900/20' :
-                                bus.status === 'under_maintenance' ? 'bg-amber-100 text-amber-700 dark:bg-amber-955/30 dark:text-amber-450 border border-amber-200/50 dark:border-amber-900/20' :
-                                'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 border border-red-200/50 dark:border-red-900/20'
-                              )}>
-                                {bus.status.replace('_', ' ')}
-                              </span>
-                            </div>
-                            
-                            <h4 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight line-clamp-1">{bus.model}</h4>
-                            
-                            <div className="mt-4 space-y-2 text-xs font-bold text-gray-500 dark:text-gray-400">
-                              <div className="flex justify-between">
-                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Capacity</span>
-                                <span className="text-gray-850 dark:text-gray-200">{bus.seating_capacity} seats</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Class</span>
-                                <span className="text-gray-850 dark:text-gray-200">{bus.bus_category || 'ECONOMY'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="uppercase text-[9px] tracking-wider font-black text-gray-400">Captain</span>
-                                <span className="text-gray-850 dark:text-gray-200 font-black text-blue-600 dark:text-blue-450">
-                                  {bus.driver ? `${bus.driver.first_name} ${bus.driver.last_name}` : 'TBA'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          
-                          <div className="mt-6 pt-4 border-t border-gray-100 dark:border-gray-800/80 flex justify-end">
-                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest flex items-center gap-1">
-                              View Schedule Calendar →
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                ) : (
-                  /* BUS CALENDAR VIEW */
-                  (() => {
-                    const selectedBus = buses.find((b: any) => b.id === selectedBusId);
-                    
-                    // Calendar grid computation
-                    const firstDayOfMonth = new Date(calendarYear, calendarMonth - 1, 1).getDay();
-                    const daysInMonth = new Date(calendarYear, calendarMonth, 0).getDate();
-                    
-                    const calendarCells = [];
-                    for (let i = 0; i < firstDayOfMonth; i++) {
-                      calendarCells.push(null);
-                    }
-                    for (let d = 1; d <= daysInMonth; d++) {
-                      calendarCells.push(d);
-                    }
-                    
-                    const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-                    return (
-                      <div className="p-8 space-y-6">
-                        {/* calendar header/info */}
-                        <div className="flex justify-between items-center bg-gray-50/50 dark:bg-gray-800/20 p-6 rounded-[2rem] border border-gray-100 dark:border-gray-800/80">
-                          <div className="flex items-center gap-4">
-                            <button 
-                              onClick={() => setSelectedBusId(null)}
-                              className="px-4 py-2 bg-white dark:bg-gray-800 hover:bg-gray-50 text-xs font-black text-gray-650 dark:text-gray-300 uppercase tracking-widest border border-gray-100 dark:border-gray-700 rounded-xl shadow-sm transition-all"
-                            >
-                              ← Back to Fleet
-                            </button>
-                            <div>
-                              <h3 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">{selectedBus?.model}</h3>
-                              <p className="text-[10px] text-gray-450 font-black uppercase tracking-widest mt-0.5">
-                                Plate: {selectedBus?.plate_number} • Capacity: {selectedBus?.seating_capacity} Seats • {selectedBus?.bus_category || 'ECONOMY'}
-                              </p>
-                            </div>
-                          </div>
-                          {selectedBus?.driver && (
-                            <div className="text-right">
-                              <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Assigned Captain</p>
-                              <p className="text-sm font-black text-blue-600 dark:text-blue-450 uppercase mt-0.5">
-                                {selectedBus.driver.first_name} {selectedBus.driver.last_name}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Calendar Grid */}
-                        <div className="border border-gray-100 dark:border-gray-800 rounded-[2.5rem] overflow-hidden bg-white dark:bg-gray-900 shadow-sm">
-                          <div className="grid grid-cols-7 border-b border-gray-150 dark:border-gray-850 bg-gray-50/30 dark:bg-gray-800/10">
-                            {weekdays.map(d => (
-                              <div key={d} className="py-4 text-center text-[10px] font-black text-gray-450 dark:text-gray-500 uppercase tracking-widest border-r border-gray-100 dark:border-gray-850 last:border-r-0">
-                                {d}
-                              </div>
-                            ))}
-                          </div>
-                          
-                          <div className="grid grid-cols-7 border-collapse">
-                            {calendarCells.map((day, idx) => {
-                              if (day === null) {
-                                return (
-                                  <div key={`empty-${idx}`} className="min-h-[120px] border-b border-r border-gray-100 dark:border-gray-805 bg-gray-50/20 dark:bg-gray-900/10 last:border-r-0" />
-                                );
-                              }
-                              
-                              const dayStr = `${calendarYear}-${String(calendarMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                              const dayEntries = calendarData.filter((e: any) => e.date === dayStr);
-                              
-                              return (
-                                <div 
-                                  key={`day-${day}`}
-                                  onClick={() => {
-                                    if (dayEntries.length > 0) {
-                                      setSelectedCalendarDay({ day, entries: dayEntries });
-                                    }
-                                  }}
-                                  className={cn(
-                                    "min-h-[120px] p-3 border-b border-r border-gray-100 dark:border-gray-805 bg-white dark:bg-gray-900 flex flex-col justify-between last:border-r-0 transition-all select-none",
-                                    dayEntries.length > 0 
-                                      ? "cursor-pointer hover:bg-blue-50/20 dark:hover:bg-blue-950/10" 
-                                      : "cursor-default"
-                                  )}
-                                >
-                                  <span className={cn(
-                                    "text-xs font-black text-gray-400",
-                                    dayEntries.length > 0 && "text-blue-600 dark:text-blue-400 font-black"
-                                  )}>
-                                    {day}
-                                  </span>
-                                  
-                                  <div className="space-y-1 mt-2 flex-1 flex flex-col justify-end overflow-hidden">
-                                    {dayEntries.map((e: any, eIdx: number) => {
-                                      if (e.type === 'invoice') {
-                                        return (
-                                          <div 
-                                            key={`e-${eIdx}`} 
-                                            className="px-2 py-1 bg-blue-50 dark:bg-blue-955/40 text-blue-700 dark:text-blue-400 text-[9px] font-black rounded-lg border border-blue-100/30 dark:border-blue-900/20 truncate leading-tight shadow-sm text-left"
-                                            title={`Invoice #${e.reference_no} - ${e.customer_name}`}
-                                          >
-                                            🎫 INV-{e.reference_no}
-                                          </div>
-                                        );
-                                      } else if (e.type === 'pms') {
-                                        return (
-                                          <div 
-                                            key={`e-${eIdx}`} 
-                                            className="px-2 py-1 bg-red-50 dark:bg-red-955/40 text-red-700 dark:text-red-400 text-[9px] font-black rounded-lg border border-red-100/30 dark:border-red-900/20 truncate leading-tight shadow-sm text-left"
-                                            title={`PMS - ${e.description}`}
-                                          >
-                                            🛠️ PMS-{e.reference_no}
-                                          </div>
-                                        );
-                                      } else {
-                                        const prefix = e.travel_type === 'international' ? '✈️ DTT' : '🚌 DTT';
-                                        return (
-                                          <div 
-                                            key={`e-${eIdx}`} 
-                                            className="px-2 py-1 bg-amber-50 dark:bg-amber-955/40 text-amber-700 dark:text-amber-450 text-[9px] font-black rounded-lg border border-amber-100/30 dark:border-amber-900/20 truncate leading-tight shadow-sm text-left"
-                                            title={`${e.travel_type === 'international' ? 'International' : 'Local'} Trip Ticket #${e.reference_no} - ${e.drop_off}`}
-                                          >
-                                            {prefix}-{e.reference_no}
-                                          </div>
-                                        );
-                                      }
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })()
-                )}
+                <FleetCalendarView
+                  selectedBusId={selectedBusId}
+                  setSelectedBusId={setSelectedBusId}
+                  setCalendarMonth={setCalendarMonth}
+                  setCalendarYear={setCalendarYear}
+                  filteredBuses={filteredBuses}
+                  buses={buses}
+                  calendarMonth={calendarMonth}
+                  calendarYear={calendarYear}
+                  calendarData={calendarData}
+                  setSelectedCalendarDay={setSelectedCalendarDay}
+                />
               </motion.div>
             )}
           </AnimatePresence>

@@ -1,14 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { useTheme } from '../context/ThemeContext';
-import { LuLayoutGrid, LuClipboardList, LuActivity, LuTrendingUp, LuBus, LuX } from 'react-icons/lu';
+import { LuLayoutGrid, LuClipboardList, LuActivity, LuTrendingUp, LuBus, LuX, LuZap } from 'react-icons/lu';
+import QuickActionsWidget from '../pages/dashboards/widgets/QuickActionsWidget';
 import ApprovalsWidget from '../pages/dashboards/widgets/ApprovalsWidget';
 import TasksWidget from '../pages/dashboards/widgets/TasksWidget';
 import RevenueWidget from '../pages/dashboards/widgets/RevenueWidget';
 import FleetWidget from '../pages/dashboards/widgets/FleetWidget';
 
-type WidgetId = 'approvals' | 'tasks' | 'revenue' | 'fleet';
+type WidgetId = 'shortcuts' | 'approvals' | 'tasks' | 'revenue' | 'fleet';
 
 const TABS: { id: WidgetId; label: string; icon: ReactNode }[] = [
+  { id: 'shortcuts', label: 'Shortcuts', icon: <LuZap className="w-4 h-4" /> },
   { id: 'approvals', label: 'Approvals', icon: <LuClipboardList className="w-4 h-4" /> },
   { id: 'tasks', label: 'Tasks', icon: <LuActivity className="w-4 h-4" /> },
   { id: 'revenue', label: 'Revenue', icon: <LuTrendingUp className="w-4 h-4" /> },
@@ -23,10 +25,11 @@ const TABS: { id: WidgetId; label: string; icon: ReactNode }[] = [
 export default function HeaderWidgetsMenu() {
   const { theme } = useTheme();
   const [open, setOpen] = useState(false);
-  const [active, setActive] = useState<WidgetId>('approvals');
+  const [active, setActive] = useState<WidgetId>('shortcuts');
 
   const renderWidget = () => {
     switch (active) {
+      case 'shortcuts': return <QuickActionsWidget onNavigate={() => setOpen(false)} />;
       case 'approvals': return <ApprovalsWidget />;
       case 'tasks': return <TasksWidget />;
       case 'revenue': return <RevenueWidget />;

@@ -7,6 +7,7 @@ export interface PublicSettings {
   landing_page_slide_duration: number;
   landing_page_title: string;
   landing_page_slide_transition: string;
+  landing_page_documents?: { title: string; description: string; url: string }[];
 }
 
 export const settingsApi = {

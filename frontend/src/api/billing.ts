@@ -73,7 +73,7 @@ export interface Invoice {
 
 export const billingApi = {
   getServices: () => client.get('/billing/services'),
-  getInvoices: (params: { page?: number; search?: string; status?: string }) => 
+  getInvoices: (params: { page?: number; search?: string; status?: string; date_from?: string; date_to?: string; per_page?: number }) =>
     client.get('/billing', { params }),
   getInvoice: (id: number) => client.get(`/billing/${id}`),
   createInvoice: (data: {

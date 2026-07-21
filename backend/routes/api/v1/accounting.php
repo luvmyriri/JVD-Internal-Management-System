@@ -83,6 +83,12 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
         Route::get('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');
 
+        // Manual journal entries + CSV import (write access — tighter role gate).
+        Route::middleware('role:super_admin,executive_vice_president,accounting_executive,accounting:create')->group(function () {
+            Route::post('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'store'])->name('accounting.journal-entries.store');
+            Route::post('/accounting/journal-entries/import', [App\Http\Controllers\Accounting\JournalEntryController::class, 'import'])->name('accounting.journal-entries.import');
+        });
+
         Route::get('/accounting/journal-entries/{id}', [App\Http\Controllers\Accounting\JournalEntryController::class, 'show'])->name('accounting.journal-entries.show');
         Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
         Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');

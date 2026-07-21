@@ -10,9 +10,10 @@ import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
 import client from '../../api/client';
 import { customerApi } from '../../api/customers';
-import type { Collection } from '../../types';
+import type { Collection, CollectionPayment } from '../../types';
 import { Modal, Button } from '../../components/ui';
-import { DataTable, EmptyState, type Column } from '../../components/ds';
+import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -25,6 +26,26 @@ const SERVICE_TYPES = [
   'Booking',
   'Other',
 ] as const;
+
+/** Payment History sub-table inside the Collection Details modal (roadmap 3.7). */
+const paymentColumns: Column<CollectionPayment>[] = [
+  {
+    key: 'payment_date',
+    header: 'Date',
+    render: (p) => <span className="font-medium">{new Date(p.payment_date).toLocaleDateString()}</span>,
+  },
+  {
+    key: 'payment_method',
+    header: 'Method',
+    render: (p) => <span className="font-medium">{p.payment_method}</span>,
+  },
+  {
+    key: 'amount',
+    header: 'Amount',
+    align: 'right',
+    render: (p) => <span className="font-black">₱{Number(p.amount).toLocaleString()}</span>,
+  },
+];
 
 function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -232,6 +253,7 @@ export default function Collections() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
 
   // Modal States
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -257,12 +279,14 @@ export default function Collections() {
   }, [searchTerm]);
 
   const { data: responseData, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['collections', { search: debouncedSearch, status: statusFilter }],
+    queryKey: ['collections', { search: debouncedSearch, status: statusFilter, from: dateRange.from, to: dateRange.to }],
     queryFn: async () => {
       if (!hasGeneralAccess) return { data: [], stats: null };
       const response = await collectionApi.getAll({
         search: debouncedSearch,
-        status: statusFilter
+        status: statusFilter,
+        date_from: dateRange.from || undefined,
+        date_to: dateRange.to || undefined,
       });
       return response;
     },
@@ -654,6 +678,22 @@ export default function Collections() {
               </button>
             ))}
           </div>
+
+          {/* Timeframe filter */}
+          <TimeframeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-auto sm:ml-auto" />
+          <ExportButton
+            disabled={collections.length === 0}
+            onClick={() => exportToCsv(datedFilename('collections'), collections, [
+              { header: 'Client', value: (c) => c.client_name },
+              { header: 'Service Type', value: (c) => (c.service_type === 'Other' && c.other_service_type ? c.other_service_type : c.service_type) },
+              { header: 'Invoice #', value: (c) => c.invoice?.invoice_number ?? '' },
+              { header: 'Billing Amount', value: (c) => c.billing_amount ?? c.rate ?? '' },
+              { header: 'Paid', value: (c) => c.paid_amount ?? '' },
+              { header: 'Remaining', value: (c) => c.remaining_balance ?? '' },
+              { header: 'Status', value: (c) => c.collection_status },
+              { header: 'Date', value: (c) => (c.created_at ?? '').slice(0, 10) },
+            ])}
+          />
         </div>
 
         {/* Data Table */}
@@ -797,26 +837,12 @@ export default function Collections() {
               </div>
 
               {selectedCollection.payments && selectedCollection.payments.length > 0 ? (
-                <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-4 py-3 font-bold text-gray-500">Date</th>
-                        <th className="px-4 py-3 font-bold text-gray-500">Method</th>
-                        <th className="px-4 py-3 font-bold text-gray-500 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {selectedCollection.payments.map((p: any) => (
-                        <tr key={p.id}>
-                          <td className="px-4 py-3 font-medium">{new Date(p.payment_date).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 font-medium">{p.payment_method}</td>
-                          <td className="px-4 py-3 font-black text-right">₱{Number(p.amount).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={paymentColumns}
+                  data={selectedCollection.payments}
+                  rowKey={(p) => p.id}
+                  className="jvd"
+                />
               ) : (
                 <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
                   <p className="text-sm font-bold text-gray-400">No payments recorded yet.</p>

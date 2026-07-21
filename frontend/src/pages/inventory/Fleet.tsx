@@ -11,6 +11,7 @@ import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
 import BusLayout from '../../components/ui/BusLayout';
 import type { Bus, BusFormData } from '../../types/inventory';
 import { userApi } from '../../api/users';
+import { DataTable, type Column } from '../../components/ds';
 
 const getStatusVariant = (status: string): 'success' | 'info' | 'warning' | 'danger' | 'neutral' => {
   switch (status) {
@@ -639,6 +640,115 @@ export default function Fleet() {
     setShowModal(true);
   };
 
+  const columns: Column<Bus>[] = [
+    {
+      key: 'plate_model',
+      header: 'Plate & Model',
+      render: (bus) => (
+        <>
+          <div className="font-bold text-gray-900 dark:text-white text-base leading-tight">{bus.plate_number}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
+            {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''}
+          </div>
+        </>
+      ),
+    },
+    {
+      key: 'capacity',
+      header: 'Capacity',
+      render: (bus) => (
+        <span className="inline-block whitespace-nowrap px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
+          {bus.seating_capacity} pax
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (bus) => (
+        <div className="flex flex-col gap-2">
+          <StatusBadge
+            status={bus.status.replace('_', ' ')}
+            variant={getStatusVariant(bus.status)}
+          />
+          {bus.is_service_overdue && (
+            <div className="flex items-center gap-1.5 text-[9px] text-red-500 font-black uppercase tracking-widest mt-1">
+              <LuTriangleAlert size={12} /> Overdue PMS
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'driver',
+      header: 'Driver',
+      render: (bus) => (
+        bus.driver ? (
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
+              <LuUser size={14} />
+            </div>
+            <div className="text-sm font-bold text-gray-700 dark:text-gray-200">
+              {bus.driver.first_name} {bus.driver.last_name}
+            </div>
+          </div>
+        ) : (
+          <span className="text-[10px] text-gray-300 font-black uppercase tracking-widest italic">Unassigned</span>
+        )
+      ),
+    },
+    {
+      key: 'mileage',
+      header: 'Mileage',
+      align: 'right',
+      render: (bus) => (
+        <>
+          <div className="text-gray-900 dark:text-white font-black text-base">{bus.total_mileage.toLocaleString()}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
+        </>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'center',
+      render: (bus) => (
+        <div className="flex items-center justify-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleView(bus)}
+            className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            title="View Details"
+          >
+            <LuEye size={18} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setLayoutEditingBus(bus);
+              setIsLayoutModalOpen(true);
+            }}
+            className="p-2 text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+            title="Custom Seat Layout"
+          >
+            <LuLayoutGrid size={18} />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => handleEdit(bus)}
+            className="p-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+            title="Edit Fleet"
+          >
+            <LuSettings size={18} />
+          </Button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-10 pb-12">
       {/* Header Actions */}
@@ -706,117 +816,26 @@ export default function Fleet() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Plate & Model</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Capacity</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Driver</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right">Mileage</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-gray-400">
-                    <LuLoaderCircle size={24} className="animate-spin mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm font-medium">Retrieving fleet data...</p>
-                  </td>
-                </tr>
-              ) : buses.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center text-gray-400">
-                    <LuBus size={32} strokeWidth={1.5} className="mx-auto mb-3 text-gray-300" />
-                    <p className="text-sm font-medium">No vehicles found matching criteria.</p>
-                  </td>
-                </tr>
+        <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+          <DataTable
+            columns={columns}
+            data={buses}
+            rowKey={(bus) => bus.id}
+            className="border-0 rounded-none"
+            empty={
+              isLoading ? (
+                <div className="flex flex-col items-center py-20 text-gray-400">
+                  <LuLoaderCircle size={24} className="animate-spin mb-2 text-blue-500" />
+                  <p className="text-sm font-medium">Retrieving fleet data...</p>
+                </div>
               ) : (
-                buses.map(bus => (
-                  <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group border-b border-gray-50 last:border-0">
-                    <td className="px-8 py-6">
-                      <div className="font-bold text-gray-900 dark:text-white text-base leading-tight">{bus.plate_number}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">
-                        {bus.model} {bus.bus_category ? `• ${bus.bus_category}` : ''}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      <span className="inline-block whitespace-nowrap px-3 py-1.5 rounded-xl bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-black tracking-widest uppercase border border-gray-100 dark:border-gray-800">
-                        {bus.seating_capacity} pax
-                      </span>
-                    </td>
-                    <td className="px-8 py-6">
-                      <div className="flex flex-col gap-2">
-                        <StatusBadge 
-                          status={bus.status.replace('_', ' ')} 
-                          variant={getStatusVariant(bus.status)} 
-                        />
-                        {bus.is_service_overdue && (
-                          <div className="flex items-center gap-1.5 text-[9px] text-red-500 font-black uppercase tracking-widest mt-1">
-                            <LuTriangleAlert size={12} /> Overdue PMS
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-8 py-6">
-                      {bus.driver ? (
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-100 shadow-sm">
-                            <LuUser size={14} />
-                          </div>
-                          <div className="text-sm font-bold text-gray-700 dark:text-gray-200">
-                            {bus.driver.first_name} {bus.driver.last_name}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="text-[10px] text-gray-300 font-black uppercase tracking-widest italic">Unassigned</span>
-                      )}
-                    </td>
-                    <td className="px-8 py-6 text-right">
-                      <div className="text-gray-900 dark:text-white font-black text-base">{bus.total_mileage.toLocaleString()}</div>
-                      <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Kilometers</div>
-                    </td>
-                    <td className="px-8 py-6 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleView(bus)}
-                          className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-                          title="View Details"
-                        >
-                          <LuEye size={18} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => {
-                            setLayoutEditingBus(bus);
-                            setIsLayoutModalOpen(true);
-                          }}
-                          className="p-2 text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                          title="Custom Seat Layout"
-                        >
-                          <LuLayoutGrid size={18} />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleEdit(bus)}
-                          className="p-2 text-blue-500 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                          title="Edit Fleet"
-                        >
-                          <LuSettings size={18} />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <div className="flex flex-col items-center py-20 text-gray-400">
+                  <LuBus size={32} strokeWidth={1.5} className="mb-3 text-gray-300" />
+                  <p className="text-sm font-medium">No vehicles found matching criteria.</p>
+                </div>
+              )
+            }
+          />
         </div>
       </div>
 

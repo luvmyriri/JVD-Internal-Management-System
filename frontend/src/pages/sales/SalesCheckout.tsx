@@ -48,12 +48,10 @@ export interface CartItem {
   customCategoryDetail?: CustomTransactionDetailInput;
   itinerary?: ItineraryDayInput[];
   passengers?: PassengerInput[];
+  // Explicit per-transaction contract requirement, set by the checkbox on the custom
+  // transaction form. Sole decider of whether checkout routes through the contract flow.
+  requiresContract?: boolean;
 }
-
-// Mirrors the seeded SystemSetting 'sales.contract_required_threshold' default. A soft,
-// client-side hint only — ContractController::draft is the actual decision point; this just
-// decides whether the frontend routes checkout through the contract flow at all.
-const CONTRACT_REQUIRED_THRESHOLD = 20000;
 
 interface SalesCheckoutProps {
   cart: CartItem[];
@@ -184,13 +182,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
   const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
 
-  // Soft client-side mirror of ContractController::draft's server-authoritative gate rule:
-  // a contract is needed when the cart has a Custom Transaction item AND (downpayment OR
-  // total exceeds the threshold). The server may still override this (requires_contract: false).
+  // The "Requires a signed contract" checkbox on the custom transaction form is the sole
+  // decider: checkout routes through the contract draft/e-signature flow only when a cart
+  // item is explicitly flagged. No automatic threshold/downpayment inference.
   const evaluateContractGate = () => {
-    const hasCustomItem = cart.some(item => !!item.customCategoryDetail);
-    if (!hasCustomItem) return false;
-    return paymentType === 'downpayment' || total > CONTRACT_REQUIRED_THRESHOLD;
+    return cart.some(item => !!item.requiresContract);
   };
 
   const resetCheckoutForm = () => {

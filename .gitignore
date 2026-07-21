@@ -47,3 +47,10 @@ Project Adherence/JVD_Travel_Management_System_Proposal.pdf
 *.log
 php83/
 tools/
+
+# Playwright test artifacts
+frontend/test-results/
+frontend/playwright-report/
+
+# Laravel published mail theme (customized JVD footer) — collides with the broad vendor/ rule above
+!backend/resources/views/vendor/

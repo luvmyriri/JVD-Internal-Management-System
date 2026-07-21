@@ -9,7 +9,8 @@ import toast from 'react-hot-toast';
 import { billingApi } from '../../api/billing';
 import type { Invoice } from '../../api/billing';
 import { Dropdown } from '../../components/ui';
-import { DataTable, EmptyState, type Column } from '../../components/ds';
+import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 
 export default function Billing() {
@@ -17,7 +18,35 @@ export default function Billing() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [currentPage, setCurrentPage] = useState(1);
+  const [exporting, setExporting] = useState(false);
+
+  // Export the full filtered set (all pages), not just the current page.
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await billingApi.getInvoices({
+        search: debouncedSearch,
+        status: statusFilter,
+        date_from: dateRange.from || undefined,
+        date_to: dateRange.to || undefined,
+        per_page: 100000,
+      });
+      const all: Invoice[] = res.data?.data ?? [];
+      exportToCsv(datedFilename('invoices'), all, [
+        { header: 'Invoice #', value: (i) => i.invoice_number },
+        { header: 'Customer', value: (i) => i.customer_name },
+        { header: 'Total', value: (i) => i.total_amount },
+        { header: 'Received', value: (i) => i.amount_received ?? '' },
+        { header: 'Balance', value: (i) => i.balance ?? '' },
+        { header: 'Status', value: (i) => i.status },
+        { header: 'Date', value: (i) => String(i.created_at ?? '').slice(0, 10) },
+      ]);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   // Modal State
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -34,15 +63,17 @@ export default function Billing() {
   }, [searchTerm]);
 
   // Reset to page 1 when filter changes
-  useEffect(() => { setCurrentPage(1); }, [statusFilter]);
+  useEffect(() => { setCurrentPage(1); }, [statusFilter, dateRange.from, dateRange.to]);
 
   const { data: invoiceData, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['billing-invoices', { page: currentPage, search: debouncedSearch, status: statusFilter }],
+    queryKey: ['billing-invoices', { page: currentPage, search: debouncedSearch, status: statusFilter, from: dateRange.from, to: dateRange.to }],
     queryFn: async () => {
       const response = await billingApi.getInvoices({
         page: currentPage,
         search: debouncedSearch,
-        status: statusFilter
+        status: statusFilter,
+        date_from: dateRange.from || undefined,
+        date_to: dateRange.to || undefined,
       });
       return response.data;
     },
@@ -302,6 +333,10 @@ export default function Billing() {
               </button>
             ))}
           </div>
+
+          {/* Timeframe filter */}
+          <TimeframeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-auto sm:ml-auto" />
+          <ExportButton onClick={handleExport} loading={exporting} disabled={invoices.length === 0} />
         </div>
         {/* Data Table */}
         <div className={`jvd relative hidden md:block ${invoices.length > 0 ? 'min-h-[350px]' : ''}`}>

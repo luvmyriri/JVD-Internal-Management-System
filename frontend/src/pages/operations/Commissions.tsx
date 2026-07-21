@@ -9,9 +9,10 @@ import toast from 'react-hot-toast';
 import { commissionApi } from '../../api/operations';
 import type { Commission } from '../../types';
 import { Modal, Button } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { useAuth } from '../../context/AuthContext';
 import { userApi } from '../../api/users';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 function StatusBadge({ status }: { status: string }) {
   const styles: any = {
@@ -53,6 +54,39 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
 
   const canApprove = user && ['super_admin', 'executive_vice_president', 'corporate_secretary'].includes(user.role) && commission.status === 'draft';
 
+  const itemColumns: Column<any>[] = [
+    {
+      key: 'source_type',
+      header: 'Type',
+      render: (item) => (
+        <span className="text-gray-900 dark:text-gray-300 capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</span>
+      ),
+    },
+    {
+      key: 'details',
+      header: 'Details (Date/Dest or Desc)',
+      render: (item) => (
+        <span className="text-gray-900 dark:text-gray-300">
+          {item.source_type === 'trip_ticket' || !item.source_type
+            ? `${item.travel_date || ''} - ${item.destination || ''}`
+            : item.description}
+        </span>
+      ),
+    },
+    {
+      key: 'quantity',
+      header: 'Quantity',
+      align: 'right',
+      render: (item) => <span className="text-gray-900 dark:text-gray-300">{item.quantity}</span>,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      render: (item) => <span className="text-gray-900 dark:text-gray-300">₱ {item.amount?.toLocaleString()}</span>,
+    },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
       <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
@@ -88,35 +122,12 @@ function CommissionDetailModal({ commission, onClose }: { commission: Commission
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Commission Items</p>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-100 dark:bg-gray-900/50 text-gray-500 dark:text-gray-400">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">Type</th>
-                    <th className="px-6 py-4 font-semibold">Details (Date/Dest or Desc)</th>
-                    <th className="px-6 py-4 font-semibold text-right">Quantity</th>
-                    <th className="px-6 py-4 font-semibold text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                  {commission.items?.map((item: any) => (
-                    <tr key={item.id}>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300 capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</td>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300">
-                        {item.source_type === 'trip_ticket' || !item.source_type 
-                          ? `${item.travel_date || ''} - ${item.destination || ''}` 
-                          : item.description}
-                      </td>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300 text-right">{item.quantity}</td>
-                      <td className="px-6 py-4 text-gray-900 dark:text-gray-300 text-right">₱ {item.amount?.toLocaleString()}</td>
-                    </tr>
-                  ))}
-                  {(!commission.items || commission.items.length === 0) && (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-500">No items found</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <DataTable
+                columns={itemColumns}
+                data={commission.items ?? []}
+                rowKey={(item) => item.id}
+                empty={<div className="px-6 py-8 text-center text-gray-500">No items found</div>}
+              />
             </div>
           </div>
         </div>
@@ -263,6 +274,54 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
   const handleRemoveItem = (index: number) => {
     setItems(prev => prev.filter((_, i) => i !== index));
   };
+
+  // Draft items have no id yet, so identity/index is the only stable key here.
+  const addedItemColumns: Column<NewCommissionItem>[] = [
+    {
+      key: 'source_type',
+      header: 'Type',
+      render: (item) => (
+        <span className="text-gray-900 dark:text-white capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</span>
+      ),
+    },
+    {
+      key: 'details',
+      header: 'Details',
+      render: (item) => (
+        <span className="text-gray-900 dark:text-white">
+          {item.source_type === 'trip_ticket' || !item.source_type
+            ? `${item.travel_date || ''} - ${item.destination || ''}`
+            : item.description}
+        </span>
+      ),
+    },
+    {
+      key: 'quantity',
+      header: 'Quantity',
+      align: 'right',
+      render: (item) => <span className="text-gray-600 dark:text-gray-300">{item.quantity}</span>,
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      render: (item) => <span className="text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</span>,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      align: 'right',
+      render: (item) => (
+        <button
+          type="button"
+          onClick={() => handleRemoveItem(items.indexOf(item))}
+          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
+        >
+          <LuTrash2 size={16} />
+        </button>
+      ),
+    },
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -462,47 +521,16 @@ export function CreateCommissionForm({ inline, onClose }: CreateCommissionFormPr
           <div className="space-y-2">
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Added Items ({items.length})</label>
             <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-55 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase tracking-widest text-[9px] font-bold">
-                  <tr>
-                    <th className="px-6 py-4">Type</th>
-                    <th className="px-6 py-4">Details</th>
-                    <th className="px-6 py-4 text-right">Quantity</th>
-                    <th className="px-6 py-4 text-right">Amount</th>
-                    <th className="px-6 py-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 dark:divide-gray-800 font-medium">
-                  {items.map((item, index) => (
-                    <tr key={index} className="hover:bg-gray-55/50 dark:hover:bg-gray-800/30">
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white capitalize">{item.source_type?.replace('_', ' ') || 'Trip Ticket'}</td>
-                      <td className="px-6 py-4.5 text-gray-900 dark:text-white">
-                        {item.source_type === 'trip_ticket' || !item.source_type
-                          ? `${item.travel_date || ''} - ${item.destination || ''}`
-                          : item.description}
-                      </td>
-                      <td className="px-6 py-4.5 text-right text-gray-600 dark:text-gray-300">{item.quantity}</td>
-                      <td className="px-6 py-4.5 text-right text-gray-900 dark:text-white font-bold">₱ {item.amount.toLocaleString()}</td>
-                      <td className="px-6 py-4.5 text-right">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(index)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-xl transition-all cursor-pointer"
-                        >
-                          <LuTrash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-6 py-8 text-center text-gray-400">
-                        No travel items added yet. Enter item details above and click the (+) button.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <DataTable
+                columns={addedItemColumns}
+                data={items}
+                rowKey={(item) => items.indexOf(item)}
+                empty={
+                  <div className="px-6 py-8 text-center text-gray-400">
+                    No travel items added yet. Enter item details above and click the (+) button.
+                  </div>
+                }
+              />
             </div>
           </div>
         </div>
@@ -601,9 +629,71 @@ export default function Commissions() {
     released: filtered.filter(c => c.status === 'released').length,
   };
 
-  const getRowIndicatorStyle = (_status?: string) => {
-    return '';
-  };
+  const getTotalAmt = (commission: Commission) =>
+    commission.items?.reduce((sum, item) => sum + (Number(item.amount || 0) * Number(item.quantity || 1)), 0) || 0;
+
+  const columns: Column<Commission>[] = [
+    {
+      key: 'serial_no',
+      header: 'Serial No.',
+      render: (commission) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
+            <LuSignature className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{commission.serial_no}</p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'commissioner_name',
+      header: 'Commissioner',
+      render: (commission) => (
+        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+          {commission.commissioner_name}
+        </p>
+      ),
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      render: (commission) => (
+        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+          {commission.date || '—'}
+        </p>
+      ),
+    },
+    {
+      key: 'total_amount',
+      header: 'Total Amount',
+      render: (commission) => (
+        <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">
+          ₱{getTotalAmt(commission).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+        </p>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (commission) => <StatusBadge status={commission.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (commission) => (
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setSelectedCommission(commission)}
+        >
+          <LuEye className="w-4 h-4 mr-2" /> Details
+        </Button>
+      ),
+    },
+  ];
 
   const STATUS_FILTERS = ['all', 'draft', 'approved', 'released'] as const;
 
@@ -731,76 +821,21 @@ export default function Commissions() {
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <table className="w-full min-w-[900px] text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Serial No.</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Commissioner</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Date</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Total Amount</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                  </tr>
-                ))
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
-                </tr>
+          <DataTable
+            columns={columns}
+            data={filtered}
+            rowKey={(commission) => commission.id}
+            className={cn('transition-all duration-300 [&_table]:min-w-[900px]', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+            empty={
+              isLoading ? (
+                <div className="animate-pulse px-6 py-8">
+                  <div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div>
+                </div>
               ) : (
-                filtered.map((commission) => {
-                  const totalAmt = commission.items?.reduce((sum, item) => sum + (Number(item.amount || 0) * Number(item.quantity || 1)), 0) || 0;
-                  return (
-                    <tr key={commission.id} className={`group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${getRowIndicatorStyle(commission.status)}`}>
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                            <LuSignature className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{commission.serial_no}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                          {commission.commissioner_name}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                          {commission.date || '—'}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">
-                          ₱{totalAmt.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                        </p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <StatusBadge status={commission.status} />
-                      </td>
-                      <td className="px-6 py-5 text-right">
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          onClick={() => setSelectedCommission(commission)}
-                        >
-                          <LuEye className="w-4 h-4 mr-2" /> Details
-                        </Button>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                <div className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</div>
+              )
+            }
+          />
         </div>
       </div>
 

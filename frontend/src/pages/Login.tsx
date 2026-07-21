@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi } from '../api/settings';
 import { getLandingPageForUser, isPathAllowedForUser } from '../utils/navigation';
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, FileText, Download, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 /**
@@ -82,6 +82,24 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  // Documents flyout state
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+  const docsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (docsRef.current && !docsRef.current.contains(event.target as Node)) {
+        setIsDocsOpen(false);
+      }
+    }
+    if (isDocsOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isDocsOpen]);
+
   // Portal Customization States (Initialized from localStorage to prevent flash of default assets/color)
   const [logoUrl, setLogoUrl] = useState(() => sanitizeBrandingUrl(localStorage.getItem('jvd_logo_url'), '/JVD 3D.png'));
   const [bgList, setBgList] = useState<string[]>(() => {
@@ -114,6 +132,13 @@ export default function Login() {
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMC');
   const [slideTransition, setSlideTransition] = useState(() => localStorage.getItem('jvd_slide_transition') || 'fade');
+  const [documents, setDocuments] = useState<{title: string; description: string; url: string}[]>(() => {
+    try {
+      const cached = localStorage.getItem('jvd_documents');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return [];
+  });
 
   useEffect(() => {
     // Load active branding configuration on mount
@@ -149,6 +174,10 @@ export default function Login() {
           if (data.landing_page_slide_transition) {
             setSlideTransition(data.landing_page_slide_transition);
             localStorage.setItem('jvd_slide_transition', data.landing_page_slide_transition);
+          }
+          if (data.landing_page_documents) {
+            setDocuments(data.landing_page_documents);
+            localStorage.setItem('jvd_documents', JSON.stringify(data.landing_page_documents));
           }
         }
       } catch (err) {
@@ -540,7 +569,72 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="absolute bottom-8 left-0 right-0 z-10 px-6">
+      {/* Company Documents Flyout */}
+      {documents.length > 0 && (
+        <div ref={docsRef} className="absolute bottom-8 left-6 z-20 flex flex-col items-start">
+          <AnimatePresence>
+            {isDocsOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                transition={{ duration: 0.2 }}
+                className="mb-3 bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl p-4 w-72 shadow-2xl overflow-hidden"
+              >
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-white/10">
+                  <h3 className="text-white font-semibold flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-blue-400" />
+                    Marketing Quick Access
+                  </h3>
+                  <button
+                    onClick={() => setIsDocsOpen(false)}
+                    className="text-white/50 hover:text-white transition-colors p-1"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                <div className="flex flex-col gap-2">
+                  {documents.map((doc, index) => (
+                    <a
+                      key={index}
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group flex items-start justify-between p-3 rounded-xl hover:bg-white/10 transition-colors border border-transparent hover:border-white/10"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-500/20 rounded-lg text-blue-400 mt-0.5">
+                          <FileText className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-medium text-white group-hover:text-blue-200 transition-colors">{doc.title}</div>
+                          {doc.description && <div className="text-xs text-white/50 mt-0.5">{doc.description}</div>}
+                        </div>
+                      </div>
+                      <Download className="w-4 h-4 text-white/30 group-hover:text-blue-400 transition-colors mt-2" />
+                    </a>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          <button
+            onClick={() => setIsDocsOpen(!isDocsOpen)}
+            className={`group flex items-center gap-2 px-4 py-2.5 rounded-full backdrop-blur-md transition-all duration-300 border ${
+              isDocsOpen 
+                ? 'bg-white/20 border-white/30 shadow-[0_0_15px_rgba(255,255,255,0.1)] text-white' 
+                : 'bg-white/5 border-white/10 hover:bg-white/15 hover:border-white/20 text-white/70 hover:text-white shadow-lg'
+            }`}
+          >
+            <FileText className={`w-4 h-4 transition-colors ${isDocsOpen ? 'text-blue-300' : 'text-blue-400/70 group-hover:text-blue-400'}`} />
+            <span className="text-xs font-semibold tracking-wide uppercase">Marketing Quick Access</span>
+          </button>
+        </div>
+      )}
+
+      <div className="absolute bottom-8 left-0 right-0 z-10 px-6 pointer-events-none">
         <p className="text-center text-[10px] font-bold text-white/40 tracking-[0.3em] uppercase">
           &copy; 2026 JVD Events and Travels Management Co.
         </p>

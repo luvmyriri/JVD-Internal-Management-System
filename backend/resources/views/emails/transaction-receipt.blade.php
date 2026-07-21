@@ -283,9 +283,8 @@
             </div>
         </div>
 
-        <div class="footer-note">
-            This is an automated system-generated billing communication from JVD Event & Travel Management Company.<br>
-            Unit 6 - Aryanna Village Center, Susano Road, Camarin, Caloocan City.
+        <div style="padding: 24px 20px 8px 20px;">
+            @include('emails.partials.footer')
         </div>
     </div>
 

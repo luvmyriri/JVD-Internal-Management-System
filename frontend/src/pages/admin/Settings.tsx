@@ -12,7 +12,8 @@ import {
   LuPalette, 
   LuImage, 
   LuSettings,
-  LuLoader
+  LuLoader,
+  LuFileText
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 
@@ -99,6 +100,8 @@ export default function Settings() {
   const [slideDuration, setSlideDuration] = useState<number>(6);
   const [landingPageTitle, setLandingPageTitle] = useState<string>('JVD ETMC');
   const [slideTransition, setSlideTransition] = useState<string>('fade');
+  const [existingDocuments, setExistingDocuments] = useState<{title: string; description: string; url: string}[]>([]);
+  const [newDocuments, setNewDocuments] = useState<{title: string; description: string; file: File}[]>([]);
 
   // File Upload State
   const [logoFile, setLogoFile] = useState<File | null>(null);
@@ -108,6 +111,7 @@ export default function Settings() {
 
   const logoInputRef = useRef<HTMLInputElement>(null);
   const bgInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
 
   const fetchLandingPageSettings = async () => {
     setLoading(true);
@@ -121,6 +125,7 @@ export default function Settings() {
         setSlideDuration(data.landing_page_slide_duration || 6);
         setLandingPageTitle(data.landing_page_title || 'JVD ETMC');
         setSlideTransition(data.landing_page_slide_transition || 'fade');
+        setExistingDocuments(data.landing_page_documents || []);
       }
     } catch (error) {
       console.error('Failed to load branding configurations:', error);
@@ -202,6 +207,35 @@ export default function Settings() {
     setNewBgPreviews(prev => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
+  const handleDocChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      const docsToAdd = filesArray.map(file => ({
+        title: file.name.replace(/\.[^/.]+$/, ""),
+        description: '',
+        file
+      }));
+      setNewDocuments(prev => [...prev, ...docsToAdd]);
+      if (docInputRef.current) docInputRef.current.value = '';
+    }
+  };
+
+  const removeExistingDoc = (indexToRemove: number) => {
+    setExistingDocuments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const removeNewDoc = (indexToRemove: number) => {
+    setNewDocuments(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
+
+  const updateNewDoc = (index: number, field: 'title' | 'description', value: string) => {
+    setNewDocuments(prev => {
+      const updated = [...prev];
+      updated[index][field] = value;
+      return updated;
+    });
+  };
+
   const handleSaveLandingSettings = async () => {
     setSaving(true);
     const formData = new FormData();
@@ -222,6 +256,12 @@ export default function Settings() {
     formData.append('landing_page_slide_duration', slideDuration.toString());
     formData.append('landing_page_title', landingPageTitle);
     formData.append('landing_page_slide_transition', slideTransition);
+    formData.append('existing_documents', JSON.stringify(existingDocuments));
+    newDocuments.forEach(doc => {
+      formData.append('new_document_files[]', doc.file);
+      formData.append('new_document_titles[]', doc.title);
+      formData.append('new_document_descriptions[]', doc.description);
+    });
 
     try {
       const response = await settingsApi.updateLandingPageSettings(formData);
@@ -236,6 +276,7 @@ export default function Settings() {
         setSlideDuration(updatedData.landing_page_slide_duration || 6);
         setLandingPageTitle(updatedData.landing_page_title || 'JVD ETMC');
         setSlideTransition(updatedData.landing_page_slide_transition || 'fade');
+        setExistingDocuments(updatedData.landing_page_documents || []);
       }
 
       // Reset local file upload states
@@ -243,6 +284,7 @@ export default function Settings() {
       setLogoPreview(null);
       setNewBgFiles([]);
       setNewBgPreviews([]);
+      setNewDocuments([]);
     } catch (error: any) {
       console.error('Failed to update landing page branding:', error);
       const errMsg = error.response?.data?.message || 'Error occurred while saving configurations.';
@@ -549,6 +591,102 @@ export default function Settings() {
                   <div className="col-span-full py-10 bg-gray-50/50 dark:bg-gray-800/10 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2">
                     <LuImage className="w-8 h-8 text-gray-300 dark:text-gray-600" />
                     <p className="text-xs text-gray-400 dark:text-gray-550 font-bold uppercase tracking-wider">No backgrounds configured</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Company Documents Settings */}
+            <div className="p-6 bg-gray-50/50 dark:bg-gray-800/40 rounded-2xl border border-gray-100 dark:border-gray-850">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 dark:text-gray-550 mb-1 tracking-wider uppercase flex items-center gap-2">
+                    <LuFileText className="w-4 h-4 text-indigo-500" /> Company Documents
+                  </label>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-550 font-medium">Manage downloadable PDFs available on the login page.</p>
+                </div>
+                
+                <button 
+                  onClick={() => docInputRef.current?.click()}
+                  className="py-2.5 px-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-indigo-500 dark:hover:border-indigo-500 text-indigo-600 dark:text-indigo-400 rounded-xl font-bold text-xs tracking-wider uppercase transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <LuPlus className="w-4 h-4" /> Add Document
+                </button>
+                <input 
+                  type="file" 
+                  ref={docInputRef}
+                  onChange={handleDocChange}
+                  accept=".pdf,.doc,.docx"
+                  multiple
+                  className="hidden"
+                />
+              </div>
+
+              <div className="space-y-4">
+                {/* Existing Documents */}
+                {existingDocuments.map((doc, index) => (
+                  <div key={`existing-doc-${index}`} className="flex items-start gap-4 p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl">
+                    <div className="p-3 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                      <LuFileText className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input 
+                        type="text" 
+                        value={doc.title}
+                        disabled
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-950 border border-transparent rounded-lg text-sm font-bold text-gray-900 dark:text-white opacity-70 cursor-not-allowed"
+                      />
+                      <input 
+                        type="text" 
+                        value={doc.description}
+                        disabled
+                        className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-950 border border-transparent rounded-lg text-xs text-gray-500 opacity-70 cursor-not-allowed"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => removeExistingDoc(index)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <LuTrash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+
+                {/* New Documents */}
+                {newDocuments.map((doc, index) => (
+                  <div key={`new-doc-${index}`} className="flex items-start gap-4 p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border-2 border-dashed border-indigo-200 dark:border-indigo-800 rounded-xl">
+                    <div className="p-3 bg-indigo-100 dark:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 rounded-xl">
+                      <LuFileText className="w-6 h-6" />
+                    </div>
+                    <div className="flex-1 space-y-2">
+                      <input 
+                        type="text" 
+                        value={doc.title}
+                        onChange={(e) => updateNewDoc(index, 'title', e.target.value)}
+                        placeholder="Document Title"
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 focus:border-indigo-500 rounded-lg text-sm font-bold text-gray-900 dark:text-white outline-none"
+                      />
+                      <input 
+                        type="text" 
+                        value={doc.description}
+                        onChange={(e) => updateNewDoc(index, 'description', e.target.value)}
+                        placeholder="Brief description (optional)"
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-700 focus:border-indigo-500 rounded-lg text-xs text-gray-500 dark:text-gray-400 outline-none"
+                      />
+                    </div>
+                    <button 
+                      onClick={() => removeNewDoc(index)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                    >
+                      <LuTrash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+
+                {existingDocuments.length === 0 && newDocuments.length === 0 && (
+                  <div className="py-8 border border-dashed border-gray-200 dark:border-gray-700 rounded-xl flex flex-col items-center justify-center gap-2">
+                    <LuFileText className="w-8 h-8 text-gray-300 dark:text-gray-600" />
+                    <p className="text-xs text-gray-400 dark:text-gray-550 font-bold uppercase tracking-wider">No documents added</p>
                   </div>
                 )}
               </div>

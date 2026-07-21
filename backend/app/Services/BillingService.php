@@ -42,13 +42,24 @@ class BillingService
             $query->where('status', $request->status);
         }
 
+        // Filter by issue-date range (inclusive) for the shared timeframe filter.
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         $invoices = $query->orderBy('created_at', 'desc')
             ->paginate($request->per_page ?? 15);
 
-        // Calculate Stats for Dashboard
+        // Calculate Stats for Dashboard (cash-basis, consistent with reports).
+        // total_revenue = money actually collected (paid in full + partial deposits);
+        // pending_amount = outstanding receivables still owed across all open invoices.
         $stats = [
-            'total_revenue' => Invoice::where('status', 'paid')->sum('total_amount'),
-            'pending_amount' => Invoice::where('status', 'pending_payment')->sum('total_amount'),
+            'total_revenue' => (float) Invoice::revenueBearing()->sum(Invoice::collectedRevenueExpr()),
+            'pending_amount' => (float) Invoice::whereIn('status', ['partial', 'pending_payment'])
+                ->sum(DB::raw('COALESCE(balance, 0)')),
             'invoice_count' => Invoice::count(),
         ];
 
