@@ -18,8 +18,9 @@ import { supplierApi } from '../../api/suppliers';
 import type { JobOrder, JobOrderFormData } from '../../types/procurement';
 import { JO_STATUS_LABELS, SERVICE_TYPE_LABELS } from '../../constants';
 import { Pagination, Dropdown, ConfirmDialog, PipelineVisualizer } from '../../components/ui';
+import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import toast from 'react-hot-toast';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -501,89 +502,6 @@ function JODetailModal({ jo, onClose }: { jo: JobOrder; onClose: () => void }) {
   );
 }
 
-// ── JO Row ───────────────────────────────────────────────────────────────────
-
-function JORow({
-  jo,
-  onDetail,
-  onConfirm,
-  onComplete,
-  onGeneratePO,
-}: {
-  jo: JobOrder;
-  onDetail: (jo: JobOrder) => void;
-  onConfirm: (jo: JobOrder) => void;
-  onComplete: (jo: JobOrder) => void;
-  onGeneratePO: (jo: JobOrder) => void;
-}) {
-  return (
-    <tr className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all group">
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-sm shadow-sky-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
-            <LuClipboardList size={18} />
-          </div>
-          <span className="font-black text-gray-900 dark:text-white tracking-tight">{jo.jo_number}</span>
-        </div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><ServiceTypeBadge type={jo.service_type} /></td>
-      <td className="px-8 py-6 text-sm font-bold text-gray-700 dark:text-gray-200 border-b border-gray-50 dark:border-gray-800">
-        {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
-          <LuMapPin size={12} className="shrink-0" /> Destination
-        </div>
-        <div className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px]">{jo.destination}</div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
-          <LuCalendar size={12} /> Schedule
-        </div>
-        <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{fmt(jo.service_date)}</div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800"><StatusBadge status={jo.status} /></td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <div className="text-gray-900 dark:text-white font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
-        <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
-      </td>
-      <td className="px-8 py-6 border-b border-gray-50 dark:border-gray-800">
-        <Dropdown
-          items={[
-            {
-              label: 'View Details',
-              icon: <Eye size={14} />,
-              onClick: () => onDetail(jo)
-            },
-            ...(jo.status === 'created' ? [{
-              label: 'Confirm Order',
-              icon: <Send size={14} />,
-              onClick: () => onConfirm(jo)
-            }] : []),
-            ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{
-              label: 'Mark Completed',
-              icon: <CheckCircle size={14} />,
-              onClick: () => onComplete(jo)
-            }] : []),
-            ...(!jo.purchase_order_id && jo.status !== 'cancelled' ? [{
-              label: 'Generate P.O.',
-              icon: <ShoppingCart size={14} />,
-              onClick: () => onGeneratePO(jo)
-            }] : []),
-            ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{
-              label: 'Edit Order',
-              icon: <FileEdit size={14} />,
-              onClick: () => {
-                toast('Edit feature coming soon', { icon: 'ℹ️' });
-              }
-            }] : []),
-          ]}
-        />
-      </td>
-    </tr>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 export default function JobOrders() {
@@ -591,6 +509,7 @@ export default function JobOrders() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [serviceType, setServiceType] = useState('');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [detailJO, setDetailJO] = useState<JobOrder | null>(null);
   const [generatePOJO, setGeneratePOJO] = useState<JobOrder | null>(null);
@@ -600,11 +519,13 @@ export default function JobOrders() {
   const [page, setPage] = useState(1);
 
   const { data, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['job-orders', search, status, serviceType, page],
+    queryKey: ['job-orders', search, status, serviceType, dateRange.from, dateRange.to, page],
     queryFn: () => jobOrderApi.list({
       search: search || undefined,
       status: status || undefined,
       service_type: serviceType || undefined,
+      date_from: dateRange.from || undefined,
+      date_to: dateRange.to || undefined,
       page,
       per_page: 10
     }),
@@ -636,6 +557,111 @@ export default function JobOrders() {
 
   const jos = data?.data?.data ?? [];
   const meta = data?.data?.meta;
+
+  const columns: Column<JobOrder>[] = [
+    {
+      key: 'jo_number',
+      header: 'J.O. Number',
+      render: (jo) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-sky-50 dark:bg-sky-900/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 shadow-sm shadow-sky-200/20 dark:shadow-none group-hover:bg-white dark:group-hover:bg-gray-800 group-hover:shadow-md transition-all">
+            <LuClipboardList size={18} />
+          </div>
+          <span className="font-black text-gray-900 dark:text-white tracking-tight">{jo.jo_number}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'service_type',
+      header: 'Type',
+      render: (jo) => <ServiceTypeBadge type={jo.service_type} />,
+    },
+    {
+      key: 'customer',
+      header: 'Customer',
+      render: (jo) => (
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-200">
+          {jo.customer ? `${jo.customer.first_name} ${jo.customer.last_name}` : jo.service_type === 'maintenance' ? 'PMS Maintenance' : `Customer #${jo.customer_id}`}
+        </span>
+      ),
+    },
+    {
+      key: 'destination',
+      header: 'Destination',
+      render: (jo) => (
+        <>
+          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+            <LuMapPin size={12} className="shrink-0" /> Destination
+          </div>
+          <div className="text-sm font-bold text-gray-700 dark:text-gray-200 truncate max-w-[150px]">{jo.destination}</div>
+        </>
+      ),
+    },
+    {
+      key: 'service_date',
+      header: 'Date',
+      render: (jo) => (
+        <>
+          <div className="flex items-center gap-2 text-[10px] text-gray-400 font-black uppercase tracking-widest mb-1">
+            <LuCalendar size={12} /> Schedule
+          </div>
+          <div className="text-sm font-bold text-gray-700 dark:text-gray-200">{fmt(jo.service_date)}</div>
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (jo) => <StatusBadge status={jo.status} />,
+    },
+    {
+      key: 'total_cost',
+      header: 'Amount',
+      render: (jo) => (
+        <>
+          <div className="text-gray-900 dark:text-white font-black text-base">{new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(jo.total_cost)}</div>
+          <div className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-0.5">Total Amount</div>
+        </>
+      ),
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (jo) => (
+        <Dropdown
+          items={[
+            {
+              label: 'View Details',
+              icon: <Eye size={14} />,
+              onClick: () => setDetailJO(jo)
+            },
+            ...(jo.status === 'created' ? [{
+              label: 'Confirm Order',
+              icon: <Send size={14} />,
+              onClick: () => setConfirmJO(jo)
+            }] : []),
+            ...(jo.status === 'confirmed' || jo.status === 'in_progress' ? [{
+              label: 'Mark Completed',
+              icon: <CheckCircle size={14} />,
+              onClick: () => setConfirmComplete(jo)
+            }] : []),
+            ...(!jo.purchase_order_id && jo.status !== 'cancelled' ? [{
+              label: 'Generate P.O.',
+              icon: <ShoppingCart size={14} />,
+              onClick: () => setGeneratePOJO(jo)
+            }] : []),
+            ...(jo.status !== 'completed' && jo.status !== 'cancelled' ? [{
+              label: 'Edit Order',
+              icon: <FileEdit size={14} />,
+              onClick: () => {
+                toast('Edit feature coming soon', { icon: 'ℹ️' });
+              }
+            }] : []),
+          ]}
+        />
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-10 pb-12">
@@ -684,6 +710,7 @@ export default function JobOrders() {
           </select>
           <LuChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
         </div>
+        <TimeframeFilter value={dateRange} onChange={(r) => { setDateRange(r); setPage(1); }} className="w-full sm:w-auto sm:ml-auto" />
       </div>
 
       {/* Table */}
@@ -693,38 +720,22 @@ export default function JobOrders() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        {isLoading ? (
-          <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
-        ) : jos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
-            <LuClipboardList size={40} strokeWidth={1} />
-            <p className="text-sm font-medium">No job orders found</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800 uppercase tracking-[0.2em] text-[10px]">
-                <tr>
-                  {['J.O. Number', 'Type', 'Customer', 'Destination', 'Date', 'Status', 'Amount', ''].map(h => (
-                    <th key={h} className="px-8 py-5 text-left font-black text-gray-400 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-                {jos.map(jo => (
-                  <JORow
-                    key={jo.id}
-                    jo={jo}
-                    onDetail={setDetailJO}
-                    onConfirm={(item) => setConfirmJO(item)}
-                    onComplete={(item) => setConfirmComplete(item)}
-                    onGeneratePO={(jo) => setGeneratePOJO(jo)}
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DataTable
+          columns={columns}
+          data={jos}
+          rowKey={(jo) => jo.id}
+          className={cn('border-0 rounded-none', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+          empty={
+            isLoading ? (
+              <div className="flex items-center justify-center h-60"><LuLoaderCircle size={28} className="animate-spin text-gray-300" /></div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-60 text-gray-400 gap-3">
+                <LuClipboardList size={40} strokeWidth={1} />
+                <p className="text-sm font-medium">No job orders found</p>
+              </div>
+            )
+          }
+        />
       </div>
 
       {showCreate && <CreateJOModal onClose={() => setShowCreate(false)} />}

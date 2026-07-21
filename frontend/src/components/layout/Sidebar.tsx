@@ -236,7 +236,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         />
       )}
 
-      <aside className={`fixed left-0 top-0 bottom-0 w-64 bg-gray-950 border-r border-gray-800 flex flex-col z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+      <aside className={`fixed left-0 top-0 bottom-0 jvd w-64 bg-surface border-r border-border flex flex-col z-50 transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}>
         {/* Logo glow keyframe animation */}
         <style>{`
@@ -252,18 +252,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       `}</style>
 
         {/* Brand */}
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-gray-800 shrink-0">
+        <div className="h-16 flex items-center gap-2.5 px-5 border-b border-border shrink-0">
           <img
             src="/JVD 3D.png"
             alt="JVD Logo"
-            className="h-9 w-auto jvd-logo-glow"
+            className="h-8 w-auto"
             onError={(e) => {
               e.currentTarget.style.display = 'none';
             }}
           />
           <div>
-            <p className="text-sm font-bold text-white leading-none select-none">{systemName}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">Management Platform</p>
+            <p className="text-sm font-semibold text-ink leading-none select-none">{systemName}</p>
+            <p className="text-[11px] text-muted mt-0.5">Management Platform</p>
           </div>
         </div>
 
@@ -277,7 +277,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <div key={section.title} className="space-y-2">
                 <button
                   onClick={() => toggleSection(section.title)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-300 transition-colors group"
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted hover:text-ink transition-colors"
                 >
                   <span className="select-none">{section.title}</span>
                   {hasMultipleItems && (
@@ -301,18 +301,18 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                           onClick={() => onClose?.()}
                           title={item.label}
                           className={({ isActive }) =>
-                            `relative flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm transition-all duration-200 ${isActive
-                              ? 'bg-white text-blue-900 font-black shadow-lg shadow-white/10'
-                              : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
+                            `relative flex items-center gap-3 px-3 py-2 rounded-[var(--radius-control)] text-sm transition-colors ${isActive
+                              ? 'bg-surface-muted text-ink font-medium'
+                              : 'text-muted hover:bg-surface-muted hover:text-ink'
                             }`
                           }
                         >
                           {({ isActive }) => (
                             <>
                               {isActive && (
-                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-blue-600 rounded-r-full" />
+                                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 bg-brand rounded-r-full" />
                               )}
-                              <span className={`text-base shrink-0 ${isActive ? 'text-blue-600' : ''}`}>{item.icon}</span>
+                              <span className={`text-[17px] shrink-0 ${isActive ? 'text-brand' : ''}`}>{item.icon}</span>
                               <span className="truncate">{item.label}</span>
                             </>
                           )}
@@ -327,9 +327,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-4 border-t border-gray-800 shrink-0">
-          <p className="text-[10px] text-gray-600 text-center">JVD Event & Travel</p>
-          <p className="text-[10px] text-gray-700 text-center">Management Co.</p>
+        <div className="px-4 py-3 border-t border-border shrink-0">
+          <p className="text-[11px] text-muted text-center">JVD Event & Travel Management Co.</p>
         </div>
       </aside>
     </>

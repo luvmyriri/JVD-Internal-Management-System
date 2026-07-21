@@ -7,7 +7,8 @@ import { tripTicketApi } from '../../api/operations';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 import type { TripTicket } from '../../types';
-import { Modal, Button, PipelineVisualizer } from '../../components/ui';
+import { Modal, Button } from '../../components/ui';
+import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import { useBuses } from '../../hooks/useFleet';
 import { useUsers } from '../../hooks/useUsers';
 
@@ -411,164 +412,7 @@ function printTripTicket(ticket: TripTicket) {
   win.document.close();
 }
 
-function TripTicketDetailModal({ ticket, onClose, onCustomizeApprove }: { ticket: TripTicket; onClose: () => void; onCustomizeApprove?: (ticket: TripTicket) => void }) {
-  const { user } = useAuth();
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-[2.5rem] shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
-        <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
-          <div className="flex items-center gap-4">
-            <div>
-              <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
-              <div className="flex items-center gap-2 mt-1">
-                <StatusBadge status={ticket.status} />
-              </div>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-3 bg-gray-50 dark:bg-gray-800 rounded-2xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all font-bold text-sm">
-            ✕
-          </button>
-        </div>
-
-        <div className="p-10 overflow-y-auto space-y-8 custom-scrollbar">
-          {/* Pipeline Visualizer */}
-          <PipelineVisualizer
-            pipelineType="transaction"
-            currentStatus={ticket.status === 'approved' ? (ticket.cash_budget_request?.status === 'disbursed' ? 'disbursed' : 'approved') : ticket.status}
-            metadata={{
-              approved_by: ticket.approvedBy?.name,
-              bus_plate: ticket.bus?.plate_number || ticket.plate_no,
-              driver_name: ticket.driver?.name,
-              ticket_no: ticket.control_no,
-              budget_status: ticket.cash_budget_request?.status,
-            }}
-          />
-
-
-
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.date_of_travel}</h3>
-              {ticket.duration && <p className="text-xs text-gray-500 mt-1">{ticket.duration}</p>}
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Passengers</p>
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">{ticket.no_of_passengers} pax</h3>
-              {ticket.passenger_name && <p className="text-xs text-gray-500 mt-1">{ticket.passenger_name}</p>}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-8">
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Route</p>
-              <div className="mt-2 space-y-3">
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center mt-1">
-                    <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-white dark:border-gray-900 shadow-sm z-10" />
-                    <div className="w-0.5 h-6 bg-gray-200 dark:bg-gray-800" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Pick Up</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.pick_up}</p>
-                  </div>
-                </div>
-                {ticket.destination && ticket.destination !== 'TBD' && (
-                  <div className="flex gap-3">
-                    <div className="flex flex-col items-center mt-1">
-                      <div className="w-3 h-3 rounded-full bg-indigo-500 border-2 border-white dark:border-gray-900 shadow-sm z-10" />
-                      <div className="w-0.5 h-6 bg-gray-200 dark:bg-gray-800" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Destination</p>
-                      <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.destination}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="flex gap-3">
-                  <div className="flex flex-col items-center mt-1">
-                    <div className="w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-gray-900 shadow-sm" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Drop Off</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.drop_off}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Vehicle & Driver</p>
-              <div className="mt-2 space-y-2">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{ticket.driver?.name || 'TBA'}</p>
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4">Allowances</p>
-            <div className="bg-gray-50 dark:bg-gray-800 rounded-2xl p-5 grid grid-cols-2 gap-4">
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Meal</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.meal_allowance?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Diesel</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.diesel?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">SOP</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {ticket.sop?.toLocaleString() || 0}</span>
-              </div>
-              <div className="flex justify-between items-center border-b border-gray-200 dark:border-gray-700 pb-2">
-                <span className="text-sm text-gray-500">Tolls</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white">₱ {((ticket.easy_trip || 0) + (ticket.autosweep || 0)).toLocaleString()}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex items-center justify-between">
-          <div className="flex gap-3">
-            <button
-              onClick={() => printTripTicket(ticket)}
-              className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg shadow-blue-600/20 active:scale-95"
-            >
-              Print DTT
-            </button>
-            {ticket.status === 'draft' && user?.role !== 'driver' && onCustomizeApprove && (
-              <button
-                onClick={() => {
-                  onCustomizeApprove(ticket);
-                  onClose();
-                }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-95 cursor-pointer`}
-                title="Approve this trip ticket"
-              >
-                Customize & Approve
-              </button>
-            )}
-            {ticket.status === 'approved' && user?.role === 'super_admin' && onCustomizeApprove && (
-              <button
-                onClick={() => {
-                  onCustomizeApprove(ticket);
-                  onClose();
-                }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer`}
-                title="Edit this customized trip ticket"
-              >
-                Edit Customized DTT
-              </button>
-            )}
-          </div>
-          <button onClick={onClose} className="px-8 py-3 bg-gray-900 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-gray-800 transition-all">
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+import TripDrawer from '../../components/drawers/TripDrawer';
 
 function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose: () => void }) {
   const qc = useQueryClient();
@@ -1080,6 +924,7 @@ export default function TripTickets() {
   const { user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [tripTypeFilter, setTripTypeFilter] = useState<'all' | 'domestic' | 'international'>('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
   const [selectedTicket, setSelectedTicket] = useState<TripTicket | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [editingTicket, setEditingTicket] = useState<TripTicket | null>(null);
@@ -1099,8 +944,67 @@ export default function TripTickets() {
       t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchType = tripTypeFilter === 'all' || (t as any).trip_type === tripTypeFilter;
-    return matchSearch && matchType;
+    const travel = (t.date_of_travel ?? '').slice(0, 10);
+    const matchDate = (!dateRange.from || travel >= dateRange.from) && (!dateRange.to || travel <= dateRange.to);
+    return matchSearch && matchType && matchDate;
   });
+
+  const columns: Column<TripTicket>[] = [
+    {
+      key: 'control_no',
+      header: 'Control No.',
+      render: (ticket) => (
+        <span className="font-bold text-gray-900 dark:text-white">{ticket.control_no}</span>
+      ),
+    },
+    {
+      key: 'date_of_travel',
+      header: 'Travel Date',
+      render: (ticket) => (
+        <span className="text-gray-600 dark:text-gray-300">{ticket.date_of_travel}</span>
+      ),
+    },
+    {
+      key: 'route',
+      header: 'Route',
+      render: (ticket) => (
+        <>
+          <div className="text-gray-900 dark:text-gray-300 font-medium">{ticket.pick_up}</div>
+          <div className="text-gray-500 text-xs">to {ticket.drop_off}</div>
+        </>
+      ),
+    },
+    {
+      key: 'bus_driver',
+      header: 'Bus/Driver',
+      render: (ticket) => (
+        <div className="text-gray-600 dark:text-gray-300">
+          <div>{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</div>
+          <div className="text-xs text-gray-500">{ticket.driver?.name || 'TBA'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'trip_type',
+      header: 'Trip Type',
+      render: (ticket) => <TripTypeBadge type={(ticket as any).trip_type} />,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (ticket) => <StatusBadge status={ticket.status} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (ticket) => (
+        <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
+          Details
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-4 md:space-y-8 pb-12">
@@ -1139,6 +1043,7 @@ export default function TripTickets() {
               </button>
             ))}
           </div>
+          <TimeframeFilter value={dateRange} onChange={setDateRange} />
           {user?.role !== 'driver' && (
             <button onClick={() => setShowCreate(true)} className="flex items-center justify-center gap-2 px-6 py-3 w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer">
               + New Trip Ticket
@@ -1153,56 +1058,29 @@ export default function TripTickets() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="bg-gray-50/50 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 font-bold uppercase tracking-widest text-[10px]">
-              <tr className="border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest rounded-tl-3xl">Control No.</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Travel Date</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Route</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Bus/Driver</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Trip Type</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest text-right rounded-tr-3xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr><td colSpan={7} className="px-8 py-12 text-center text-gray-500">Loading trip tickets...</td></tr>
-              ) : filtered.length === 0 ? (
-                <tr><td colSpan={6} className="px-8 py-12 text-center text-gray-500">No trip tickets found.</td></tr>
-              ) : (
-                filtered.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors">
-                    <td className="px-8 py-5 font-bold text-gray-900 dark:text-white">{ticket.control_no}</td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">{ticket.date_of_travel}</td>
-                    <td className="px-8 py-5">
-                      <div className="text-gray-900 dark:text-gray-300 font-medium">{ticket.pick_up}</div>
-                      <div className="text-gray-500 text-xs">to {ticket.drop_off}</div>
-                    </td>
-                    <td className="px-8 py-5 text-gray-600 dark:text-gray-300">
-                      <div>{ticket.bus?.plate_number || ticket.plate_no || 'TBA'}</div>
-                      <div className="text-xs text-gray-500">{ticket.driver?.name || 'TBA'}</div>
-                    </td>
-                    <td className="px-8 py-5">
-                      <TripTypeBadge type={(ticket as any).trip_type} />
-                    </td>
-                    <td className="px-8 py-5"><StatusBadge status={ticket.status} /></td>
-                    <td className="px-8 py-5 text-right">
-                      <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
-                        Details
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={isLoading ? [] : filtered}
+          rowKey={(ticket) => ticket.id}
+          empty={
+            isLoading ? (
+              <div className="px-8 py-12 text-center text-gray-500">Loading trip tickets...</div>
+            ) : (
+              <div className="px-8 py-12 text-center text-gray-500">No trip tickets found.</div>
+            )
+          }
+          className="border-0 rounded-none bg-transparent"
+        />
       </div>
 
       {selectedTicket && (
-        <TripTicketDetailModal ticket={selectedTicket} onClose={() => setSelectedTicket(null)} onCustomizeApprove={setEditingTicket} />
+        <TripDrawer
+          ticket={selectedTicket}
+          isOpen={true}
+          onClose={() => setSelectedTicket(null)}
+          onCustomizeApprove={setEditingTicket}
+          onPrint={printTripTicket}
+        />
       )}
 
       {showCreate && (

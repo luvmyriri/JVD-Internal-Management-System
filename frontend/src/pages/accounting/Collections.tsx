@@ -10,8 +10,10 @@ import toast from 'react-hot-toast';
 import { collectionApi } from '../../api/finance';
 import client from '../../api/client';
 import { customerApi } from '../../api/customers';
-import type { Collection } from '../../types';
+import type { Collection, CollectionPayment } from '../../types';
 import { Modal, Button } from '../../components/ui';
+import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
+import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
@@ -24,6 +26,26 @@ const SERVICE_TYPES = [
   'Booking',
   'Other',
 ] as const;
+
+/** Payment History sub-table inside the Collection Details modal (roadmap 3.7). */
+const paymentColumns: Column<CollectionPayment>[] = [
+  {
+    key: 'payment_date',
+    header: 'Date',
+    render: (p) => <span className="font-medium">{new Date(p.payment_date).toLocaleDateString()}</span>,
+  },
+  {
+    key: 'payment_method',
+    header: 'Method',
+    render: (p) => <span className="font-medium">{p.payment_method}</span>,
+  },
+  {
+    key: 'amount',
+    header: 'Amount',
+    align: 'right',
+    render: (p) => <span className="font-black">₱{Number(p.amount).toLocaleString()}</span>,
+  },
+];
 
 function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
@@ -231,6 +253,7 @@ export default function Collections() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
 
   // Modal States
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
@@ -256,12 +279,14 @@ export default function Collections() {
   }, [searchTerm]);
 
   const { data: responseData, isLoading, isPlaceholderData } = useQuery({
-    queryKey: ['collections', { search: debouncedSearch, status: statusFilter }],
+    queryKey: ['collections', { search: debouncedSearch, status: statusFilter, from: dateRange.from, to: dateRange.to }],
     queryFn: async () => {
       if (!hasGeneralAccess) return { data: [], stats: null };
       const response = await collectionApi.getAll({
         search: debouncedSearch,
-        status: statusFilter
+        status: statusFilter,
+        date_from: dateRange.from || undefined,
+        date_to: dateRange.to || undefined,
       });
       return response;
     },
@@ -431,9 +456,109 @@ export default function Collections() {
     );
   };
 
-  const getRowIndicatorStyle = (_status?: string) => {
-    return '';
-  };
+  const columns: Column<Collection>[] = [
+    {
+      key: 'client_name',
+      header: 'Client & Source',
+      sortable: true,
+      sortValue: (coll) => coll.client_name || '',
+      render: (coll) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 shadow-sm">
+            <LuBanknote className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{coll.client_name}</p>
+            {coll.auto_generated && coll.invoice ? (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
+                From: {coll.invoice.invoice_number}
+              </span>
+            ) : coll.liquidation_id ? (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
+                From: Liquidation #{coll.liquidation_id}
+              </span>
+            ) : (
+              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">
+                Manual Entry
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'service_type',
+      header: 'Service Type',
+      render: (coll) => {
+        const st = coll.service_type;
+        const serviceName = st === 'Other' && coll.other_service_type
+          ? coll.other_service_type
+          : (st || coll.invoice?.items?.[0]?.service?.name || 'N/A');
+
+        if (serviceName === 'Driver Shortage') {
+          return (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
+              Driver Shortage
+            </span>
+          );
+        }
+        return (
+          <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
+            {serviceName}
+          </p>
+        );
+      },
+    },
+    {
+      key: 'billing_amount',
+      header: 'Amount / Balance',
+      sortable: true,
+      sortValue: (coll) => Number(coll.billing_amount || coll.rate || 0),
+      render: (coll) => (
+        <div>
+          <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">Total: ₱{Number(coll.billing_amount || coll.rate || 0).toLocaleString()}</p>
+          <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mt-0.5">Bal: ₱{Number(coll.remaining_balance ?? coll.rate).toLocaleString()}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'due_date',
+      header: 'Due Date',
+      sortable: true,
+      sortValue: (coll) => coll.due_date || '',
+      render: (coll) => (
+        <div>
+          <p className={`text-xs font-bold leading-tight ${coll.collection_status === 'overdue' ? 'text-rose-600' : 'text-gray-950 dark:text-gray-200'}`}>
+            {coll.due_date ? new Date(coll.due_date).toLocaleDateString() : 'N/A'}
+          </p>
+          <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Service Date</p>
+        </div>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sortable: true,
+      sortValue: (coll) => coll.collection_status || 'pending',
+      render: (coll) => <StatusBadge status={coll.collection_status || 'pending'} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (coll) => (
+        <div onClick={(e) => e.stopPropagation()}>
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => { setSelectedCollection(coll); setShowDetailModal(true); }}
+          >
+            <LuEye className="w-4 h-4 mr-2" /> View Details
+          </Button>
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -553,111 +678,46 @@ export default function Collections() {
               </button>
             ))}
           </div>
+
+          {/* Timeframe filter */}
+          <TimeframeFilter value={dateRange} onChange={setDateRange} className="w-full sm:w-auto sm:ml-auto" />
+          <ExportButton
+            disabled={collections.length === 0}
+            onClick={() => exportToCsv(datedFilename('collections'), collections, [
+              { header: 'Client', value: (c) => c.client_name },
+              { header: 'Service Type', value: (c) => (c.service_type === 'Other' && c.other_service_type ? c.other_service_type : c.service_type) },
+              { header: 'Invoice #', value: (c) => c.invoice?.invoice_number ?? '' },
+              { header: 'Billing Amount', value: (c) => c.billing_amount ?? c.rate ?? '' },
+              { header: 'Paid', value: (c) => c.paid_amount ?? '' },
+              { header: 'Remaining', value: (c) => c.remaining_balance ?? '' },
+              { header: 'Status', value: (c) => c.collection_status },
+              { header: 'Date', value: (c) => (c.created_at ?? '').slice(0, 10) },
+            ])}
+          />
         </div>
 
         {/* Data Table */}
-        <div className={`relative hidden md:block overflow-x-auto custom-scrollbar ${collections.length > 0 ? 'min-h-[350px]' : ''}`}>
+        <div className={`jvd relative hidden md:block ${collections.length > 0 ? 'min-h-[350px]' : ''}`}>
           {isPlaceholderData && (
             <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <table className="w-full min-w-[900px] text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Client & Source</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Type</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount / Balance</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Due Date</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                  </tr>
-                ))
-              ) : collections.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
-                </tr>
+          <DataTable
+            columns={columns}
+            data={collections}
+            rowKey={(coll) => coll.id}
+            empty={
+              isLoading ? (
+                <div className="flex flex-col items-center py-16 text-muted">
+                  <LuActivity size={22} className="mb-2 animate-spin text-brand" />
+                  <p className="text-sm">Loading collections…</p>
+                </div>
               ) : (
-                collections.map((coll) => (
-                  <tr key={coll.id} className={`group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${getRowIndicatorStyle(coll.collection_status)}`}>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm">
-                          <LuBanknote className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{coll.client_name}</p>
-                          {coll.auto_generated && coll.invoice ? (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
-                              From: {coll.invoice.invoice_number}
-                            </span>
-                          ) : coll.liquidation_id ? (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
-                              From: Liquidation #{coll.liquidation_id}
-                            </span>
-                          ) : (
-                            <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400 uppercase tracking-widest">
-                              Manual Entry
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      {(() => {
-                        const st = coll.service_type;
-                        const serviceName = st === 'Other' && coll.other_service_type
-                          ? coll.other_service_type
-                          : (st || coll.invoice?.items?.[0]?.service?.name || 'N/A');
-
-                        if (serviceName === 'Driver Shortage') {
-                          return (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-50 text-rose-600 border border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50">
-                              Driver Shortage
-                            </span>
-                          );
-                        }
-                        return (
-                          <p className="font-bold text-gray-950 dark:text-gray-200 leading-tight">
-                            {serviceName}
-                          </p>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className="text-sm font-black text-gray-950 dark:text-white leading-tight">Total: ₱{Number(coll.billing_amount || coll.rate || 0).toLocaleString()}</p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mt-0.5">Bal: ₱{Number(coll.remaining_balance ?? coll.rate).toLocaleString()}</p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <p className={`text-xs font-bold leading-tight ${coll.collection_status === 'overdue' ? 'text-rose-600' : 'text-gray-950 dark:text-gray-200'}`}>
-                        {coll.due_date ? new Date(coll.due_date).toLocaleDateString() : 'N/A'}
-                      </p>
-                      <p className="text-[9px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-wider mt-0.5">Service Date</p>
-                    </td>
-                    <td className="px-6 py-5">
-                      <StatusBadge status={coll.collection_status || 'pending'} />
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => { setSelectedCollection(coll); setShowDetailModal(true); }}
-                      >
-                        <LuEye className="w-4 h-4 mr-2" /> View Details
-                      </Button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <EmptyState icon={<LuBanknote size={22} />} title="No records found" description="Collections will appear here once invoices are issued." />
+              )
+            }
+          />
         </div>
       </div>
 
@@ -777,26 +837,12 @@ export default function Collections() {
               </div>
 
               {selectedCollection.payments && selectedCollection.payments.length > 0 ? (
-                <div className="border border-gray-100 dark:border-gray-800 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left text-sm">
-                    <thead className="bg-gray-50 dark:bg-gray-800">
-                      <tr>
-                        <th className="px-4 py-3 font-bold text-gray-500">Date</th>
-                        <th className="px-4 py-3 font-bold text-gray-500">Method</th>
-                        <th className="px-4 py-3 font-bold text-gray-500 text-right">Amount</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                      {selectedCollection.payments.map((p: any) => (
-                        <tr key={p.id}>
-                          <td className="px-4 py-3 font-medium">{new Date(p.payment_date).toLocaleDateString()}</td>
-                          <td className="px-4 py-3 font-medium">{p.payment_method}</td>
-                          <td className="px-4 py-3 font-black text-right">₱{Number(p.amount).toLocaleString()}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <DataTable
+                  columns={paymentColumns}
+                  data={selectedCollection.payments}
+                  rowKey={(p) => p.id}
+                  className="jvd"
+                />
               ) : (
                 <div className="text-center py-8 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700">
                   <p className="text-sm font-bold text-gray-400">No payments recorded yet.</p>

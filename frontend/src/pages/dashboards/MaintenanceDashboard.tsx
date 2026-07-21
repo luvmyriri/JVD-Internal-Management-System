@@ -9,6 +9,7 @@ import {
 import { workOrderApi } from '../../api/workOrders';
 import { fleetApi } from '../../api/fleet';
 import { LoadingScreen, RequestCommissionModal } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 
 export default function MaintenanceDashboard() {
   const queryClient = useQueryClient();
@@ -52,6 +53,56 @@ export default function MaintenanceDashboard() {
   });
 
   if (!workOrdersRaw || !busesRaw) return <LoadingScreen />;
+
+  const columns: Column<any>[] = [
+    {
+      key: 'wo_number',
+      header: 'WO Number',
+      render: (wo) => <span className="font-medium text-slate-800">{wo.wo_number}</span>,
+    },
+    {
+      key: 'bus',
+      header: 'Bus',
+      render: (wo) => <span className="text-slate-600">{wo.bus?.plate_number}</span>,
+    },
+    {
+      key: 'description',
+      header: 'Description',
+      render: (wo) => <span className="block text-slate-600 truncate max-w-[300px]">{wo.description}</span>,
+    },
+    {
+      key: 'priority',
+      header: 'Priority',
+      render: (wo) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+          wo.priority === 'critical' ? 'bg-red-100 text-red-700' :
+          wo.priority === 'urgent' ? 'bg-amber-100 text-amber-700' :
+          'bg-blue-100 text-blue-700'
+        }`}>
+          {wo.priority.toUpperCase()}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (wo) => <span className="text-slate-500">{wo.status.replace('_', ' ')}</span>,
+    },
+    {
+      key: 'action',
+      header: 'Action',
+      align: 'right',
+      render: (wo) => (
+        <button
+          onClick={() => validateMutation.mutate(wo.id)}
+          disabled={validateMutation.isPending}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          {validateMutation.isPending ? 'Validating...' : 'Validate & Request'}
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -130,53 +181,14 @@ export default function MaintenanceDashboard() {
           </div>
         </div>
         
-        <div className="p-0 overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-100 text-xs uppercase tracking-wider text-slate-500 font-semibold">
-                <th className="p-4 pl-6">WO Number</th>
-                <th className="p-4">Bus</th>
-                <th className="p-4">Description</th>
-                <th className="p-4">Priority</th>
-                <th className="p-4">Status</th>
-                <th className="p-4 pr-6 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {pendingValidations.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500">No pending validations at the moment.</td>
-                </tr>
-              ) : (
-                pendingValidations.map((wo: any) => (
-                  <tr key={wo.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="p-4 pl-6 font-medium text-slate-800">{wo.wo_number}</td>
-                    <td className="p-4 text-slate-600">{wo.bus?.plate_number}</td>
-                    <td className="p-4 text-slate-600 truncate max-w-[300px]">{wo.description}</td>
-                    <td className="p-4">
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        wo.priority === 'critical' ? 'bg-red-100 text-red-700' :
-                        wo.priority === 'urgent' ? 'bg-amber-100 text-amber-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {wo.priority.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="p-4 text-slate-500">{wo.status.replace('_', ' ')}</td>
-                    <td className="p-4 pr-6 text-right">
-                      <button
-                        onClick={() => validateMutation.mutate(wo.id)}
-                        disabled={validateMutation.isPending}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
-                      >
-                        {validateMutation.isPending ? 'Validating...' : 'Validate & Request'}
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="p-0">
+          <DataTable
+            columns={columns}
+            data={pendingValidations}
+            rowKey={(wo) => wo.id}
+            empty={<div className="p-8 text-center text-slate-500">No pending validations at the moment.</div>}
+            className="border-0 rounded-none bg-transparent [&_table]:min-w-[800px]"
+          />
         </div>
       </div>
 

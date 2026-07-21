@@ -1,0 +1,72 @@
+# Production stack. Requires a `.env` file at repo root (copy backend/env.prod.example
+# and fill in real values — see that file's header for how to generate secrets).
+# Postgres and Redis intentionally publish no ports: app/worker reach them over the
+# internal Compose network by service name, so nothing DB-shaped is reachable from
+# outside this VPS. nginx is the only service exposed to the host.
+
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: jvd_nginx
+    restart: unless-stopped
+    depends_on:
+      - app
+    volumes:
+      - ./backend:/var/www/html:ro
+      - ./backend/docker/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "8000:80"
+
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jvd_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    expose:
+      - "9000"
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: jvd_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - jvd_pgdata_prod:/var/lib/postgresql/data
+    # No `ports:` — only reachable from other containers on this Compose network.
+
+  redis:
+    image: redis:7-alpine
+    container_name: jvd_redis
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}"]
+    volumes:
+      - jvd_redisdata_prod:/data
+    # No `ports:` — same reasoning as postgres above.
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jvd_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    command: php artisan queue:work redis --tries=3 --timeout=90 --sleep=3
+
+volumes:
+  jvd_pgdata_prod:
+  jvd_redisdata_prod:

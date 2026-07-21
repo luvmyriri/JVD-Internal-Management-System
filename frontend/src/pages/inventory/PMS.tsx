@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import * as ExcelJS from 'exceljs';
+import { loadExcelJS } from '../../utils/lazyExport';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { jobOrderApi } from '../../api/jobOrders';
@@ -13,6 +13,7 @@ import {
 } from 'react-icons/lu';
 import { fleetApi } from '../../api/fleet';
 import { Pagination, Modal, Button, StatusBadge } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import type { Bus } from '../../types/inventory';
 import { format, parseISO, differenceInDays, addDays } from 'date-fns';
 import { getNextPmsInfo } from '../../data/pmsSchedule';
@@ -31,6 +32,18 @@ function needsPmsAttention(bus: Bus): boolean {
   const info = getNextPmsInfo(bus.total_mileage);
   if (info.progressPct >= 90 || info.kmRemaining <= 1000) return true;
   return false;
+}
+
+// Per-row derived values, extracted so each column's `render` can recompute them independently.
+function getActiveWorkOrder(bus: Bus) {
+  return bus.work_orders?.find(wo => wo.status !== 'completed' && wo.status !== 'cancelled');
+}
+
+function getPmsStatus(bus: Bus) {
+  const days = daysUntilDue(bus.next_service_due);
+  const isOverdue = bus.is_service_overdue;
+  const isUpcoming = !isOverdue && days !== null && days <= 7;
+  return { days, isOverdue, isUpcoming };
 }
 
 interface RecommendedPart {
@@ -695,7 +708,7 @@ export default function PMS() {
   const itemsPerPage = 10;
 
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     const worksheet = workbook.addWorksheet('PMS Log');
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
@@ -810,6 +823,248 @@ export default function PMS() {
   const totalPages = Math.ceil(displayBuses.length / itemsPerPage);
   const paginated  = displayBuses.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
+  // ── Table columns ───────────────────────────────────────────────────────────
+  const busDriverColumn: Column<Bus> = {
+    key: 'bus',
+    header: 'Bus / Driver',
+    render: (bus) => {
+      const { isOverdue, isUpcoming } = getPmsStatus(bus);
+      return (
+        <div className="flex items-center gap-3">
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+            isOverdue ? 'bg-red-50 dark:bg-red-500/10' : isUpcoming ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
+          }`}>
+            <LuBus className={`w-4 h-4 ${isOverdue ? 'text-red-500' : isUpcoming ? 'text-amber-500' : 'text-emerald-500'}`} />
+          </div>
+          <div
+            onClick={() => setProfileBus(bus)}
+            className="group cursor-pointer"
+          >
+            <p className="font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
+              {bus.plate_number}
+              <LuExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+            </p>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{bus.model}</p>
+            {bus.driver ? (
+              <div className="flex items-center gap-1 mt-1">
+                <LuUser className="w-3 h-3 text-blue-400" />
+                <span className="text-[9px] text-blue-500 dark:text-blue-400 font-bold">{bus.driver.first_name} {bus.driver.last_name}</span>
+              </div>
+            ) : (
+              <span className="text-[9px] text-gray-300 dark:text-gray-600 italic">No driver</span>
+            )}
+          </div>
+        </div>
+      );
+    },
+  };
+
+  const inMaintenanceColumns: Column<Bus>[] = [
+    {
+      key: 'active_wo',
+      header: 'Active Work Order',
+      render: (bus) => {
+        const activeWO = getActiveWorkOrder(bus);
+        return (
+          <div className="font-medium">
+            {activeWO ? (
+              <div className="space-y-0.5">
+                <p className="font-black text-sm text-gray-900 dark:text-white">{activeWO.wo_number}</p>
+                <p className="text-[10px] text-gray-400 max-w-[200px] truncate" title={activeWO.description}>
+                  {activeWO.description || 'No description provided'}
+                </p>
+              </div>
+            ) : (
+              <span className="text-xs text-gray-300 dark:text-gray-600 italic">No Active WO</span>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'mechanic',
+      header: 'Mechanic / Assignee',
+      render: (bus) => {
+        const activeWO = getActiveWorkOrder(bus);
+        return activeWO?.assignee ? (
+          <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+            {activeWO.assignee.first_name} {activeWO.assignee.last_name}
+          </p>
+        ) : (
+          <span className="text-xs text-amber-500 font-medium">Unassigned Mechanic</span>
+        );
+      },
+    },
+    {
+      key: 'priority_status',
+      header: 'Priority & Status',
+      render: (bus) => {
+        const activeWO = getActiveWorkOrder(bus);
+        return activeWO ? (
+          <div className="flex items-center gap-2">
+            <StatusBadge
+              status={activeWO.priority}
+              variant={
+                activeWO.priority === 'critical'
+                  ? 'danger'
+                  : activeWO.priority === 'urgent'
+                  ? 'warning'
+                  : 'info'
+              }
+            />
+            <StatusBadge
+              status={activeWO.status.replace('_', ' ')}
+              variant={activeWO.status === 'in_progress' ? 'info' : 'warning'}
+            />
+          </div>
+        ) : (
+          <span className="text-gray-300">—</span>
+        );
+      },
+    },
+    {
+      key: 'scheduled_due',
+      header: 'Scheduled/Due Date',
+      render: (bus) => {
+        const activeWO = getActiveWorkOrder(bus);
+        return (
+          <span className="text-sm text-gray-600 dark:text-gray-300 font-semibold">
+            {activeWO ? (
+              format(parseISO(activeWO.created_at), 'MMM dd, yyyy')
+            ) : (
+              <span className="text-gray-300">—</span>
+            )}
+          </span>
+        );
+      },
+    },
+    {
+      key: 'est_cost',
+      header: 'Est. Cost',
+      render: (bus) => {
+        const activeWO = getActiveWorkOrder(bus);
+        return (
+          <span className="text-sm font-bold text-gray-900 dark:text-white">
+            {activeWO ? `₱${activeWO.cost.toLocaleString()}` : '₱0.00'}
+          </span>
+        );
+      },
+    },
+  ];
+
+  const fleetColumns: Column<Bus>[] = [
+    {
+      key: 'status',
+      header: 'Status',
+      render: (bus) => {
+        const { isOverdue } = getPmsStatus(bus);
+        return (
+          <div className="space-y-1.5">
+            <StatusBadge status={bus.status.replace('_', ' ')}
+              variant={bus.status === 'available' ? 'success' : bus.status === 'in_service' ? 'info' : bus.status === 'under_maintenance' ? 'warning' : 'danger'} />
+            {isOverdue && (
+              <div className="flex items-center gap-1 text-[9px] text-red-500 font-black uppercase tracking-widest">
+                <LuTriangleAlert className="w-3 h-3" /> Overdue
+              </div>
+            )}
+          </div>
+        );
+      },
+    },
+    {
+      key: 'last_serviced',
+      header: 'Last Serviced',
+      render: (bus) => (
+        <div className="flex items-center gap-2">
+          <LuCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
+          <span className="font-bold text-gray-900 dark:text-white text-sm">
+            {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : <span className="text-gray-300 dark:text-gray-600 italic">Never</span>}
+          </span>
+        </div>
+      ),
+    },
+    {
+      key: 'next_due',
+      header: 'Next Due',
+      render: (bus) => {
+        const { days, isOverdue, isUpcoming } = getPmsStatus(bus);
+        return bus.next_service_due ? (
+          <div>
+            <p className={`font-black text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isUpcoming ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
+              {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
+            </p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-gray-400'}`}>
+              {isOverdue ? `${Math.abs(days ?? 0)}d overdue` : days === 0 ? 'Due today' : `${days}d remaining`}
+            </p>
+          </div>
+        ) : (
+          <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
+        );
+      },
+    },
+    {
+      key: 'next_pms_type',
+      header: 'Next PMS Type',
+      render: (bus) => {
+        const info = getNextPmsInfo(bus.total_mileage);
+        return (
+          <div className="space-y-1">
+            <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest border ${info.level.color} ${info.level.textColor} border-current/20`}>
+              {info.level.type}
+            </span>
+            <p className="text-[9px] text-gray-400 font-bold">@ {info.dueAtKm.toLocaleString()} km</p>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'mileage_progress',
+      header: 'Mileage Progress',
+      render: (bus) => (
+        <div className="min-w-[170px]">
+          <MileageBar bus={bus} />
+        </div>
+      ),
+    },
+  ];
+
+  const actionsColumn: Column<Bus> = {
+    key: 'actions',
+    header: 'Actions',
+    align: 'center',
+    render: (bus) => (
+      <div className="flex flex-col items-center gap-2">
+        {needsPmsAttention(bus) && (
+          <button
+            onClick={() => setAutoRecommendBus(bus)}
+            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-blue-600 hover:to-indigo-700 transition-all w-full shadow-sm"
+            title="Auto-generate a Job Order with inventory recommendations"
+          >
+            <LuSparkles className="w-3.5 h-3.5" /> Auto-Recommend JO
+          </button>
+        )}
+        <button
+          onClick={() => setJoBus(bus)}
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
+        >
+          <LuFileText className="w-3.5 h-3.5" /> Request JO
+        </button>
+        <button
+          onClick={() => setLogBus(bus)}
+          className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all w-full border border-blue-100 dark:border-blue-500/20"
+        >
+          <LuWrench className="w-3.5 h-3.5" /> Log Service
+        </button>
+      </div>
+    ),
+  };
+
+  const columns: Column<Bus>[] = [
+    busDriverColumn,
+    ...(tab === 'in_maintenance' ? inMaintenanceColumns : fleetColumns),
+    actionsColumn,
+  ];
+
   return (
     <div className="space-y-8 pb-12">
 
@@ -922,224 +1177,28 @@ export default function PMS() {
         </div>
 
         {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/30 text-gray-400 uppercase tracking-widest text-[10px] border-b border-gray-100 dark:border-gray-800">
-                <th className="px-8 py-5">Bus / Driver</th>
-                {tab === 'in_maintenance' ? (
-                  <>
-                    <th className="px-8 py-5">Active Work Order</th>
-                    <th className="px-8 py-5">Mechanic / Assignee</th>
-                    <th className="px-8 py-5">Priority & Status</th>
-                    <th className="px-8 py-5">Scheduled/Due Date</th>
-                    <th className="px-8 py-5">Est. Cost</th>
-                  </>
-                ) : (
-                  <>
-                    <th className="px-8 py-5">Status</th>
-                    <th className="px-8 py-5">Last Serviced</th>
-                    <th className="px-8 py-5">Next Due</th>
-                    <th className="px-8 py-5">Next PMS Type</th>
-                    <th className="px-8 py-5">Mileage Progress</th>
-                  </>
-                )}
-                <th className="px-8 py-5 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-50 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={7} className="px-8 py-16 text-center text-gray-400">
-                    <LuLoaderCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
-                    <p className="text-sm font-medium">Loading PMS data...</p>
-                  </td>
-                </tr>
-              ) : paginated.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-8 py-16 text-center">
-                    <LuCircleCheckBig className="w-10 h-10 mx-auto mb-3 text-emerald-300 dark:text-emerald-700" />
-                    <p className="text-sm font-bold text-gray-400">
-                      {tab === 'priority' ? 'No priority maintenance needed — fleet is healthy!' : tab === 'in_maintenance' ? 'No vehicles currently in maintenance.' : 'No vehicles found.'}
-                    </p>
-                  </td>
-                </tr>
+        <div className={`transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
+          <DataTable
+            columns={columns}
+            data={paginated}
+            rowKey={(bus) => bus.id}
+            className="border-0 rounded-none"
+            empty={
+              isLoading ? (
+                <div className="px-8 py-16 text-center text-gray-400">
+                  <LuLoaderCircle className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-500" />
+                  <p className="text-sm font-medium">Loading PMS data...</p>
+                </div>
               ) : (
-                paginated.map(bus => {
-                  const days = daysUntilDue(bus.next_service_due);
-                  const isOverdue = bus.is_service_overdue;
-                  const isUpcoming = !isOverdue && days !== null && days <= 7;
-                  const activeWO = bus.work_orders?.find(wo => wo.status !== 'completed' && wo.status !== 'cancelled');
-                  return (
-                    <tr key={bus.id} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/10 transition-all">
-                      <td className="px-8 py-5">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                            isOverdue ? 'bg-red-50 dark:bg-red-500/10' : isUpcoming ? 'bg-amber-50 dark:bg-amber-500/10' : 'bg-emerald-50 dark:bg-emerald-500/10'
-                          }`}>
-                            <LuBus className={`w-4 h-4 ${isOverdue ? 'text-red-500' : isUpcoming ? 'text-amber-500' : 'text-emerald-500'}`} />
-                          </div>
-                          <div
-                            onClick={() => setProfileBus(bus)}
-                            className="group cursor-pointer"
-                          >
-                            <p className="font-black text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors flex items-center gap-1.5">
-                              {bus.plate_number}
-                              <LuExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
-                            </p>
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{bus.model}</p>
-                            {bus.driver ? (
-                              <div className="flex items-center gap-1 mt-1">
-                                <LuUser className="w-3 h-3 text-blue-400" />
-                                <span className="text-[9px] text-blue-500 dark:text-blue-400 font-bold">{bus.driver.first_name} {bus.driver.last_name}</span>
-                              </div>
-                            ) : (
-                              <span className="text-[9px] text-gray-300 dark:text-gray-600 italic">No driver</span>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      {tab === 'in_maintenance' ? (
-                        <>
-                          <td className="px-8 py-5 font-medium">
-                            {activeWO ? (
-                              <div className="space-y-0.5">
-                                <p className="font-black text-sm text-gray-900 dark:text-white">{activeWO.wo_number}</p>
-                                <p className="text-[10px] text-gray-400 max-w-[200px] truncate" title={activeWO.description}>
-                                  {activeWO.description || 'No description provided'}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-gray-300 dark:text-gray-600 italic">No Active WO</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-5">
-                            {activeWO?.assignee ? (
-                              <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
-                                {activeWO.assignee.first_name} {activeWO.assignee.last_name}
-                              </p>
-                            ) : (
-                              <span className="text-xs text-amber-500 font-medium">Unassigned Mechanic</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-5">
-                            {activeWO ? (
-                              <div className="flex items-center gap-2">
-                                <StatusBadge
-                                  status={activeWO.priority}
-                                  variant={
-                                    activeWO.priority === 'critical'
-                                      ? 'danger'
-                                      : activeWO.priority === 'urgent'
-                                      ? 'warning'
-                                      : 'info'
-                                  }
-                                />
-                                <StatusBadge
-                                  status={activeWO.status.replace('_', ' ')}
-                                  variant={activeWO.status === 'in_progress' ? 'info' : 'warning'}
-                                />
-                              </div>
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-5 text-sm text-gray-600 dark:text-gray-300 font-semibold">
-                            {activeWO ? (
-                              format(parseISO(activeWO.created_at), 'MMM dd, yyyy')
-                            ) : (
-                              <span className="text-gray-300">—</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-5 text-sm font-bold text-gray-900 dark:text-white">
-                            {activeWO ? `₱${activeWO.cost.toLocaleString()}` : '₱0.00'}
-                          </td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-8 py-5">
-                            <div className="space-y-1.5">
-                              <StatusBadge status={bus.status.replace('_', ' ')}
-                                variant={bus.status === 'available' ? 'success' : bus.status === 'in_service' ? 'info' : bus.status === 'under_maintenance' ? 'warning' : 'danger'} />
-                              {isOverdue && (
-                                <div className="flex items-center gap-1 text-[9px] text-red-500 font-black uppercase tracking-widest">
-                                  <LuTriangleAlert className="w-3 h-3" /> Overdue
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-2">
-                              <LuCalendar className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                              <span className="font-bold text-gray-900 dark:text-white text-sm">
-                                {bus.last_service_date ? format(parseISO(bus.last_service_date), 'MMM dd, yyyy') : <span className="text-gray-300 dark:text-gray-600 italic">Never</span>}
-                              </span>
-                            </div>
-                          </td>
-                          <td className="px-8 py-5">
-                            {bus.next_service_due ? (
-                              <div>
-                                <p className={`font-black text-sm ${isOverdue ? 'text-red-600 dark:text-red-400' : isUpcoming ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-white'}`}>
-                                  {format(parseISO(bus.next_service_due), 'MMM dd, yyyy')}
-                                </p>
-                                <p className={`text-[10px] font-bold uppercase tracking-wider mt-0.5 ${isOverdue ? 'text-red-400' : isUpcoming ? 'text-amber-400' : 'text-gray-400'}`}>
-                                  {isOverdue ? `${Math.abs(days ?? 0)}d overdue` : days === 0 ? 'Due today' : `${days}d remaining`}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-gray-300 dark:text-gray-600 font-black uppercase tracking-widest italic">Not scheduled</span>
-                            )}
-                          </td>
-                          <td className="px-8 py-5">
-                            {(() => {
-                              const info = getNextPmsInfo(bus.total_mileage);
-                              return (
-                                <div className="space-y-1">
-                                  <span className={`inline-block text-[10px] font-black px-2.5 py-1 rounded-xl uppercase tracking-widest border ${info.level.color} ${info.level.textColor} border-current/20`}>
-                                    {info.level.type}
-                                  </span>
-                                  <p className="text-[9px] text-gray-400 font-bold">@ {info.dueAtKm.toLocaleString()} km</p>
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td className="px-8 py-5 min-w-[170px]">
-                            <MileageBar bus={bus} />
-                          </td>
-                        </>
-                      )}
-                      <td className="px-8 py-5 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          {needsPmsAttention(bus) && (
-                            <button
-                              onClick={() => setAutoRecommendBus(bus)}
-                              className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] font-black uppercase tracking-widest hover:from-blue-600 hover:to-indigo-700 transition-all w-full shadow-sm"
-                              title="Auto-generate a Job Order with inventory recommendations"
-                            >
-                              <LuSparkles className="w-3.5 h-3.5" /> Auto-Recommend JO
-                            </button>
-                          )}
-                          <button
-                            onClick={() => setJoBus(bus)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest hover:bg-indigo-100 dark:hover:bg-indigo-500/20 transition-all w-full border border-indigo-100 dark:border-indigo-500/20"
-                          >
-                            <LuFileText className="w-3.5 h-3.5" /> Request JO
-                          </button>
-                          <button
-                            onClick={() => setLogBus(bus)}
-                            className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 text-[10px] font-black uppercase tracking-widest hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-all w-full border border-blue-100 dark:border-blue-500/20"
-                          >
-                            <LuWrench className="w-3.5 h-3.5" /> Log Service
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-
-              )}
-            </tbody>
-          </table>
+                <div className="px-8 py-16 text-center">
+                  <LuCircleCheckBig className="w-10 h-10 mx-auto mb-3 text-emerald-300 dark:text-emerald-700" />
+                  <p className="text-sm font-bold text-gray-400">
+                    {tab === 'priority' ? 'No priority maintenance needed — fleet is healthy!' : tab === 'in_maintenance' ? 'No vehicles currently in maintenance.' : 'No vehicles found.'}
+                  </p>
+                </div>
+              )
+            }
+          />
         </div>
       </div>
 

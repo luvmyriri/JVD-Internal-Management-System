@@ -36,11 +36,13 @@ class ReportController extends Controller
         }
 
         // KPIs (Independent query builder instance to avoid query reuse pollution)
-        $kpiQuery = Invoice::whereIn('status', ['paid', 'partial']);
+        // Revenue is cash-basis: money actually collected, not the full invoiced
+        // amount. See Invoice::COLLECTED_REVENUE_SQL / revenueBearing().
+        $kpiQuery = Invoice::revenueBearing();
         if ($startDate) {
             $kpiQuery->where('created_at', '>=', $startDate);
         }
-        $totalRevenue = (float) $kpiQuery->sum('total_amount');
+        $totalRevenue = (float) $kpiQuery->sum(Invoice::collectedRevenueExpr());
         $transactionCount = $kpiQuery->count();
         $averageTicketSize = $transactionCount > 0 ? $totalRevenue / $transactionCount : 0;
         
@@ -63,9 +65,9 @@ class ReportController extends Controller
         // Revenue Trend (Dynamic grouping and filtering based on range)
         $trendQuery = Invoice::select(
                 DB::raw("{$trendFormat} as date"),
-                DB::raw('SUM(total_amount) as total')
+                DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as total')
             )
-            ->whereIn('status', ['paid', 'partial']);
+            ->revenueBearing();
 
         if ($startDate) {
             $trendQuery->where('created_at', '>=', $startDate);
@@ -74,8 +76,8 @@ class ReportController extends Controller
             $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-01')";
             $trendQuery = Invoice::select(
                 DB::raw("{$trendFormat} as date"),
-                DB::raw('SUM(total_amount) as total')
-            )->whereIn('status', ['paid', 'partial']);
+                DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as total')
+            )->revenueBearing();
         }
 
         $trend = $trendQuery->groupBy('date')

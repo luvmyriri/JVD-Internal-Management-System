@@ -12,6 +12,7 @@ import {
   LuUser
 } from 'react-icons/lu';
 import { Modal, StatusBadge, Button, Pagination } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { internshipsApi, type Internship } from '../../api/internships';
@@ -144,8 +145,84 @@ export default function Internships() {
     rejected: 'danger'
   };
 
+  const columns: Column<Internship>[] = [
+    {
+      key: 'intern',
+      header: 'Intern',
+      render: (intern) => (
+        <div className="font-bold text-gray-900 dark:text-white">
+          {intern.first_name} {intern.last_name}
+        </div>
+      ),
+    },
+    {
+      key: 'school',
+      header: 'School & Course',
+      render: (intern) => (
+        <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-2 font-medium">
+            <LuBook className="w-4 h-4 text-gray-400" />
+            {intern.school}
+          </div>
+          <div className="text-gray-500 text-xs ml-6">{intern.course}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'contact',
+      header: 'Contact',
+      render: (intern) => (
+        <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
+          <div className="flex items-center gap-2"><LuMail className="w-3.5 h-3.5" /> {intern.email}</div>
+          {intern.phone && <div className="flex items-center gap-2"><LuPhone className="w-3.5 h-3.5" /> {intern.phone}</div>}
+        </div>
+      ),
+    },
+    {
+      key: 'hours',
+      header: 'Hours',
+      render: (intern) => (
+        <span className="text-sm font-bold text-gray-700 dark:text-gray-300">
+          {intern.hours_required} hrs
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (intern) => <StatusBadge status={intern.status} variant={statusColors[intern.status]} />,
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (intern) => (
+        <div className="flex items-center justify-end gap-2">
+          <button
+            onClick={() => openModal(intern)}
+            className="p-2 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
+            title="Edit"
+          >
+            <LuPencil className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => {
+              if (window.confirm('Are you sure you want to delete this internship record?')) {
+                deleteMutation.mutate(intern.id);
+              }
+            }}
+            className="p-2 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg transition-colors"
+            title="Delete"
+          >
+            <LuTrash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="jvd space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">OJT & Internships</h1>
@@ -175,84 +252,17 @@ export default function Internships() {
             <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Intern</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">School & Course</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Contact</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Hours</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">Loading...</td>
-                </tr>
-              ) : paginatedInternships.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">No records found.</td>
-                </tr>
-              ) : (
-                paginatedInternships.map((intern) => (
-                  <tr key={intern.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-gray-900 dark:text-white">
-                        {intern.first_name} {intern.last_name}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
-                        <div className="flex items-center gap-2 font-medium">
-                          <LuBook className="w-4 h-4 text-gray-400" />
-                          {intern.school}
-                        </div>
-                        <div className="text-gray-500 text-xs ml-6">{intern.course}</div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
-                        <div className="flex items-center gap-2"><LuMail className="w-3.5 h-3.5" /> {intern.email}</div>
-                        {intern.phone && <div className="flex items-center gap-2"><LuPhone className="w-3.5 h-3.5" /> {intern.phone}</div>}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-sm font-bold text-gray-700 dark:text-gray-300">
-                      {intern.hours_required} hrs
-                    </td>
-                    <td className="py-4 px-6">
-                      <StatusBadge status={intern.status} variant={statusColors[intern.status]} />
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => openModal(intern)}
-                          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <LuPencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Are you sure you want to delete this internship record?')) {
-                              deleteMutation.mutate(intern.id);
-                            }
-                          }}
-                          className="p-2 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <LuTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          data={isLoading ? [] : paginatedInternships}
+          rowKey={(intern) => intern.id}
+          className={`border-0 rounded-none transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}
+          empty={
+            <div className="py-8 text-center text-gray-500">
+              {isLoading ? 'Loading...' : 'No records found.'}
+            </div>
+          }
+        />
 
         {filteredInternships.length > itemsPerPage && (
           <div className="p-4 border-t border-gray-100 dark:border-gray-800">

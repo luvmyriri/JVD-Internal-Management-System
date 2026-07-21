@@ -64,6 +64,12 @@ class Booking extends Model
             return;
         }
 
+        // If a TripTicket exists for this invoice, it supersedes the booking for travel scheduling
+        $hasTripTicket = \DB::table('trip_tickets')->where('invoice_id', $booking->invoice_id)->exists();
+        if ($hasTripTicket) {
+            return;
+        }
+
         \DB::table('travels')->updateOrInsert(
             ['reference_type' => 'booking', 'reference_id' => $booking->id],
             [

@@ -2,7 +2,7 @@ import client from './client';
 import type { Collection } from '../types';
 
 export const collectionApi = {
-  getAll: (params?: { search?: string; status?: string }) => client.get<{data: Collection[], stats: any}>('/collections', { params }).then((res) => res.data),
+  getAll: (params?: { search?: string; status?: string; date_from?: string; date_to?: string }) => client.get<{data: Collection[], stats: any}>('/collections', { params }).then((res) => res.data),
   getById: (id: number) => client.get<Collection>(`/collections/${id}`).then((res) => res.data),
   create: (data: Partial<Collection>) => client.post<Collection>('/collections', data).then((res) => res.data),
   update: (id: number, data: Partial<Collection>) => client.put<Collection>(`/collections/${id}`, data).then((res) => res.data),

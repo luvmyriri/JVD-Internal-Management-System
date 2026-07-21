@@ -59,6 +59,7 @@ export default function CustomTransactions() {
     price: '',
     quantity: 1,
     description: '',
+    requiresContract: false,
   });
 
   // Category-specific structured data — one state object keyed by category name.
@@ -285,7 +286,8 @@ export default function CustomTransactions() {
     destination?: string,
     customCategoryDetail?: CustomTransactionDetailInput,
     itinerary?: ItineraryDayInput[],
-    passengers?: PassengerInput[]
+    passengers?: PassengerInput[],
+    requiresContract?: boolean
   ) => {
     setCart(prev => [
       ...prev,
@@ -306,6 +308,7 @@ export default function CustomTransactions() {
         customCategoryDetail,
         itinerary,
         passengers,
+        requiresContract,
       }
     ]);
   };
@@ -401,7 +404,8 @@ export default function CustomTransactions() {
           destinationParam,
           customCategoryDetail,
           itineraryRows.length > 0 ? itineraryRows : undefined,
-          passengerRows.length > 0 ? passengerRows : undefined
+          passengerRows.length > 0 ? passengerRows : undefined,
+          customForm.requiresContract
         );
 
         toast.success('Customized transaction registered & added to order!');
@@ -413,6 +417,7 @@ export default function CustomTransactions() {
           price: '',
           quantity: 1,
           description: '',
+          requiresContract: false,
         });
         resetSubStates();
 
@@ -619,6 +624,24 @@ export default function CustomTransactions() {
                   onChange={(e) => setCustomForm(prev => ({ ...prev, description: e.target.value }))}
                 />
               </div>
+
+              {/* Contract gate — explicit per-transaction control (sole decider at checkout) */}
+              <label className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={customForm.requiresContract}
+                  onChange={(e) => setCustomForm(prev => ({ ...prev, requiresContract: e.target.checked }))}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
+                />
+                <span className="flex flex-col gap-0.5">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-200">
+                    Requires a signed contract
+                  </span>
+                  <span className="text-[10px] font-medium text-gray-400 leading-relaxed">
+                    When checked, checkout routes this transaction through the contract draft &amp; e-signature flow instead of issuing an invoice directly.
+                  </span>
+                </span>
+              </label>
 
               <button
                 type="submit"

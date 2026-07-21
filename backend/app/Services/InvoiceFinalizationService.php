@@ -59,8 +59,9 @@ class InvoiceFinalizationService
 
                 $alreadyBooked = DB::table('invoice_items')
                     ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
+                    ->leftJoin('bookings', 'invoices.id', '=', 'bookings.invoice_id')
                     ->where('invoice_items.service_id', $service->id)
-                    ->where('invoices.travel_date', $travelDate)
+                    ->where('bookings.travel_date', $travelDate)
                     ->where('invoices.status', '!=', 'cancelled')
                     ->lockForUpdate()
                     ->sum(DB::raw('CASE WHEN invoice_items.adults IS NOT NULL OR invoice_items.children IS NOT NULL THEN COALESCE(invoice_items.adults, 0) + COALESCE(invoice_items.children, 0) ELSE invoice_items.quantity END'));
@@ -376,7 +377,56 @@ class InvoiceFinalizationService
             }
         }
 
+        // Immutable snapshot of the financial facts as sold (roadmap 2.5) — written once.
+        $this->captureSnapshot($invoice);
+
         return $invoice->fresh();
+    }
+
+    /**
+     * Freeze the invoice's billed facts (customer as sold, line items, prices, totals)
+     * into finalized_snapshot. Written exactly once; later price/customer/service edits
+     * can never rewrite this record. Corrections must be new documents, not edits.
+     */
+    public function captureSnapshot(Invoice $invoice): void
+    {
+        if (!empty($invoice->finalized_snapshot)) {
+            return; // already frozen — immutable
+        }
+
+        $invoice->loadMissing('items');
+
+        $items = $invoice->items->map(fn ($item) => [
+            'service_id'   => $item->service_id,
+            'service_name' => optional(Service::find($item->service_id))->name,
+            'quantity'     => $item->quantity,
+            'unit_price'   => $item->unit_price,
+            'total_price'  => $item->total_price,
+            'adults'       => $item->adults,
+            'children'     => $item->children,
+        ])->all();
+
+        $snapshot = [
+            'captured_at' => now()->toIso8601String(),
+            'customer' => [
+                'id'      => $invoice->customer_id,
+                'name'    => $invoice->customer_name,
+                'address' => $invoice->customer_address,
+                'email'   => $invoice->customer_email,
+                'contact' => $invoice->customer_contact,
+            ],
+            'items'  => $items,
+            'totals' => [
+                'subtotal'     => $invoice->subtotal,
+                'tax_amount'   => $invoice->tax_amount,
+                'total_amount' => $invoice->total_amount,
+            ],
+        ];
+
+        $invoice->forceFill([
+            'finalized_snapshot' => $snapshot,
+            'finalized_at'       => now(),
+        ])->save();
     }
 
     /**

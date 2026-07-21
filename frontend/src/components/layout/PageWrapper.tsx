@@ -2,8 +2,18 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import Sidebar, { navigation } from './Sidebar';
 import Header from './Header';
 import { useTheme } from '../../context/ThemeContext';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+
+/** Lightweight in-content fallback while a lazily-loaded route chunk resolves (roadmap 3.4).
+ *  Constrained to the content area so the sidebar/header shell stays put. */
+function RouteFallback() {
+  return (
+    <div className="flex h-[60vh] items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-500/30 border-t-blue-600" />
+    </div>
+  );
+}
 
 /**
  * PageWrapper wraps all authenticated pages with the sidebar + header shell.
@@ -75,7 +85,9 @@ export default function PageWrapper() {
       <Header onMenuClick={() => setIsSidebarOpen(true)} />
       <main className="md:ml-64 pt-16 pb-20 md:pb-0 h-screen overflow-y-auto">
         <div className="px-4 md:px-8 py-6 md:py-10">
-          <Outlet />
+          <Suspense fallback={<RouteFallback />}>
+            <Outlet />
+          </Suspense>
         </div>
       </main>
 

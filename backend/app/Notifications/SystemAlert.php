@@ -3,9 +3,10 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 
-class SystemAlert extends Notification
+class SystemAlert extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -43,6 +44,12 @@ class SystemAlert extends Notification
     public function via(object $notifiable): array
     {
         return ['database'];
+    }
+
+    /** Notification category for per-user preference gating (roadmap 2.6). */
+    public function category(): string
+    {
+        return 'system';
     }
 
     /**

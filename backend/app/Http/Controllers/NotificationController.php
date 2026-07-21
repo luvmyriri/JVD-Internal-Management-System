@@ -159,4 +159,52 @@ class NotificationController extends Controller
             'message' => 'Notification simulated successfully.',
         ]);
     }
+
+    /**
+     * The current user's notification preferences (roadmap 2.6), plus the available
+     * categories/channels. Missing entries mean "enabled" (opt-out model).
+     */
+    public function preferences(Request $request): JsonResponse
+    {
+        $prefs = \App\Models\NotificationPreference::where('user_id', $request->user()->id)
+            ->get()
+            ->groupBy('category')
+            ->map(fn ($rows) => $rows->pluck('enabled', 'channel'));
+
+        return response()->json([
+            'success' => true,
+            'data'    => [
+                'categories'  => \App\Models\NotificationPreference::CATEGORIES,
+                'channels'    => \App\Models\NotificationPreference::CHANNELS,
+                'preferences' => $prefs,
+            ],
+        ]);
+    }
+
+    /**
+     * Update the current user's notification preferences.
+     * Body: { preferences: { category: { channel: bool } } } — unknown keys are ignored.
+     */
+    public function updatePreferences(Request $request): JsonResponse
+    {
+        $validated = $request->validate(['preferences' => 'required|array']);
+        $user = $request->user();
+
+        foreach ($validated['preferences'] as $category => $channels) {
+            if (!array_key_exists($category, \App\Models\NotificationPreference::CATEGORIES) || !is_array($channels)) {
+                continue;
+            }
+            foreach ($channels as $channel => $enabled) {
+                if (!in_array($channel, \App\Models\NotificationPreference::CHANNELS, true)) {
+                    continue;
+                }
+                \App\Models\NotificationPreference::updateOrCreate(
+                    ['user_id' => $user->id, 'category' => $category, 'channel' => $channel],
+                    ['enabled' => (bool) $enabled]
+                );
+            }
+        }
+
+        return response()->json(['success' => true, 'message' => 'Notification preferences updated.']);
+    }
 }

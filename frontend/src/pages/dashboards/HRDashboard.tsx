@@ -72,7 +72,6 @@ const heatmapGridData = [
   [25, 20, 15, 25, 40, 55, 68, 78, 88, 85, 80, 65], // Sun
 ];
 
-// @ts-expect-error kept for future heatmap feature
 const _getHeatmapColor = (value: number, theme: string) => {
   if (theme === 'dark') {
     if (value <= 20) return 'bg-purple-950/20 border border-purple-900/10';
@@ -153,8 +152,7 @@ export default function HRDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
-  // @ts-expect-error kept for future heatmap feature
-  const _heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
+    const _heatmap = dashboardData?.peak_client_activity && dashboardData.peak_client_activity.length > 0 ? dashboardData.peak_client_activity : heatmapGridData;
   const agents = dashboardData?.top_agents && dashboardData.top_agents.length > 0 ? dashboardData.top_agents : [];
 
   const busesUnderMaintenance = useMemo(() => {
@@ -163,16 +161,12 @@ export default function HRDashboard() {
   const monthlyData = dashboardData?.monthly_chart && dashboardData.monthly_chart.length > 0 ? dashboardData.monthly_chart : monthlyChartData;
 
   // ── Live booking lists (available for export/future use) ──
-  // @ts-expect-error available for future dashboard features
-  const _localBookings              = dashboardData?.local_bookings ?? [];
-  // @ts-expect-error available for future dashboard features
-  const _internationalBookings      = dashboardData?.international_bookings ?? [];
-  // @ts-expect-error available for future dashboard features
-  const _pendingAndReservedBookings = dashboardData?.pending_reserved_bookings ?? [];
+    const _localBookings              = dashboardData?.local_bookings ?? [];
+    const _internationalBookings      = dashboardData?.international_bookings ?? [];
+    const _pendingAndReservedBookings = dashboardData?.pending_reserved_bookings ?? [];
   const detailedCustomerData        = dashboardData?.customer_list ?? [];
   const detailedEmployeeData        = dashboardData?.employee_list ?? [];
-  // @ts-expect-error available for future dashboard features
-  const _detailedRevenueData        = dashboardData?.revenue_export ?? [];
+    const _detailedRevenueData        = dashboardData?.revenue_export ?? [];
 
   const totalEmployeesCount = usersResponse?.data?.length ?? 0;
   const inactiveEmployeesCount = usersResponse?.data?.filter((u: any) => !u.is_active).length ?? 0;
@@ -374,7 +368,7 @@ export default function HRDashboard() {
       // 3. Add the Data Table (Starts at row 8)
       worksheet.getRow(8).values = Object.keys(data[0] || {}).map(k => k.toUpperCase());
 
-      data.forEach((item) => {
+      data.forEach((item: any) => {
         const cleanedItem = { ...item };
         Object.keys(cleanedItem).forEach(key => {
           if (typeof cleanedItem[key] === 'string') {
@@ -496,7 +490,7 @@ export default function HRDashboard() {
           className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${
             variant === 'light'
               ? 'bg-white/20 hover:bg-white/30 text-white'
-              : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-gray-400 dark:text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
+              : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-muted hover:text-blue-600 dark:hover:text-blue-400'
           }`}
         >
           <LuDownload className="w-3.5 h-3.5" />
@@ -504,17 +498,17 @@ export default function HRDashboard() {
 
         {isOpen && (
           <div className="absolute top-full right-0 pt-2 z-[100]">
-              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 py-2">
+              <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-border py-2">
                 <button
                   onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
                 >
                   <LuFileText className="w-3.5 h-3.5" />
                   Export PDF
                 </button>
                 <button
                   onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
-                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-gray-600 dark:text-gray-300 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
+                  className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
                 >
                   <LuFileSpreadsheet className="w-3.5 h-3.5" />
                   Export Excel
@@ -617,14 +611,14 @@ export default function HRDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
 
           {/* Employee Distribution */}
-          <div className="flex-[4] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
+          <div className="flex-[4] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1.5 border-b border-border shrink-0">
               <div>
-                <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+                <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                   <LuActivity className="w-3 h-3 text-blue-500" />
                   Employee Distribution
                 </h3>
-                <p className="text-[8px] text-gray-400 font-bold uppercase tracking-wider">By Department</p>
+                <p className="text-[8px] text-muted font-bold uppercase tracking-wider">By Department</p>
               </div>
               <DownloadActions variant="dark" title="Employee Distribution" data={employeeDistribution.map((d: any) => ({ Department: d.name, Count: d.value }))} />
             </div>
@@ -670,9 +664,9 @@ export default function HRDashboard() {
           </div>
 
           {/* Buses Under Maintenance List */}
-          <div className="flex-[6] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1.5 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+          <div className="flex-[6] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1.5 border-b border-border shrink-0">
+              <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuBus className="w-3 h-3 text-amber-500" />
                 Buses Under Maintenance
               </h3>
@@ -691,7 +685,7 @@ export default function HRDashboard() {
 
             <div className="space-y-1 overflow-y-auto flex-1 mt-3.5 pr-0.5 custom-scrollbar">
               {busesUnderMaintenance.slice(0, 6).map((item: any, idx: number) => (
-                <div key={item.id} className="flex items-center gap-2 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1.5 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <div key={item.id} className="flex items-center gap-2 bg-surface-elevated rounded-xl p-1.5 border border-border hover:bg-surface-elevated transition-all">
                   <div className="w-5 h-5 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-[9px] font-black shrink-0">
                     {idx + 1}
                   </div>
@@ -700,14 +694,14 @@ export default function HRDashboard() {
                       <span className="text-[7px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 px-1.5 py-0.5 rounded">
                         {item.plate_number}
                       </span>
-                      <span className="text-[7px] text-gray-400 font-bold">{item.bus_category}</span>
+                      <span className="text-[7px] text-muted font-bold">{item.bus_category}</span>
                     </div>
-                    <h4 className="text-[9.5px] font-black text-gray-900 dark:text-white mt-0.5 truncate">
+                    <h4 className="text-[9.5px] font-black text-ink mt-0.5 truncate">
                       {item.model}
                     </h4>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-[9.5px] font-black text-gray-900 dark:text-white">{item.total_mileage?.toLocaleString() ?? 0} km</p>
+                    <p className="text-[9.5px] font-black text-ink">{item.total_mileage?.toLocaleString() ?? 0} km</p>
                     <span className="text-[6.5px] font-black uppercase px-1.5 py-0.5 rounded-full inline-block mt-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400">
                       Maintenance
                     </span>
@@ -715,7 +709,7 @@ export default function HRDashboard() {
                 </div>
               ))}
               {busesUnderMaintenance.length === 0 && (
-                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-gray-400 dark:text-gray-500">
+                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-muted">
                   <LuBus className="w-8 h-8 mb-2 opacity-50 text-gray-300 animate-pulse" />
                   <p className="text-[10px] font-black uppercase tracking-wider">No Buses Under Maintenance</p>
                 </div>
@@ -728,9 +722,9 @@ export default function HRDashboard() {
         <div className="flex flex-col gap-4 min-w-0">
 
           {/* Top Performers */}
-          <div className="flex-[4.5] min-h-[250px] bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+          <div className="flex-[4.5] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1 border-b border-border shrink-0">
+              <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuTrophy className="w-3 h-3 text-amber-500" />
                 Top Performers
               </h3>
@@ -741,8 +735,8 @@ export default function HRDashboard() {
               <div>
                 <h4 className="text-[8px] font-black text-rose-500 uppercase tracking-wider mb-1">Top Agents</h4>
                 <div className="space-y-0.5">
-                  {agents.map((agent) => (
-                    <div key={agent.rank} className="flex items-center gap-1.5 bg-gray-50/50 dark:bg-gray-800/40 rounded-xl p-1 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                  {agents.map((agent: any) => (
+                    <div key={agent.rank} className="flex items-center gap-1.5 bg-surface-elevated rounded-xl p-1 border border-border hover:bg-surface-elevated transition-all">
                       <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black shrink-0 ${
                         agent.rank === 1 ? 'bg-amber-400 text-white shadow-sm' :
                         agent.rank === 2 ? 'bg-slate-300 text-gray-800' :
@@ -750,10 +744,10 @@ export default function HRDashboard() {
                       }`}>
                         {agent.rank}
                       </div>
-                      <img src={agent.image} alt={agent.name} className="w-6 h-6 rounded-full border border-gray-200 dark:border-gray-700 shrink-0" />
+                      <img src={agent.image} alt={agent.name} className="w-6 h-6 rounded-full border border-border shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-[9px] font-black text-gray-950 dark:text-white truncate">{agent.name}</h4>
-                        <p className="text-[7px] text-gray-400 font-medium">{agent.bookings} Bk â€¢ {agent.rating}â˜…</p>
+                        <h4 className="text-[9px] font-black text-ink truncate">{agent.name}</h4>
+                        <p className="text-[7px] text-muted font-medium">{agent.bookings} Bk â€¢ {agent.rating}â˜…</p>
                       </div>
                       <p className="text-[8.5px] font-black text-rose-600 dark:text-rose-400 shrink-0 pr-0.5">{agent.sales}</p>
                     </div>
@@ -764,9 +758,9 @@ export default function HRDashboard() {
           </div>
 
           {/* Operations & Performance widget */}
-          <div className="flex-[5.5] min-h-0 bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-2.5 flex flex-col">
-            <div className="flex items-center justify-between pb-1 border-b border-gray-50 dark:border-gray-800 shrink-0">
-              <h3 className="text-[10px] font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+          <div className="flex-[5.5] min-h-0 bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
+            <div className="flex items-center justify-between pb-1 border-b border-border shrink-0">
+              <h3 className="text-[10px] font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuTrendingUp className="w-3 h-3 text-blue-500" />
                 Revenue vs Bookings
               </h3>
@@ -817,14 +811,14 @@ export default function HRDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 min-h-[400px] flex-1 relative z-10 mt-2">
 
         {/* Column 1: Available Buses Today */}
-        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
-          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+        <div className="flex flex-col bg-surface rounded-2xl border border-border shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
             <div>
-              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuBus className="w-3.5 h-3.5 text-emerald-500" />
                 Available Buses Today
               </h3>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Ready for dispatch</p>
+              <p className="text-[9px] text-muted font-bold uppercase tracking-wider">Ready for dispatch</p>
             </div>
             <DownloadActions 
               variant="dark" 
@@ -838,16 +832,16 @@ export default function HRDashboard() {
           </div>
           <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
             {availableBusesToday.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center mt-4">No available buses today.</p>
+              <p className="text-xs text-muted text-center mt-4">No available buses today.</p>
             ) : (
               availableBusesToday.map((bus: any) => (
-                <div key={bus.id || bus.plate_number} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <div key={bus.id || bus.plate_number} className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated border border-border hover:bg-surface-elevated transition-all">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                       <LuBus className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                      <p className="text-[11px] font-black text-ink truncate">
                         {bus.model || 'Luxury Coach'}
                       </p>
                       <p className="text-[9px] text-gray-500 font-bold truncate">
@@ -859,7 +853,7 @@ export default function HRDashboard() {
                     <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 px-2 py-0.5 rounded-full">
                       {bus.seating_capacity || 49} Seats
                     </span>
-                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                    <span className="text-[8px] text-muted font-bold flex items-center gap-1">
                       <LuClock className="w-2.5 h-2.5" />
                       Today
                     </span>
@@ -871,28 +865,28 @@ export default function HRDashboard() {
         </div>
 
         {/* Column 2: Recent Job Applications */}
-        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
-          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+        <div className="flex flex-col bg-surface rounded-2xl border border-border shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
             <div>
-              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuBriefcase className="w-3.5 h-3.5 text-violet-500" />
                 Recent Applications
               </h3>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Latest candidates</p>
+              <p className="text-[9px] text-muted font-bold uppercase tracking-wider">Latest candidates</p>
             </div>
           </div>
           <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
             {recentApplications.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center mt-4">No recent applications.</p>
+              <p className="text-xs text-muted text-center mt-4">No recent applications.</p>
             ) : (
               recentApplications.map((app: any) => (
-                <div key={app.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <div key={app.id} className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated border border-border hover:bg-surface-elevated transition-all">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0">
                       <LuUser className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                      <p className="text-[11px] font-black text-ink truncate">
                         {app.first_name} {app.last_name}
                       </p>
                       <p className="text-[9px] text-gray-500 font-bold truncate">
@@ -902,7 +896,7 @@ export default function HRDashboard() {
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
                     <StatusBadge status={app.status} variant={getApplicationStatusVariant(app.status)} />
-                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                    <span className="text-[8px] text-muted font-bold flex items-center gap-1">
                       <LuClock className="w-2.5 h-2.5" />
                       {formatDate(app.created_at)}
                     </span>
@@ -914,28 +908,28 @@ export default function HRDashboard() {
         </div>
 
         {/* Column 3: Recent Internships */}
-        <div className="flex flex-col bg-white dark:bg-gray-900 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm p-3 min-h-[350px]">
-          <div className="flex items-center justify-between pb-2 border-b border-gray-50 dark:border-gray-800 shrink-0">
+        <div className="flex flex-col bg-surface rounded-2xl border border-border shadow-sm p-3 min-h-[350px]">
+          <div className="flex items-center justify-between pb-2 border-b border-border shrink-0">
             <div>
-              <h3 className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest flex items-center gap-1.5">
+              <h3 className="text-xs font-black text-ink uppercase tracking-widest flex items-center gap-1.5">
                 <LuBadgeCheck className="w-3.5 h-3.5 text-emerald-500" />
                 Recent Internships
               </h3>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Latest interns</p>
+              <p className="text-[9px] text-muted font-bold uppercase tracking-wider">Latest interns</p>
             </div>
           </div>
           <div className="space-y-2 overflow-y-auto mt-3 pr-1 flex-1">
             {recentInterns.length === 0 ? (
-              <p className="text-xs text-gray-400 text-center mt-4">No recent interns.</p>
+              <p className="text-xs text-muted text-center mt-4">No recent interns.</p>
             ) : (
               recentInterns.map((intern: any) => (
-                <div key={intern.id} className="flex items-center justify-between p-2 rounded-xl bg-gray-50/50 dark:bg-gray-800/40 border border-gray-100/50 dark:border-gray-800/50 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all">
+                <div key={intern.id} className="flex items-center justify-between p-2 rounded-xl bg-surface-elevated border border-border hover:bg-surface-elevated transition-all">
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                       <LuGlobe className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[11px] font-black text-gray-900 dark:text-white truncate">
+                      <p className="text-[11px] font-black text-ink truncate">
                         {intern.first_name} {intern.last_name}
                       </p>
                       <p className="text-[9px] text-gray-500 font-bold truncate">
@@ -945,7 +939,7 @@ export default function HRDashboard() {
                   </div>
                   <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
                     <StatusBadge status={intern.status} variant={getInternStatusVariant(intern.status)} />
-                    <span className="text-[8px] text-gray-400 font-bold flex items-center gap-1">
+                    <span className="text-[8px] text-muted font-bold flex items-center gap-1">
                       <LuClock className="w-2.5 h-2.5" />
                       {formatDate(intern.start_date)}
                     </span>

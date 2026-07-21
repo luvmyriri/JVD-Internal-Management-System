@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tansta
 import { 
   LuSearch, 
   LuPlus, 
-  LuMail, 
-  LuPhone,
+  LuMail,
   LuBriefcase,
   LuPencil,
   LuTrash2,
@@ -27,7 +26,8 @@ import {
   LuUserCheck,
   LuTriangleAlert,
 } from 'react-icons/lu';
-import { Modal, StatusBadge, Button, Pagination } from '../../components/ui';
+import { Modal, Button, Pagination } from '../../components/ui';
+import { ListRow, StatusPill, EmptyState, Button as DsButton, confirm } from '../../components/ds';
 import { useForm } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { jobApplicationsApi, type JobApplication, type ConvertToEmployeePayload } from '../../api/jobApplications';
@@ -520,150 +520,106 @@ export default function Applications() {
     }
   };
 
-  const statusColors: Record<string, 'warning' | 'info' | 'success' | 'danger'> = {
-    pending: 'warning',
-    reviewed: 'info',
-    interviewed: 'info',
-    hired: 'success',
-    rejected: 'danger'
+  const roleLabel = (value?: string) => ROLES.find(r => r.value === value)?.label ?? value ?? '—';
+
+  const handleDeleteApp = async (app: JobApplication) => {
+    const ok = await confirm({
+      title: 'Delete this application?',
+      description: `Remove ${app.first_name} ${app.last_name}'s application. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (ok) deleteMutation.mutate(app.id);
   };
 
   return (
-    <div className="space-y-6">
+    <div className="jvd space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Job Applications</h1>
-          <p className="text-sm text-gray-500 mt-1 font-medium">Manage candidates and interview processes</p>
+          <h1 className="text-2xl font-semibold text-ink tracking-tight">Job Applications</h1>
+          <p className="text-sm text-muted mt-1">Manage candidates and interview processes</p>
         </div>
-        <Button onClick={() => openModal()} className="flex items-center gap-2">
+        <DsButton variant="primary" onClick={() => openModal()}>
           <LuPlus className="w-4 h-4" /> Add Application
-        </Button>
+        </DsButton>
       </div>
 
-      <div className="flex items-center gap-4 bg-white dark:bg-gray-900 p-4 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800">
+      <div className="flex items-center gap-4 rounded-[var(--radius-card)] border border-border bg-surface p-3">
         <div className="relative flex-1">
-          <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-muted w-5 h-5" />
           <input
             type="text"
             placeholder="Search candidates..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border-none bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+            className="w-full pl-10 pr-4 py-2 border border-border bg-surface-muted text-ink rounded-[var(--radius-control)] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 transition-all"
           />
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 overflow-hidden relative">
+      <div className="relative space-y-3">
         {isPlaceholderData && (
-          <div className="absolute top-0 left-0 w-full h-1 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
-            <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+          <div className="absolute -top-2 left-0 z-10 h-0.5 w-full overflow-hidden">
+            <div className="h-full w-1/2 rounded-full bg-brand animate-[loading_1.5s_infinite_ease-in-out]" />
           </div>
         )}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50 dark:bg-gray-800/50 border-b border-gray-100 dark:border-gray-800">
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Candidate</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Position</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Contact</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Status</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest">Applied</th>
-                <th className="py-4 px-6 text-xs font-black text-gray-500 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">Loading...</td>
-                </tr>
-              ) : paginatedApps.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-8 text-center text-gray-500">No applications found.</td>
-                </tr>
-              ) : (
-                paginatedApps.map((app) => (
-                  <tr key={app.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 transition-colors">
-                    <td className="py-4 px-6">
-                      <div className="font-bold text-gray-900 dark:text-white">
-                        {app.first_name} {app.last_name}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
-                        <LuBriefcase className="w-4 h-4 text-gray-400" />
-                        {app.position_applied}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="text-sm space-y-1 text-gray-600 dark:text-gray-300">
-                        <div className="flex items-center gap-2"><LuMail className="w-3.5 h-3.5" /> {app.email}</div>
-                        {app.phone && <div className="flex items-center gap-2"><LuPhone className="w-3.5 h-3.5" /> {app.phone}</div>}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex flex-col gap-1.5">
-                        <StatusBadge status={app.status} variant={statusColors[app.status]} />
-                        {/* Converted badge */}
-                        {app.converted_user_id && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800/40 text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest w-fit">
-                            <LuUserCheck className="w-3 h-3" /> Converted
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="py-4 px-6 text-sm text-gray-500">
-                      {formatDate(app.created_at)}
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Recruit button — only for hired, not yet converted */}
-                        {app.status === 'hired' && !app.converted_user_id && (
-                          <button
-                            onClick={() => setRecruitApp(app)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-black uppercase tracking-widest transition-all shadow-md shadow-emerald-500/20 active:scale-95"
-                            title="Convert to Employee"
-                          >
-                            <LuUserPlus className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Recruit</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openModal(app)}
-                          className="p-2 hover:bg-blue-50 dark:hover:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg transition-colors"
-                          title="Edit"
-                        >
-                          <LuPencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => {
-                            if (window.confirm('Are you sure you want to delete this application?')) {
-                              deleteMutation.mutate(app.id);
-                            }
-                          }}
-                          className="p-2 hover:bg-red-50 dark:hover:bg-red-500/10 text-red-600 dark:text-red-400 rounded-lg transition-colors"
-                          title="Delete"
-                        >
-                          <LuTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-        
-        {filteredApps.length > itemsPerPage && (
-          <div className="p-4 border-t border-gray-100 dark:border-gray-800">
-            <Pagination
-              currentPage={currentPage}
-              lastPage={Math.ceil(filteredApps.length / itemsPerPage)}
-              total={filteredApps.length}
-              perPage={itemsPerPage}
-              onPageChange={setCurrentPage}
-            />
+        {isLoading ? (
+          <div className="flex flex-col items-center rounded-[var(--radius-card)] border border-border bg-surface py-16 text-muted">
+            <LuLoaderCircle size={22} className="mb-2 animate-spin text-brand" />
+            <p className="text-sm">Loading applications…</p>
           </div>
+        ) : paginatedApps.length === 0 ? (
+          <div className="rounded-[var(--radius-card)] border border-border bg-surface">
+            <EmptyState icon={<LuUsers size={22} />} title="No applications found" description="New candidate applications will appear here." />
+          </div>
+        ) : (
+          <div className={`space-y-3 ${isPlaceholderData ? 'pointer-events-none opacity-60' : ''}`}>
+            {paginatedApps.map((app) => (
+              <ListRow
+                key={app.id}
+                onClick={() => openModal(app)}
+                leading={
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-tint text-xs font-medium text-brand">
+                    {`${app.first_name?.[0] ?? ''}${app.last_name?.[0] ?? ''}`.toUpperCase()}
+                  </span>
+                }
+                title={`${app.first_name} ${app.last_name}`}
+                status={
+                  <>
+                    <StatusPill status={app.status} />
+                    {app.converted_user_id && <StatusPill status="converted" />}
+                  </>
+                }
+                subtitle={<><LuBriefcase size={12} /> {roleLabel(app.position_applied)} · {app.email}</>}
+                meta={formatDate(app.created_at)}
+                actions={
+                  <>
+                    {app.status === 'hired' && !app.converted_user_id && (
+                      <DsButton variant="brand" size="sm" onClick={() => setRecruitApp(app)}>
+                        <LuUserPlus size={14} /> Recruit
+                      </DsButton>
+                    )}
+                    <DsButton variant="ghost" size="sm" aria-label="Edit application" onClick={() => openModal(app)}>
+                      <LuPencil size={15} />
+                    </DsButton>
+                    <DsButton variant="ghost" size="sm" aria-label="Delete application" className="text-danger hover:text-danger" onClick={() => handleDeleteApp(app)}>
+                      <LuTrash2 size={15} />
+                    </DsButton>
+                  </>
+                }
+              />
+            ))}
+          </div>
+        )}
+
+        {filteredApps.length > itemsPerPage && (
+          <Pagination
+            currentPage={currentPage}
+            lastPage={Math.ceil(filteredApps.length / itemsPerPage)}
+            total={filteredApps.length}
+            perPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
 

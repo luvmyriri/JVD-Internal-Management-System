@@ -137,13 +137,19 @@ class WorkflowService
             // approver_value is e.g. "cash_budgets:approve_accounting"
             if (str_contains($step->approver_value, ':')) {
                 [$module, $action] = explode(':', $step->approver_value, 2);
+
+                // Named ability (roadmap 2.3) — the abilities system backs verbs beyond CRUD,
+                // e.g. "cash_budgets:approve_accounting".
+                if ($user->hasAbility("{$module}.{$action}")) {
+                    return true;
+                }
+
                 $actionKey = 'can_' . $action;
-                
                 $perms = $user->getAllPermissions();
                 if (isset($perms[$module][$actionKey]) && $perms[$module][$actionKey] === true) {
                     return true;
                 }
-                
+
                 // fallback to general hasPermission if named ability is standard
                 return $user->hasPermission($module, $action);
             }

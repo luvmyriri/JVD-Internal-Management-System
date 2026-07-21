@@ -8,7 +8,7 @@ import {
   LuCircleCheckBig, LuTriangleAlert, LuBuilding2, LuHash, LuChevronDown, LuTrash,
   LuFileDown, LuFileUp, LuChevronRight
 } from 'react-icons/lu';
-import ExcelJS from 'exceljs';
+import { loadExcelJS } from '../../utils/lazyExport';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
 import AddressSelector, { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/AddressSelector';
@@ -428,7 +428,7 @@ export default function Suppliers() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const downloadTemplate = async () => {
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     const worksheet = workbook.addWorksheet('Suppliers');
     const dataSheet = workbook.addWorksheet('Data', { state: 'hidden' });
 
@@ -545,7 +545,7 @@ export default function Suppliers() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const workbook = new ExcelJS.Workbook();
+    const workbook = new (await loadExcelJS()).Workbook();
     try {
       const arrayBuffer = await file.arrayBuffer();
       await workbook.xlsx.load(arrayBuffer);

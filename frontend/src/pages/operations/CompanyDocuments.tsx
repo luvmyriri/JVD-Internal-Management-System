@@ -2,7 +2,7 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { LuFile, LuSearch, LuTrash, LuFileDown, LuX, LuFileUp, LuFileText, LuChevronRight, LuFolderOpen, LuFolderPlus, LuLoaderCircle, LuSettings, LuLock } from 'react-icons/lu';
-import { procurementDocumentApi, documentCategoryApi, type ProcurementDocumentFormData, type DocumentCategory } from '../../api/procurementDocuments';
+import { procurementDocumentApi, documentCategoryApi, type ProcurementDocumentFormData, type DocumentCategory, type ProcurementDocument } from '../../api/procurementDocuments';
 import { supplierApi } from '../../api/suppliers';
 import { inventoryApi } from '../../api/inventory';
 import { userApi } from '../../api/users';
@@ -12,9 +12,10 @@ import { jobOrderApi } from '../../api/jobOrders';
 import { workOrderApi } from '../../api/workOrders';
 import { tripTicketApi } from '../../api/operations';
 import { Modal, Button, ConfirmDialog } from '../../components/ui';
+import { DataTable, type Column } from '../../components/ds';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
 import { useAuth } from '../../context/AuthContext';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { cn, formatMoneyInput, parseMoneyInput } from '../../utils';
 
 
 interface AddDocumentModalProps {
@@ -311,8 +312,8 @@ export default function CompanyDocuments() {
   const getApiUrl = () => {
     const apiBase = import.meta.env.VITE_API_BASE_URL || '/api';
     return apiBase.startsWith('/')
-      ? apiBase.replace(/\/api$/, '')
-      : apiBase.replace(/\/api$/, '') || 'http://localhost:8000';
+      ? apiBase.replace(/\/api(\/v\d+)?$/, '')
+      : apiBase.replace(/\/api(\/v\d+)?$/, '') || 'http://localhost:8000';
   };
 
   const docs = data?.data.data || [];
@@ -344,9 +345,142 @@ export default function CompanyDocuments() {
     }
   };
 
-  const getRowIndicatorStyle = (_type?: string) => {
-    return '';
-  };
+  const columns: Column<ProcurementDocument>[] = [
+    {
+      key: 'title',
+      header: 'Title',
+      render: (doc) => (
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm animate-all duration-200">
+            <LuFile className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{doc.title}</p>
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1 flex items-center gap-1">
+              Uploaded by: {doc.uploaded_by === user?.id ? (
+                <span className="text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-md inline-block leading-none">You</span>
+              ) : (
+                doc.uploader?.first_name ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : 'System Upload'
+              )}
+            </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: 'document_type',
+      header: 'Type',
+      render: (doc) => (
+        <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest inline-block ${getDocumentTypeStyles(doc.document_type)}`}>
+          {doc.document_type.replace('_', ' ')}
+        </span>
+      ),
+    },
+    {
+      key: 'linked_entities',
+      header: 'Linked Entities',
+      render: (doc) => (
+        <div className="flex flex-col gap-1.5 text-[11px] font-bold">
+          {doc.supplier && (
+            <button onClick={() => showPreview('supplier', doc.supplier!.id)} className="text-left text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors uppercase tracking-tight">
+              Supplier: {doc.supplier.company_name}
+            </button>
+          )}
+          {doc.inventory_item && (
+            <button onClick={() => showPreview('inventory', doc.inventory_item!.id)} className="text-left text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors uppercase tracking-tight">
+              Item: {doc.inventory_item.item_name}
+            </button>
+          )}
+          {doc.driver && (
+            <button onClick={() => showPreview('driver', doc.driver!.id)} className="text-left text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors uppercase tracking-tight">
+              Driver: {doc.driver.first_name} {doc.driver.last_name}
+            </button>
+          )}
+          {doc.linkages?.customer && (
+            <button onClick={() => showPreview('customer', doc.linkages!.customer.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
+              Customer: {doc.linkages.customer.first_name} {doc.linkages.customer.last_name}
+            </button>
+          )}
+          {doc.linkages?.job_order && (
+            <span className="text-left text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors uppercase tracking-tight">
+              Job Order: #{doc.linkages.job_order.jo_number}
+            </span>
+          )}
+          {doc.linkages?.work_order && (
+            <span className="text-left text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition-colors uppercase tracking-tight">
+              Work Order: #{doc.linkages.work_order.wo_number}
+            </span>
+          )}
+          {doc.linkages?.trip_ticket && (
+            <span className="text-left text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors uppercase tracking-tight">
+              Trip Ticket: #{doc.linkages.trip_ticket.control_no}
+            </span>
+          )}
+          {doc.linkages?.accreditation && (
+            <span className="text-left text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded-lg w-fit uppercase tracking-tight">
+              Accred: {doc.linkages.accreditation.entity_name} ({doc.linkages.accreditation.accreditation_type})
+            </span>
+          )}
+          {!doc.supplier && !doc.inventory_item && !doc.driver && !doc.linkages?.customer && !doc.linkages?.job_order && !doc.linkages?.work_order && !doc.linkages?.trip_ticket && !doc.linkages?.accreditation && (
+            <span className="text-gray-400 uppercase tracking-widest text-[9px]">Unlinked</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'custom_metadata',
+      header: 'Additional Details',
+      render: (doc) => (
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {Object.entries(doc.custom_metadata || {}).map(([k, v]) => (
+            <span key={k} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg text-[9px] font-bold tracking-tight">
+              {k}: {String(v)}
+            </span>
+          ))}
+          {Object.keys(doc.custom_metadata || {}).length === 0 && (
+            <span className="text-gray-400 uppercase tracking-widest text-[9px]">—</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: 'amount',
+      header: 'Amount',
+      align: 'right',
+      render: (doc) => (
+        <span className="font-black text-gray-950 dark:text-white">
+          {doc.amount ? `₱${Number(doc.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      align: 'right',
+      render: (doc) => (
+        <div className="flex justify-end gap-2">
+          <a
+            href={doc.file_path.startsWith('http') ? doc.file_path : `${getApiUrl()}/storage/${doc.file_path}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+            title="View or Download Document"
+          >
+            <LuFileDown className="w-4 h-4" /> View
+          </a>
+          {canDelete(doc) && (
+            <button
+              onClick={() => setDeleteDocId(doc.id)}
+              className="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
+              title="Delete Document"
+            >
+              <LuTrash className="w-4 h-4" /> Delete
+            </button>
+          )}
+        </div>
+      ),
+    },
+  ];
 
   return (
     <div className="space-y-8 pb-12">
@@ -479,142 +613,21 @@ export default function CompanyDocuments() {
               <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
             </div>
           )}
-          <table className="w-full min-w-[900px] text-left border-collapse">
-            <thead>
-              <tr className="bg-gray-50/50 dark:bg-gray-800/20 rounded-2xl">
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest rounded-l-2xl">Title</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Linked Entities</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Additional Details</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Amount</th>
-                <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right rounded-r-2xl">Actions</th>
-              </tr>
-            </thead>
-            <tbody className={`divide-y divide-gray-100 dark:divide-gray-800/50 transition-all duration-300 ${isPlaceholderData ? 'opacity-60 pointer-events-none saturate-50' : ''}`}>
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                  <tr key={i} className="animate-pulse">
-                    <td colSpan={6} className="px-6 py-8"><div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div></td>
-                  </tr>
-                ))
-              ) : filteredDocs.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</td>
-                </tr>
+          <DataTable
+            columns={columns}
+            data={filteredDocs}
+            rowKey={(doc) => doc.id}
+            className={cn('transition-all duration-300 [&_table]:min-w-[900px]', isPlaceholderData && 'opacity-60 pointer-events-none saturate-50')}
+            empty={
+              isLoading ? (
+                <div className="animate-pulse px-6 py-8">
+                  <div className="h-5 bg-gray-100 dark:bg-gray-800 rounded-lg w-full"></div>
+                </div>
               ) : (
-                filteredDocs.map((doc) => (
-                  <tr key={doc.id} className={`group hover:bg-gray-50/50 dark:hover:bg-gray-800/50 transition-colors ${getRowIndicatorStyle(doc.document_type)}`}>
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 dark:bg-gray-800 rounded-xl flex items-center justify-center text-slate-500 dark:text-gray-400 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm animate-all duration-200">
-                          <LuFile className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{doc.title}</p>
-                          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mt-1 flex items-center gap-1">
-                            Uploaded by: {doc.uploaded_by === user?.id ? (
-                              <span className="text-blue-600 dark:text-blue-400 font-bold px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/30 rounded-md inline-block leading-none">You</span>
-                            ) : (
-                              doc.uploader?.first_name ? `${doc.uploader.first_name} ${doc.uploader.last_name}` : 'System Upload'
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest inline-block ${getDocumentTypeStyles(doc.document_type)}`}>
-                        {doc.document_type.replace('_', ' ')}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex flex-col gap-1.5 text-[11px] font-bold">
-                        {doc.supplier && (
-                          <button onClick={() => showPreview('supplier', doc.supplier!.id)} className="text-left text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors uppercase tracking-tight">
-                            Supplier: {doc.supplier.company_name}
-                          </button>
-                        )}
-                        {doc.inventory_item && (
-                          <button onClick={() => showPreview('inventory', doc.inventory_item!.id)} className="text-left text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors uppercase tracking-tight">
-                            Item: {doc.inventory_item.item_name}
-                          </button>
-                        )}
-                        {doc.driver && (
-                          <button onClick={() => showPreview('driver', doc.driver!.id)} className="text-left text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors uppercase tracking-tight">
-                            Driver: {doc.driver.first_name} {doc.driver.last_name}
-                          </button>
-                        )}
-                        {doc.linkages?.customer && (
-                          <button onClick={() => showPreview('customer', doc.linkages!.customer.id)} className="text-left text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-rose-100 dark:hover:bg-rose-900/50 transition-colors uppercase tracking-tight">
-                            Customer: {doc.linkages.customer.first_name} {doc.linkages.customer.last_name}
-                          </button>
-                        )}
-                        {doc.linkages?.job_order && (
-                          <span className="text-left text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-orange-100 dark:hover:bg-orange-900/50 transition-colors uppercase tracking-tight">
-                            Job Order: #{doc.linkages.job_order.jo_number}
-                          </span>
-                        )}
-                        {doc.linkages?.work_order && (
-                          <span className="text-left text-yellow-600 dark:text-yellow-400 bg-yellow-50 dark:bg-yellow-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-yellow-100 dark:hover:bg-yellow-900/50 transition-colors uppercase tracking-tight">
-                            Work Order: #{doc.linkages.work_order.wo_number}
-                          </span>
-                        )}
-                        {doc.linkages?.trip_ticket && (
-                          <span className="text-left text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-900/30 px-2 py-0.5 rounded-lg w-fit hover:bg-cyan-100 dark:hover:bg-cyan-900/50 transition-colors uppercase tracking-tight">
-                            Trip Ticket: #{doc.linkages.trip_ticket.control_no}
-                          </span>
-                        )}
-                        {doc.linkages?.accreditation && (
-                          <span className="text-left text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 px-2 py-0.5 rounded-lg w-fit uppercase tracking-tight">
-                            Accred: {doc.linkages.accreditation.entity_name} ({doc.linkages.accreditation.accreditation_type})
-                          </span>
-                        )}
-                        {!doc.supplier && !doc.inventory_item && !doc.driver && !doc.linkages?.customer && !doc.linkages?.job_order && !doc.linkages?.work_order && !doc.linkages?.trip_ticket && !doc.linkages?.accreditation && (
-                          <span className="text-gray-400 uppercase tracking-widest text-[9px]">Unlinked</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {Object.entries(doc.custom_metadata || {}).map(([k, v]) => (
-                          <span key={k} className="px-2 py-0.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 rounded-lg text-[9px] font-bold tracking-tight">
-                            {k}: {String(v)}
-                          </span>
-                        ))}
-                        {Object.keys(doc.custom_metadata || {}).length === 0 && (
-                          <span className="text-gray-400 uppercase tracking-widest text-[9px]">—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 text-right font-black text-gray-950 dark:text-white">
-                      {doc.amount ? `₱${Number(doc.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}` : '—'}
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="flex justify-end gap-2">
-                        <a
-                          href={doc.file_path.startsWith('http') ? doc.file_path : `${getApiUrl()}/storage/${doc.file_path}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
-                          title="View or Download Document"
-                        >
-                          <LuFileDown className="w-4 h-4" /> View
-                        </a>
-                        {canDelete(doc) && (
-                          <button
-                            onClick={() => setDeleteDocId(doc.id)}
-                            className="px-3.5 py-1.5 bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-1.5"
-                            title="Delete Document"
-                          >
-                            <LuTrash className="w-4 h-4" /> Delete
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                <div className="px-6 py-20 text-center text-gray-400 font-bold uppercase tracking-widest text-xs">No records found</div>
+              )
+            }
+          />
         </div>
       </div>
 
