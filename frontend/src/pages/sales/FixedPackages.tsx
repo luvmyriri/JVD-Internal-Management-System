@@ -23,7 +23,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { LoadingScreen, Dropdown, ConfirmDialog } from '../../components/ui';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
-import { getBreakdownSum, type NewServiceForm } from './fixedPackagesUtils';
+import { getBreakdownSum, getCleanDateYMD, formatFixedDateDisplay, type NewServiceForm } from './fixedPackagesUtils';
 import QuotationRecipientModal from './QuotationRecipientModal';
 import FixedPackageServiceFormModal from './FixedPackageServiceFormModal';
 
@@ -405,6 +405,9 @@ export default function FixedPackages() {
       cost_breakdown: service.cost_breakdown || '',
       inclusions: service.inclusions || '',
       exclusions: service.exclusions || '',
+      fixed_date: service.fixed_date ? getCleanDateYMD(service.fixed_date) : undefined,
+      fixed_departure_time: (service as any).fixed_departure_time || undefined,
+      fixed_arrival_datetime: (service as any).fixed_arrival_datetime || undefined,
     });
     const existingImages = service.images?.map(img =>
       img.startsWith('http') ? img : `/storage/${img}`
@@ -516,7 +519,7 @@ export default function FixedPackages() {
                     setBookingTourExtraDays(0);
                     setBookingTourExtraHours(0);
                   }
-                  setBookingDate('');
+                  setBookingDate(getCleanDateYMD(service.fixed_date));
                   setBookingArrivalDate('');
                   setBookingDepartureDate('');
                   setBookingBusId(null);
@@ -656,9 +659,18 @@ export default function FixedPackages() {
                           setBookingTourExtraDays(0);
                           setBookingTourExtraHours(0);
                         }
-                        setBookingDate('');
-                        setBookingArrivalDate('');
-                        setBookingDepartureDate('');
+                        setBookingDate(getCleanDateYMD(service.fixed_date));
+                        // Pre-populate departure/arrival from the package if set
+                        const svc = service as any;
+                        if (svc.fixed_departure_time && service.fixed_date) {
+                          const [year, month, day] = getCleanDateYMD(service.fixed_date).split('-').map(Number);
+                          const [hh, mm] = svc.fixed_departure_time.split(':').map(Number);
+                          const depDate = new Date(year, month - 1, day, hh, mm, 0);
+                          setBookingDepartureDate(depDate.toISOString());
+                        } else {
+                          setBookingDepartureDate('');
+                        }
+                        setBookingArrivalDate(svc.fixed_arrival_datetime ? new Date(svc.fixed_arrival_datetime).toISOString() : '');
                         setBookingBusId(null);
                         setBookingSeats([]);
                         setBookingDriverId(null);
@@ -716,6 +728,9 @@ export default function FixedPackages() {
               coaster_price: newService.is_tour ? (Number(parseMoneyInput(newService.coaster_price)) || 0) : undefined,
               tour_kms: newService.is_tour ? (Number(newService.tour_kms) || 0) : undefined,
               tour_hours: newService.is_tour ? (Number(newService.tour_hours) || 0) : undefined,
+              fixed_date: newService.fixed_date || null,
+              fixed_departure_time: newService.fixed_departure_time || null,
+              fixed_arrival_datetime: newService.fixed_arrival_datetime || null,
               images: serviceImages
             };
             if (isEditingService && editingServiceId) {
@@ -727,7 +742,7 @@ export default function FixedPackages() {
             setIsEditingService(false);
             setEditingServiceId(null);
             setServiceImages([]);
-            setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '' });
+            setNewService({ name: '', category: 'Package', description: '', price: '', image_url: '', child_discount: '30', has_booking_fields: false, adult_price: '', child_price: '', is_tour: false, bus_price: '', coaster_price: '', tour_kms: '', tour_hours: '', cost_breakdown: '', inclusions: '', exclusions: '', fixed_date: undefined, fixed_departure_time: undefined, fixed_arrival_datetime: undefined });
             setShowAddService(false);
           } catch (err) {
             alert('Failed to save service');
@@ -948,67 +963,93 @@ export default function FixedPackages() {
                     {/* Travel Date & Arrival/Departure */}
                     <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
-                        <DatePicker
-                          selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
-                          onChange={(date: Date | null) => {
-                            if (date) {
-                              setBookingDate(date.toISOString().split('T')[0]);
-                            } else {
-                              setBookingDate('');
-                            }
-                            if (bookingBusId) {
-                              const selectedBusObj = buses.find((b: any) => b.id === bookingBusId);
-                              const isBusRental = isBusRentalCategory;
-                              if (isBusRental && selectedBusObj) {
-                                const capacity = selectedBusObj.seating_capacity || 49;
-                                const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
-                                setBookingSeats(allSeats);
-                                setJoinerPaxCount(capacity);
+                        <div className="flex items-center justify-between">
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Travel Date</label>
+                          {selectedServiceForDetail.fixed_date && (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-xl border border-blue-200 dark:border-blue-800">
+                              🔒 Fixed Date Package
+                            </span>
+                          )}
+                        </div>
+                        {selectedServiceForDetail.fixed_date ? (
+                          <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between">
+                            <span>{formatFixedDateDisplay(selectedServiceForDetail.fixed_date)}</span>
+                            <span className="text-[9px] text-gray-400 font-bold uppercase">(Pre-set by package)</span>
+                          </div>
+                        ) : (
+                          <DatePicker
+                            selected={bookingDate ? new Date(bookingDate + 'T12:00:00Z') : null}
+                            onChange={(date: Date | null) => {
+                              if (date) {
+                                setBookingDate(date.toISOString().split('T')[0]);
+                              } else {
+                                setBookingDate('');
+                              }
+                              if (bookingBusId) {
+                                const selectedBusObj = buses.find((b: any) => b.id === bookingBusId);
+                                const isBusRental = isBusRentalCategory;
+                                if (isBusRental && selectedBusObj) {
+                                  const capacity = selectedBusObj.seating_capacity || 49;
+                                  const allSeats = Array.from({ length: capacity }, (_, i) => String(i + 1));
+                                  setBookingSeats(allSeats);
+                                  setJoinerPaxCount(capacity);
+                                } else {
+                                  setBookingSeats([]);
+                                  setJoinerPaxCount(1);
+                                }
                               } else {
                                 setBookingSeats([]);
                                 setJoinerPaxCount(1);
                               }
-                            } else {
-                              setBookingSeats([]);
-                              setJoinerPaxCount(1);
-                            }
-                          }}
-                          minDate={new Date()}
-                          className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                          wrapperClassName="w-full"
-                          dateFormat="MMMM d, yyyy"
-                          placeholderText="Select Travel Date"
-                        />
+                            }}
+                            minDate={new Date()}
+                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                            wrapperClassName="w-full"
+                            dateFormat="MMMM d, yyyy"
+                            placeholderText="Select Travel Date"
+                          />
+                        )}
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
-                          <DatePicker
-                            selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
-                            onChange={(date: Date | null) => {
-                              if (date && bookingDate) {
-                                // Lock the date to the travel date, only keep the time
-                                const [year, month, day] = bookingDate.split('-').map(Number);
-                                const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
-                                setBookingDepartureDate(merged.toISOString());
-                                if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
-                                  setBookingArrivalDate('');
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Departure Time</label>
+                            {(selectedServiceForDetail as any).fixed_departure_time && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-xl border border-blue-200 dark:border-blue-800">🔒 Fixed</span>
+                            )}
+                          </div>
+                          {(selectedServiceForDetail as any).fixed_departure_time ? (
+                            <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between">
+                              <span>{(selectedServiceForDetail as any).fixed_departure_time}</span>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase">(Pre-set)</span>
+                            </div>
+                          ) : (
+                            <DatePicker
+                              selected={bookingDepartureDate ? new Date(bookingDepartureDate) : null}
+                              onChange={(date: Date | null) => {
+                                if (date && bookingDate) {
+                                  // Lock the date to the travel date, only keep the time
+                                  const [year, month, day] = bookingDate.split('-').map(Number);
+                                  const merged = new Date(year, month - 1, day, date.getHours(), date.getMinutes(), 0);
+                                  setBookingDepartureDate(merged.toISOString());
+                                  if (bookingArrivalDate && new Date(bookingArrivalDate) < merged) {
+                                    setBookingArrivalDate('');
+                                  }
+                                } else {
+                                  setBookingDepartureDate('');
                                 }
-                              } else {
-                                setBookingDepartureDate('');
-                              }
-                            }}
-                            showTimeSelect
-                            showTimeSelectOnly
-                            timeFormat="h:mm aa"
-                            timeIntervals={15}
-                            dateFormat="h:mm aa"
-                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                            wrapperClassName="w-full"
-                            placeholderText="Select Departure Time"
-                            disabled={!bookingDate}
-                          />
+                              }}
+                              showTimeSelect
+                              showTimeSelectOnly
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="h:mm aa"
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText="Select Departure Time"
+                              disabled={!bookingDate}
+                            />
+                          )}
                           {bookingDepartureDate && (
                             <p className="text-[9px] text-gray-400 font-bold pl-1">
                               Date: {bookingDate}
@@ -1016,20 +1057,32 @@ export default function FixedPackages() {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date & Time</label>
-                          <DatePicker
-                            selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
-                            onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
-                            showTimeSelect
-                            timeFormat="h:mm aa"
-                            timeIntervals={15}
-                            dateFormat="MMM d, yyyy h:mm aa"
-                            minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
-                            className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                            wrapperClassName="w-full"
-                            placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
-                            disabled={!bookingDepartureDate}
-                          />
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Arrival Date &amp; Time</label>
+                            {(selectedServiceForDetail as any).fixed_arrival_datetime && (
+                              <span className="text-[9px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-xl border border-blue-200 dark:border-blue-800">🔒 Fixed</span>
+                            )}
+                          </div>
+                          {(selectedServiceForDetail as any).fixed_arrival_datetime ? (
+                            <div className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-700 dark:text-gray-200 flex items-center justify-between">
+                              <span>{new Date((selectedServiceForDetail as any).fixed_arrival_datetime).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="text-[9px] text-gray-400 font-bold uppercase">(Pre-set)</span>
+                            </div>
+                          ) : (
+                            <DatePicker
+                              selected={bookingArrivalDate ? new Date(bookingArrivalDate) : null}
+                              onChange={(date: Date | null) => setBookingArrivalDate(date ? date.toISOString() : '')}
+                              showTimeSelect
+                              timeFormat="h:mm aa"
+                              timeIntervals={15}
+                              dateFormat="MMM d, yyyy h:mm aa"
+                              minDate={bookingDepartureDate ? new Date(bookingDepartureDate) : (bookingDate ? new Date(bookingDate + 'T00:00:00') : new Date())}
+                              className="w-full px-4 py-3 bg-white dark:bg-gray-805 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              wrapperClassName="w-full"
+                              placeholderText={!bookingDate ? 'Select Travel Date first' : 'Select Arrival'}
+                              disabled={!bookingDepartureDate}
+                            />
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1108,25 +1161,64 @@ export default function FixedPackages() {
                     </div>
 
                     {/* Seat Selector Layout */}
-                    {bookingBusId && bookingDate && (
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
-                          {(() => {
-                            const totalSeats = buses.find(b => b.id === bookingBusId)?.seating_capacity || 49;
-                            const allSeatNums = Array.from({ length: totalSeats }, (_, i) => String(i + 1));
-                            const availableSeats = allSeatNums.filter(s => !occupiedSeats.includes(s));
-                            const allSelected = availableSeats.length > 0 && availableSeats.every(s => bookingSeats.includes(s));
-                            if (isBusRentalCategory) {
-                              return (
-                                <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900">
-                                  Entire Bus Reserved
-                                </span>
-                              );
-                            }
-                            return (
+                    {bookingBusId && bookingDate && (() => {
+                      const selectedBusObj = buses.find(b => b.id === bookingBusId);
+                      const totalSeats = selectedBusObj?.seating_capacity || 49;
+                      const allSeatNums = Array.from({ length: totalSeats }, (_, i) => String(i + 1));
+                      const availableSeats = allSeatNums.filter(s => !occupiedSeats.includes(s));
+                      const isFullyOccupied = occupiedSeats.length >= totalSeats || availableSeats.length === 0;
+                      const allSelected = availableSeats.length > 0 && availableSeats.every(s => bookingSeats.includes(s));
+
+                      return (
+                        <div className="space-y-4">
+                          {/* Bus ID & Occupancy Banner */}
+                          <div className="p-3 bg-blue-50/70 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-black text-blue-700 dark:text-blue-300 uppercase tracking-wider bg-blue-100 dark:bg-blue-900/50 px-2.5 py-1 rounded-xl">
+                                Bus ID #{bookingBusId}
+                              </span>
+                              <span className="text-[10px] font-bold text-gray-700 dark:text-gray-300">
+                                {selectedBusObj?.plate_number} ({selectedBusObj?.model})
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[10px] font-bold">
+                              <span className="text-emerald-600 dark:text-emerald-400">Available: {availableSeats.length}</span>
+                              <span className="text-gray-400">•</span>
+                              <span className="text-red-500 dark:text-red-400">Booked/Occupied: {occupiedSeats.length}</span>
+                            </div>
+                          </div>
+
+                          {/* All Seats Occupied Alert Summary */}
+                          {isFullyOccupied && (
+                            <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900 rounded-2xl flex items-start gap-3">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 shrink-0 text-red-500 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                              <div>
+                                <h5 className="text-xs font-black text-red-800 dark:text-red-300 uppercase">All Seats Fully Occupied</h5>
+                                <p className="text-[10px] font-bold text-red-700 dark:text-red-400 mt-0.5">
+                                  All {totalSeats} seats on Bus ID #{bookingBusId} ({selectedBusObj?.plate_number}) are occupied on {bookingDate}.
+                                </p>
+                                {occupiedSeats.length > 0 && (
+                                  <div className="mt-2 text-[9px] font-bold text-red-600 dark:text-red-400/90 bg-red-100/60 dark:bg-red-900/40 p-2 rounded-xl">
+                                    Occupied Seat Identifiers: {occupiedSeats.sort((a,b) => Number(a)-Number(b)).join(', ')}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Select Seats</label>
+                              <p className="text-[9px] text-gray-400 font-bold pl-1">Click seats below to select or deselect identifiers.</p>
+                            </div>
+                            {isBusRentalCategory ? (
+                              <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest bg-amber-50 dark:bg-amber-950/20 px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900">
+                                Entire Bus Reserved
+                              </span>
+                            ) : (
                               <button
                                 type="button"
+                                disabled={isFullyOccupied}
                                 onClick={() => {
                                   if (allSelected) {
                                     setBookingSeats([]);
@@ -1136,10 +1228,13 @@ export default function FixedPackages() {
                                     setJoinerPaxCount(availableSeats.length || 1);
                                   }
                                 }}
-                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${allSelected
-                                  ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-200 dark:border-red-800'
-                                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-200 dark:border-blue-800'
-                                  }`}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 ${
+                                  isFullyOccupied
+                                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                    : allSelected
+                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-500 border border-red-200 dark:border-red-800'
+                                    : 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 border border-blue-200 dark:border-blue-800'
+                                }`}
                               >
                                 {allSelected ? (
                                   <>
@@ -1153,37 +1248,51 @@ export default function FixedPackages() {
                                   </>
                                 )}
                               </button>
-                            );
-                          })()}
+                            )}
+                          </div>
+                          <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-w-full overflow-x-auto">
+                            <BusLayout
+                              compact={true}
+                              totalSeats={totalSeats}
+                              hasRestroom={selectedBusObj?.bus_category === 'VIP'}
+                              selectedSeats={bookingSeats}
+                              occupiedSeats={occupiedSeats}
+                              onSeatToggle={(seatNum) => {
+                                if (isBusRentalCategory) {
+                                  return;
+                                }
+                                setBookingSeats(prev => {
+                                  const next = prev.includes(seatNum)
+                                    ? prev.filter(s => s !== seatNum)
+                                    : [...prev, seatNum];
+                                  setJoinerPaxCount(next.length || 1);
+                                  return next;
+                                });
+                              }}
+                            />
+                          </div>
+
+                          {/* Seat Summary Footer */}
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                            {bookingSeats.length > 0 ? (
+                              <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest pl-1">
+                                Selected Seats: {bookingSeats.join(', ')} ({bookingSeats.length} seat{bookingSeats.length > 1 ? 's' : ''})
+                              </p>
+                            ) : (
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-1">
+                                No seats selected yet.
+                              </p>
+                            )}
+
+                            {occupiedSeats.length > 0 && (
+                              <p className="text-[9px] font-bold text-gray-400 dark:text-gray-500">
+                                Occupied: {occupiedSeats.sort((a,b) => Number(a)-Number(b)).join(', ')}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <div className="p-4 bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 w-full max-w-full overflow-x-auto">
-                          <BusLayout
-                            compact={true}
-                            totalSeats={buses.find(b => b.id === bookingBusId)?.seating_capacity || 49}
-                            hasRestroom={buses.find(b => b.id === bookingBusId)?.bus_category === 'VIP'}
-                            selectedSeats={bookingSeats}
-                            occupiedSeats={occupiedSeats}
-                            onSeatToggle={(seatNum) => {
-                              if (isBusRentalCategory) {
-                                return;
-                              }
-                              setBookingSeats(prev => {
-                                const next = prev.includes(seatNum)
-                                  ? prev.filter(s => s !== seatNum)
-                                  : [...prev, seatNum];
-                                setJoinerPaxCount(next.length || 1);
-                                return next;
-                              });
-                            }}
-                          />
-                        </div>
-                        {bookingSeats.length > 0 && (
-                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest pl-1">
-                            Selected: {bookingSeats.join(', ')} ({bookingSeats.length} seats selected)
-                          </p>
-                        )}
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
 

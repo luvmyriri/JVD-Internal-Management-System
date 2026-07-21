@@ -41,11 +41,30 @@ class InvoiceResource extends JsonResource
             'pickup_location' => $this->booking?->pickup_location,
             'tour_code' => $this->booking?->tour_code,
             'pax_count' => $this->booking?->pax_count,
+            'arrival_datetime' => $this->booking?->arrival_datetime,
+            'departure_datetime' => $this->booking?->departure_datetime,
+            'bus' => $this->booking?->bus ? [
+                'id' => $this->booking->bus->id,
+                'plate_number' => $this->booking->bus->plate_number,
+                'model' => $this->booking->bus->model,
+                'seating_capacity' => $this->booking->bus->seating_capacity,
+            ] : null,
             'driver' => $this->booking && $this->booking->relationLoaded('driver') && $this->booking->driver ? [
                 'id' => $this->booking->driver->id,
                 'first_name' => $this->booking->driver->first_name,
                 'last_name' => $this->booking->driver->last_name,
             ] : null,
+            'itineraries' => $this->whenLoaded('itineraries', function() {
+                return $this->itineraries->map(fn($it) => [
+                    'id' => $it->id,
+                    'day_number' => $it->day_number,
+                    'date' => $it->date?->toISOString(),
+                    'location' => $it->location,
+                    'activity_description' => $it->activity_description,
+                    'meal_plan' => $it->meal_plan,
+                    'accommodation_name' => $it->accommodation_name,
+                ]);
+            }),
             'collection' => $this->whenLoaded('collection'),
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'creator' => new UserResource($this->whenLoaded('creator')),
@@ -60,6 +79,8 @@ class InvoiceResource extends JsonResource
                         'total_price' => (float) $item->total_price,
                         'adults' => $item->adults,
                         'children' => $item->children,
+                        'adult_price' => $item->adults !== null ? (float) ($item->service->adult_price ?? $item->unit_price) : null,
+                        'child_price' => $item->children !== null ? (float) ($item->service->child_price ?? $item->unit_price) : null,
                         'service' => [
                             'id' => $item->service->id ?? null,
                             'name' => $item->service->name ?? 'N/A',

@@ -39,4 +39,29 @@ export interface NewServiceForm {
   cost_breakdown: string;
   inclusions: string;
   exclusions: string;
+  fixed_date?: string; // Pre-determined travel date
+  fixed_departure_time?: string; // e.g. "08:00"
+  fixed_arrival_datetime?: string; // e.g. "2026-07-30T18:00:00"
 }
+
+export const getCleanDateYMD = (rawDate?: string | null): string => {
+  if (!rawDate) return '';
+  return String(rawDate).split('T')[0].split(' ')[0];
+};
+
+export const formatFixedDateDisplay = (rawDate?: string | null): string => {
+  if (!rawDate) return '';
+  const dateOnly = getCleanDateYMD(rawDate);
+  const parts = dateOnly.split('-');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const day = parseInt(parts[2], 10);
+    const d = new Date(year, month, day);
+    if (!isNaN(d.getTime())) {
+      return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    }
+  }
+  return dateOnly;
+};
+

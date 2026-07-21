@@ -149,4 +149,14 @@ class Invoice extends Model
     {
         return $this->hasOne(Booking::class);
     }
+
+    public function bus()
+    {
+        return $this->hasOneThrough(Bus::class, Booking::class, 'invoice_id', 'id', 'id', 'bus_id');
+    }
+
+    public function driver()
+    {
+        return $this->hasOneThrough(User::class, Booking::class, 'invoice_id', 'id', 'driver_id', 'driver_id');
+    }
 }

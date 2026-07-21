@@ -73,17 +73,36 @@ class InvoiceFinalizationService
                 }
             }
 
+            $adults = $item['adults'] ?? null;
+            $children = $item['children'] ?? null;
             $unitPrice = isset($item['unit_price']) ? (double) $item['unit_price'] : $service->price;
-            $itemTotal = $unitPrice * $item['quantity'];
+
+            if ($adults !== null || $children !== null) {
+                $adultCount = (int) ($adults ?? 0);
+                $childCount = (int) ($children ?? 0);
+                $adultUnit = (double) ($service->adult_price ?? $unitPrice);
+                $childUnit = (double) ($service->child_price ?? $unitPrice);
+                $itemTotal = ($adultCount * $adultUnit) + ($childCount * $childUnit);
+                $effectiveQty = $adultCount + $childCount;
+                if ($effectiveQty > 0) {
+                    $unitPrice = $itemTotal / $effectiveQty;
+                }
+            } else {
+                $itemTotal = $unitPrice * $item['quantity'];
+                $effectiveQty = $item['quantity'];
+            }
+
             $subtotal += $itemTotal;
 
             $processedItems[] = [
                 'service_id' => $service->id,
-                'quantity' => $item['quantity'],
+                'quantity' => $effectiveQty ?? $item['quantity'],
                 'unit_price' => $unitPrice,
                 'total_price' => $itemTotal,
-                'adults' => $item['adults'] ?? null,
-                'children' => $item['children'] ?? null,
+                'adults' => $adults,
+                'children' => $children,
+                'adult_price' => isset($item['adults']) || isset($item['children']) ? (double) ($service->adult_price ?? $unitPrice) : null,
+                'child_price' => isset($item['adults']) || isset($item['children']) ? (double) ($service->child_price ?? $unitPrice) : null,
                 'service_date' => $item['service_date'] ?? null,
                 'destination' => $item['destination'] ?? null,
             ];

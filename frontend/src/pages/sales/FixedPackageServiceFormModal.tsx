@@ -198,6 +198,52 @@ export default function FixedPackageServiceFormModal({
             </div>
           )}
 
+          {/* Fixed Travel Date — Available for all packages & services */}
+          <div className="space-y-2 mt-4">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+              Fixed Travel Date <span className="normal-case text-blue-500 font-medium">(Optional — pre-determines and locks travel date at POS checkout)</span>
+            </label>
+            <input
+              type="date"
+              className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+              value={newService.fixed_date || ''}
+              onChange={e => setNewService({ ...newService, fixed_date: e.target.value || undefined })}
+            />
+            <p className="text-[9px] text-gray-400 font-bold pl-1">
+              When set, customers selecting this package will have the travel date pre-filled and locked at POS checkout.
+            </p>
+          </div>
+
+          {/* Fixed Departure Time & Arrival — only meaningful when Fixed Travel Date is set */}
+          {newService.fixed_date && (
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                  Fixed Departure Time <span className="normal-case text-blue-500 font-medium">(Optional)</span>
+                </label>
+                <input
+                  type="time"
+                  className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                  value={newService.fixed_departure_time || ''}
+                  onChange={e => setNewService({ ...newService, fixed_departure_time: e.target.value || undefined })}
+                />
+                <p className="text-[9px] text-gray-400 font-bold pl-1">Pre-fills &amp; locks departure time at booking.</p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
+                  Fixed Arrival Date &amp; Time <span className="normal-case text-blue-500 font-medium">(Optional)</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full bg-gray-50 dark:bg-gray-800/50 border border-gray-100 dark:border-gray-700 rounded-2xl py-4 px-5 text-sm font-bold dark:text-white focus:ring-4 focus:ring-blue-600/5 transition-all outline-none"
+                  value={newService.fixed_arrival_datetime ? newService.fixed_arrival_datetime.slice(0, 16) : ''}
+                  onChange={e => setNewService({ ...newService, fixed_arrival_datetime: e.target.value || undefined })}
+                />
+                <p className="text-[9px] text-gray-400 font-bold pl-1">Pre-fills &amp; locks arrival at booking.</p>
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Base Price (₱)</label>

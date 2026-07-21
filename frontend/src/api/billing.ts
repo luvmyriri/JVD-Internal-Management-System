@@ -28,6 +28,7 @@ export interface Service {
     email: string;
   };
   max_pax?: number;
+  fixed_date?: string | null; // ISO date string YYYY-MM-DD; Joiner packages only
 }
 
 export interface InvoiceItem {
@@ -35,6 +36,10 @@ export interface InvoiceItem {
   quantity: number;
   unit_price?: number;
   total_price?: number;
+  adults?: number | null;
+  children?: number | null;
+  adult_price?: number | null;
+  child_price?: number | null;
   service?: Service;
 }
 
@@ -60,11 +65,16 @@ export interface Invoice {
   cash_budget_request_id?: number;
   bus_id?: number | null;
   driver_id?: number | null;
-  seat_map?: any;
+  seat_map?: string[];
   travel_date?: string | null;
   pickup_location?: string | null;
   tour_code?: string | null;
   pax_count?: number | null;
+  arrival_datetime?: string | null;
+  departure_datetime?: string | null;
+  bus?: { id: number; plate_number: string; model: string; seating_capacity?: number } | null;
+  driver?: { id: number; first_name: string; last_name: string } | null;
+  itineraries?: { id: number; day_number: number; date?: string; location?: string; activity_description?: string }[];
   created_at: string;
   customer?: any;
   items?: InvoiceItem[];
@@ -115,6 +125,7 @@ export const billingApi = {
     inclusions?: string;
     exclusions?: string;
     max_pax?: number;
+    fixed_date?: string | null;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -136,6 +147,7 @@ export const billingApi = {
     inclusions?: string;
     exclusions?: string;
     max_pax?: number;
+    fixed_date?: string | null;
   }) => client.put(`/billing/services/${id}`, data),
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 

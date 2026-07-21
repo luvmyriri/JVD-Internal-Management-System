@@ -33,6 +33,9 @@ class UpdateServiceRequest extends FormRequest
             'inclusions' => 'nullable|string',
             'exclusions' => 'nullable|string',
             'max_pax' => 'nullable|integer|min:1',
+            'fixed_date' => 'nullable|date',
+            'fixed_departure_time' => 'nullable|string|max:20',
+            'fixed_arrival_datetime' => 'nullable|string|max:30',
         ];
     }
 }

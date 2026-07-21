@@ -790,39 +790,50 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   </div>
                 </div>
 
-                <table className="w-full mb-12">
+                <table className="w-full mb-8">
                   <thead>
                     <tr className="border-b-2 border-gray-900">
-                      <th className="text-left py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Description</th>
-                      <th className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
-                      <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
-                      <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                      <th className="text-left py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Service Description</th>
+                      <th className="text-center py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                      <th className="text-right py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
+                      <th className="text-right py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {lastInvoice?.items?.map((item: any) => (
-                      <tr key={item.id} className="border-b border-gray-100/50">
-                        <td className="py-5 text-left">
-                          <p className="font-black text-gray-900">{item.service?.name}</p>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mb-1">{item.service?.category}</p>
-                          {item.service?.description && (
-                            <p className="text-[11px] text-gray-500 font-normal leading-relaxed max-w-[320px] whitespace-pre-wrap">{item.service.description}</p>
-                          )}
-                        </td>
-                        <td className="py-5 text-center font-bold text-gray-700">{item.quantity}</td>
-                        <td className="py-5 text-right font-bold text-gray-700">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td className="py-5 text-right font-black text-gray-900">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      </tr>
-                    ))}
+                    {lastInvoice?.items?.map((item: any, idx: number) => {
+                      const hasPax = item.adults != null || item.children != null;
+                      const itineraryName = lastInvoice?.itineraries?.length > 0 && item.service?.category &&
+                        ['tour package', 'educational tour', 'domestic tour', 'international tour', 'joiners'].includes(item.service.category?.toLowerCase())
+                        ? lastInvoice.itineraries[0]?.location : null;
+                      return (
+                        <tr key={item.id} className="border-b border-gray-100/50">
+                          <td className="py-4 text-left">
+                            <p className="font-black text-gray-900 text-[11px]">{itineraryName || item.service?.name || 'Service'}</p>
+                            <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tight">{item.service?.category}</p>
+                            {hasPax && (
+                              <p className="text-[9px] text-gray-500 font-bold mt-0.5">
+                                {item.adults != null && `Adults: ${item.adults} × ₱${Number(item.adult_price ?? item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                                {item.adults != null && item.children != null && ' | '}
+                                {item.children != null && `Children: ${item.children} × ₱${Number(item.child_price ?? item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-4 text-center font-bold text-gray-700 text-[11px]">{item.quantity}</td>
+                          <td className="py-4 text-right font-bold text-gray-700 text-[11px]">₱{Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 text-right font-black text-gray-900 text-[11px]">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
 
-                {lastInvoice?.bus_id && (
-                  <div className="my-6 p-5 bg-blue-50/50 border border-blue-100 rounded-3xl text-left">
-                    <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Bus Rental Assignment</p>
-                    <p className="text-xs font-black text-gray-900 mt-1 uppercase">Bus Registered: ID #{lastInvoice.bus_id}</p>
+                {lastInvoice?.bus && (
+                  <div className="my-4 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-left">
+                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Bus Rental Assignment</p>
+                    <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">Bus Plate #: {lastInvoice.bus.plate_number}</p>
+                    <p className="text-[10px] font-bold text-gray-500 mt-0.5">Model: {lastInvoice.bus.model}</p>
                     {lastInvoice.seat_map && lastInvoice.seat_map.length > 0 && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                      <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
                         Seats Booked: {lastInvoice.seat_map.join(', ')} ({lastInvoice.seat_map.length} seats)
                       </p>
                     )}
@@ -830,44 +841,34 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 )}
 
                 {lastInvoice?.driver && (
-                  <div className="my-6 p-5 bg-emerald-50/50 border border-emerald-100 rounded-3xl text-left">
-                    <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Driver Assignment</p>
-                    <p className="text-xs font-black text-gray-900 mt-1 uppercase">
-                      Driver: {lastInvoice.driver.first_name} {lastInvoice.driver.last_name} (ID #{lastInvoice.driver.id})
+                  <div className="my-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-left">
+                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Driver Assignment</p>
+                    <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">
+                      {lastInvoice.driver.first_name} {lastInvoice.driver.last_name}
                     </p>
                   </div>
                 )}
 
                 {(lastInvoice?.travel_date || lastInvoice?.tour_code || lastInvoice?.pickup_location || lastInvoice?.pax_count) && (
-                  <div className="my-6 p-5 bg-indigo-50/50 border border-indigo-105 rounded-3xl text-left">
-                    <p className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">Travel &amp; Joiner Specifications</p>
+                  <div className="my-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-left">
+                    <p className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Travel &amp; Joiner Specifications</p>
                     {lastInvoice.travel_date && (
-                      <p className="text-xs font-black text-gray-900 mt-1 uppercase">
+                      <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">
                         Travel Date: {new Date(lastInvoice.travel_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                     )}
                     {lastInvoice.tour_code && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                      <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
                         Tour Code/Destination: {lastInvoice.tour_code}
                       </p>
                     )}
-                    {lastInvoice.arrival_datetime && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
-                        Arrival: {new Date(lastInvoice.arrival_datetime).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
-                    {lastInvoice.departure_datetime && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
-                        Departure: {new Date(lastInvoice.departure_datetime).toLocaleString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    )}
                     {lastInvoice.pax_count && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                      <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
                         Pax Count: {lastInvoice.pax_count} Pax
                       </p>
                     )}
                     {lastInvoice.pickup_location && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-1 uppercase tracking-wider">
+                      <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
                         Pickup Location: {lastInvoice.pickup_location}
                       </p>
                     )}
@@ -875,18 +876,18 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 )}
 
                 <div className="flex justify-end">
-                  <div className="w-64 space-y-3">
-                    <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <div className="w-64 space-y-2">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       <span>Subtotal</span>
                       <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                    <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       <span>VAT (12%)</span>
                       <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
-                    <div className="flex justify-between pt-4 border-t-2 border-gray-900 items-center">
-                      <span className="text-sm font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
-                      <span className="text-2xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <div className="flex justify-between pt-3 border-t-2 border-gray-900 items-center">
+                      <span className="text-xs font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>
+                      <span className="text-xl font-black text-blue-600">₱{Number(lastInvoice?.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     {lastInvoice?.payment_method === 'Cash' && (
                       <>
@@ -916,9 +917,9 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   </div>
                 </div>
 
-                <div className="mt-16 pt-8 border-t border-gray-100 text-center">
-                  <p className="text-[10px] text-gray-450 font-bold uppercase tracking-widest mb-2">Thank you for choosing JVD Event & Travel!</p>
-                  <p className="text-[9px] text-gray-300 font-medium italic">This is an electronically generated invoice.</p>
+                <div className="mt-10 pt-6 border-t border-gray-100 text-center">
+                  <p className="text-[10px] text-gray-900 font-black uppercase tracking-widest mb-1">Thank you for choosing JVD Event and Travel Management Co.!</p>
+                  <p className="text-[9px] text-gray-400 font-medium italic">This is an electronically generated invoice.</p>
                 </div>
               </div>
             </div>
@@ -950,6 +951,10 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
       {/* Print Styles */}
       <style>{`
+        @page {
+          size: A4;
+          margin: 12mm 15mm;
+        }
         @media print {
           body * {
             visibility: hidden !important;
@@ -973,7 +978,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             top: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            padding: 20px 40px !important;
+            padding: 10px 20px !important;
             margin: 0 !important;
             background: #ffffff !important;
             color: #111827 !important;
@@ -981,6 +986,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             border: none !important;
             border-radius: 0 !important;
             background-image: none !important;
+            font-size: 10px !important;
+            line-height: 1.4 !important;
           }
           html, body, #root {
             background-color: #ffffff !important;
@@ -992,12 +999,12 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             color: #111827 !important;
             border-color: #e5e7eb !important;
           }
-          #printable-invoice p, 
-          #printable-invoice span, 
-          #printable-invoice td, 
-          #printable-invoice th, 
-          #printable-invoice h2, 
-          #printable-invoice h3, 
+          #printable-invoice p,
+          #printable-invoice span,
+          #printable-invoice td,
+          #printable-invoice th,
+          #printable-invoice h2,
+          #printable-invoice h3,
           #printable-invoice div {
             color: #111827 !important;
           }

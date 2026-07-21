@@ -24,7 +24,12 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
      */
     public function __construct(Invoice $invoice)
     {
-        $this->invoice = $invoice;
+        $this->invoice = $invoice->load([
+            'items.service',
+            'booking.bus',
+            'booking.driver',
+            'itineraries',
+        ]);
         
         // Generate ready-to-use GCash payment deep link
         $corporatePhone = '09764711294'; // Standard corporate GCash number

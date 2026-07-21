@@ -26,7 +26,7 @@ class BillingService
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'booking.driver']);
+        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'booking.driver', 'booking.bus', 'itineraries']);
 
         // Search
         if ($request->has('search')) {
@@ -169,6 +169,9 @@ class BillingService
             'inclusions' => $request->inclusions,
             'exclusions' => $request->exclusions,
             'max_pax' => $request->max_pax,
+            'fixed_date' => $request->fixed_date,
+            'fixed_departure_time' => $request->fixed_departure_time,
+            'fixed_arrival_datetime' => $request->fixed_arrival_datetime,
         ]);
         $service->load('creator:id,first_name,last_name,email');
 
@@ -229,6 +232,9 @@ class BillingService
             'inclusions' => array_key_exists('inclusions', $request->all()) ? $request->inclusions : $service->inclusions,
             'exclusions' => array_key_exists('exclusions', $request->all()) ? $request->exclusions : $service->exclusions,
             'max_pax' => array_key_exists('max_pax', $request->all()) ? $request->max_pax : $service->max_pax,
+            'fixed_date' => array_key_exists('fixed_date', $request->all()) ? $request->fixed_date : $service->fixed_date,
+            'fixed_departure_time' => array_key_exists('fixed_departure_time', $request->all()) ? $request->fixed_departure_time : $service->fixed_departure_time,
+            'fixed_arrival_datetime' => array_key_exists('fixed_arrival_datetime', $request->all()) ? $request->fixed_arrival_datetime : $service->fixed_arrival_datetime,
         ]);
 
         return response()->json([
@@ -361,7 +367,7 @@ class BillingService
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => (new InvoiceResource($invoice->load(['items.service', 'booking.driver'])))->resolve()
+                'data' => (new InvoiceResource($invoice->load(['items.service', 'booking.driver', 'booking.bus', 'itineraries'])))->resolve()
             ], 201);
 
         } catch (\Exception $e) {
@@ -379,7 +385,7 @@ class BillingService
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'booking.driver'])->find($id);
+        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'booking.driver', 'booking.bus', 'itineraries'])->find($id);
 
         if (!$invoice) {
             return response()->json([

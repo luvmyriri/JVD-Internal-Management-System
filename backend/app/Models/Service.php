@@ -30,6 +30,9 @@ class Service extends Model
         'inclusions',
         'exclusions',
         'max_pax',
+        'fixed_date',
+        'fixed_departure_time',
+        'fixed_arrival_datetime',
     ];
 
     protected $casts = [
@@ -46,6 +49,7 @@ class Service extends Model
         'tour_kms' => 'integer',
         'tour_hours' => 'integer',
         'max_pax' => 'integer',
+        'fixed_date' => 'date',
     ];
 
     public function serviceCategory()

@@ -605,28 +605,41 @@ export default function Billing() {
                 </div>
               )}
 
-              <table className="w-full mb-12">
+              <table className="w-full mb-8">
                 <thead>
                   <tr className="border-b-2 border-gray-900 dark:border-gray-100">
-                    <th className="text-left py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
-                    <th className="text-center py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
-                    <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
-                    <th className="text-right py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
+                    <th className="text-left py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Description</th>
+                    <th className="text-center py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Qty</th>
+                    <th className="text-right py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Unit Price</th>
+                    <th className="text-right py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                   {selectedInvoice.items && selectedInvoice.items.length > 0 ? (
-                    selectedInvoice.items.map((item: any) => (
-                      <tr key={item.id}>
-                        <td className="py-5">
-                          <p className="font-black text-gray-900 dark:text-white">{item.service?.name || item.service_name || 'Service'}</p>
-                          <p className="text-[10px] text-gray-400 font-medium uppercase">{item.service?.category}</p>
-                        </td>
-                        <td className="py-5 text-center font-bold text-gray-600 dark:text-gray-400">{item.quantity}</td>
-                        <td className="py-5 text-right font-bold text-gray-600 dark:text-gray-400">₱{Number(item.unit_price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                        <td className="py-5 text-right font-black text-gray-900 dark:text-white">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
-                      </tr>
-                    ))
+                    selectedInvoice.items.map((item: any) => {
+                      const hasPax = item.adults != null || item.children != null;
+                      const itineraryName = (selectedInvoice as any).itineraries?.length > 0 && item.service?.category &&
+                        ['tour package', 'educational tour', 'domestic tour', 'international tour', 'joiners'].includes(item.service.category?.toLowerCase())
+                        ? (selectedInvoice as any).itineraries[0]?.location : null;
+                      return (
+                        <tr key={item.id}>
+                          <td className="py-4">
+                            <p className="font-black text-gray-900 dark:text-white text-[11px]">{itineraryName || item.service?.name || item.service_name || 'Service'}</p>
+                            <p className="text-[9px] text-gray-400 font-medium uppercase">{item.service?.category}</p>
+                            {hasPax && (
+                              <p className="text-[9px] text-gray-500 dark:text-gray-400 font-bold mt-0.5">
+                                {item.adults != null && `Adults: ${item.adults} × ₱${Number(item.adult_price ?? item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                                {item.adults != null && item.children != null && ' | '}
+                                {item.children != null && `Children: ${item.children} × ₱${Number(item.child_price ?? item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                              </p>
+                            )}
+                          </td>
+                          <td className="py-4 text-center font-bold text-gray-600 dark:text-gray-400 text-[11px]">{item.quantity}</td>
+                          <td className="py-4 text-right font-bold text-gray-600 dark:text-gray-400 text-[11px]">₱{Number(item.unit_price ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="py-4 text-right font-black text-gray-900 dark:text-white text-[11px]">₱{Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
                       <td colSpan={4} className="py-8 text-center text-gray-400 text-xs font-bold uppercase tracking-widest">No line items found</td>
@@ -635,21 +648,77 @@ export default function Billing() {
                 </tbody>
               </table>
 
+              {/* Bus Assignment */}
+              {(selectedInvoice as any).bus && (
+                <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-800/40 rounded-2xl">
+                  <p className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Bus Rental Assignment</p>
+                  <p className="text-[11px] font-black text-gray-900 dark:text-white mt-1 uppercase">Bus Plate #: {(selectedInvoice as any).bus.plate_number}</p>
+                  <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5">Model: {(selectedInvoice as any).bus.model}</p>
+                  {selectedInvoice.seat_map && (selectedInvoice.seat_map as any[]).length > 0 && (
+                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider">
+                      Seats Booked: {(selectedInvoice.seat_map as any[]).join(', ')} ({(selectedInvoice.seat_map as any[]).length} seats)
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Driver Assignment */}
+              {(selectedInvoice as any).driver && (
+                <div className="mb-4 p-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-800/40 rounded-2xl">
+                  <p className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Driver Assignment</p>
+                  <p className="text-[11px] font-black text-gray-900 dark:text-white mt-1 uppercase">
+                    {(selectedInvoice as any).driver.first_name} {(selectedInvoice as any).driver.last_name}
+                  </p>
+                </div>
+              )}
+
+              {/* Travel Details */}
+              {(selectedInvoice.travel_date || selectedInvoice.tour_code || selectedInvoice.pickup_location || selectedInvoice.pax_count) && (
+                <div className="mb-4 p-4 bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-800/40 rounded-2xl">
+                  <p className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-widest">Travel &amp; Joiner Details</p>
+                  {selectedInvoice.travel_date && (
+                    <p className="text-[11px] font-black text-gray-900 dark:text-white mt-1 uppercase">
+                      Travel Date: {new Date(selectedInvoice.travel_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    </p>
+                  )}
+                  {selectedInvoice.tour_code && (
+                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider">
+                      Tour Code: {selectedInvoice.tour_code}
+                    </p>
+                  )}
+                  {selectedInvoice.pax_count && (
+                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider">
+                      Pax Count: {selectedInvoice.pax_count} Pax
+                    </p>
+                  )}
+                  {selectedInvoice.pickup_location && (
+                    <p className="text-[10px] font-bold text-gray-500 dark:text-gray-400 mt-0.5 uppercase tracking-wider">
+                      Pickup: {selectedInvoice.pickup_location}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="flex justify-end">
-                <div className="w-64 space-y-3">
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                <div className="w-64 space-y-2">
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <span>Subtotal</span>
                     <span className="text-gray-900 dark:text-white">₱{Number(selectedInvoice.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between text-xs font-bold text-gray-400 uppercase tracking-widest">
+                  <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <span>Tax (12%)</span>
                     <span className="text-gray-900 dark:text-white">₱{Number(selectedInvoice.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between pt-4 border-t-2 border-gray-900 dark:border-gray-100 items-center">
-                    <span className="text-sm font-black text-gray-900 dark:text-white uppercase">Total</span>
-                    <span className="text-2xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  <div className="flex justify-between pt-3 border-t-2 border-gray-900 dark:border-gray-100 items-center">
+                    <span className="text-xs font-black text-gray-900 dark:text-white uppercase">Total</span>
+                    <span className="text-xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-10 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
+                <p className="text-[10px] text-gray-900 dark:text-white font-black uppercase tracking-widest mb-1">Thank you for choosing JVD Event and Travel Management Co.!</p>
+                <p className="text-[9px] text-gray-400 font-medium italic">This is an electronically generated invoice.</p>
               </div>
             </div>
           </div>
@@ -658,6 +727,10 @@ export default function Billing() {
 
       {/* Print Styles */}
       <style>{`
+        @page {
+          size: A4;
+          margin: 12mm 15mm;
+        }
         @media print {
           body * { visibility: hidden; }
           #printable-invoice, #printable-invoice * { visibility: visible; }
@@ -666,8 +739,15 @@ export default function Billing() {
             left: 0;
             top: 0;
             width: 100%;
-            padding: 0;
+            padding: 10px 20px;
             margin: 0;
+            background: #ffffff;
+            color: #111827;
+            box-shadow: none;
+            border: none;
+            border-radius: 0;
+            font-size: 10px;
+            line-height: 1.4;
           }
           .no-print { display: none !important; }
         }
