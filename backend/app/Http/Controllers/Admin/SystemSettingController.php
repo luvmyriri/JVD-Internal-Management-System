@@ -20,6 +20,12 @@ class SystemSettingController extends Controller
         $duration = SystemSetting::getValue('landing_page_slide_duration', 6);
         $title = SystemSetting::getValue('landing_page_title', 'JVD ETMC');
         $transition = SystemSetting::getValue('landing_page_slide_transition', 'fade');
+        
+        $documentsRaw = SystemSetting::getValue('landing_page_documents', '[]');
+        $documents = is_string($documentsRaw) ? json_decode($documentsRaw, true) : $documentsRaw;
+        if (!is_array($documents)) {
+            $documents = [];
+        }
 
         return response()->json([
             'status' => 'success',
@@ -30,6 +36,7 @@ class SystemSettingController extends Controller
                 'landing_page_slide_duration' => intval($duration),
                 'landing_page_title' => $title,
                 'landing_page_slide_transition' => $transition,
+                'landing_page_documents' => $documents,
             ]
         ]);
     }
@@ -103,6 +110,34 @@ class SystemSettingController extends Controller
             SystemSetting::setValue('landing_page_slide_transition', $request->input('landing_page_slide_transition'));
         }
 
+        // 7. Handle Landing Page Documents
+        $documents = [];
+        if ($request->has('existing_documents')) {
+            $existing = json_decode($request->input('existing_documents'), true);
+            if (is_array($existing)) {
+                $documents = $existing;
+            }
+        }
+
+        if ($request->hasFile('new_document_files')) {
+            $docFiles = $request->file('new_document_files');
+            $docTitles = $request->input('new_document_titles', []);
+            $docDescriptions = $request->input('new_document_descriptions', []);
+
+            foreach ($docFiles as $index => $file) {
+                if ($file->isValid()) {
+                    $docPath = $file->store('landing_page_documents', 'public');
+                    $documents[] = [
+                        'title' => $docTitles[$index] ?? 'Untitled Document',
+                        'description' => $docDescriptions[$index] ?? '',
+                        'url' => Storage::url($docPath)
+                    ];
+                    info('Saved new document: ' . Storage::url($docPath));
+                }
+            }
+        }
+        SystemSetting::setValue('landing_page_documents', json_encode($documents));
+
         return response()->json([
             'status' => 'success',
             'message' => 'Landing page configuration updated successfully.',
@@ -113,6 +148,7 @@ class SystemSettingController extends Controller
                 'landing_page_slide_duration' => intval(SystemSetting::getValue('landing_page_slide_duration', 6)),
                 'landing_page_title' => SystemSetting::getValue('landing_page_title', 'JVD ETMC'),
                 'landing_page_slide_transition' => SystemSetting::getValue('landing_page_slide_transition', 'fade'),
+                'landing_page_documents' => json_decode(SystemSetting::getValue('landing_page_documents', '[]'), true) ?? [],
             ]
         ]);
     }
