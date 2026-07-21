@@ -433,6 +433,12 @@ class BillingService
      */
     public function handleWebhook(Request $request)
     {
+        \Log::info('=== PAYMONGO WEBHOOK RECEIVED ===', [
+            'ip' => $request->ip(),
+            'signature_present' => (bool) $request->header('paymongo-signature'),
+            'event_type' => $request->input('data.attributes.type'),
+        ]);
+
         $signatureHeader = $request->header('paymongo-signature');
         $secret = config('services.paymongo.webhook_secret') ?: env('PAYMONGO_WEBHOOK_SECRET');
 
