@@ -13,9 +13,12 @@ class Service extends Model
         'name',
         'description',
         'category',
+        'service_type',
+        'package_config',
         'price',
         'images',
         'is_active',
+        'is_sales_catalog',
         'created_by',
         'child_discount',
         'has_booking_fields',
@@ -33,12 +36,16 @@ class Service extends Model
         'fixed_date',
         'fixed_departure_time',
         'fixed_arrival_datetime',
+        'bus_id',
+        'driver_id',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'images' => 'array',
         'is_active' => 'boolean',
+        'is_sales_catalog' => 'boolean',
+        'package_config' => 'array',
         'child_discount' => 'decimal:2',
         'has_booking_fields' => 'boolean',
         'adult_price' => 'decimal:2',
@@ -50,6 +57,8 @@ class Service extends Model
         'tour_hours' => 'integer',
         'max_pax' => 'integer',
         'fixed_date' => 'date',
+        'bus_id' => 'integer',
+        'driver_id' => 'integer',
     ];
 
     public function serviceCategory()
@@ -60,5 +69,15 @@ class Service extends Model
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function bus()
+    {
+        return $this->belongsTo(\App\Models\Bus::class);
+    }
+
+    public function driver()
+    {
+        return $this->belongsTo(User::class, 'driver_id');
     }
 }

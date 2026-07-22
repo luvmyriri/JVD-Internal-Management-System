@@ -7,7 +7,7 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 // Triggering reload after installing new dependencies
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const proxyTarget = env.VITE_PROXY_TARGET || 'http://localhost:8000';
+  const proxyTarget = env.VITE_PROXY_TARGET || 'http://127.0.0.1:8001';
 
   // let wsProxyTarget = 'ws://localhost:6001';
   // try {

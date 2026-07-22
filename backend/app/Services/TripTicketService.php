@@ -4,19 +4,95 @@ namespace App\Services;
 
 use App\Models\TripTicket;
 use App\Models\Bus;
+use App\Models\PrivateTourBooking;
+use App\Models\SalesOrderItem;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class TripTicketService
 {
     public function index()
     {
-        $query = TripTicket::with(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest']);
+        $query = TripTicket::with($this->relations());
 
         if (auth()->user()->role === 'driver') {
             $query->where('driver_id', auth()->id());
         }
 
         return $query->latest()->get();
+    }
+
+    /**
+     * Materialize the Logistics work document for a confirmed private-tour sale.
+     * The typed fulfillment remains the owner of the centralized allocation; this
+     * DTT is linked to it through the order item and is safe to call repeatedly.
+     */
+    public function ensureDraftForSalesItem(SalesOrderItem $item, ?int $actorId = null): ?TripTicket
+    {
+        // Force-refresh order.invoice because SalesOrderService may have assigned
+        // invoice_id moments earlier while this item still held a stale relation.
+        $item->load(['order.invoice', 'fulfillment', 'service']);
+        if ($item->service_type !== 'private_tour'
+            || !($item->fulfillment instanceof PrivateTourBooking)
+            || (!$item->fulfillment->bus_id && !$item->fulfillment->driver_id)
+            || !$item->order?->invoice_id) {
+            return null;
+        }
+
+        return DB::transaction(function () use ($item, $actorId) {
+            $existing = TripTicket::where('sales_order_item_id', $item->id)
+                ->lockForUpdate()
+                ->first();
+            if ($existing) {
+                return $existing->load($this->relations());
+            }
+
+            $fulfillment = $item->fulfillment;
+            $start = Carbon::parse($fulfillment->starts_at);
+            $end = Carbon::parse($fulfillment->ends_at);
+            $days = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1;
+            $invoice = $item->order->invoice;
+            $bus = $fulfillment->bus_id ? Bus::find($fulfillment->bus_id) : null;
+
+            $year = now()->year;
+            $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")
+                ->orderByDesc('id')
+                ->lockForUpdate()
+                ->first();
+            $sequence = 1;
+            if ($latest) {
+                $parts = explode('-', $latest->control_no);
+                $sequence = (int) end($parts) + 1;
+            }
+
+            $ticket = TripTicket::create([
+                'control_no' => sprintf('DTT-%d-%04d', $year, $sequence),
+                'issue_date' => now()->toDateString(),
+                'date_of_travel' => $start->toDateString(),
+                'duration' => "{$days} ".($days === 1 ? 'day' : 'days'),
+                'pick_up' => $fulfillment->pickup_location ?: 'To be confirmed by Logistics',
+                'destination' => $fulfillment->destination,
+                'drop_off' => $fulfillment->destination,
+                'bus_id' => $fulfillment->bus_id,
+                'plate_no' => $bus?->plate_number,
+                'no_of_passengers' => $fulfillment->passenger_count,
+                'driver_id' => $fulfillment->driver_id,
+                'passenger_name' => $invoice?->customer_name,
+                'trip_type' => 'domestic',
+                'status' => 'draft',
+                'requested_by' => $actorId ?? $item->order->agent_id,
+                'invoice_id' => $item->order->invoice_id,
+                'sales_order_item_id' => $item->id,
+            ]);
+
+            if ($ticket->bus_id && !$ticket->workOrders()->exists()) {
+                $this->autoGeneratePreTripWorkOrder($ticket);
+            }
+
+            return $ticket->load($this->relations());
+        });
     }
 
     public function store(Request $request)
@@ -107,12 +183,12 @@ class TripTicketService
             $this->autoGeneratePreTripWorkOrder($ticket);
         }
         
-        return $ticket->load(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest']);
+        return $ticket->load($this->relations());
     }
 
     public function show($id)
     {
-        $ticket = TripTicket::with(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest'])->findOrFail($id);
+        $ticket = TripTicket::with($this->relations())->findOrFail($id);
 
         $user = auth()->user();
         if ($user && $user->role === 'driver') {
@@ -249,25 +325,54 @@ class TripTicketService
         $busChanged = isset($validated['bus_id']) && $validated['bus_id'] != $ticket->bus_id;
         $dateChanged = isset($validated['date_of_travel']) && $validated['date_of_travel'] != $ticket->date_of_travel;
         $durationChanged = array_key_exists('duration', $validated) && $validated['duration'] != $ticket->duration;
+        $salesItem = $ticket->salesOrderItem()
+            ->with(['fulfillment', 'order'])
+            ->first();
 
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($ticket, $validated, $driverChanged, $busChanged, $dateChanged, $durationChanged, $newDriverId, $newBusId, $newDate, $newDuration, $request, $user) {
+        if ($salesItem && ($dateChanged || $durationChanged)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This trip schedule came from a confirmed sale. Amend or rebook its dates in Sales so the invoice, customer itinerary, and fleet allocation remain synchronized.',
+            ], 422);
+        }
+
+        $result = DB::transaction(function () use ($ticket, $validated, $driverChanged, $busChanged, $dateChanged, $durationChanged, $newDriverId, $newBusId, $newDate, $newDuration, $request, $user, $salesItem) {
             if ($driverChanged || $busChanged || $dateChanged || $durationChanged) {
-                $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
-                $canOverride = $user && (
-                    $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
-                    $user->hasTag('process:override_schedule')
-                );
+                if ($salesItem) {
+                    if (!$newBusId) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'A confirmed private tour must retain an assigned vehicle. Reassign it to another available vehicle instead.',
+                        ], 422);
+                    }
 
-                if (!$override || !$canOverride) {
-                    $conflictResponse = $this->detectScheduleConflict(
-                        $newDriverId,
-                        $newBusId,
-                        $newDate,
-                        $newDuration,
-                        $ticket->id
+                    $salesItem->fulfillment->update([
+                        'bus_id' => $newBusId,
+                        'driver_id' => $newDriverId,
+                    ]);
+                    // A bus change uses a different unique allocation key. Mark the
+                    // former row inactive before the shared sales allocator reserves
+                    // the replacement; transaction rollback restores it on conflict.
+                    app(ResourceAllocationService::class)->release($salesItem->fulfillment);
+                    app(SalesOrderService::class)->resynchronizeFulfillment($salesItem);
+                } else {
+                    $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
+                    $canOverride = $user && (
+                        $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
+                        $user->hasTag('process:override_schedule')
                     );
-                    if ($conflictResponse) {
-                        return $conflictResponse;
+
+                    if (!$override || !$canOverride) {
+                        $conflictResponse = $this->detectScheduleConflict(
+                            $newDriverId,
+                            $newBusId,
+                            $newDate,
+                            $newDuration,
+                            $ticket->id
+                        );
+                        if ($conflictResponse) {
+                            return $conflictResponse;
+                        }
                     }
                 }
             }
@@ -336,9 +441,21 @@ class TripTicketService
 
         $ticket = $result;
 
-        // If bus was newly assigned or changed, generate work order
-        if ($ticket->bus_id && ($ticket->bus_id !== $oldBusId) && !$ticket->workOrders()->where('bus_id', $ticket->bus_id)->exists()) {
-            $this->autoGeneratePreTripWorkOrder($ticket);
+        // Keep the same pending pre-trip inspection attached when Logistics
+        // reassigns a sales-generated trip; manual tickets retain legacy behavior.
+        if ($ticket->bus_id && ($ticket->bus_id !== $oldBusId)) {
+            $pendingPreTrip = $salesItem
+                ? $ticket->workOrders()->where('type', 'trip')->where('status', 'pending_approval')->first()
+                : null;
+            if ($pendingPreTrip) {
+                $pendingPreTrip->update([
+                    'bus_id' => $ticket->bus_id,
+                    'assigned_to' => $ticket->driver_id,
+                    'invoice_id' => $ticket->invoice_id,
+                ]);
+            } elseif (!$ticket->workOrders()->where('bus_id', $ticket->bus_id)->exists()) {
+                $this->autoGeneratePreTripWorkOrder($ticket);
+            }
         }
 
         // H-03: Sync driver update on trip ticket to the pre-trip safety Work Order
@@ -380,7 +497,7 @@ class TripTicketService
             \App\Services\NotificationService::notifyCashBudgetSpawn($budget);
         }
 
-        return $ticket->load(['bus', 'driver', 'requestedBy', 'approvedBy', 'workOrders.jobOrders', 'cashBudgetRequest']);
+        return $ticket->load($this->relations());
     }
 
     public function destroy($id)
@@ -390,6 +507,13 @@ class TripTicketService
         
         if ($user && $user->role === 'driver') {
             return response()->json(['success' => false, 'message' => 'Drivers are not authorized to delete trip tickets.'], 403);
+        }
+
+        if ($ticket->sales_order_item_id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This trip ticket is tied to a confirmed sale. Cancel or amend the sales order so fulfillment, accounting, and fleet allocations remain synchronized.',
+            ], 422);
         }
 
         $ticket->delete();
@@ -548,6 +672,31 @@ class TripTicketService
     {
         list($reqStart, $reqEnd) = $this->getTripDateRange($dateOfTravel, $duration);
 
+        // The allocation ledger includes sales reservations that do not have a legacy
+        // travels row (charters, educational tours, and joiner departures).
+        $allocationQuery = \App\Models\ResourceAllocation::whereNotIn('status', ['cancelled', 'completed']);
+        if ($excludeTicketId) {
+            $allocationQuery->where(function ($q) use ($excludeTicketId) {
+                $q->where('source_type', '!=', TripTicket::class)->orWhere('source_id', '!=', $excludeTicketId);
+            });
+        }
+        $driverBuffer=(int)\App\Models\SystemSetting::getValue('logistics.driver_turnaround_minutes',120);
+        $vehicleBuffer=(int)\App\Models\SystemSetting::getValue('logistics.vehicle_turnaround_minutes',30);
+        $driverAllocation = $driverId ? (clone $allocationQuery)->where('driver_id', $driverId)
+            ->where('starts_at','<',$reqEnd->copy()->addMinutes($driverBuffer))->where('ends_at','>',$reqStart->copy()->subMinutes($driverBuffer))->first() : null;
+        if ($driverAllocation) {
+            return response()->json([
+                'success' => false,
+                'message' => "Schedule conflict: The selected driver is already assigned/reserved by {$driverAllocation->reference} from {$driverAllocation->starts_at} to {$driverAllocation->ends_at}.",
+            ], 422);
+        }
+        $busAllocation = $busId ? (clone $allocationQuery)->where('bus_id', $busId)
+            ->where('starts_at','<',$reqEnd->copy()->addMinutes($vehicleBuffer))->where('ends_at','>',$reqStart->copy()->subMinutes($vehicleBuffer))->first() : null;
+        if ($busAllocation) return response()->json([
+            'success'=>false,
+            'message'=>"Schedule conflict: The selected vehicle is already assigned/reserved by {$busAllocation->reference} from {$busAllocation->starts_at} to {$busAllocation->ends_at}.",
+        ],422);
+
         $excludeInvoiceId = null;
         if ($excludeTicketId) {
             $tt = \App\Models\TripTicket::find($excludeTicketId);
@@ -705,7 +854,9 @@ class TripTicketService
 
         $wo = \App\Models\WorkOrder::create([
             'wo_number'     => $woNumber,
+            'type'          => 'trip',
             'bus_id'        => $ticket->bus_id,
+            'invoice_id'    => $ticket->invoice_id,
             'assigned_to'   => $ticket->driver_id,
             'created_by'    => auth()->id() ?? $ticket->requested_by ?? 1,
             'status'        => 'pending_approval',
@@ -716,5 +867,20 @@ class TripTicketService
         ]);
 
         \App\Services\NotificationService::notifyWorkOrderRequest($wo);
+    }
+
+    private function relations(): array
+    {
+        return [
+            'bus',
+            'driver',
+            'requestedBy',
+            'approvedBy',
+            'invoice:id,invoice_number,customer_name,status',
+            'salesOrderItem:id,sales_order_id,service_type,title,fulfillment_type,fulfillment_id',
+            'salesOrderItem.order:id,order_number,invoice_id',
+            'workOrders.jobOrders',
+            'cashBudgetRequest',
+        ];
     }
 }

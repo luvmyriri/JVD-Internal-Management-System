@@ -105,10 +105,12 @@ class WorkOrder extends Model
             }
 
             self::syncToPmsSchedules($workOrder);
+            self::syncToResourceAllocations($workOrder);
         });
 
         static::deleted(function (WorkOrder $workOrder) {
             self::deleteFromPmsSchedules($workOrder);
+            app(\App\Services\ResourceAllocationService::class)->release($workOrder);
         });
     }
 
@@ -144,6 +146,20 @@ class WorkOrder extends Model
         \DB::table('pms_schedules')
             ->where('work_order_id', $workOrder->id)
             ->delete();
+    }
+
+    /** Keep maintenance downtime in the same fleet allocation ledger as sales and dispatch. */
+    public static function syncToResourceAllocations(WorkOrder $workOrder): void
+    {
+        $allocations = app(\App\Services\ResourceAllocationService::class);
+        if ($workOrder->type !== 'maintenance' || in_array($workOrder->status, ['cancelled', 'completed'], true) || !$workOrder->bus_id) {
+            $allocations->release($workOrder);
+            return;
+        }
+
+        $schedule = PmsSchedule::where('work_order_id', $workOrder->id)->first();
+        $start = \Carbon\Carbon::parse($schedule?->maintenance_date ?? $workOrder->created_at ?? now())->startOfDay();
+        $allocations->reserve($workOrder, $workOrder->bus_id, null, $start, $start->copy()->addDay(), $workOrder->wo_number, $workOrder->status);
     }
 
     public static function deductSupplies(string $partsUsed): void

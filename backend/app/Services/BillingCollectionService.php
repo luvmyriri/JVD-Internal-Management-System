@@ -9,11 +9,6 @@ class BillingCollectionService
 {
     public function syncCollection(Invoice $invoice)
     {
-        // Only create/update collection if invoice is not fully paid, or if collection already exists
-        if ($invoice->status === 'paid' && !$invoice->collection) {
-            return;
-        }
-
         $collection = $invoice->collection;
 
         if (!$collection) {
@@ -24,7 +19,7 @@ class BillingCollectionService
             // If it resolved to 'Other', store the actual service name for display
             if ($serviceType === 'Other') {
                 $firstItem = $invoice->items()->first();
-                $otherServiceType = $firstItem?->service?->name ?? $firstItem?->description ?? null;
+                $otherServiceType = $firstItem?->item_name ?? $firstItem?->service?->name ?? null;
             }
 
             $collection = Collection::create([
@@ -50,6 +45,7 @@ class BillingCollectionService
                     'payment_method' => $invoice->payment_method ?? 'Cash',
                     'amount'         => $invoice->amount_received,
                     'balance'        => $invoice->balance,
+                    'idempotency_key'=> "invoice:{$invoice->id}:initial-payment",
                 ]);
             }
         } else {
@@ -57,7 +53,7 @@ class BillingCollectionService
             $serviceType = $collection->service_type ?? $this->resolveServiceType($invoice);
             if ($serviceType === 'Other' && !$collection->other_service_type) {
                 $firstItem = $invoice->items()->first();
-                $collection->other_service_type = $firstItem?->service?->name ?? $firstItem?->description ?? null;
+                $collection->other_service_type = $firstItem?->item_name ?? $firstItem?->service?->name ?? null;
             }
             $collection->billing_amount    = $invoice->total_amount;
             $collection->due_date          = $invoice->due_date;
@@ -100,12 +96,17 @@ class BillingCollectionService
     public function resolveServiceType(Invoice $invoice): string
     {
         $firstItem = $invoice->items()->first();
-        if (!$firstItem || !$firstItem->service) {
+        if (!$firstItem) {
             return 'Other';
         }
 
         // Match against both service name and category
-        $haystack = strtolower($firstItem->service->name . ' ' . $firstItem->service->category);
+        $haystack = strtolower(implode(' ', array_filter([
+            $firstItem->item_name,
+            $firstItem->service_type,
+            $firstItem->service?->name,
+            $firstItem->service?->category,
+        ])));
 
         $validTypes = [
             'bus rental'      => 'Bus Rental',

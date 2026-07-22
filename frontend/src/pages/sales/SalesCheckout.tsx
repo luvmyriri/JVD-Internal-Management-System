@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   LuShoppingCart,
   LuUser,
@@ -14,7 +15,8 @@ import {
   LuMail,
   LuWallet,
   LuLoaderCircle,
-  LuPenLine
+  LuPenLine,
+  LuSmartphone
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
@@ -22,12 +24,26 @@ import { contractsApi, type CustomTransactionDetailInput, type ItineraryDayInput
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import ContractReviewPanel from './components/ContractReviewPanel';
 
+export interface CheckoutCustomerPreset {
+  id?: number;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}
+
 export interface CartItem {
   cartId?: string;
-  service: Service;
+  service: Partial<Service> & { id: number; name: string; category?: string; price: number };
   quantity: number;
+  quantityLocked?: boolean;
+  isBespoke?: boolean;
+  catalogServiceId?: number;
+  travelCaseId?: number;
   adults?: number;
   childrenCount?: number;
+  adultUnitPrice?: number;
+  childUnitPrice?: number;
   customPrice?: number;
   vehicleType?: 'Bus' | 'Coaster';
   extraDays?: number;
@@ -44,6 +60,10 @@ export interface CartItem {
   destination?: string;
   arrivalDate?: string;
   departureDate?: string;
+  lineName?: string;
+  lineDescription?: string;
+  serviceType?: string;
+  lineMetadata?: Record<string, any>;
   // Custom Transactions contract-gate fields (Phase 4) — set only by CustomTransactions.tsx.
   customCategoryDetail?: CustomTransactionDetailInput;
   itinerary?: ItineraryDayInput[];
@@ -53,15 +73,17 @@ export interface CartItem {
   requiresContract?: boolean;
 }
 
-interface SalesCheckoutProps {
+export interface SalesCheckoutProps {
   cart: CartItem[];
   removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => void;
   updateQuantity: (serviceId: number, newQty: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => void;
   clearCart: () => void;
   onEditCartItem?: (item: CartItem) => void;
+  customerPreset?: CheckoutCustomerPreset | null;
+  onCheckoutSuccess?: (invoice: any) => void;
 }
 
-export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart, onEditCartItem }: SalesCheckoutProps) {
+export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart, onEditCartItem, customerPreset, onCheckoutSuccess }: SalesCheckoutProps) {
 
   // State
   const [customerName, setCustomerName] = useState('');
@@ -86,6 +108,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   // Contract-gated checkout (Custom Transactions only — see evaluateContractGate below).
   const [draftContract, setDraftContract] = useState<any>(null);
   const [showContractReview, setShowContractReview] = useState(false);
+
+  // Sync customerPreset when provided by parent forms (Joiner, Charter, Educational, Visa)
+  useEffect(() => {
+    if (!customerPreset) return;
+    if (customerPreset.id) setSelectedCustomerId(customerPreset.id);
+    if (customerPreset.name !== undefined) setCustomerName(customerPreset.name || '');
+    if (customerPreset.email !== undefined) setCustomerEmail(customerPreset.email || '');
+    if (customerPreset.phone !== undefined) setCustomerContact(customerPreset.phone || '');
+    if (customerPreset.address !== undefined) setCustomerAddress(customerPreset.address || '');
+  }, [customerPreset]);
 
   // Auto-search customers as user types
   useEffect(() => {
@@ -234,8 +266,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             service_id: item.service.id,
             quantity: item.quantity,
             unit_price: item.customPrice ?? item.service.price,
+            description: item.lineDescription,
             adults: item.adults,
             children: item.childrenCount,
+            adult_price: item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price,
+            child_price: item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price,
             service_date: item.serviceDate,
             destination: item.destination
           })),
@@ -266,8 +301,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           service_id: item.service.id,
           quantity: item.quantity,
           unit_price: item.customPrice ?? item.service.price,
+          description: item.lineDescription,
           adults: item.adults,
           children: item.childrenCount,
+          adult_price: item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price,
+          child_price: item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price,
           service_date: item.serviceDate,
           destination: item.destination
         })),
@@ -291,14 +329,19 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         window.open(response.data.data.payment_url, '_blank');
       }
 
+      if (onCheckoutSuccess) {
+        onCheckoutSuccess(response.data.data);
+      }
+
       resetCheckoutForm();
     } catch (err: any) {
       const data = err?.response?.data;
-      const serverMsg = data?.error
+      const validationDetails = data?.errors
+        ? Object.values(data.errors).flat().join('\n')
+        : null;
+      const serverMsg = validationDetails
+        || data?.error
         || data?.message
-        || (data?.errors
-          ? Object.values(data.errors).flat().join('\n')
-          : null)
         || err?.message
         || 'Unknown error';
       alert(`Checkout failed: ${serverMsg}`);
@@ -357,6 +400,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                       {item.travelDate && (
                         <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-black mt-1 uppercase tracking-tight">
                           Travel Date: {item.travelDate}
+                        </p>
+                      )}
+                      {item.selectedSeats && item.selectedSeats.length > 0 && (
+                        <p className="text-[9px] text-[#2572e6] dark:text-blue-400 font-black mt-1 uppercase tracking-tight">
+                          Reserved Seats: {item.selectedSeats.map(s => `Seat ${s.replace(/^S/i, '')}`).join(', ')}
+                        </p>
+                      )}
+                      {item.lineDescription && (
+                        <p className="text-[10px] text-gray-500 dark:text-gray-400 font-medium mt-1 leading-relaxed">
+                          {item.lineDescription}
                         </p>
                       )}
                       {item.tourCode && (
@@ -532,26 +585,39 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
         <div className="space-y-4 pt-4 border-t border-gray-100 dark:border-gray-800">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Payment Method</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
             <button
+              type="button"
               onClick={() => setPaymentMethod('Cash')}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'Cash'
+              className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border transition-all ${paymentMethod === 'Cash'
                 ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
-                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                 }`}
             >
               <LuWallet className="w-5 h-5" />
               <span className="text-[10px] font-black uppercase tracking-widest">Cash</span>
             </button>
             <button
+              type="button"
               onClick={() => setPaymentMethod('GCash')}
-              className={`flex flex-col items-center gap-2 p-4 rounded-2xl border transition-all ${paymentMethod === 'GCash'
+              className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border transition-all ${paymentMethod === 'GCash'
                 ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
-                : 'bg-gray-55 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
+                }`}
+            >
+              <LuSmartphone className="w-5 h-5" />
+              <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPaymentMethod('Card')}
+              className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border transition-all ${paymentMethod === 'Card'
+                ? 'bg-blue-600 border-blue-600 text-white shadow-xl shadow-blue-600/20'
+                : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 text-gray-400'
                 }`}
             >
               <LuCreditCard className="w-5 h-5" />
-              <span className="text-[10px] font-black uppercase tracking-widest">GCash</span>
+              <span className="text-[10px] font-black uppercase tracking-widest">Card / Online</span>
             </button>
           </div>
           {paymentMethod === 'Cash' && (
@@ -689,8 +755,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         </button>
       </div>
 
-      {showReceipt && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
+      {showReceipt && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
           <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
               <div className="flex items-center gap-3">
@@ -787,6 +853,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Payment Info</p>
                     <p className="text-sm font-black text-gray-900 uppercase tracking-tight">{lastInvoice?.payment_method}</p>
                     <p className={`text-xs mt-1 font-bold uppercase ${lastInvoice?.status === 'partial' ? 'text-amber-500' : 'text-emerald-600'}`}>Status: {lastInvoice?.status}</p>
+                    {lastInvoice?.payment_url && (
+                      <a
+                        href={lastInvoice.payment_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200/80 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-emerald-100 transition-all no-print"
+                      >
+                        <LuCreditCard className="w-3.5 h-3.5" /> Pay via PayMongo
+                      </a>
+                    )}
                   </div>
                 </div>
 
@@ -924,14 +1000,25 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
               </div>
             </div>
 
-            <div className="p-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 flex gap-4 shrink-0 no-print">
+            <div className="p-8 border-t border-gray-100 dark:border-gray-800 bg-gray-50/50 flex flex-wrap gap-4 shrink-0 no-print">
+              {lastInvoice?.payment_url && (
+                <button
+                  type="button"
+                  onClick={() => window.open(lastInvoice.payment_url, '_blank')}
+                  className="flex-1 flex items-center justify-center gap-3 py-5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-[2rem] font-black text-xs uppercase shadow-xl shadow-emerald-600/30 transition-all active:scale-95 animate-pulse"
+                >
+                  <LuCreditCard className="w-5 h-5" /> Pay via PayMongo ({lastInvoice.payment_method})
+                </button>
+              )}
               <button
+                type="button"
                 onClick={() => window.print()}
                 className="flex-1 flex items-center justify-center gap-3 py-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 hover:border-blue-600 hover:text-blue-600 text-gray-900 dark:text-white rounded-[2rem] font-black text-xs uppercase transition-all shadow-sm active:scale-95"
               >
                 <LuPrinter className="w-5 h-5" /> Print or Save as PDF
               </button>
               <button
+                type="button"
                 onClick={() => setShowReceipt(false)}
                 className="flex-1 flex items-center justify-center gap-3 py-5 bg-blue-600 hover:bg-blue-700 text-white rounded-[2rem] font-black text-xs uppercase shadow-xl shadow-blue-600/20 transition-all active:scale-95"
               >
@@ -939,7 +1026,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {showContractReview && draftContract && (

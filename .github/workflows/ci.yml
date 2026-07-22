@@ -1,83 +1,40 @@
 name: CI
-
 on:
-  push:
-    branches: [ main ]
   pull_request:
-    branches: [ main ]
-
+  push:
+    branches: [main]
 jobs:
-  backend-tests:
+  backend:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:15
-        env:
-          POSTGRES_DB: testing
-          POSTGRES_PASSWORD: password
-        ports:
-          - 5432:5432
+        image: postgres:15-alpine
+        env: { POSTGRES_DB: jvd_test, POSTGRES_USER: postgres, POSTGRES_PASSWORD: postgres }
+        ports: [5432:5432]
         options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    defaults:
-      run:
-        working-directory: ./backend
-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: dom, curl, libxml, mbstring, zip, pcntl, pdo, sqlite, pdo_sqlite, bcmath, soap, intl, gd, exif, iconv, imagick, fileinfo
-          coverage: none
-
-      - name: Copy .env
-        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
-
-      - name: Install Dependencies
-        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-
-      - name: Generate key
-        run: php artisan key:generate
-
-      - name: Run Migrations
-        env:
-          DB_CONNECTION: pgsql
-          DB_DATABASE: testing
-          DB_USERNAME: postgres
-          DB_PASSWORD: password
-        run: php artisan migrate -q --no-ansi --no-interaction
-
-      - name: Execute tests (PHPUnit)
-        env:
-          DB_CONNECTION: pgsql
-          DB_DATABASE: testing
-          DB_USERNAME: postgres
-          DB_PASSWORD: password
-        run: vendor/bin/phpunit
-
-  frontend-build:
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.4', extensions: 'pdo_pgsql, redis, gd', coverage: none }
+      - run: composer install --no-interaction --prefer-dist
+        working-directory: backend
+      - run: cp .env.example .env && php artisan key:generate
+        working-directory: backend
+      - run: php artisan migrate --force && php artisan test
+        working-directory: backend
+        env: { DB_CONNECTION: pgsql, DB_HOST: 127.0.0.1, DB_DATABASE: jvd_test, DB_USERNAME: postgres, DB_PASSWORD: postgres, CACHE_STORE: array, SESSION_DRIVER: array, QUEUE_CONNECTION: sync }
+      - run: composer audit --locked
+        working-directory: backend
+  frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./frontend
-
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - run: npm ci
+        working-directory: frontend
+      - run: npm run build
+        working-directory: frontend
+      - run: npm audit --audit-level=high
+        working-directory: frontend

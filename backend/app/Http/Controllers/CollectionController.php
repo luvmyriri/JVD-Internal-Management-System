@@ -411,48 +411,25 @@ class CollectionController extends Controller
     public function cancelAndRefund($id)
     {
         try {
-            DB::beginTransaction();
-
-            $collection = Collection::findOrFail($id);
-            
-            // Check if there is a linked invoice
-            $invoice = $collection->invoice;
-            
-            if ($invoice) {
-                $invoice->update(['status' => 'cancelled']);
+            $collection = Collection::with('invoice.salesOrder')->findOrFail($id);
+            if (!$collection->invoice) {
+                return response()->json(['success'=>false,'message'=>'This collection has no invoice to cancel.'],422);
             }
-            
-            $collection->update([
-                'payment_status' => 'cancelled' // Or if they don't have payment_status, just use invoice status
-            ]);
-
-            // If there's an amount paid, record a refund
-            $totalPaid = $collection->payments()->sum('amount');
-            if ($totalPaid > 0) {
-                // Record negative payment as refund
-                CollectionPayment::create([
-                    'collection_id' => $collection->id,
-                    'amount' => -$totalPaid,
-                    'payment_date' => now()->toDateString(),
-                    'payment_method' => 'Refund',
-                    'reference_number' => 'REF-' . time(),
-                    'recorded_by' => auth()->id() ?? 1,
-                    'remarks' => 'Refund for cancelled transaction'
-                ]);
-            }
-
-            DB::commit();
+            $order = $collection->invoice->salesOrder
+                ?? app(\App\Services\SalesOrderService::class)->captureInvoice($collection->invoice, auth()->id());
+            $adjustment = app(\App\Services\SalesLifecycleService::class)->request(
+                $order, 'cancellation', request('reason', 'Cancellation requested from Collections'), [], auth()->id() ?? 1
+            );
             return response()->json([
                 'success' => true,
-                'message' => 'Transaction cancelled and refund recorded successfully.'
-            ]);
+                'message' => 'Cancellation submitted for approval. Any eligible refund will require a posted credit note and separate approval.',
+                'data' => $adjustment,
+            ], 202);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to cancel and refund: ' . $e->getMessage()
+                'message' => 'Failed to submit cancellation: ' . $e->getMessage()
             ], 500);
         }
     }
 }
-

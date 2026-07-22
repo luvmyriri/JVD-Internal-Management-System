@@ -78,7 +78,7 @@
         $isPartial = in_array($invoice->status, ['partial', 'downpayment']);
         $isPaid    = $invoice->status === 'paid';
         $hasItems  = isset($invoice->items) && $invoice->items && $invoice->items->count() > 0;
-        $docTitle  = $isPaid ? 'OFFICIAL RECEIPT' : 'STATEMENT OF ACCOUNTS';
+        $docTitle  = $isPaid ? 'PAYMENT RECEIPT' : 'STATEMENT OF ACCOUNTS';
         $statusLabel = $isPaid ? 'paid' : ($isPartial ? 'partial' : 'pending');
 
         // Collection-specific fields
@@ -209,8 +209,8 @@
                 <tr>
                     <td>{{ $index + 1 }}</td>
                     <td>
-                        <div class="service-name">{{ $item->service ? $item->service->name : ($item->custom_service_name ?? 'N/A') }}</div>
-                        <div class="service-cat">{{ $item->service ? $item->service->category : 'Custom Service' }}</div>
+                        <div class="service-name">{{ $item->item_name ?? $item->service?->name ?? 'N/A' }}</div>
+                        <div class="service-cat">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
                     </td>
                     <td>{{ $invoice->created_at ? \Carbon\Carbon::parse($invoice->created_at)->format('M d, Y') : 'N/A' }}</td>
                     <td style="text-align: center;">

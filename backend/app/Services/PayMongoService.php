@@ -30,7 +30,7 @@ class PayMongoService
         }
 
         try {
-            $response = Http::withHeaders([
+            $response = Http::connectTimeout(10)->timeout(30)->retry(2, 300)->withHeaders([
                 'Authorization' => 'Basic ' . base64_encode($this->secretKey . ':'),
                 'Content-Type' => 'application/json',
             ])->post($this->baseUrl . '/checkout_sessions', [

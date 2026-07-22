@@ -41,4 +41,14 @@ class PassportCase extends Model
     {
         return $this->belongsTo(User::class, 'handled_by');
     }
+
+    public function billedTransaction()
+    {
+        return $this->hasOne(CustomTransactionDetail::class);
+    }
+
+    public function billedInvoiceItem()
+    {
+        return $this->hasOne(InvoiceItem::class);
+    }
 }

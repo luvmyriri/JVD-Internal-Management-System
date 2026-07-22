@@ -146,6 +146,7 @@ export default function Users() {
       setValue('employee_id', user.employee_id);
       setValue('role', user.role);
       setValue('department', user.department);
+      setValue('phone', user.phone || '');
       setTags(user.tags || []);
     } else {
       setSelectedUser(null);

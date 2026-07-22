@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Invoice extends Model
 {
@@ -29,6 +30,8 @@ class Invoice extends Model
         'payment_id',
         'payment_type',
         'balance',
+        'credited_amount',
+        'refunded_amount',
         'due_date',
         'status',
         'requires_contract',
@@ -63,7 +66,7 @@ class Invoice extends Model
      * For a `SELECT ... as alias`, wrap the const yourself:
      * `DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as revenue')`.
      */
-    public const COLLECTED_REVENUE_SQL = 'total_amount - COALESCE(balance, 0)';
+    public const COLLECTED_REVENUE_SQL = 'total_amount - COALESCE(balance, 0) - COALESCE(credited_amount, 0)';
 
     /**
      * The collected-revenue column expression, for passing to `->sum()`
@@ -150,6 +153,26 @@ class Invoice extends Model
         return $this->hasOne(Booking::class);
     }
 
+    public function joinerReservation(): HasOne
+    {
+        return $this->hasOne(JoinerReservation::class);
+    }
+
+    public function charterBooking(): HasOne
+    {
+        return $this->hasOne(CharterBooking::class);
+    }
+
+    public function educationalTourBooking(): HasOne
+    {
+        return $this->hasOne(EducationalTourBooking::class);
+    }
+
+    public function salesOrder(): HasOne
+    {
+        return $this->hasOne(SalesOrder::class);
+    }
+
     public function bus()
     {
         return $this->hasOneThrough(Bus::class, Booking::class, 'invoice_id', 'id', 'id', 'bus_id');
@@ -158,5 +181,41 @@ class Invoice extends Model
     public function driver()
     {
         return $this->hasOneThrough(User::class, Booking::class, 'invoice_id', 'id', 'driver_id', 'driver_id');
+    }
+
+    /**
+     * Complete operational graph required by invoice APIs and generated documents.
+     * Typed service fulfillment replaces the former catch-all Booking, so callers
+     * must load the SalesOrder morph graph to retain fleet and driver details.
+     */
+    public static function operationalDocumentRelations(): array
+    {
+        return [
+            'customer',
+            'creator',
+            'items.service',
+            'collection',
+            'booking.bus',
+            'booking.driver',
+            'itineraries',
+            'passengers',
+            'customTransactionDetail.passportCase',
+            'joinerReservation.departure.service',
+            'joinerReservation.departure.bus',
+            'joinerReservation.departure.driver',
+            'joinerReservation.passengers.seat',
+            'charterBooking.ratePlan',
+            'charterBooking.bus',
+            'charterBooking.driver',
+            'educationalTourBooking.program',
+            'educationalTourBooking.vehicles.bus',
+            'educationalTourBooking.vehicles.driver',
+            'tripTicket',
+            'salesOrder.items.fulfillment' => function (MorphTo $morphTo): void {
+                $morphTo->morphWith([
+                    PrivateTourBooking::class => ['bus', 'driver'],
+                ]);
+            },
+        ];
     }
 }

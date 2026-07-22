@@ -54,6 +54,27 @@ export default function TripDrawer({ ticket, isOpen, onClose, onCustomizeApprove
           }}
         />
 
+        {ticket.sales_order_item && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/40">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-300">Sales handoff</p>
+                <p className="mt-1 text-sm font-black text-gray-900 dark:text-white">{ticket.sales_order_item.title}</p>
+                <p className="mt-1 text-xs text-gray-600 dark:text-gray-300">
+                  Customer: {ticket.invoice?.customer_name || 'Recorded on invoice'}
+                </p>
+              </div>
+              <div className="text-right text-xs font-bold text-blue-700 dark:text-blue-300">
+                <p>{ticket.invoice?.invoice_number || 'Invoice linked'}</p>
+                <p className="mt-1 opacity-70">{ticket.sales_order_item.order?.order_number}</p>
+              </div>
+            </div>
+            <p className="mt-3 border-t border-blue-200 pt-3 text-xs leading-5 text-blue-800 dark:border-blue-800 dark:text-blue-200">
+              Continue here with the pre-trip inspection, allowances, approval, dispatch, and completion. Vehicle or driver reassignment stays synchronized with the private-tour fulfillment and fleet allocation.
+            </p>
+          </div>
+        )}
+
         <div className="grid grid-cols-2 gap-8">
           <div>
             <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Travel Date</p>

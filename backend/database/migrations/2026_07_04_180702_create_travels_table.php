@@ -31,10 +31,8 @@ return new class extends Migration
             $table->index(['driver_id', 'travel_date']);
         });
 
-        // Add Partial Unique Indexes for availability checking
-        // This ensures a driver or bus cannot be double-booked on the same day unless the travel is cancelled
-        DB::statement('CREATE UNIQUE INDEX travels_bus_date_unique ON travels (bus_id, travel_date) WHERE status != \'cancelled\'');
-        DB::statement('CREATE UNIQUE INDEX travels_driver_date_unique ON travels (driver_id, travel_date) WHERE driver_id IS NOT NULL AND status != \'cancelled\'');
+        // Non-unique indexes used for bus/driver availability lookup to allow multi-customer joiner package seat bookings
+
 
         // Migrate data from old tables
         $locals = DB::table('local_travels')->get();

@@ -45,6 +45,14 @@
 </head>
 <body>
 
+    @php
+        $company = $company ?? [
+            'name' => 'JVD Event & Travel Management Company',
+            'address' => 'UNIT 6 - Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City',
+            'phone' => '0976 471 1294', 'email' => 'accounts@jvd-travel.com', 'registration' => '912-883-911-000',
+        ];
+    @endphp
+
     <!-- Header -->
     <table class="header-table">
         <tr>
@@ -55,16 +63,15 @@
                             <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="height: 42px; width: auto;" alt="JVD Logo">
                         </td>
                         <td style="vertical-align: middle;">
-                            <div class="company-logo">JVD Event &amp; Travel</div>
+                            <div class="company-logo">{{ $company['name'] }}</div>
                             <div style="font-size: 8px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px;">Management Company</div>
                         </td>
                     </tr>
                 </table>
                 <div style="margin-top: 5px; font-size: 8px; color: #475569; line-height: 1.3;">
-                    Reg No: 912-883-911-000<br>
-                    UNIT 6 - Aryanna Village Center Brgy 175 Susano Road,<br>
-                    Camarin, Caloocan City<br>
-                    Phone: 0976 471 1294 | Tel: 02 8293 8068
+                    Registration No: {{ $company['registration'] }}<br>
+                    {{ $company['address'] }}<br>
+                    Phone: {{ $company['phone'] }} | {{ $company['email'] }}
                 </div>
             </td>
             <td class="header-right">
@@ -87,6 +94,21 @@
         $driver = $booking?->driver;
         $seatMap = $booking?->seat_map ?? [];
         $itineraries = $invoice->itineraries ?? collect();
+        $joiner = $invoice->joinerReservation;
+        $joinerDeparture = $joiner?->departure;
+        $joinerSeats = $joiner?->passengers?->map(fn($passenger) => $passenger->seat?->seat_code)->filter()->values()->all() ?? [];
+        $joinerSeatNames = $joiner?->passengers?->map(fn($passenger) => ($passenger->seat?->seat_code ?: '?').' - '.$passenger->first_name.' '.$passenger->last_name.($passenger->passenger_type === 'child' ? ' (Child)' : ''))->filter()->values()->all() ?? [];
+        $charter = $invoice->charterBooking;
+        $education = $invoice->educationalTourBooking;
+        $privateTourItem = $invoice->salesOrder?->items?->first(fn($item) => $item->service_type === 'private_tour' && $item->fulfillment instanceof \App\Models\PrivateTourBooking);
+        $privateTour = $privateTourItem?->fulfillment;
+        $privateTourBus = $privateTour?->bus;
+        $privateTourDriver = $privateTour?->driver;
+        $privateTravelerNames = collect($privateTour?->traveler_types ?? [])->pluck('name')->filter()->values();
+        $privateTravelerSummary = $privateTravelerNames->take(6)->implode(', ');
+        $privateTravelerSummary .= $privateTravelerNames->count() > 6
+            ? ' +'.($privateTravelerNames->count() - 6).' more'
+            : '';
     @endphp
 
     @if($booking && ($booking->travel_date || $bus || $driver || $booking->tour_code || $booking->pickup_location || $booking->pax_count))
@@ -115,7 +137,7 @@
                 <td style="width: 33.3%;"><span class="details-label">Bus Plate #:</span> {{ $bus->plate_number }} ({{ $bus->model }})</td>
                 @endif
                 @if($driver)
-                <td style="width: 33.3%;"><span class="details-label">Driver:</span> {{ $driver->first_name }} {{ $driver->last_name }}</td>
+                <td style="width: 33.3%;"><span class="details-label">Driver:</span> {{ $driver->first_name }} {{ $driver->last_name }}<br><span style="font-size:8px;color:#64748b;">{{ $driver->phone ?: 'Phone not recorded' }} | {{ $driver->email ?: 'Email not recorded' }}</span></td>
                 @endif
                 @if(count($seatMap) > 0)
                 <td style="width: 33.3%;"><span class="details-label">Selected Seats:</span> {{ implode(', ', $seatMap) }}</td>
@@ -136,6 +158,104 @@
     </div>
     @endif
 
+    @if($privateTour)
+    <div class="details-box">
+        <div class="details-title">Private Tour Fulfillment</div>
+        <table class="details-table">
+            <tr>
+                <td style="width: 33.3%;"><span class="details-label">Package:</span> {{ $privateTour->package_name }}</td>
+                <td style="width: 33.3%;"><span class="details-label">Destination:</span> {{ $privateTour->destination }}</td>
+                <td style="width: 33.3%;"><span class="details-label">Travelers:</span> {{ $privateTour->passenger_count }} pax @if($privateTour->adult_count !== null || $privateTour->child_count !== null) ({{ (int) $privateTour->adult_count }} adult, {{ (int) $privateTour->child_count }} child)@endif</td>
+            </tr>
+            <tr>
+                <td colspan="2"><span class="details-label">Travel Period:</span> {{ $privateTour->starts_at->format('M d, Y h:i A') }} to {{ $privateTour->ends_at->format('M d, Y h:i A') }}</td>
+                <td><span class="details-label">Sales Order:</span> {{ $invoice->salesOrder?->order_number ?: 'Recorded' }}</td>
+            </tr>
+            <tr>
+                <td colspan="3"><span class="details-label">Pickup:</span> {{ $privateTour->pickup_location ?: 'To be confirmed by Logistics' }}</td>
+            </tr>
+            @if($privateTourBus || $privateTourDriver)
+            <tr>
+                <td style="width: 33.3%;"><span class="details-label">Assigned Vehicle:</span> {{ $privateTourBus?->plate_number ?: 'Vehicle pending' }} @if($privateTourBus) ({{ $privateTourBus->model }})@endif</td>
+                <td colspan="2"><span class="details-label">Driver Contact:</span>
+                    @if($privateTourDriver)
+                        {{ trim($privateTourDriver->first_name.' '.$privateTourDriver->last_name) }} - {{ $privateTourDriver->phone ?: 'Phone not recorded' }} | {{ $privateTourDriver->email ?: 'Email not recorded' }}
+                    @else
+                        Driver pending assignment
+                    @endif
+                </td>
+            </tr>
+            @endif
+            @if($privateTravelerSummary)
+            <tr><td colspan="3"><span class="details-label">Named Party:</span> {{ $privateTravelerSummary }}</td></tr>
+            @endif
+        </table>
+    </div>
+    @endif
+
+    @if($charter)
+    <div class="details-box">
+        <div class="details-title">Exclusive Transport Details</div>
+        <table class="details-table">
+            <tr>
+                <td style="width:33.3%;"><span class="details-label">Charter Reference:</span> {{ $charter->reference }}</td>
+                <td style="width:33.3%;"><span class="details-label">Passengers:</span> {{ $charter->passenger_count }}</td>
+                <td style="width:33.3%;"><span class="details-label">Vehicle:</span> {{ $charter->bus?->plate_number }} {{ $charter->bus ? '('.$charter->bus->model.')' : '' }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><span class="details-label">Schedule:</span> {{ $charter->starts_at->format('M d, Y h:i A') }} &ndash; {{ $charter->ends_at->format('M d, Y h:i A') }}</td>
+                <td><span class="details-label">Estimated Distance:</span> {{ number_format($charter->estimated_kilometers, 0) }} km</td>
+            </tr>
+            <tr><td colspan="3"><span class="details-label">Route:</span> {{ $charter->pickup_location }} &rarr; {{ $charter->destination }}</td></tr>
+            @if($charter->driver)
+            <tr><td colspan="3"><span class="details-label">Driver Contact:</span> {{ trim($charter->driver->first_name.' '.$charter->driver->last_name) }} &mdash; {{ $charter->driver->phone ?: 'Phone not recorded' }} | {{ $charter->driver->email ?: 'Email not recorded' }}</td></tr>
+            @endif
+        </table>
+    </div>
+    @endif
+
+    @if($joiner && $joinerDeparture)
+    <div class="details-box">
+        <div class="details-title">Joiner Booking Details</div>
+        <table class="details-table">
+            <tr>
+                <td style="width: 33.3%;"><span class="details-label">Booking Reference:</span> {{ $joiner->reference }}</td>
+                <td style="width: 33.3%;"><span class="details-label">Departure:</span> {{ $joinerDeparture->code }}</td>
+                <td style="width: 33.3%;"><span class="details-label">Passengers:</span> {{ $joiner->passenger_count }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><span class="details-label">Travel Period:</span> {{ $joinerDeparture->starts_at->format('M d, Y h:i A') }} &ndash; {{ $joinerDeparture->ends_at->format('M d, Y h:i A') }}</td>
+                <td><span class="details-label">Seats:</span> {{ implode(', ', $joinerSeats) }}</td>
+            </tr>
+            <tr><td colspan="3"><span class="details-label">Seat Assignment:</span> {{ implode('; ', $joinerSeatNames) }}</td></tr>
+            @if($joinerDeparture->pickup_instructions)
+            <tr><td colspan="3"><span class="details-label">Pickup:</span> {{ $joinerDeparture->pickup_instructions }}</td></tr>
+            @endif
+            @if($joinerDeparture->bus || $joinerDeparture->driver)
+            <tr><td colspan="3"><span class="details-label">Assigned Transport:</span> {{ $joinerDeparture->bus?->plate_number ?: 'Vehicle pending' }}@if($joinerDeparture->driver) &mdash; {{ trim($joinerDeparture->driver->first_name.' '.$joinerDeparture->driver->last_name) }} [{{ $joinerDeparture->driver->phone ?: 'phone not recorded' }}, {{ $joinerDeparture->driver->email ?: 'email not recorded' }}]@endif</td></tr>
+            @endif
+        </table>
+    </div>
+    @endif
+
+    @if($education)
+    <div class="details-box">
+        <div class="details-title">Educational Tour Details</div>
+        <table class="details-table">
+            <tr>
+                <td style="width:33.3%;"><span class="details-label">Booking Reference:</span> {{ $education->reference }}</td>
+                <td style="width:33.3%;"><span class="details-label">School:</span> {{ $education->school_name }}</td>
+                <td style="width:33.3%;"><span class="details-label">Grade Level:</span> {{ $education->grade_level }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><span class="details-label">Schedule:</span> {{ $education->starts_at->format('M d, Y h:i A') }} &ndash; {{ $education->ends_at->format('M d, Y h:i A') }}</td>
+                <td><span class="details-label">Group:</span> {{ $education->student_count }} students + {{ $education->chaperone_count }} chaperones</td>
+            </tr>
+            <tr><td colspan="3"><span class="details-label">Fleet:</span> {{ $education->vehicles->map(fn($assignment) => $assignment->bus?->plate_number.' ('.$assignment->planned_passengers.' pax)'.($assignment->driver ? ' - '.trim($assignment->driver->first_name.' '.$assignment->driver->last_name).' ['.($assignment->driver->phone ?: 'phone not recorded').', '.($assignment->driver->email ?: 'email not recorded').']' : ''))->filter()->implode('; ') }}</td></tr>
+        </table>
+    </div>
+    @endif
+
     <!-- Line Items Table -->
     <table class="items-table">
         <thead>
@@ -150,30 +270,37 @@
         </thead>
         <tbody>
             @foreach($invoice->items as $index => $item)
+            @php
+                $lineName = $item->item_name ?? $item->service?->name ?? 'Travel service';
+                $lineDescription = $item->item_description ?? $item->service?->description;
+            @endphp
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>
                     <div class="item-name">
                         @if($itineraries->count() > 0 && $item->service && in_array(strtolower($item->service->category ?? ''), ['tour package', 'educational tour', 'domestic tour', 'international tour', 'joiners']))
-                            {{ $itineraries->first()->location ?? $item->service->name }}
+                            {{ $itineraries->first()->location ?? $item->item_name ?? $item->service?->name }}
                             @if($itineraries->count() > 1)
                                 <span class="item-sub">({{ $itineraries->count() }}-Day Itinerary)</span>
                             @endif
                         @else
-                            {{ $item->service ? $item->service->name : $item->custom_service_name }}
+                            {{ $item->item_name ?? $item->service?->name ?? 'Travel service' }}
                         @endif
                     </div>
-                    <div class="item-sub">{{ $item->service ? $item->service->category : 'Custom Services' }}</div>
+                    <div class="item-sub">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
+                    @if($lineDescription && trim($lineDescription) !== trim($lineName))
+                    <div class="item-sub">{{ \Illuminate\Support\Str::limit($lineDescription, 120) }}</div>
+                    @endif
                     @if($item->adults !== null || $item->children !== null)
                     <div class="pax-row">
                         @if($item->adults)
-                        Adults: {{ $item->adults }} &times; &#8369;{{ number_format($item->service->adult_price ?? $item->unit_price, 2) }}
+                        Adults: {{ $item->adults }} &times; &#8369;{{ number_format($item->adult_price ?? $item->unit_price, 2) }}
                         @endif
                         @if($item->adults && $item->children)
                          |
                         @endif
                         @if($item->children)
-                        Children: {{ $item->children }} &times; &#8369;{{ number_format($item->service->child_price ?? $item->unit_price, 2) }}
+                        Children: {{ $item->children }} &times; &#8369;{{ number_format($item->child_price ?? $item->unit_price, 2) }}
                         @endif
                     </div>
                     @endif
@@ -254,21 +381,27 @@
             <tr>
                 <td class="footer-left">
                     <strong>Payment Receipt Status:</strong><br>
-                    This transaction has been settled in full.<br>
+                    @if($invoice->status === 'paid' || (float) $invoice->balance <= 0)
+                        This transaction has been settled in full.<br>
+                    @elseif($invoice->status === 'partial')
+                        Partial payment received. Outstanding balance: &#8369;{{ number_format($invoice->balance, 2) }}.<br>
+                    @else
+                        Payment is pending. Amount due: &#8369;{{ number_format($invoice->balance, 2) }}.<br>
+                    @endif
                     <strong>Payment Method:</strong> {{ strtoupper($invoice->payment_method) }}<br>
                     <strong>Receipt Generated:</strong> {{ now()->format('Y-m-d H:i:s') }}
                 </td>
                 <td class="footer-right">
                     <strong>Support &amp; Contacts:</strong><br>
-                    Support Tel: 0976 471 1294<br>
-                    Support Email: accounts@jvd-travel.com
+                    Support Tel: {{ $company['phone'] }}<br>
+                    Support Email: {{ $company['email'] }}
                 </td>
             </tr>
         </table>
     </div>
 
     <div class="thank-you">
-        THANK YOU FOR CHOOSING JVD EVENT AND TRAVEL MANAGEMENT CO.
+        THANK YOU FOR CHOOSING {{ strtoupper($company['name']) }}
     </div>
 
 </body>

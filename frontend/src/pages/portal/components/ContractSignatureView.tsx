@@ -6,7 +6,36 @@ import SignaturePad from './SignaturePad';
 export interface ContractSignatureViewProps {
   contractNumber: string;
   termsSnapshot: string;
-  invoiceSummary: { invoice_number: string; total_amount: number; customer_name?: string };
+  invoiceSummary: {
+    invoice_number: string;
+    subtotal?: number;
+    tax_amount?: number;
+    total_amount: number;
+    amount_received?: number;
+    balance?: number;
+    customer_name?: string;
+    items?: Array<{
+      id: number;
+      name: string;
+      service_type?: string | null;
+      description?: string | null;
+      quantity: number;
+      unit_price: number;
+      total_price: number;
+      adults?: number | null;
+      children?: number | null;
+    }>;
+    joiner_booking?: {
+      reference: string;
+      departure_code: string;
+      starts_at?: string | null;
+      ends_at?: string | null;
+      pickup_instructions?: string | null;
+      vehicle?: { plate_number: string; model?: string | null } | null;
+      driver?: { name: string; phone?: string | null; email?: string | null } | null;
+      passengers: Array<{ name: string; passenger_type?: string | null; seat_code?: string | null }>;
+    } | null;
+  };
   itinerary?: any[];
   passengers?: any[];
   paymentSchedule?: any[];
@@ -37,6 +66,8 @@ export default function ContractSignatureView({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canSubmit = !!signatureImage && typedName.trim().length > 1 && agreed;
+  const items = invoiceSummary.items ?? [];
+  const joinerBooking = invoiceSummary.joiner_booking;
 
   const handleSubmit = async () => {
     if (!canSubmit || !signatureImage) {
@@ -77,6 +108,65 @@ export default function ContractSignatureView({
           <p className="text-sm font-bold text-gray-900 dark:text-white">₱{Number(invoiceSummary.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </div>
       </div>
+
+      {items.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Services in this order</p>
+          <div className="overflow-hidden bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 rounded-2xl divide-y divide-gray-100 dark:divide-gray-700">
+            {items.map((item) => (
+              <div key={item.id} className="px-3.5 py-3 flex items-start justify-between gap-4 text-xs">
+                <div className="min-w-0">
+                  <p className="font-black text-gray-800 dark:text-gray-100">{item.name}</p>
+                  <p className="mt-0.5 text-[10px] text-gray-500 dark:text-gray-400">
+                    {item.quantity} x PHP {Number(item.unit_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {(item.adults != null || item.children != null) && ` | ${item.adults ?? 0} adult(s), ${item.children ?? 0} child(ren)`}
+                  </p>
+                  {item.description && <p className="mt-1 text-[10px] leading-relaxed text-gray-500 dark:text-gray-400">{item.description}</p>}
+                </div>
+                <p className="shrink-0 font-black text-gray-900 dark:text-white">
+                  PHP {Number(item.total_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {joinerBooking && (
+        <div className="space-y-2">
+          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">Joiner departure and assigned seats</p>
+          <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl text-xs">
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <p className="font-black text-blue-900 dark:text-blue-100">{joinerBooking.departure_code}</p>
+                <p className="text-[10px] text-blue-700/80 dark:text-blue-300/80">Booking {joinerBooking.reference}</p>
+              </div>
+              {joinerBooking.starts_at && (
+                <p className="text-[10px] font-bold text-blue-900 dark:text-blue-100">
+                  {new Date(joinerBooking.starts_at).toLocaleString()}
+                  {joinerBooking.ends_at ? ` - ${new Date(joinerBooking.ends_at).toLocaleString()}` : ''}
+                </p>
+              )}
+            </div>
+            {joinerBooking.passengers.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {joinerBooking.passengers.map((passenger, index) => (
+                  <span key={`${passenger.seat_code ?? 'seat'}-${index}`} className="px-2.5 py-1.5 bg-white dark:bg-gray-900 border border-blue-100 dark:border-blue-900/50 rounded-lg font-bold text-gray-700 dark:text-gray-200">
+                    {passenger.seat_code ?? '?'} - {passenger.name}{passenger.passenger_type === 'child' ? ' (Child)' : ''}
+                  </span>
+                ))}
+              </div>
+            )}
+            {(joinerBooking.vehicle || joinerBooking.driver) && (
+              <p className="mt-3 text-[10px] text-blue-800 dark:text-blue-200">
+                {joinerBooking.vehicle ? `${joinerBooking.vehicle.plate_number}${joinerBooking.vehicle.model ? ` (${joinerBooking.vehicle.model})` : ''}` : 'Vehicle pending'}
+                {joinerBooking.driver ? ` | Driver: ${joinerBooking.driver.name}${joinerBooking.driver.phone ? ` | ${joinerBooking.driver.phone}` : ''}${joinerBooking.driver.email ? ` | ${joinerBooking.driver.email}` : ''}` : ''}
+              </p>
+            )}
+            {joinerBooking.pickup_instructions && <p className="mt-2 text-[10px] text-blue-800 dark:text-blue-200">Pickup: {joinerBooking.pickup_instructions}</p>}
+          </div>
+        </div>
+      )}
 
       {itinerary.length > 0 && (
         <div className="space-y-2">

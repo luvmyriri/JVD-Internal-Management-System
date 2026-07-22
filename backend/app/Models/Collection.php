@@ -69,6 +69,8 @@ class Collection extends Model
             $invoice->amount_received = $this->paid_amount;
             $invoice->status = $this->remaining_balance <= 0 ? 'paid' : ($this->paid_amount > 0 ? 'partial' : 'pending_payment');
             $invoice->save();
+            app(\App\Services\SalesOrderService::class)->captureInvoice($invoice, $invoice->created_by);
+            app(\App\Services\SalesOrderService::class)->syncInvoiceFinancials($invoice);
         }
 
         // Update linked driver liquidation shortage if this is a driver shortage collection
@@ -87,4 +89,3 @@ class Collection extends Model
         }
     }
 }
-

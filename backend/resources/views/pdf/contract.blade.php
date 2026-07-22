@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <title>Service Contract {{ $contract->contract_number }}</title>
     <style>
-        body { font-family: 'DejaVu Sans', sans-serif; color: #333333; margin: 0; padding: 20px; font-size: 11px; line-height: 1.5; }
+        @page { size: A4; margin: 14mm 14mm 18mm; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #243247; margin: 0; font-size: 10px; line-height: 1.45; }
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .header-left { width: 60%; vertical-align: top; }
         .header-right { width: 40%; text-align: right; vertical-align: top; }
@@ -18,16 +19,23 @@
         .signature-block { margin-top: 30px; width: 100%; border-collapse: collapse; }
         .signature-img { height: 60px; border-bottom: 1px solid #94a3b8; }
         .meta-label { font-weight: bold; color: #475569; }
+        .amount { text-align: right !important; white-space: nowrap; }
+        .totals { width: 42%; margin-left: 58%; border-collapse: collapse; margin-top: 8px; }
+        .totals td { padding: 5px 7px; border-bottom: 1px solid #e2e8f0; }
+        .totals .grand td { border-top: 2px solid #1e3a8a; border-bottom: 0; font-size: 12px; font-weight: bold; color: #1e3a8a; }
+        .footer { position: fixed; bottom: -11mm; left: 0; right: 0; border-top: 1px solid #d9e2ec; padding-top: 5px; color: #64748b; font-size: 7px; }
+        .page-number:after { content: counter(page); }
     </style>
 </head>
 <body>
     <table class="header-table">
         <tr>
             <td class="header-left">
-                <div class="company-logo">JVD Event &amp; Travel Management Company</div>
+                <div class="company-logo">{{ $company['name'] }}</div>
                 <div style="margin-top: 6px; font-size: 9px; color: #475569;">
-                    UNIT 6 - Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City<br>
-                    Phone: 0976 471 1294
+                    {{ $company['address'] }}<br>
+                    {{ $company['phone'] }} &middot; {{ $company['email'] }}<br>
+                    Registration: {{ $company['registration'] }}
                 </div>
             </td>
             <td class="header-right">
@@ -42,7 +50,34 @@
 
     <div class="section-title">Customer</div>
     <div>{{ $invoice->customer_name }}</div>
-    <div style="font-size: 9px; color: #475569;">{{ $invoice->customer_email }} &middot; {{ $invoice->customer_contact }}</div>
+    <div style="font-size: 9px; color: #475569;">{{ $invoice->customer_address ?: 'Address not provided' }}</div>
+    <div style="font-size: 9px; color: #475569;">{{ $invoice->customer_email ?: 'No email provided' }} &middot; {{ $invoice->customer_contact ?: 'No phone provided' }}</div>
+
+    <div class="section-title">Services &amp; Pricing</div>
+    <table class="data-table">
+        <thead>
+            <tr><th style="width: 38%">Service</th><th style="width: 25%">Scope</th><th class="amount">Qty</th><th class="amount">Unit Price</th><th class="amount">Amount</th></tr>
+        </thead>
+        <tbody>
+        @foreach($invoice->items as $item)
+            <tr>
+                <td>
+                    <strong>{{ $item->item_name ?? $item->service?->name ?? 'Travel service' }}</strong><br>
+                    <span style="font-size: 8px; color: #64748b;">{{ strtoupper(str_replace('_', ' ', $item->service_type ?? $item->service?->service_type ?? 'service')) }}</span>
+                </td>
+                <td>{{ $item->item_description ?? $item->service?->description ?? '-' }}</td>
+                <td class="amount">{{ number_format($item->quantity, 0) }}</td>
+                <td class="amount">PHP {{ number_format($item->unit_price, 2) }}</td>
+                <td class="amount">PHP {{ number_format($item->total_price, 2) }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
+    <table class="totals">
+        <tr><td>Subtotal</td><td class="amount">PHP {{ number_format($invoice->subtotal, 2) }}</td></tr>
+        <tr><td>VAT / Tax</td><td class="amount">PHP {{ number_format($invoice->tax_amount, 2) }}</td></tr>
+        <tr class="grand"><td>Contract Total</td><td class="amount">PHP {{ number_format($invoice->total_amount, 2) }}</td></tr>
+    </table>
 
     @if($contract->deposit_required_amount || $contract->deposit_required_percent)
     <div class="section-title">Deposit</div>

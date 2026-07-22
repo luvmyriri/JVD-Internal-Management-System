@@ -5,6 +5,20 @@ export interface Service {
   name: string;
   description: string;
   category: string;
+  service_type?: string | null;
+  package_config?: {
+    destination?: string;
+    origin?: string;
+    duration_days?: number;
+    duration_nights?: number;
+    minimum_pax?: number;
+    maximum_pax?: number;
+    booking_lead_days?: number;
+    valid_from?: string;
+    valid_until?: string;
+    default_itinerary?: string[];
+  } | null;
+  is_sales_catalog?: boolean;
   price: number;
   images?: string[];
   is_active: boolean;
@@ -32,7 +46,11 @@ export interface Service {
 }
 
 export interface InvoiceItem {
-  service_id: number;
+  service_id?: number | null;
+  item_name?: string;
+  service_type?: string;
+  item_description?: string;
+  item_metadata?: Record<string, unknown>;
   quantity: number;
   unit_price?: number;
   total_price?: number;
@@ -96,7 +114,10 @@ export const billingApi = {
     payment_type?: string;
     amount_received?: number;
     change?: number;
-    items: { service_id: number; quantity: number; unit_price?: number; adults?: number; children?: number; service_date?: string; destination?: string; }[];
+    items: { service_id?: number | null; passport_case_id?: number; item_name?: string; service_type?: string; item_description?: string; item_metadata?: Record<string, unknown>; quantity: number; unit_price?: number; adults?: number; children?: number; adult_price?: number; child_price?: number; service_date?: string; destination?: string; }[];
+    custom_transaction_detail?: import('./contracts').CustomTransactionDetailInput;
+    itinerary?: import('./contracts').ItineraryDayInput[];
+    passengers?: import('./contracts').PassengerInput[];
     notes?: string;
     bus_id?: number | null;
     driver_id?: number | null;
@@ -126,6 +147,11 @@ export const billingApi = {
     exclusions?: string;
     max_pax?: number;
     fixed_date?: string | null;
+    bus_id?: number | null;
+    driver_id?: number | null;
+    service_type?: string | null;
+    package_config?: Service['package_config'];
+    is_sales_catalog?: boolean;
   }) => client.post('/billing/services', data),
   updateService: (id: number, data: {
     name: string;
@@ -148,7 +174,17 @@ export const billingApi = {
     exclusions?: string;
     max_pax?: number;
     fixed_date?: string | null;
+    bus_id?: number | null;
+    driver_id?: number | null;
+    service_type?: string | null;
+    package_config?: Service['package_config'];
+    is_sales_catalog?: boolean;
   }) => client.put(`/billing/services/${id}`, data),
+  uploadServiceImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return client.post<{ success: boolean; path: string; url: string }>('/billing/services/upload-image', formData);
+  },
   deleteService: (id: number) => client.delete(`/billing/services/${id}`),
   updateStatus: (id: number, status: string) => 
     client.patch(`/billing/${id}/status`, { status }),

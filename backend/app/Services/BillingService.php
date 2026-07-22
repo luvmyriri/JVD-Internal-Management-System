@@ -18,6 +18,7 @@ use App\Mail\TransactionNotificationMail;
 use App\Http\Resources\InvoiceResource;
 use App\Exceptions\MaxPaxExceededException;
 use App\Services\InvoiceFinalizationService;
+use Illuminate\Validation\ValidationException;
 
 class BillingService
 {
@@ -26,7 +27,7 @@ class BillingService
      */
     public function index(Request $request)
     {
-        $query = Invoice::with(['customer', 'creator', 'items.service', 'collection', 'booking.driver', 'booking.bus', 'itineraries']);
+        $query = Invoice::with(Invoice::operationalDocumentRelations());
 
         // Search
         if ($request->has('search')) {
@@ -80,8 +81,9 @@ class BillingService
 
     public function getServices()
     {
-        $services = Service::with('creator:id,first_name,last_name,email')
+        $services = Service::with('creator:id,first_name,last_name,email', 'bus:id,plate_number,model,seating_capacity', 'driver:id,first_name,last_name')
             ->where('is_active', true)
+            ->where('is_sales_catalog', true)
             ->get();
 
         // Strip cost_breakdown from non-admin/super_admin users
@@ -151,10 +153,13 @@ class BillingService
         $service = Service::create([
             'name' => $request->name,
             'category' => $request->category,
+            'service_type' => $request->service_type,
+            'package_config' => $request->package_config,
             'price' => $request->price,
             'description' => $request->description,
             'images' => $imageUrls,
             'is_active' => true,
+            'is_sales_catalog' => $request->boolean('is_sales_catalog', true),
             'created_by' => auth()->id(),
             'child_discount' => $request->child_discount ?? 30.00,
             'has_booking_fields' => $request->has_booking_fields ?? false,
@@ -172,8 +177,10 @@ class BillingService
             'fixed_date' => $request->fixed_date,
             'fixed_departure_time' => $request->fixed_departure_time,
             'fixed_arrival_datetime' => $request->fixed_arrival_datetime,
+            'bus_id' => $request->bus_id,
+            'driver_id' => $request->driver_id,
         ]);
-        $service->load('creator:id,first_name,last_name,email');
+        $service->load('creator:id,first_name,last_name,email', 'bus:id,plate_number,model,seating_capacity', 'driver:id,first_name,last_name');
 
         return response()->json([
             'success' => true,
@@ -193,32 +200,49 @@ class BillingService
 
         $imageUrls = $service->images ?? [];
         if ($request->has('images')) {
-            // This logic assumes we send the full array of images we want to keep
-            // New images are base64, existing ones are strings (paths)
+            // New images are base64, existing ones are relative paths or external URLs
             $newImageUrls = [];
             foreach ($request->images as $img) {
+                if (empty($img)) continue;
                 if (preg_match('/^data:image\/(\w+);base64,/', $img, $type)) {
                     $image = substr($img, strpos($img, ',') + 1);
-                    $type = strtolower($type[1]);
+                    $ext = strtolower($type[1]);
+                    if ($ext === 'jpeg') $ext = 'jpg';
                     $image = str_replace(' ', '+', $image);
-                    $imageName = 'services/' . Str::random(10) . '.' . $type;
+                    $imageName = 'services/' . Str::random(10) . '.' . $ext;
                     Storage::disk('public')->put($imageName, base64_decode($image));
                     $newImageUrls[] = $imageName;
                 } else {
-                    // Keep existing path if it's already a URL/path
-                    $newImageUrls[] = $img;
+                    $cleanPath = $img;
+                    if (is_string($img)) {
+                        if (preg_match('/^https?:\/\//i', $img)) {
+                            if (preg_match('/\/storage\/(.+)$/i', $img, $matches)) {
+                                $cleanPath = $matches[1];
+                            } else {
+                                $cleanPath = $img;
+                            }
+                        } else {
+                            $cleanPath = preg_replace('/^(?:\/storage\/|\/public\/|storage\/|public\/)+/i', '', $img);
+                        }
+                    }
+                    if (!empty($cleanPath)) {
+                        $newImageUrls[] = $cleanPath;
+                    }
                 }
             }
-            $imageUrls = $newImageUrls;
+            $imageUrls = array_values($newImageUrls);
         }
 
         $service->update([
             'name' => $request->name,
             'category' => $request->category,
+            'service_type' => $request->service_type ?? $service->service_type,
+            'package_config' => $request->package_config ?? $service->package_config,
             'price' => $request->price,
             'description' => $request->description,
             'images' => $imageUrls,
             'is_active' => $request->is_active ?? $service->is_active,
+            'is_sales_catalog' => $request->is_sales_catalog ?? $service->is_sales_catalog,
             'child_discount' => $request->child_discount ?? $service->child_discount,
             'has_booking_fields' => $request->has_booking_fields ?? $service->has_booking_fields,
             'adult_price' => $request->adult_price ?? $service->adult_price,
@@ -235,12 +259,29 @@ class BillingService
             'fixed_date' => array_key_exists('fixed_date', $request->all()) ? $request->fixed_date : $service->fixed_date,
             'fixed_departure_time' => array_key_exists('fixed_departure_time', $request->all()) ? $request->fixed_departure_time : $service->fixed_departure_time,
             'fixed_arrival_datetime' => array_key_exists('fixed_arrival_datetime', $request->all()) ? $request->fixed_arrival_datetime : $service->fixed_arrival_datetime,
+            'bus_id' => array_key_exists('bus_id', $request->all()) ? $request->bus_id : $service->bus_id,
+            'driver_id' => array_key_exists('driver_id', $request->all()) ? $request->driver_id : $service->driver_id,
         ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Service updated successfully',
             'data' => $service
+        ]);
+    }
+
+    public function uploadServiceImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp|max:10240',
+        ]);
+
+        $path = $request->file('image')->store('services', 'public');
+
+        return response()->json([
+            'success' => true,
+            'path' => $path,
+            'url' => Storage::disk('public')->url($path),
         ]);
     }
 
@@ -299,12 +340,26 @@ class BillingService
             $paymentType = $request->payment_type ?? 'full';
             $amountReceived = (double) $request->amount_received;
 
+            $finalizer->assertPaymentAmounts(
+                $request->payment_method,
+                $paymentType,
+                $totalAmount,
+                $amountReceived
+            );
+
             $customerId = $finalizer->resolveCustomerId(
                 $request->customer_id,
                 $request->customer_name,
                 $request->customer_email,
                 $request->customer_contact,
                 $request->customer_address
+            );
+
+            $finalizer->assertPassportCasesCanBeBilled(
+                collect($validated['items'])->pluck('passport_case_id')->all(),
+                $customerId,
+                null,
+                data_get($validated, 'custom_transaction_detail.passport_case_id')
             );
 
             // Create Invoice (status/balance set below by finalizeWithinTransaction)
@@ -329,8 +384,8 @@ class BillingService
                 'notes'           => $request->notes,
             ]);
 
-            // Create Booking
-            $booking = \App\Models\Booking::create([
+            $salesOrders = app(SalesOrderService::class);
+            $legacyBookingAttributes = [
                 'invoice_id'      => $invoice->id,
                 'bus_id'          => $request->bus_id,
                 'driver_id'       => $request->driver_id,
@@ -341,23 +396,58 @@ class BillingService
                 'pickup_location' => $request->pickup_location,
                 'tour_code'       => $request->tour_code,
                 'pax_count'       => $request->pax_count,
-            ]);
+            ];
+
+            // Typed service engines own their schedules, travelers and allocations.
+            // Retain Booking only for genuine legacy lines with top-level booking data.
+            if ($salesOrders->shouldCreateLegacyBooking($processedItems, $legacyBookingAttributes)) {
+                \App\Models\Booking::create($legacyBookingAttributes);
+            }
 
             // Create Invoice Items
             foreach ($processedItems as $pItem) {
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'service_id' => $pItem['service_id'],
+                    'passport_case_id' => $pItem['passport_case_id'],
+                    'item_name' => $pItem['item_name'],
+                    'service_type' => $pItem['service_type'],
+                    'item_description' => $pItem['item_description'],
+                    'item_metadata' => $pItem['item_metadata'],
                     'quantity' => $pItem['quantity'],
                     'unit_price' => $pItem['unit_price'],
                     'total_price' => $pItem['total_price'],
                     'adults' => $pItem['adults'],
                     'children' => $pItem['children'],
+                    'adult_price' => $pItem['adult_price'],
+                    'child_price' => $pItem['child_price'],
                 ]);
+            }
+
+            if (!empty($validated['custom_transaction_detail'])) {
+                \App\Models\CustomTransactionDetail::create([
+                    'invoice_id' => $invoice->id,
+                    ...$validated['custom_transaction_detail'],
+                ]);
+            }
+
+            foreach ($validated['itinerary'] ?? [] as $day) {
+                \App\Models\Itinerary::create(['invoice_id' => $invoice->id, ...$day]);
+            }
+
+            foreach ($validated['passengers'] ?? [] as $passenger) {
+                \App\Models\InvoicePassenger::create(['invoice_id' => $invoice->id, ...$passenger]);
             }
 
             // Status/balance recompute, PayMongo session, auto-JobOrder — must run inside this transaction.
             $invoice = $finalizer->finalizeWithinTransaction($invoice, $processedItems);
+
+            // Typed fulfillment and fleet allocation are part of the same commit as the
+            // invoice and accounting entries. Availability failures therefore leave no
+            // partially posted invoice behind.
+            if ($salesOrders->hasTypedCapturePayload($processedItems)) {
+                $salesOrders->captureInvoice($invoice, $request->user()?->id ?? $invoice->created_by);
+            }
 
             DB::commit();
 
@@ -367,9 +457,16 @@ class BillingService
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => (new InvoiceResource($invoice->load(['items.service', 'booking.driver', 'booking.bus', 'itineraries'])))->resolve()
+                'data' => (new InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve()
             ], 201);
 
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'The invoice details could not be validated.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -385,7 +482,7 @@ class BillingService
      */
     public function show($id)
     {
-        $invoice = Invoice::with(['customer', 'creator', 'items.service', 'booking.driver', 'booking.bus', 'itineraries'])->find($id);
+        $invoice = Invoice::with(Invoice::operationalDocumentRelations())->find($id);
 
         if (!$invoice) {
             return response()->json([
@@ -489,6 +586,11 @@ class BillingService
         }
 
         $payload = $request->all();
+        $providerEventId = $payload['data']['id'] ?? 'payload_'.hash('sha256', $request->getContent());
+        $eventReceipt = \App\Models\IntegrationEvent::firstOrCreate(
+            ['provider'=>'paymongo','external_id'=>$providerEventId],
+            ['event_type'=>$payload['data']['attributes']['type'] ?? 'unknown','payload_hash'=>hash('sha256',$request->getContent()),'status'=>'received','received_at'=>now()]
+        );
 
         if (isset($payload['data']['attributes']['type'])) {
             $eventType = $payload['data']['attributes']['type'];
@@ -512,20 +614,42 @@ class BillingService
                 if ($invoice) {
                     $amountPaidCentavos = $sessionData['amount'] ?? 0;
                     $amountPaidPHP = $amountPaidCentavos / 100;
+                    $eventId = $providerEventId;
 
-                    // Decrement balance
-                    $newBalance = max(0, $invoice->balance - $amountPaidPHP);
-                    
-                    // Update status: If new balance is 0, status is paid. If > 0, partial.
-                    $newStatus = $newBalance <= 0 ? 'paid' : 'partial';
+                    // PayMongo retries webhooks. The provider event id is the accounting
+                    // idempotency key: only the first delivery may create a payment or post AR.
+                    $invoice = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId) {
+                        $lockedInvoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+                        $key = $eventId ? "paymongo:{$eventId}" : "paymongo-session:{$lockedInvoice->payment_id}";
+                        $existing = \App\Models\CollectionPayment::where('idempotency_key', $key)->first();
+                        if ($existing) {
+                            return $lockedInvoice;
+                        }
 
-                    $invoice->update([
-                        'balance' => $newBalance,
-                        'status' => $newStatus,
-                        'amount_received' => $invoice->amount_received + $amountPaidPHP,
-                    ]);
+                        // Create the collection while the invoice is still outstanding; this
+                        // guarantees the gateway payment has the same AR posting path as cash.
+                        app(\App\Services\BillingCollectionService::class)->syncCollection($lockedInvoice);
+                        $collection = $lockedInvoice->fresh()->collection;
+                        if (!$collection) {
+                            throw new \RuntimeException('Unable to create collection for PayMongo payment.');
+                        }
 
-                    app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+                        $collection->payments()->create([
+                            'payment_date' => now()->toDateString(),
+                            'payment_method' => $lockedInvoice->payment_method,
+                            'amount' => $amountPaidPHP,
+                            'balance' => max(0, (float) $lockedInvoice->balance - $amountPaidPHP),
+                            'idempotency_key' => $key,
+                        ]);
+                        $collection->recalculate();
+
+                        return $lockedInvoice->fresh();
+                    });
+
+                    $freshInvoice = $invoice->fresh();
+                    app(\App\Services\SalesOrderService::class)->captureInvoice($freshInvoice, $freshInvoice->created_by);
+                    app(\App\Services\SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
+                    $eventReceipt->update(['status'=>'processed','invoice_id'=>$invoice->id,'processed_at'=>now()]);
 
                     if ($invoice->customer_email) {
                         try {
@@ -540,13 +664,20 @@ class BillingService
                     if ($invoice->creator) {
                         $invoice->creator->notify(new SystemAlert(
                             'Payment Received',
-                            "Invoice #{$invoice->invoice_number} received a payment of {$amountPaidPHP} PHP. New balance: {$newBalance} PHP.",
+                            "Invoice #{$invoice->invoice_number} received a payment of {$amountPaidPHP} PHP. New balance: {$invoice->balance} PHP.",
                             'success',
                             '/accounting/billing'
                         ));
                     }
                 }
+                else {
+                    $eventReceipt->update(['status'=>'failed','error'=>'No invoice matched the PayMongo checkout session.','processed_at'=>now()]);
+                }
             }
+        }
+
+        if ($eventReceipt->status === 'received') {
+            $eventReceipt->update(['status'=>'ignored','processed_at'=>now()]);
         }
 
         return response()->json(['status' => 'received']);

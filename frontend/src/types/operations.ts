@@ -59,6 +59,8 @@ export interface TripTicket {
   status: 'draft' | 'approved' | 'completed';
   requested_by?: number;
   approved_by?: number;
+  invoice_id?: number | null;
+  sales_order_item_id?: number | null;
   
   created_at?: string;
   updated_at?: string;
@@ -67,6 +69,23 @@ export interface TripTicket {
   driver?: { id: number; name: string };
   requestedBy?: { id: number; name: string };
   approvedBy?: { id: number; name: string };
+  invoice?: {
+    id: number;
+    invoice_number: string;
+    customer_name?: string;
+    status: string;
+  } | null;
+  sales_order_item?: {
+    id: number;
+    sales_order_id: number;
+    service_type: string;
+    title: string;
+    order?: {
+      id: number;
+      order_number: string;
+      invoice_id?: number | null;
+    };
+  } | null;
   cash_budget_request?: CashBudgetRequest;
   work_orders?: Array<{
     id: number;

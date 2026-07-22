@@ -44,7 +44,7 @@ export default function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onC
   const [selectedTitle, setSelectedTitle] = useState('');
   const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [fileInputKey, setFileInputKey] = useState(Date.now());
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [uploadingChecklistItem, setUploadingChecklistItem] = useState<string | null>(null);
   const checklistFileInputRef = useRef<HTMLInputElement>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -95,7 +95,7 @@ export default function VisaCaseDetailModal({ vc, onClose }: { vc: VisaCase; onC
       setUploadTitle('');
       setSelectedTitle('');
       setFileToUpload(null);
-      setFileInputKey(Date.now());
+      setFileInputKey(k => k + 1);
       refetchDocs();
     } catch (err) {
       console.error(err);

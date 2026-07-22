@@ -29,6 +29,8 @@ class DatabaseSeeder extends Seeder
                 ServiceSeeder::class,
                 SupplierSeeder::class,
                 BusSeeder::class,
+                CharterRatePlanSeeder::class,
+                EducationalProgramSeeder::class,
                 InventorySeeder::class,
                 WorkOrderSeeder::class,
                 JobOrderSeeder::class,

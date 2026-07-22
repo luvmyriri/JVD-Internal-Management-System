@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { profileApi } from '../api/profile';
 
 
-import { LuUser, LuMail, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
+import { LuUser, LuMail, LuPhone, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
 import { getAvatarUrl } from '../utils';
@@ -20,6 +20,7 @@ export default function Profile() {
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
     email: user?.email || '',
+    phone: user?.phone || '',
   });
 
   // Avatar states
@@ -132,6 +133,7 @@ export default function Profile() {
       first_name: user?.first_name || '',
       last_name: user?.last_name || '',
       email: user?.email || '',
+      phone: user?.phone || '',
     });
     setIsEditing(false);
   };
@@ -267,6 +269,21 @@ export default function Profile() {
                 }`}
                 placeholder="Enter email address"
                 required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-gray-700 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                <LuPhone className="w-3 h-3 text-blue-600" />
+                Mobile / Contact Number
+              </label>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                disabled={!isEditing}
+                className={`w-full px-4 py-2.5 rounded-xl border outline-none transition ${isEditing ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:text-white' : 'bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-800 text-gray-500 dark:text-gray-600 cursor-not-allowed'}`}
+                placeholder="Enter mobile number"
               />
             </div>
 

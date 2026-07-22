@@ -9,6 +9,9 @@ class PassportCaseResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $billedInvoiceId = $this->billedInvoiceItem?->invoice_id
+            ?? $this->billedTransaction?->invoice_id;
+
         return [
             'id'                  => $this->id,
             'case_type'           => $this->case_type,
@@ -17,6 +20,8 @@ class PassportCaseResource extends JsonResource
             'status'              => $this->status,
             'reference_number'    => $this->reference_number,
             'checklist'           => $this->checklist,
+            'is_billed'           => $billedInvoiceId !== null,
+            'billed_invoice_id'   => $billedInvoiceId,
             'submitted_date'   => $this->submitted_date?->toDateString(),
             'release_date'     => $this->release_date?->toDateString(),
             'customer'         => $this->whenLoaded('customer', fn() => [

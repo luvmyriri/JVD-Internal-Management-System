@@ -70,6 +70,7 @@ class Booking extends Model
             return;
         }
 
+        // Sync booking to travels table
         \DB::table('travels')->updateOrInsert(
             ['reference_type' => 'booking', 'reference_id' => $booking->id],
             [

@@ -1,677 +1,139 @@
-import { useState, useMemo, useEffect } from 'react';
-import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  LuPlus,
-  LuLoaderCircle,
-} from 'react-icons/lu';
+  BedDouble,
+  BusFront,
+  CalendarCheck2,
+  FileBadge,
+  GraduationCap,
+  Hotel,
+  MapPinned,
+  Plane,
+  Route,
+  Shapes,
+  Ticket,
+  TicketsPlane,
+  UsersRound,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import { billingApi } from '../../api/billing';
-import type { CustomTransactionDetailInput, ItineraryDayInput, PassengerInput } from '../../api/contracts';
-import { useTheme } from '../../context/ThemeContext';
-import SalesCheckout, { type CartItem } from './SalesCheckout';
-import client from '../../api/client';
-import { fleetApi } from '../../api/fleet';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
-import CategoryFormBusRental from './components/CategoryFormBusRental';
-import CategoryFormEducationalTour from './components/CategoryFormEducationalTour';
-import CategoryFormTourPackage from './components/CategoryFormTourPackage';
-import CategoryFormVisaProcessing from './components/CategoryFormVisaProcessing';
-import CategoryFormJoiners from './components/CategoryFormJoiners';
-import CategoryFormBooking from './components/CategoryFormBooking';
-import ItineraryBuilder from './components/ItineraryBuilder';
-import PassengerRosterEditor from './components/PassengerRosterEditor';
+import SalesCheckout, { type CartItem, type CheckoutCustomerPreset } from './SalesCheckout';
+import AccommodationBookingWorkflow from './custom-transactions/AccommodationBookingWorkflow';
+import ActivityBookingWorkflow from './custom-transactions/ActivityBookingWorkflow';
+import CustomArrangementWorkflow from './custom-transactions/CustomArrangementWorkflow';
+import FlightBookingWorkflow from './custom-transactions/FlightBookingWorkflow';
+import PassportAssistanceWorkflow from './custom-transactions/PassportAssistanceWorkflow';
+import PrivateTourWorkflow from './custom-transactions/PrivateTourWorkflow';
+import ScheduledTicketWorkflow from './custom-transactions/ScheduledTicketWorkflow';
+import TransferServiceWorkflow from './custom-transactions/TransferServiceWorkflow';
+import VisaAssistanceWorkflow from './custom-transactions/VisaAssistanceWorkflow';
 import {
-  INITIAL_BUS_RENTAL, INITIAL_EDU_TOUR, INITIAL_TOUR_PACKAGE,
-  INITIAL_VISA_PROCESSING, INITIAL_JOINERS, INITIAL_BOOKING,
-} from './components/customTransactionTypes';
+  preparedLineToCartItem,
+  type CustomWorkflowType,
+  type PreparedServiceLine,
+} from './custom-transactions/workflowTypes';
 
-const CATEGORIES = ['Bus Rental', 'Educational Tour', 'Tour Package', 'Visa Processing', 'Joiners', 'Booking', 'Other'];
+interface DeskDefinition {
+  type: CustomWorkflowType;
+  title: string;
+  owner: string;
+  description: string;
+  icon: typeof Plane;
+  color: string;
+}
 
-// Categories that get the optional structured itinerary / passenger roster builders.
-const ITINERARY_CATEGORIES = ['Tour Package', 'Educational Tour'];
-const PASSENGER_CATEGORIES = ['Tour Package', 'Visa Processing', 'Joiners', 'Booking'];
+const desks: DeskDefinition[] = [
+  { type: 'private_tour', title: 'Private tour', owner: 'Party itinerary & logistics', description: 'Named adults and children, package rules, daily itinerary, dates, vehicle and driver.', icon: MapPinned, color: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200' },
+  { type: 'visa_assistance', title: 'Visa assistance', owner: 'Travel Assistance case', description: 'Bill an existing applicant case with country, visa type, purpose, appointment and requirements.', icon: FileBadge, color: 'bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-200' },
+  { type: 'passport_assistance', title: 'Passport assistance', owner: 'Passporting case', description: 'Application type, appointment site, target release, requirements and the exact applicant record.', icon: TicketsPlane, color: 'bg-fuchsia-50 text-fuchsia-700 dark:bg-fuchsia-950/40 dark:text-fuchsia-200' },
+  { type: 'flight_booking', title: 'Flight booking', owner: 'Air fulfillment', description: 'One-way, round-trip or multi-city segments, named passengers, PNR, fare rules and ticketing deadline.', icon: Plane, color: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200' },
+  { type: 'accommodation_booking', title: 'Accommodation', owner: 'Rooming & stay', description: 'Property, room type, occupancy, exact guest list, confirmation and cancellation deadline.', icon: Hotel, color: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200' },
+  { type: 'ticket_booking', title: 'Scheduled ticket', owner: 'Ferry, bus or rail', description: 'Operator schedule, route, named passengers, supplier reference and one seat per passenger.', icon: Ticket, color: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200' },
+  { type: 'activity_booking', title: 'Activity', owner: 'Dated session capacity', description: 'Session window, supplier reference, finite capacity, named participants and requirements.', icon: CalendarCheck2, color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200' },
+  { type: 'transfer_service', title: 'Transfer', owner: 'Pickup & dispatch', description: 'Exact pickup/drop-off window, named passengers, luggage and available vehicle/driver.', icon: Route, color: 'bg-orange-50 text-orange-700 dark:bg-orange-950/40 dark:text-orange-200' },
+  { type: 'custom_arrangement', title: 'Custom arrangement', owner: 'Scoped deliverables', description: 'A priced scope with concrete deliverables, supplier reference, target window and margin.', icon: Shapes, color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200' },
+];
+
+const typeFromQuery = (value: string | null): CustomWorkflowType | null => (
+  desks.some((desk) => desk.type === value) ? value as CustomWorkflowType : null
+);
 
 export default function CustomTransactions() {
-  const { theme } = useTheme();
-  const queryClient = useQueryClient();
-
-  const { data: busesRes } = useQuery({
-    queryKey: ['buses-list'],
-    queryFn: () => fleetApi.list({ per_page: 100 }),
-  });
-  const buses = busesRes?.data?.data ?? [];
-
-  const { data: drivers = [] } = useQuery({
-    queryKey: ['active-drivers'],
-    queryFn: async () => {
-      const res = await client.get('/chat/users');
-      const allUsers = res.data?.data ?? [];
-      return allUsers.filter((u: any) => u.role === 'driver' && u.is_active);
-    },
-  });
-
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeType = typeFromQuery(searchParams.get('type'));
   const [cart, setCart] = useState<CartItem[]>([]);
-  const [isAddingCustom, setIsAddingCustom] = useState(false);
-  const [customForm, setCustomForm] = useState({
-    name: '',
-    category: 'Bus Rental',
-    otherCategory: '',
-    price: '',
-    quantity: 1,
-    description: '',
-    requiresContract: false,
-  });
 
-  // Category-specific structured data — one state object keyed by category name.
-  const [busRental, setBusRental] = useState(INITIAL_BUS_RENTAL);
-  const [eduTour, setEduTour] = useState(INITIAL_EDU_TOUR);
-  const [tourPackage, setTourPackage] = useState(INITIAL_TOUR_PACKAGE);
-  const [visaProcessing, setVisaProcessing] = useState(INITIAL_VISA_PROCESSING);
-  const [joiners, setJoiners] = useState(INITIAL_JOINERS);
-  const [booking, setBooking] = useState(INITIAL_BOOKING);
+  const customerPreset = useMemo<CheckoutCustomerPreset | null>(() => cart
+    .map((item) => item.lineMetadata?.customer_snapshot as CheckoutCustomerPreset | undefined)
+    .find(Boolean) ?? null, [cart]);
 
-  // Optional structured itinerary / passenger roster, shared across applicable categories.
-  const [itineraryRows, setItineraryRows] = useState<ItineraryDayInput[]>([]);
-  const [passengerRows, setPassengerRows] = useState<PassengerInput[]>([]);
+  const selectDesk = (type: CustomWorkflowType) => setSearchParams({ type });
+  const backToDesks = () => setSearchParams({});
 
-  const activeBusId = useMemo(() => {
-    if (customForm.category === 'Bus Rental') {
-      return busRental.busId;
-    } else if (customForm.category === 'Educational Tour') {
-      return eduTour.busId ? Number(eduTour.busId) : null;
-    }
-    return null;
-  }, [customForm.category, busRental.busId, eduTour.busId]);
-
-  const activeTravelDate = useMemo(() => {
-    if (customForm.category === 'Bus Rental') {
-      return busRental.travelDate;
-    } else if (customForm.category === 'Educational Tour') {
-      return eduTour.serviceDate;
-    }
-    return '';
-  }, [customForm.category, busRental.travelDate, eduTour.serviceDate]);
-
-  // Load calendar for selected bus to check seat occupancy and conflicts on travel date
-  const { data: busCalendarRes } = useQuery({
-    queryKey: ['bus-calendar', activeBusId, activeTravelDate ? activeTravelDate.substring(0, 7) : ''],
-    queryFn: async () => {
-      if (!activeBusId || !activeTravelDate) return null;
-      const date = new Date(activeTravelDate);
-      const res = await fleetApi.getCalendar(activeBusId, { month: date.getMonth() + 1, year: date.getFullYear() });
-      return res.data;
-    },
-    enabled: !!activeBusId && !!activeTravelDate,
-  });
-
-  const occupiedSeats = useMemo(() => {
-    if (!busCalendarRes?.data || !busRental.travelDate) return [];
-    const entries = busCalendarRes.data;
-    const sameDayInvoices = entries.filter((e: any) => e.date === busRental.travelDate && e.type === 'invoice');
-    const seats: string[] = [];
-    sameDayInvoices.forEach((inv: any) => {
-      if (Array.isArray(inv.seat_map)) {
-        seats.push(...inv.seat_map);
-      }
-    });
-    return seats;
-  }, [busCalendarRes, busRental.travelDate]);
-
-  const isBusBookedOnDate = useMemo(() => {
-    if (!busCalendarRes?.data || !activeTravelDate) return false;
-    const entries = busCalendarRes.data;
-    return entries.some((e: any) => e.date === activeTravelDate);
-  }, [busCalendarRes, activeTravelDate]);
-
-  // Autocalculate price based on category inputs
-  useEffect(() => {
-    let calculatedPrice = 0;
-    switch (customForm.category) {
-      case 'Bus Rental': {
-        const baseRates: Record<string, number> = {
-          'Bus': 10000,
-          'Coaster': 8000,
-          'Van': 5000,
-          'Sedan': 3000,
-          'SUV': 4500
-        };
-        const base = baseRates[busRental.vehicleType] || 5000;
-        const days = Number(busRental.days) || 1;
-        calculatedPrice = base * days;
-        break;
-      }
-      case 'Educational Tour': {
-        const pax = Number(eduTour.expectedPax) || 0;
-        calculatedPrice = 800 * pax;
-        break;
-      }
-      case 'Tour Package': {
-        const adults = Number(tourPackage.adults) || 0;
-        const children = Number(tourPackage.children) || 0;
-        calculatedPrice = (1500 * adults) + (1000 * children);
-        break;
-      }
-      case 'Visa Processing': {
-        const count = visaProcessing.applicants.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).length || 1;
-        calculatedPrice = 2500 * count;
-        break;
-      }
-      case 'Joiners': {
-        const pax = Number(joiners.paxCount) || 0;
-        calculatedPrice = 2000 * pax;
-        break;
-      }
-      case 'Booking': {
-        const count = booking.guests.split(/[\n,]+/).map(s => s.trim()).filter(Boolean).length || 1;
-        calculatedPrice = 1500 * count;
-        break;
-      }
-      default:
-        return; // Don't overwrite manually typed price for 'Other' or unknown
-    }
-
-    if (calculatedPrice > 0) {
-      setCustomForm(prev => ({
-        ...prev,
-        price: formatMoneyInput(calculatedPrice.toString())
-      }));
-    }
-  }, [
-    customForm.category,
-    busRental.vehicleType,
-    busRental.days,
-    eduTour.expectedPax,
-    tourPackage.adults,
-    tourPackage.children,
-    visaProcessing.applicants,
-    joiners.paxCount,
-    booking.guests
-  ]);
-
-  const resetSubStates = () => {
-    setBusRental(INITIAL_BUS_RENTAL);
-    setEduTour(INITIAL_EDU_TOUR);
-    setTourPackage(INITIAL_TOUR_PACKAGE);
-    setVisaProcessing(INITIAL_VISA_PROCESSING);
-    setJoiners(INITIAL_JOINERS);
-    setBooking(INITIAL_BOOKING);
-    setItineraryRows([]);
-    setPassengerRows([]);
-  };
-
-  /** Builds the structured custom_transaction_detail payload sent to the backend (Contract/Invoice). */
-  const buildCustomTransactionDetail = (category: string): CustomTransactionDetailInput => {
-    switch (category) {
-      case 'Bus Rental':
-        return {
-          category,
-          vehicle_type: busRental.vehicleType,
-          route: busRental.route || undefined,
-          rental_days: Number(busRental.days || 1),
-          plate_number: busRental.plateNumber || undefined,
-          inclusion_driver: busRental.inclusions.driver,
-          inclusion_fuel: busRental.inclusions.fuel,
-          inclusion_toll: busRental.inclusions.toll,
-          inclusion_insurance: busRental.inclusions.insurance,
-          additional_remarks: customForm.description || undefined,
-        };
-      case 'Educational Tour':
-        return {
-          category,
-          school_name: eduTour.schoolName || undefined,
-          grade_level: eduTour.gradeLevel || undefined,
-          expected_pax: Number(eduTour.expectedPax || 0) || undefined,
-          itinerary_stops: eduTour.stops || undefined,
-          edu_inclusion_meals: eduTour.inclusions.meals,
-          edu_inclusion_coordinator: eduTour.inclusions.coordinator,
-          edu_inclusion_insurance: eduTour.inclusions.insurance,
-          edu_inclusion_tshirt: eduTour.inclusions.tshirt,
-          additional_remarks: customForm.description || undefined,
-        };
-      case 'Tour Package':
-        return {
-          category,
-          destination: tourPackage.destination || undefined,
-          accommodation_type: tourPackage.accommodation,
-          additional_remarks: customForm.description || undefined,
-        };
-      case 'Visa Processing':
-        return {
-          category,
-          visa_country: visaProcessing.country,
-          visa_type: visaProcessing.visaType,
-          visa_req_passport: visaProcessing.requirements.passport,
-          visa_req_photo: visaProcessing.requirements.photo,
-          visa_req_bank_cert: visaProcessing.requirements.bankCert,
-          visa_req_itr: visaProcessing.requirements.itr,
-          visa_req_birth_cert: visaProcessing.requirements.birthCert,
-          additional_remarks: customForm.description || undefined,
-        };
-      case 'Joiners':
-        return {
-          category,
-          joiner_tour_code: joiners.tourCode || undefined,
-          additional_remarks: customForm.description || undefined,
-        };
-      case 'Booking':
-        return {
-          category,
-          booking_type: booking.bookingType,
-          booking_reference_code: booking.referenceCode || undefined,
-          booking_details: booking.details || undefined,
-          additional_remarks: customForm.description || undefined,
-        };
-      default:
-        return {
-          category,
-          category_meta: { otherCategory: customForm.otherCategory },
-          additional_remarks: customForm.description || undefined,
-        };
-    }
-  };
-
-  // Cart operations
-  const addToCart = (
-    service: any,
-    quantity: number,
-    busId?: number,
-    selectedSeats?: string[],
-    driverId?: number,
-    driverName?: string,
-    travelDate?: string,
-    tourCode?: string,
-    pickupLocation?: string,
-    paxCount?: number,
-    serviceDate?: string,
-    destination?: string,
-    customCategoryDetail?: CustomTransactionDetailInput,
-    itinerary?: ItineraryDayInput[],
-    passengers?: PassengerInput[],
-    requiresContract?: boolean
-  ) => {
-    setCart(prev => [
-      ...prev,
-      {
-        service,
-        quantity,
-        customPrice: service.price,
-        busId,
-        selectedSeats,
-        driverId,
-        driverName,
-        travelDate,
-        tourCode,
-        pickupLocation,
-        paxCount,
-        serviceDate,
-        destination,
-        customCategoryDetail,
-        itinerary,
-        passengers,
-        requiresContract,
-      }
-    ]);
-  };
-
-  const handleAddCustomTransaction = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanPrice = parseMoneyInput(customForm.price);
-    if (!customForm.name || customForm.price === '' || Number(cleanPrice) <= 0) {
-      toast.error('Please enter a valid service name and price.');
+  const addLine = (line: PreparedServiceLine) => {
+    const existingCustomerId = cart
+      .map((item) => item.lineMetadata?.customer_id)
+      .find((id): id is number => typeof id === 'number');
+    if (existingCustomerId && line.customerSnapshot && existingCustomerId !== line.customerSnapshot.id) {
+      toast.error('This order already belongs to another customer. Finish it or start a separate order.');
       return;
     }
 
-    if (isBusBookedOnDate) {
-      toast.error('The selected bus unit is already booked/reserved on the specified travel date.');
-      return;
-    }
-
-    try {
-      setIsAddingCustom(true);
-
-      const category = customForm.category === 'Other' ? (customForm.otherCategory || 'Other') : customForm.category;
-      const customCategoryDetail = buildCustomTransactionDetail(customForm.category);
-
-      // Create service dynamically in the database (catalog/pricing role only — the structured
-      // data above, not this description, is the source of truth for tour/contract details).
-      const res = await billingApi.createService({
-        name: customForm.name,
-        category,
-        price: Number(cleanPrice || 0),
-        description: customForm.description || `Custom ${category} arrangement`,
-        is_tour: false,
-        has_booking_fields: false,
-      });
-
-      if (res?.data?.success || res?.data?.data) {
-        const createdService = res.data.data;
-
-        let busIdParam: number | undefined;
-        let driverIdParam: number | undefined;
-        let selectedSeatsParam: string[] | undefined;
-        let driverNameParam: string | undefined;
-        let travelDateParam: string | undefined;
-        let tourCodeParam: string | undefined;
-        let pickupLocationParam: string | undefined;
-        let paxCountParam: number | undefined;
-        let serviceDateParam: string | undefined;
-        let destinationParam: string | undefined;
-
-        if (customForm.category === 'Bus Rental') {
-          busIdParam = busRental.busId || undefined;
-          driverIdParam = busRental.driverId || undefined;
-          selectedSeatsParam = busRental.selectedSeats.length > 0 ? busRental.selectedSeats : undefined;
-          driverNameParam = busRental.driverName || undefined;
-          travelDateParam = busRental.travelDate || undefined;
-          serviceDateParam = busRental.serviceDate || undefined;
-          tourCodeParam = busRental.route || undefined;
-          destinationParam = busRental.dropoffLocation || undefined;
-          pickupLocationParam = busRental.pickupLocation || undefined;
-          paxCountParam = busRental.paxCount ? Number(busRental.paxCount) : undefined;
-        } else if (customForm.category === 'Joiners') {
-          travelDateParam = joiners.travelDate || undefined;
-          tourCodeParam = joiners.tourCode || undefined;
-          pickupLocationParam = joiners.pickupLocation || undefined;
-          paxCountParam = joiners.paxCount ? Number(joiners.paxCount) : undefined;
-          serviceDateParam = joiners.travelDate || undefined;
-          destinationParam = joiners.dropoffLocation || joiners.tourCode || undefined;
-        } else if (customForm.category === 'Tour Package') {
-          travelDateParam = tourPackage.travelDates || undefined;
-          tourCodeParam = tourPackage.destination || undefined;
-          paxCountParam = (Number(tourPackage.adults || 0) + Number(tourPackage.children || 0)) || undefined;
-          serviceDateParam = tourPackage.travelDates || undefined;
-          destinationParam = tourPackage.destination || undefined;
-        } else if (customForm.category === 'Educational Tour') {
-          tourCodeParam = eduTour.schoolName || undefined;
-          paxCountParam = eduTour.expectedPax ? Number(eduTour.expectedPax) : undefined;
-          serviceDateParam = eduTour.serviceDate || undefined;
-          destinationParam = eduTour.stops || undefined;
-          busIdParam = eduTour.busId ? Number(eduTour.busId) : undefined;
-        }
-
-        addToCart(
-          createdService,
-          1,
-          busIdParam,
-          selectedSeatsParam,
-          driverIdParam,
-          driverNameParam,
-          travelDateParam,
-          tourCodeParam,
-          pickupLocationParam,
-          paxCountParam,
-          serviceDateParam,
-          destinationParam,
-          customCategoryDetail,
-          itineraryRows.length > 0 ? itineraryRows : undefined,
-          passengerRows.length > 0 ? passengerRows : undefined,
-          customForm.requiresContract
-        );
-
-        toast.success('Customized transaction registered & added to order!');
-
-        setCustomForm({
-          name: '',
-          category: 'Bus Rental',
-          otherCategory: '',
-          price: '',
-          quantity: 1,
-          description: '',
-          requiresContract: false,
-        });
-        resetSubStates();
-
-        queryClient.invalidateQueries({ queryKey: ['billing-services'] });
-      } else {
-        toast.error('Failed to register customized service');
-      }
-    } catch (err: any) {
-      console.error(err);
-      toast.error('Error creating custom transaction service: ' + (err.message || 'unknown error'));
-    } finally {
-      setIsAddingCustom(false);
-    }
+    setCart((current) => [...current, preparedLineToCartItem(line, current.length)]);
+    toast.success(`${line.title} added. Complete the customer and payment checkout on the right.`);
   };
 
-  const removeFromCart = (serviceId: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
-    setCart(prev => prev.filter(item => item.service.id !== serviceId));
+  const removeFromCart = (serviceId: number, _adults?: number, _children?: number, _vehicle?: 'Bus' | 'Coaster', _busId?: number, cartId?: string) => {
+    setCart((current) => current.filter((item) => cartId ? item.cartId !== cartId : item.service.id !== serviceId));
   };
 
-  const updateQuantity = (serviceId: number, newQty: number, _adults?: number, _childrenCount?: number, _vehicleType?: 'Bus' | 'Coaster', _busId?: number) => {
-    if (newQty < 1) {
-      removeFromCart(serviceId);
-      return;
-    }
-    setCart(prev => prev.map(item => {
-      if (item.service.id === serviceId) {
-        return { ...item, quantity: newQty };
-      }
-      return item;
+  const updateQuantity = (serviceId: number, quantity: number, _adults?: number, _children?: number, _vehicle?: 'Bus' | 'Coaster', _busId?: number, cartId?: string) => {
+    if (quantity < 1) return removeFromCart(serviceId, undefined, undefined, undefined, undefined, cartId);
+    setCart((current) => current.map((item) => {
+      const matches = cartId ? item.cartId === cartId : item.service.id === serviceId;
+      return matches && !item.quantityLocked ? { ...item, quantity } : item;
     }));
   };
 
-  const renderCategoryFields = () => {
-    switch (customForm.category) {
-      case 'Bus Rental':
-        return (
-          <CategoryFormBusRental
-            value={busRental}
-            onChange={(patch) => setBusRental(prev => ({ ...prev, ...patch }))}
-            buses={buses}
-            drivers={drivers}
-            occupiedSeats={occupiedSeats}
-          />
-        );
-      case 'Educational Tour':
-        return (
-          <CategoryFormEducationalTour
-            value={eduTour}
-            onChange={(patch) => setEduTour(prev => ({ ...prev, ...patch }))}
-            buses={buses}
-          />
-        );
-      case 'Tour Package':
-        return (
-          <CategoryFormTourPackage
-            value={tourPackage}
-            onChange={(patch) => setTourPackage(prev => ({ ...prev, ...patch }))}
-          />
-        );
-      case 'Visa Processing':
-        return (
-          <CategoryFormVisaProcessing
-            value={visaProcessing}
-            onChange={(patch) => setVisaProcessing(prev => ({ ...prev, ...patch }))}
-          />
-        );
-      case 'Joiners':
-        return (
-          <CategoryFormJoiners
-            value={joiners}
-            onChange={(patch) => setJoiners(prev => ({ ...prev, ...patch }))}
-          />
-        );
-      case 'Booking':
-        return (
-          <CategoryFormBooking
-            value={booking}
-            onChange={(patch) => setBooking(prev => ({ ...prev, ...patch }))}
-          />
-        );
-      default:
-        return null;
+  const workflow = () => {
+    if (!activeType) return null;
+    if (activeType === 'private_tour') {
+      return <PrivateTourWorkflow catalogService={null} onAdd={addLine} onBack={backToDesks} />;
     }
+    if (activeType === 'visa_assistance') return <VisaAssistanceWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'passport_assistance') return <PassportAssistanceWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'flight_booking') return <FlightBookingWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'accommodation_booking') return <AccommodationBookingWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'ticket_booking') return <ScheduledTicketWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'activity_booking') return <ActivityBookingWorkflow onAdd={addLine} onBack={backToDesks} />;
+    if (activeType === 'transfer_service') return <TransferServiceWorkflow onAdd={addLine} onBack={backToDesks} />;
+    return <CustomArrangementWorkflow onAdd={addLine} onBack={backToDesks} />;
   };
 
-  const showItineraryBuilder = ITINERARY_CATEGORIES.includes(customForm.category);
-  const showPassengerRoster = PASSENGER_CATEGORIES.includes(customForm.category);
-
   return (
-    <div className={`gap-6 animate-in fade-in duration-700 flex flex-col lg:flex-row transition-colors lg:h-[calc(100vh-100px)] ${theme === 'dark' ? 'bg-gray-950' : 'bg-gray-50'}`}>
-      {/* Left Side: Custom Booking Form */}
-      <div className="flex-1 flex flex-col gap-6 overflow-hidden">
-        <div className="flex-1 bg-white dark:bg-gray-900 rounded-[2.5rem] border border-gray-100 dark:border-gray-800 p-8 shadow-sm overflow-y-auto custom-scrollbar animate-in fade-in duration-300">
-          <div className="max-w-xl mx-auto space-y-6">
-            <div>
-              <h3 className="text-xl font-black text-gray-900 dark:text-white uppercase tracking-tight mb-2">
-                New Customized Transaction
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                Record personalized itineraries, custom tour events, transport layouts, or dynamic services directly to checkout.
-              </p>
-            </div>
-
-            <form onSubmit={handleAddCustomTransaction} className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                  Service / Booking Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Tailored Travel, Tours and Printing Bundle"
-                  className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                  value={customForm.name}
-                  onChange={(e) => setCustomForm(prev => ({ ...prev, name: e.target.value }))}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                    Category
-                  </label>
-                  <select
-                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                    value={customForm.category}
-                    onChange={(e) => {
-                      setCustomForm(prev => ({ ...prev, category: e.target.value, otherCategory: '' }));
-                    }}
-                  >
-                    {CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                    Base Rate / Price (PHP)
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="PHP Price"
-                    className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all dark:text-white"
-                    value={customForm.price}
-                    onChange={(e) => {
-                      const clean = parseMoneyInput(e.target.value);
-                      if ((clean.split('.').length - 1) > 1) return;
-                      const formatted = formatMoneyInput(e.target.value);
-                      setCustomForm(prev => ({ ...prev, price: formatted }));
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.ctrlKey || e.metaKey) return;
-                      if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                        e.preventDefault();
-                      }
-                    }}
-                  />
-                </div>
-              </div>
-
-              {customForm.category === 'Other' && (
-                <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                  <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest pl-1">
-                    Specify Service Type
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Corporate Event, Charter Flight..."
-                    className="w-full px-5 py-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/10 transition-all dark:text-white"
-                    value={customForm.otherCategory}
-                    onChange={(e) => setCustomForm(prev => ({ ...prev, otherCategory: e.target.value }))}
-                  />
-                </div>
-              )}
-
-              {/* Customized category specifications fields */}
-              {renderCategoryFields()}
-
-              {isBusBookedOnDate && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 text-amber-800 dark:text-amber-300 rounded-2xl text-xs font-bold animate-pulse">
-                  ⚠️ WARNING: The selected bus unit is already booked/reserved on the specified travel date ({activeTravelDate}). Please select another date or bus.
-                </div>
-              )}
-
-              {showItineraryBuilder && (
-                <ItineraryBuilder value={itineraryRows} onChange={setItineraryRows} />
-              )}
-
-              {showPassengerRoster && (
-                <PassengerRosterEditor value={passengerRows} onChange={setPassengerRows} />
-              )}
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest pl-1">
-                  Additional Notes & Special Instructions
-                </label>
-                <textarea
-                  placeholder="Enter itinerary details, specific hotel preferences, timing, or any custom client remarks..."
-                  className="w-full px-5 py-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl text-xs font-bold focus:ring-4 focus:ring-blue-600/5 transition-all min-h-[100px] dark:text-white"
-                  value={customForm.description}
-                  onChange={(e) => setCustomForm(prev => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
-
-              {/* Contract gate — explicit per-transaction control (sole decider at checkout) */}
-              <label className="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={customForm.requiresContract}
-                  onChange={(e) => setCustomForm(prev => ({ ...prev, requiresContract: e.target.checked }))}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer shrink-0"
-                />
-                <span className="flex flex-col gap-0.5">
-                  <span className="text-[11px] font-black uppercase tracking-widest text-gray-700 dark:text-gray-200">
-                    Requires a signed contract
-                  </span>
-                  <span className="text-[10px] font-medium text-gray-400 leading-relaxed">
-                    When checked, checkout routes this transaction through the contract draft &amp; e-signature flow instead of issuing an invoice directly.
-                  </span>
-                </span>
-              </label>
-
-              <button
-                type="submit"
-                disabled={isAddingCustom}
-                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-blue-600/20 hover:shadow-xl transition-all flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
-              >
-                {isAddingCustom ? (
-                  <>
-                    <LuLoaderCircle className="w-4 h-4 animate-spin" />
-                    Adding Item...
-                  </>
-                ) : (
-                  <>
-                    <LuPlus className="w-4 h-4" />
-                    Add Item
-                  </>
-                )}
-              </button>
-            </form>
-          </div>
+    <div className="w-full space-y-5 pb-12">
+      <header className="rounded-3xl bg-[#071b33] p-7 text-white">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="max-w-3xl"><p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#75b8ff]">Agent-assisted sales</p><h1 className="mt-2 text-3xl font-black">Service booking desks</h1><p className="mt-2 text-sm leading-6 text-slate-300">Open the desk that owns the service. Each desk writes its own fulfillment record and rules; only customer payment and accounting finalization are shared.</p></div>
+          <div className="grid grid-cols-3 gap-2 text-[10px] font-black uppercase tracking-wider"><button onClick={() => navigate('/sales/departures')} className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-left hover:bg-white/15"><UsersRound className="mb-2 h-4 w-4 text-emerald-300" />Joiners</button><button onClick={() => navigate('/sales/charters')} className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-left hover:bg-white/15"><BusFront className="mb-2 h-4 w-4 text-blue-300" />Charters</button><button onClick={() => navigate('/sales/educational-tours')} className="rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-left hover:bg-white/15"><GraduationCap className="mb-2 h-4 w-4 text-amber-300" />Education</button></div>
         </div>
-      </div>
+      </header>
 
-      {/* Right Side: Checkout Panel */}
-      <SalesCheckout
-        cart={cart}
-        removeFromCart={removeFromCart}
-        updateQuantity={updateQuantity}
-        clearCart={() => setCart([])}
-      />
+      <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_440px]">
+        <main>
+          {activeType ? workflow() : <section className="rounded-3xl border border-border bg-surface p-6">
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Choose an owned workflow</p><h2 className="mt-1 text-2xl font-black text-ink">What is the customer buying?</h2><p className="mt-2 max-w-3xl text-sm leading-6 text-muted">These are separate booking records, not one catalog template with renamed fields.</p></div>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+              {desks.map((desk) => <button key={desk.type} onClick={() => selectDesk(desk.type)} className="group rounded-2xl border border-border bg-surface-alt p-5 text-left transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-lg"><div className="flex items-start justify-between gap-4"><span className={`grid h-11 w-11 place-items-center rounded-xl ${desk.color}`}><desk.icon className="h-5 w-5" /></span><span className="text-[9px] font-black uppercase tracking-widest text-muted group-hover:text-brand">Open desk →</span></div><p className="mt-4 text-[9px] font-black uppercase tracking-widest text-brand">{desk.owner}</p><h3 className="mt-1 text-base font-black text-ink">{desk.title}</h3><p className="mt-2 text-xs leading-5 text-muted">{desk.description}</p></button>)}
+            </div>
+          </section>}
+        </main>
+
+        <aside className="2xl:sticky 2xl:top-4 2xl:h-[calc(100vh-110px)] 2xl:min-h-[720px]">
+          <div className="mb-3 flex items-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-[11px] font-bold text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200"><BedDouble className="h-4 w-4" /> Completing the transaction creates the invoice, accounting handoff, and the selected service’s fulfillment record together.</div>
+          <SalesCheckout cart={cart} removeFromCart={removeFromCart} updateQuantity={updateQuantity} clearCart={() => setCart([])} customerPreset={customerPreset} />
+        </aside>
+      </div>
     </div>
   );
 }

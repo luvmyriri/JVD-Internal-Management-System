@@ -29,6 +29,11 @@ class Customer extends Model
         return $this->hasMany(Invoice::class);
     }
 
+    public function salesOrders()
+    {
+        return $this->hasMany(SalesOrder::class);
+    }
+
     public function passports()
     {
         return $this->hasMany(CustomerPassport::class);

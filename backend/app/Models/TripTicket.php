@@ -48,14 +48,61 @@ class TripTicket extends Model
         return $this->belongsTo(Invoice::class);
     }
 
+    public function salesOrderItem()
+    {
+        return $this->belongsTo(SalesOrderItem::class);
+    }
+
     protected static function booted(): void
     {
         static::saved(function ($tripTicket) {
             self::syncToTravelSchedules($tripTicket);
+            $allocations = app(\App\Services\ResourceAllocationService::class);
+
+            // A sales-generated DTT is the operational document for an allocation
+            // already owned by its typed fulfillment. Keep one central allocation
+            // row instead of reserving the same bus and driver a second time under
+            // the TripTicket model.
+            $salesItem = $tripTicket->salesOrderItem()
+                ->with(['fulfillment', 'order'])
+                ->first();
+            if ($salesItem?->fulfillment) {
+                $allocations->release($tripTicket); // repairs any historical duplicate
+                if ($tripTicket->status === 'completed') {
+                    \App\Models\ResourceAllocation::where('source_type', $salesItem->fulfillment->getMorphClass())
+                        ->where('source_id', $salesItem->fulfillment->getKey())
+                        ->update(['status' => 'completed']);
+                    return;
+                }
+
+                $start = $salesItem->scheduled_start;
+                $end = $salesItem->scheduled_end;
+                if ($start && $end) {
+                    $allocations->reserve(
+                        $salesItem->fulfillment,
+                        $tripTicket->bus_id,
+                        $tripTicket->driver_id,
+                        $start,
+                        $end,
+                        $tripTicket->control_no,
+                        'confirmed'
+                    );
+                }
+                return;
+            }
+
+            if (in_array($tripTicket->status, ['cancelled', 'completed'], true)) {
+                $allocations->release($tripTicket);
+                return;
+            }
+            $start = \Carbon\Carbon::parse($tripTicket->date_of_travel);
+            $end = $start->copy()->addDay();
+            $allocations->reserve($tripTicket, $tripTicket->bus_id, $tripTicket->driver_id, $start, $end, $tripTicket->control_no, $tripTicket->status ?? 'draft');
         });
 
         static::deleted(function ($tripTicket) {
             self::deleteFromTravelSchedules($tripTicket);
+            app(\App\Services\ResourceAllocationService::class)->release($tripTicket);
         });
     }
 
@@ -72,15 +119,13 @@ class TripTicket extends Model
                 \DB::table('travels')
                     ->where('reference_type', 'booking')
                     ->where('reference_id', $booking->id)
-                    ->update([
-                        'reference_type' => 'trip_ticket',
-                        'reference_id' => $tripTicket->id
-                    ]);
+                    ->delete();
             }
         }
 
         $travelType = $tripTicket->trip_type === 'international' ? 'international' : 'local';
 
+        // Sync trip ticket to travels table
         \DB::table('travels')->updateOrInsert(
             ['reference_type' => 'trip_ticket', 'reference_id' => $tripTicket->id],
             [
@@ -106,4 +151,3 @@ class TripTicket extends Model
             ->delete();
     }
 }
-

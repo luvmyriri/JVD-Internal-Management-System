@@ -35,7 +35,13 @@ class PassportCaseController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = PassportCase::with(['customer', 'passenger', 'handler']);
+        $query = PassportCase::with([
+            'customer',
+            'passenger',
+            'handler',
+            'billedInvoiceItem.invoice',
+            'billedTransaction.invoice',
+        ]);
 
         $user = $request->user();
         if (!$user->hasRole('super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary')) {
@@ -130,7 +136,10 @@ class PassportCaseController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => new PassportCaseResource($case->load(['customer', 'passenger', 'handler'])),
+            'data'    => new PassportCaseResource($case->load([
+                'customer', 'passenger', 'handler',
+                'billedInvoiceItem.invoice', 'billedTransaction.invoice',
+            ])),
             'message' => 'Passport case opened successfully.',
         ], 201);
     }
@@ -163,7 +172,10 @@ class PassportCaseController extends Controller
         return response()->json([
             'success' => true,
             'data'    => new PassportCaseResource(
-                $passportCase->load(['customer', 'passenger', 'handler'])
+                $passportCase->load([
+                    'customer', 'passenger', 'handler',
+                    'billedInvoiceItem.invoice', 'billedTransaction.invoice',
+                ])
             ),
         ]);
     }
@@ -200,7 +212,10 @@ class PassportCaseController extends Controller
         return response()->json([
             'success' => true,
             'data'    => new PassportCaseResource(
-                $passportCase->fresh(['customer', 'passenger', 'handler'])
+                $passportCase->fresh([
+                    'customer', 'passenger', 'handler',
+                    'billedInvoiceItem.invoice', 'billedTransaction.invoice',
+                ])
             ),
             'message' => 'Passport case updated.',
         ]);
@@ -224,45 +239,21 @@ class PassportCaseController extends Controller
             ], 422);
         }
 
-        // H-01: status change and auto-invoice generation must be atomic — if invoice creation
-        // fails the status must roll back too, otherwise the case is stuck 'released' with no invoice.
-        \Illuminate\Support\Facades\DB::transaction(function () use ($request, $passportCase, $newStatus, $current) {
+        // Keep the operational status and audit entry atomic. Billing is owned by Sales;
+        // releasing a case must never create a second or zero-value invoice.
+        \Illuminate\Support\Facades\DB::transaction(function () use ($passportCase, $newStatus) {
             $old = $passportCase->toArray();
             $passportCase->update(['status' => $newStatus]);
 
             \App\Services\AuditLogService::log('update_status', 'Travel', 'PassportCase', $passportCase->id, $old, $passportCase->fresh()->toArray());
-
-            // Create an Invoice if the case is released
-            if ($newStatus === 'released' && $current !== 'released') {
-                $customer = $passportCase->customer;
-                $invoiceNumber = 'INV-' . date('Ymd') . '-P' . str_pad($passportCase->id, 4, '0', STR_PAD_LEFT);
-
-                // Avoid duplicate invoices
-                $existingInvoice = \App\Models\Invoice::where('invoice_number', $invoiceNumber)->first();
-
-                if (!$existingInvoice) {
-                    \App\Models\Invoice::create([
-                        'invoice_number'   => $invoiceNumber,
-                        'customer_id'      => $customer->id,
-                        'customer_name'    => $customer->first_name . ' ' . $customer->last_name,
-                        'customer_email'   => $customer->email,
-                        'customer_contact' => $customer->phone,
-                        'customer_address' => $customer->address ?? '',
-                        'subtotal'         => 0,
-                        'tax_amount'       => 0,
-                        'total_amount'     => 0,
-                        'balance'          => 0,
-                        'status'           => 'pending',
-                        'created_by'       => $request->user()->id,
-                        'notes'            => 'Auto-generated invoice for Released Passport/Visa Case: ' . ($passportCase->reference_number ?? 'N/A'),
-                    ]);
-                }
-            }
         });
 
         return response()->json([
             'success' => true,
-            'data'    => new PassportCaseResource($passportCase->fresh(['customer', 'passenger', 'handler'])),
+            'data'    => new PassportCaseResource($passportCase->fresh([
+                'customer', 'passenger', 'handler',
+                'billedInvoiceItem.invoice', 'billedTransaction.invoice',
+            ])),
             'message' => 'Status updated.',
         ]);
     }
@@ -281,7 +272,10 @@ class PassportCaseController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => new PassportCaseResource($passportCase->fresh(['customer', 'passenger', 'handler'])),
+            'data'    => new PassportCaseResource($passportCase->fresh([
+                'customer', 'passenger', 'handler',
+                'billedInvoiceItem.invoice', 'billedTransaction.invoice',
+            ])),
             'message' => 'Checklist updated.',
         ]);
     }
@@ -563,4 +557,3 @@ class PassportCaseController extends Controller
         ], 201);
     }
 }
-

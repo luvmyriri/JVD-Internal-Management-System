@@ -12,6 +12,18 @@ class InvoiceResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
+        $booking = $this->relationLoaded('booking') ? $this->booking : null;
+        $salesOrder = $this->relationLoaded('salesOrder') ? $this->salesOrder : null;
+        $privateTourItem = $salesOrder && $salesOrder->relationLoaded('items')
+            ? $salesOrder->items->first(fn ($item) => $item->service_type === 'private_tour'
+                && $item->relationLoaded('fulfillment')
+                && $item->fulfillment instanceof \App\Models\PrivateTourBooking)
+            : null;
+        /** @var \App\Models\PrivateTourBooking|null $privateTour */
+        $privateTour = $privateTourItem?->fulfillment;
+        $bus = $booking?->bus ?? ($privateTour && $privateTour->relationLoaded('bus') ? $privateTour->bus : null);
+        $driver = $booking?->driver ?? ($privateTour && $privateTour->relationLoaded('driver') ? $privateTour->driver : null);
+
         return [
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
@@ -34,26 +46,119 @@ class InvoiceResource extends JsonResource
             'status' => $this->status,
             'notes' => $this->notes,
             'cash_budget_request_id' => $this->cash_budget_request_id,
-            'bus_id' => $this->booking?->bus_id,
-            'driver_id' => $this->booking?->driver_id,
-            'seat_map' => $this->booking?->seat_map,
-            'travel_date' => $this->booking?->travel_date,
-            'pickup_location' => $this->booking?->pickup_location,
-            'tour_code' => $this->booking?->tour_code,
-            'pax_count' => $this->booking?->pax_count,
-            'arrival_datetime' => $this->booking?->arrival_datetime,
-            'departure_datetime' => $this->booking?->departure_datetime,
-            'bus' => $this->booking?->bus ? [
-                'id' => $this->booking->bus->id,
-                'plate_number' => $this->booking->bus->plate_number,
-                'model' => $this->booking->bus->model,
-                'seating_capacity' => $this->booking->bus->seating_capacity,
+            'bus_id' => $booking?->bus_id ?? $privateTour?->bus_id,
+            'driver_id' => $booking?->driver_id ?? $privateTour?->driver_id,
+            'seat_map' => $booking?->seat_map,
+            'travel_date' => $booking?->travel_date ?? $privateTour?->starts_at?->toISOString(),
+            'pickup_location' => $booking?->pickup_location ?? $privateTour?->pickup_location,
+            'tour_code' => $booking?->tour_code ?? $privateTour?->package_name,
+            'pax_count' => $booking?->pax_count ?? $privateTour?->passenger_count,
+            'arrival_datetime' => $booking?->arrival_datetime ?? $privateTour?->ends_at?->toISOString(),
+            'departure_datetime' => $booking?->departure_datetime ?? $privateTour?->starts_at?->toISOString(),
+            'bus' => $bus ? [
+                'id' => $bus->id,
+                'plate_number' => $bus->plate_number,
+                'model' => $bus->model,
+                'seating_capacity' => $bus->seating_capacity,
             ] : null,
-            'driver' => $this->booking && $this->booking->relationLoaded('driver') && $this->booking->driver ? [
-                'id' => $this->booking->driver->id,
-                'first_name' => $this->booking->driver->first_name,
-                'last_name' => $this->booking->driver->last_name,
+            'driver' => $driver ? [
+                'id' => $driver->id,
+                'first_name' => $driver->first_name,
+                'last_name' => $driver->last_name,
+                'phone' => $driver->phone,
+                'email' => $driver->email,
             ] : null,
+            'private_tour_booking' => $privateTour ? [
+                'id' => $privateTour->id,
+                'sales_order_item_id' => $privateTour->sales_order_item_id,
+                'package_name' => $privateTour->package_name,
+                'destination' => $privateTour->destination,
+                'starts_at' => $privateTour->starts_at?->toISOString(),
+                'ends_at' => $privateTour->ends_at?->toISOString(),
+                'pickup_location' => $privateTour->pickup_location,
+                'passenger_count' => $privateTour->passenger_count,
+                'adult_count' => $privateTour->adult_count,
+                'child_count' => $privateTour->child_count,
+                'travelers' => $privateTour->traveler_types ?? [],
+                'itinerary' => $privateTour->itinerary ?? [],
+                'vehicle' => $bus ? [
+                    'id' => $bus->id,
+                    'plate_number' => $bus->plate_number,
+                    'model' => $bus->model,
+                    'seating_capacity' => $bus->seating_capacity,
+                ] : null,
+                'driver' => $driver ? [
+                    'id' => $driver->id,
+                    'name' => trim($driver->first_name.' '.$driver->last_name),
+                    'phone' => $driver->phone,
+                    'email' => $driver->email,
+                ] : null,
+                'trip_ticket_id' => $this->relationLoaded('tripTicket') ? $this->tripTicket?->id : null,
+                'trip_ticket_number' => $this->relationLoaded('tripTicket') ? $this->tripTicket?->control_no : null,
+            ] : null,
+            'joiner_reservation' => $this->whenLoaded('joinerReservation', function () {
+                $reservation = $this->joinerReservation;
+                if (!$reservation) return null;
+                return [
+                    'id' => $reservation->id,
+                    'reference' => $reservation->reference,
+                    'status' => $reservation->status,
+                    'passenger_count' => $reservation->passenger_count,
+                    'seat_codes' => $reservation->passengers->map(fn ($passenger) => $passenger->seat?->seat_code)->filter()->values(),
+                    'passengers' => $reservation->passengers->map(fn ($passenger) => [
+                        'name' => trim($passenger->first_name.' '.$passenger->last_name),
+                        'first_name' => $passenger->first_name,
+                        'last_name' => $passenger->last_name,
+                        'passenger_type' => $passenger->passenger_type,
+                        'date_of_birth' => $passenger->date_of_birth?->toDateString(),
+                        'seat_code' => $passenger->seat?->seat_code,
+                    ])->values(),
+                    'departure' => $reservation->departure ? [
+                        'id' => $reservation->departure->id,
+                        'code' => $reservation->departure->code,
+                        'starts_at' => $reservation->departure->starts_at?->toISOString(),
+                        'ends_at' => $reservation->departure->ends_at?->toISOString(),
+                        'pickup_instructions' => $reservation->departure->pickup_instructions,
+                        'vehicle' => $reservation->departure->bus ? [
+                            'id' => $reservation->departure->bus->id,
+                            'plate_number' => $reservation->departure->bus->plate_number,
+                            'model' => $reservation->departure->bus->model,
+                        ] : null,
+                        'driver' => $reservation->departure->driver ? [
+                            'id' => $reservation->departure->driver->id,
+                            'name' => trim($reservation->departure->driver->first_name.' '.$reservation->departure->driver->last_name),
+                            'phone' => $reservation->departure->driver->phone,
+                            'email' => $reservation->departure->driver->email,
+                        ] : null,
+                    ] : null,
+                ];
+            }),
+            'charter_booking' => $this->whenLoaded('charterBooking', function () {
+                $charter = $this->charterBooking;
+                if (!$charter) return null;
+                return [
+                    'id' => $charter->id, 'reference' => $charter->reference, 'status' => $charter->status,
+                    'starts_at' => $charter->starts_at?->toISOString(), 'ends_at' => $charter->ends_at?->toISOString(),
+                    'pickup_location' => $charter->pickup_location, 'destination' => $charter->destination,
+                    'passenger_count' => $charter->passenger_count, 'estimated_kilometers' => (float) $charter->estimated_kilometers,
+                    'vehicle' => $charter->bus ? ['plate_number' => $charter->bus->plate_number, 'model' => $charter->bus->model] : null,
+                ];
+            }),
+            'educational_tour_booking' => $this->whenLoaded('educationalTourBooking', function () {
+                $education = $this->educationalTourBooking;
+                if (!$education) return null;
+                return [
+                    'id' => $education->id, 'reference' => $education->reference, 'school_name' => $education->school_name,
+                    'grade_level' => $education->grade_level, 'starts_at' => $education->starts_at?->toISOString(),
+                    'ends_at' => $education->ends_at?->toISOString(), 'student_count' => $education->student_count,
+                    'chaperone_count' => $education->chaperone_count,
+                    'vehicles' => $education->vehicles->map(fn ($assignment) => [
+                        'plate_number' => $assignment->bus?->plate_number, 'model' => $assignment->bus?->model,
+                        'driver_name' => $assignment->driver ? $assignment->driver->first_name.' '.$assignment->driver->last_name : null,
+                        'planned_passengers' => $assignment->planned_passengers,
+                    ]),
+                ];
+            }),
             'itineraries' => $this->whenLoaded('itineraries', function() {
                 return $this->itineraries->map(fn($it) => [
                     'id' => $it->id,
@@ -65,6 +170,18 @@ class InvoiceResource extends JsonResource
                     'accommodation_name' => $it->accommodation_name,
                 ]);
             }),
+            'passengers' => $this->whenLoaded('passengers', fn () => $this->passengers->map(fn ($passenger) => [
+                'id' => $passenger->id,
+                'first_name' => $passenger->first_name,
+                'last_name' => $passenger->last_name,
+                'full_name' => $passenger->full_name,
+                'date_of_birth' => $passenger->date_of_birth?->toDateString(),
+                'passport_number' => $passenger->passport_number,
+                'dietary_restrictions' => $passenger->dietary_restrictions,
+                'emergency_contact' => $passenger->emergency_contact,
+                'special_needs' => $passenger->special_needs,
+            ])),
+            'custom_transaction_detail' => $this->whenLoaded('customTransactionDetail'),
             'collection' => $this->whenLoaded('collection'),
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'creator' => new UserResource($this->whenLoaded('creator')),
@@ -73,19 +190,23 @@ class InvoiceResource extends JsonResource
                     return [
                         'id' => $item->id,
                         'service_id' => $item->service_id,
-                        'service_name' => $item->service->name ?? 'N/A',
+                        'passport_case_id' => $item->passport_case_id,
+                        'service_name' => $item->item_name ?? $item->service?->name ?? 'N/A',
+                        'service_type' => $item->service_type ?? $item->service?->service_type,
+                        'item_description' => $item->item_description ?? $item->service?->description,
+                        'item_metadata' => $item->item_metadata,
                         'quantity' => $item->quantity,
                         'unit_price' => (float) $item->unit_price,
                         'total_price' => (float) $item->total_price,
                         'adults' => $item->adults,
                         'children' => $item->children,
-                        'adult_price' => $item->adults !== null ? (float) ($item->service->adult_price ?? $item->unit_price) : null,
-                        'child_price' => $item->children !== null ? (float) ($item->service->child_price ?? $item->unit_price) : null,
+                        'adult_price' => $item->adult_price !== null ? (float) $item->adult_price : null,
+                        'child_price' => $item->child_price !== null ? (float) $item->child_price : null,
                         'service' => [
-                            'id' => $item->service->id ?? null,
-                            'name' => $item->service->name ?? 'N/A',
-                            'category' => $item->service->category ?? 'N/A',
-                            'description' => $item->service->description ?? '',
+                            'id' => $item->service?->id,
+                            'name' => $item->item_name ?? $item->service?->name ?? 'N/A',
+                            'category' => $item->service?->category ?? $item->service_type ?? 'Custom',
+                            'description' => $item->item_description ?? $item->service?->description ?? '',
                         ]
                     ];
                 });

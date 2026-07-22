@@ -27,6 +27,7 @@ class StoreUserRequest extends FormRequest
         return [
             'employee_id' => ['nullable', 'string', 'unique:users,employee_id'],
             'email' => ['required', 'email', 'unique:users,email'],
+            'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-\s]+$/'],
             'first_name' => ['required', 'string', 'max:100'],
             'last_name' => ['required', 'string', 'max:100'],
             'role' => ['required', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],

@@ -59,7 +59,11 @@ export const navigation: NavSection[] = [
   {
     title: 'Sales',
     items: [
+      { label: 'Sales Overview', path: '/sales', icon: <LuLayoutDashboard />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales' },
       { label: 'Fixed Packages', path: '/sales/fixed-packages', icon: <LuStore />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.fixed_packages' },
+      { label: 'Joiner Departures', path: '/sales/departures', icon: <LuCalendarClock />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.departures' },
+      { label: 'Bus Charters', path: '/sales/charters', icon: <LuBus />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.charters' },
+      { label: 'Educational Tours', path: '/sales/educational-tours', icon: <LuGlobe />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.educational_tours' },
       { label: 'Custom Transactions', path: '/sales/custom-transactions', icon: <LuShoppingCart />, roles: ['super_admin', 'executive_vice_president', 'reservation_officer', 'office_staff'], module: 'sales', pageKey: 'sales.custom_transactions' },
     ],
   },

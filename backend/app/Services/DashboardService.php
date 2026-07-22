@@ -500,9 +500,9 @@ class DashboardService
     {
         // Check via first service item's category/name
         $firstItem = $inv->items->first();
-        if ($firstItem && $firstItem->service) {
-            $cat  = strtolower($firstItem->service->category ?? '');
-            $name = strtolower($firstItem->service->name ?? '');
+        if ($firstItem) {
+            $cat  = strtolower($firstItem->service?->category ?? $firstItem->service_type ?? '');
+            $name = strtolower($firstItem->item_name ?? $firstItem->service?->name ?? '');
             if (str_contains($cat, 'bus rental') || str_contains($name, 'bus rental')) {
                 return true;
             }
@@ -523,8 +523,8 @@ class DashboardService
     private function getBookingDestination($inv): string
     {
         $firstItem = $inv->items->first();
-        if ($firstItem && $firstItem->service) {
-            return $firstItem->service->name;
+        if ($firstItem) {
+            return $firstItem->item_name ?? $firstItem->service?->name ?? 'N/A';
         }
         return $inv->getRawOriginal('notes') ?? 'N/A';
     }

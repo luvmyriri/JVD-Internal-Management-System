@@ -53,6 +53,11 @@ class BillingController extends Controller
         return $this->service->updateService($request, $id);
     }
 
+    public function uploadServiceImage(Request $request)
+    {
+        return $this->service->uploadServiceImage($request);
+    }
+
     public function deleteService($id)
     {
         return $this->service->deleteService($id);

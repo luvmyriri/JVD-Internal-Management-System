@@ -15,6 +15,13 @@ import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation'
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import FixedPackages from './pages/sales/FixedPackages';
+import FixedPackageCheckout from './pages/sales/FixedPackageCheckout';
+import Sales from './pages/sales/Sales';
+import JoinerDepartures from './pages/sales/JoinerDepartures';
+import JoinerCheckout from './pages/sales/JoinerCheckout';
+import JoinerDepartureDetail from './pages/sales/JoinerDepartureDetail';
+import CharterSales from './pages/sales/CharterSales';
+import EducationalTours from './pages/sales/EducationalTours';
 import CustomTransactions from './pages/sales/CustomTransactions';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
@@ -161,9 +168,16 @@ export default function App() {
                 <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
 
                 {/* Sales */}
-                <Route path="/sales" element={<Navigate to="/sales/fixed-packages" replace />} />
+                <Route path="/sales" element={<Sales />} />
+                <Route path="/sales/departures" element={<JoinerDepartures />} />
+                <Route path="/sales/departures/:departureId" element={<JoinerDepartureDetail />} />
+                <Route path="/sales/joiners/checkout" element={<JoinerCheckout />} />
+                <Route path="/sales/charters" element={<CharterSales />} />
+                <Route path="/sales/educational-tours" element={<EducationalTours />} />
                 <Route path="/sales/fixed-packages" element={<FixedPackages />} />
+                <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
                 <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
+                <Route path="/sales/orders" element={<Navigate to="/sales/custom-transactions" replace />} />
 
                 {/* Travel Assistance */}
                 <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />

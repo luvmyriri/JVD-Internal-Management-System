@@ -6,6 +6,7 @@ use App\Exceptions\MaxPaxExceededException;
 use App\Http\Controllers\Controller;
 use App\Services\ContractPdfService;
 use App\Services\InvoiceFinalizationService;
+use App\Services\SalesOrderService;
 use App\Mail\ContractSentForSignatureMail;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
@@ -22,6 +23,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ContractController extends Controller
 {
@@ -89,8 +91,22 @@ class ContractController extends Controller
                 $validated['customer_address'] ?? null
             );
 
+            $finalizer->assertPassportCasesCanBeBilled(
+                collect($validated['items'])->pluck('passport_case_id')->all(),
+                $customerId,
+                null,
+                data_get($validated, 'custom_transaction_detail.passport_case_id')
+            );
+
             $paymentType = $validated['payment_type'] ?? 'full';
             $amountReceived = (float) ($validated['amount_received'] ?? 0);
+
+            $finalizer->assertPaymentAmounts(
+                $validated['payment_method'],
+                $paymentType,
+                $calc['totalAmount'],
+                $amountReceived
+            );
 
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
@@ -117,7 +133,8 @@ class ContractController extends Controller
 
             // Booking-specific fields live on the Booking model, not the Invoice (strict mode
             // rejects them on Invoice). Mirror BillingService::store's invoice→booking split.
-            \App\Models\Booking::create([
+            $salesOrders = app(SalesOrderService::class);
+            $legacyBookingAttributes = [
                 'invoice_id' => $invoice->id,
                 'bus_id' => $validated['bus_id'] ?? null,
                 'driver_id' => $validated['driver_id'] ?? null,
@@ -128,17 +145,30 @@ class ContractController extends Controller
                 'pickup_location' => $validated['pickup_location'] ?? null,
                 'tour_code' => $validated['tour_code'] ?? null,
                 'pax_count' => $validated['pax_count'] ?? null,
-            ]);
+            ];
+
+            // Contract drafts keep legacy Booking only for non-typed lines that actually
+            // use the old top-level booking fields. Typed lines retain sole ownership.
+            if ($salesOrders->shouldCreateLegacyBooking($calc['processedItems'], $legacyBookingAttributes)) {
+                \App\Models\Booking::create($legacyBookingAttributes);
+            }
 
             foreach ($calc['processedItems'] as $pItem) {
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'service_id' => $pItem['service_id'],
+                    'passport_case_id' => $pItem['passport_case_id'],
+                    'item_name' => $pItem['item_name'],
+                    'service_type' => $pItem['service_type'],
+                    'item_description' => $pItem['item_description'],
+                    'item_metadata' => $pItem['item_metadata'],
                     'quantity' => $pItem['quantity'],
                     'unit_price' => $pItem['unit_price'],
                     'total_price' => $pItem['total_price'],
                     'adults' => $pItem['adults'],
                     'children' => $pItem['children'],
+                    'adult_price' => $pItem['adult_price'],
+                    'child_price' => $pItem['child_price'],
                 ]);
             }
 
@@ -174,6 +204,13 @@ class ContractController extends Controller
                 'message' => 'Contract draft created.',
                 'data' => $contract->load(['invoice.items.service', 'invoice.itineraries', 'invoice.passengers']),
             ], 201);
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'The contract details could not be validated.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed to create contract draft.', 'error' => $e->getMessage()], 500);
@@ -281,6 +318,13 @@ class ContractController extends Controller
 
         DB::beginTransaction();
         try {
+            $finalizer->assertPassportCasesCanBeBilled(
+                $invoice->items->pluck('passport_case_id')->all(),
+                $invoice->customer_id,
+                $invoice->id,
+                $invoice->customTransactionDetail?->passport_case_id
+            );
+
             $contract->update([
                 'status' => 'signed',
                 'signature_image' => $validated['signature_image'],
@@ -291,14 +335,30 @@ class ContractController extends Controller
             ]);
 
             $processedItems = $invoice->items->map(fn ($i) => [
-                'service_id' => $i->service_id, 'quantity' => $i->quantity, 'unit_price' => $i->unit_price,
+                'service_id' => $i->service_id, 'passport_case_id' => $i->passport_case_id,
+                'quantity' => $i->quantity, 'unit_price' => $i->unit_price,
                 'total_price' => $i->total_price, 'adults' => $i->adults, 'children' => $i->children,
+                'adult_price' => $i->adult_price, 'child_price' => $i->child_price,
+                'item_name' => $i->item_name, 'service_type' => $i->service_type,
+                'item_description' => $i->item_description, 'item_metadata' => $i->item_metadata,
             ])->all();
 
             $invoice = $finalizer->finalizeWithinTransaction($invoice, $processedItems);
             $invoice->update(['contract_gate_status' => 'signed']);
 
+            $salesOrders = app(SalesOrderService::class);
+            if ($salesOrders->hasTypedCapturePayload($processedItems)) {
+                $salesOrders->captureInvoice($invoice, $request->user()?->id ?? $invoice->created_by);
+            }
+
             DB::commit();
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'The contract details could not be validated.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed to record signature.', 'error' => $e->getMessage()], 500);
@@ -309,7 +369,7 @@ class ContractController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Contract signed at counter.',
-            'data' => (new \App\Http\Resources\InvoiceResource($invoice->load(['items.service', 'booking.driver'])))->resolve(),
+            'data' => (new \App\Http\Resources\InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve(),
         ]);
     }
 

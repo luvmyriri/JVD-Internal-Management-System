@@ -10,7 +10,7 @@ class Bus extends Model
     use HasFactory;
 
     protected $fillable = [
-        'plate_number', 'model', 'bus_category', 'seating_capacity', 'status',
+        'plate_number', 'model', 'vehicle_type', 'bus_category', 'seating_capacity', 'status',
         'total_mileage', 'last_service_date', 'next_service_due', 'assigned_driver',
         'custom_seats',
     ];

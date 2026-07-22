@@ -13,7 +13,7 @@ class CustomTransactionDetail extends Model
     protected $table = 'custom_transaction_details';
 
     protected $fillable = [
-        'invoice_id', 'category',
+        'invoice_id', 'passport_case_id', 'category',
         'vehicle_type', 'route', 'rental_days', 'plate_number',
         'inclusion_driver', 'inclusion_fuel', 'inclusion_toll', 'inclusion_insurance',
         'school_name', 'grade_level', 'expected_pax', 'itinerary_stops',
@@ -38,5 +38,10 @@ class CustomTransactionDetail extends Model
     public function invoice(): BelongsTo
     {
         return $this->belongsTo(Invoice::class);
+    }
+
+    public function passportCase(): BelongsTo
+    {
+        return $this->belongsTo(PassportCase::class);
     }
 }

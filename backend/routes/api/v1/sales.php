@@ -3,14 +3,56 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Sales\CatalogController;
 use App\Http\Controllers\Sales\SalesQuotationController;
+use App\Http\Controllers\Sales\JoinerDepartureController;
+use App\Http\Controllers\Sales\CharterController;
+use App\Http\Controllers\Sales\EducationalTourController;
+use App\Http\Controllers\Sales\SalesOrderController;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sales')->group(function () {
         Route::get('/catalog', [CatalogController::class, 'index'])->name('sales.catalog');
+        Route::get('/joiner-departures', [JoinerDepartureController::class, 'index'])->name('sales.joiner-departures.index');
+        Route::get('/joiner-departures/{departure}', [JoinerDepartureController::class, 'show'])->name('sales.joiner-departures.show');
+        Route::get('/joiner-departure-resources', [JoinerDepartureController::class, 'resources'])->name('sales.joiner-departures.resources');
+        Route::get('/joiner-departures/{departure}/manifest', [JoinerDepartureController::class, 'manifest'])->name('sales.joiner-departures.manifest');
+        Route::get('/charter-rate-plans', [CharterController::class, 'ratePlans'])->name('sales.charters.rate-plans');
+        Route::get('/charter-bookings', [CharterController::class, 'bookings'])->name('sales.charters.bookings');
+        Route::get('/charter-bookings/{booking}/confirmation', [CharterController::class, 'confirmation'])->name('sales.charters.confirmation');
+        Route::get('/charter-bookings/{booking}/dispatch-sheet', [CharterController::class, 'dispatchSheet'])->name('sales.charters.dispatch');
+        Route::get('/charter-resources', [CharterController::class, 'resources'])->name('sales.charters.resources');
+        Route::post('/charter-quote', [CharterController::class, 'quote'])->name('sales.charters.quote');
+        Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
+        Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
+        Route::get('/educational-bookings/{booking}/manifest', [EducationalTourController::class, 'manifest'])->name('sales.educational.manifest');
+        Route::get('/educational-resources', [EducationalTourController::class, 'resources'])->name('sales.educational.resources');
+        Route::post('/educational-quote', [EducationalTourController::class, 'quote'])->name('sales.educational.quote');
+        Route::get('/orders', [SalesOrderController::class, 'index'])->name('sales.orders.index');
+        Route::get('/orders/{order}', [SalesOrderController::class, 'show'])->name('sales.orders.show');
 
         // Customer-facing quotations (write access — sales roles).
         Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:create')->group(function () {
             Route::post('/quotations', [SalesQuotationController::class, 'store'])->name('sales.quotations.store');
+            Route::post('/joiner-departures', [JoinerDepartureController::class, 'store'])->name('sales.joiner-departures.store');
+            Route::post('/joiner-departures/{departure}/holds', [JoinerDepartureController::class, 'hold'])->name('sales.joiner-departures.hold');
+            Route::post('/joiner-reservations/{reservation}/confirm', [JoinerDepartureController::class, 'confirm'])->name('sales.joiner-reservations.confirm');
+            Route::post('/charter-rate-plans', [CharterController::class, 'storeRatePlan'])->name('sales.charters.rate-plans.store');
+            Route::post('/charter-bookings', [CharterController::class, 'storeBooking'])->name('sales.charters.bookings.store');
+            Route::post('/educational-programs', [EducationalTourController::class, 'storeProgram'])->name('sales.educational.programs.store');
+            Route::post('/educational-bookings', [EducationalTourController::class, 'storeBooking'])->name('sales.educational.bookings.store');
+            Route::post('/orders', [SalesOrderController::class, 'store'])->name('sales.orders.store');
+            Route::post('/orders/{order}/items', [SalesOrderController::class, 'addItem'])->name('sales.orders.items.store');
+            Route::delete('/orders/{order}/items/{item}', [SalesOrderController::class, 'removeItem'])->name('sales.orders.items.destroy');
+            Route::post('/orders/{order}/quote', [SalesOrderController::class, 'quote'])->name('sales.orders.quote');
+            Route::post('/orders/{order}/confirm', [SalesOrderController::class, 'confirm'])->name('sales.orders.confirm');
+            Route::post('/orders/{order}/adjustments', [SalesOrderController::class, 'requestAdjustment'])->name('sales.orders.adjustments.store');
+        });
+
+        Route::middleware('role:super_admin,executive_vice_president,accounting_executive|sales:edit')->group(function () {
+            Route::post('/order-adjustments/{adjustment}/approve', [SalesOrderController::class, 'approveAdjustment'])->name('sales.adjustments.approve');
+            Route::post('/order-adjustments/{adjustment}/reject', [SalesOrderController::class, 'rejectAdjustment'])->name('sales.adjustments.reject');
+            Route::post('/credit-notes/{creditNote}/refunds', [SalesOrderController::class, 'requestRefund'])->name('sales.refunds.store');
+            Route::post('/refunds/{refund}/approve', [SalesOrderController::class, 'approveRefund'])->name('sales.refunds.approve');
+            Route::post('/refunds/{refund}/process', [SalesOrderController::class, 'processRefund'])->name('sales.refunds.process');
         });
     });
 });

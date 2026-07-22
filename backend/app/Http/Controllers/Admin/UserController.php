@@ -102,6 +102,7 @@ class UserController extends Controller
         $userData = [
             'employee_id' => $employeeId,
             'email' => $request->email,
+            'phone' => $request->phone,
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
             'role' => $request->role,

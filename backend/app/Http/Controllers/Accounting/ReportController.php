@@ -86,7 +86,7 @@ class ReportController extends Controller
 
         // Service Category Breakdown (Dynamic filtering based on range)
         $categoryQuery = DB::table('invoice_items')
-            ->join('services', 'invoice_items.service_id', '=', 'services.id')
+            ->leftJoin('services', 'invoice_items.service_id', '=', 'services.id')
             ->join('invoices', 'invoice_items.invoice_id', '=', 'invoices.id')
             ->whereIn('invoices.status', ['paid', 'partial']);
 
@@ -94,8 +94,9 @@ class ReportController extends Controller
             $categoryQuery->where('invoices.created_at', '>=', $startDate);
         }
 
-        $categories = $categoryQuery->select('services.category', DB::raw('SUM(invoice_items.total_price) as total'))
-            ->groupBy('services.category')
+        $categoryExpression = "COALESCE(services.category, invoice_items.service_type, 'Custom arrangement')";
+        $categories = $categoryQuery->selectRaw("{$categoryExpression} as category, SUM(invoice_items.total_price) as total")
+            ->groupByRaw($categoryExpression)
             ->get();
 
         return response()->json([

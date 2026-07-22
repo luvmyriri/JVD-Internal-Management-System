@@ -29,6 +29,7 @@ use App\Http\Controllers\CashBudgetRequestController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\HealthController;
 
 
 
@@ -47,6 +48,7 @@ use App\Http\Controllers\PayrollController;
 
 // ──────────────────────────────────────────
 // PUBLIC (unauthenticated) routes
+Route::get('/health/readiness', [HealthController::class, 'readiness'])->middleware('throttle:30,1')->name('health.readiness');
 // ──────────────────────────────────────────
 Route::prefix('auth')->group(function () {
     Route::post('/login',      [AuthController::class, 'login'])->name('auth.login');
@@ -189,4 +191,3 @@ Route::get('/public/conflict-check', function (\Illuminate\Http\Request $request
         ] : null,
     ]);
 });
-

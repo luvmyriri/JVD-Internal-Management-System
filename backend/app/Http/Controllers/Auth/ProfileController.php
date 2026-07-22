@@ -22,7 +22,7 @@ class ProfileController extends Controller
 
 
 
-        $user->update($request->only('first_name', 'last_name', 'email'));
+        $user->update($request->only('first_name', 'last_name', 'email', 'phone'));
 
         return response()->json([
             'success' => true,

@@ -100,7 +100,11 @@ class LedgerService
             ['code' => '2100', 'name' => 'Due to Employees', 'type' => 'liability'],       // For over-liquidations
             ['code' => '2200', 'name' => 'Accrued Payroll', 'type' => 'liability'],         // Net pay owed to staff
             ['code' => '2300', 'name' => 'Tax/Deductions Payable', 'type' => 'liability'],  // BIR withholding tax
+            ['code' => '2400', 'name' => 'Output VAT Payable', 'type' => 'liability'],
+            ['code' => '2500', 'name' => 'Customer Refunds Payable', 'type' => 'liability'],
+            ['code' => '3000', 'name' => "Owner's Equity", 'type' => 'equity'],
             ['code' => '4000', 'name' => 'Service Revenue', 'type' => 'revenue'],
+            ['code' => '4050', 'name' => 'Sales Returns and Allowances', 'type' => 'revenue'],
             ['code' => '5000', 'name' => 'Fuel Expense', 'type' => 'expense'],
             ['code' => '5100', 'name' => 'Toll Expense', 'type' => 'expense'],
             ['code' => '5200', 'name' => 'Meals Expense', 'type' => 'expense'],

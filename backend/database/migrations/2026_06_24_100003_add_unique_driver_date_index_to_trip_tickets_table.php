@@ -9,10 +9,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (DB::connection()->getDriverName() === 'pgsql') {
-            DB::statement("CREATE UNIQUE INDEX trip_tickets_driver_date_active_unique ON trip_tickets (driver_id, date_of_travel) WHERE status != 'cancelled'");
-            DB::statement("CREATE UNIQUE INDEX trip_tickets_bus_date_active_unique ON trip_tickets (bus_id, date_of_travel) WHERE status != 'cancelled'");
-        }
+        // Strict single-bus/driver unique indexes dropped to support joiner/package partial seat bookings
     }
 
     public function down(): void

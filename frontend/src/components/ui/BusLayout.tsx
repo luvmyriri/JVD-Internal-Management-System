@@ -223,15 +223,21 @@ export default function BusLayout({
     active: true,
   }));
 
+  const cleanNum = (val: string) => String(val || '').trim().replace(/^S/i, '');
+
   const baseSeats = seats && seats.length > 0 ? seats : defaultSeats;
 
   // When POS selection props are provided, build seats by overlaying statuses onto baseSeats
   const posSeats: SeatInfo[] = (selectedSeats.length > 0 || occupiedSeats.length > 0 || onSeatToggle)
     ? baseSeats.map((seat) => {
         let status: SeatStatus = seat.status;
-        if (occupiedSeats.includes(seat.number)) {
+        const normNum = cleanNum(seat.number);
+        const normOccupied = occupiedSeats.map(cleanNum);
+        const normSelected = selectedSeats.map(cleanNum);
+
+        if (normOccupied.includes(normNum)) {
           status = 'occupied';
-        } else if (selectedSeats.includes(seat.number)) {
+        } else if (normSelected.includes(normNum)) {
           status = 'selected';
         } else if (status === 'selected' || status === 'occupied') {
           status = 'available';
@@ -248,14 +254,14 @@ export default function BusLayout({
     const foundById = activeSeats.find(s => s.id === `seat-${n}`);
     if (foundById) return foundById;
     // Fallback search by number
-    const foundByNum = activeSeats.find(s => s.number === String(n));
+    const foundByNum = activeSeats.find(s => cleanNum(s.number) === String(n));
     if (foundByNum) return foundByNum;
     return { id: `seat-${n}`, number: String(n), status: 'available', active: true };
   };
 
   // Wrap onSeatToggle into onSeatClick interface
   const handleSeatClick = onSeatToggle
-    ? (seat: SeatInfo) => onSeatToggle(seat.number)
+    ? (seat: SeatInfo) => onSeatToggle(cleanNum(seat.number))
     : onSeatClick;
 
   const columns = buildColumns(actualTotal, hasRestroom || false);
@@ -269,7 +275,7 @@ export default function BusLayout({
   const frontSize = compact ? 'w-7 h-8' : 'w-10 h-[2.75rem]';
 
   return (
-    <div className={`flex flex-col items-start bg-gray-50 dark:bg-gray-900 p-4 rounded-[2rem] shadow-inner w-full ${className}`}>
+    <div className={`flex flex-col items-center bg-gray-50 dark:bg-gray-900 p-4 rounded-[2rem] shadow-inner w-full ${className}`}>
 
       {/* ── Legend ── */}
       {!compact && (
@@ -295,7 +301,7 @@ export default function BusLayout({
       )}
 
       {/* ── Bus Shell ── */}
-      <div className="w-full overflow-x-auto pb-2">
+      <div className="w-full flex justify-center overflow-x-auto pb-2">
         <div
           className="relative bg-white dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-700 shadow-xl"
           style={{ borderRadius: '3rem', padding: compact ? '1rem 1.25rem' : '1.5rem 1.75rem', minWidth: 'max-content' }}

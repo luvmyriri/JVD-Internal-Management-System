@@ -163,6 +163,16 @@ export default function UserFormModal({
           {errors.email && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.email.message as string}</p>}
         </div>
 
+        <div className="space-y-2">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Mobile / Contact Number</label>
+          <input
+            {...register('phone', { pattern: { value: /^[0-9+()\-\s]*$/, message: 'Enter a valid contact number' } })}
+            className={cn("w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20", errors.phone && "border-red-300 bg-red-50/30")}
+            placeholder="e.g. 0917 123 4567"
+          />
+          {errors.phone && <p className="text-[10px] font-bold text-red-500 ml-1">{errors.phone.message as string}</p>}
+        </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">System Role</label>

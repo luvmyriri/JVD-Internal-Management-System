@@ -4,6 +4,13 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
+$tempDir = __DIR__ . '/../storage/app/temp';
+if (!is_dir($tempDir)) {
+    @mkdir($tempDir, 0777, true);
+}
+@ini_set('upload_tmp_dir', $tempDir);
+@ini_set('sys_temp_dir', $tempDir);
+
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
@@ -33,6 +40,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // Apply audit logging to all API routes
         $middleware->api(append: [
+            \App\Http\Middleware\SecurityHeaders::class,
             \App\Http\Middleware\AuditLogger::class,
             \App\Http\Middleware\TrackUserOnlineStatus::class,
         ]);

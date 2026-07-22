@@ -184,6 +184,16 @@ class BusController extends Controller
             ->select('pms_schedules.*')
             ->get();
 
+        // Sales reservations use the same allocation ledger as operations. Trip tickets
+        // are already represented by travels above, so omit them here to avoid duplicates.
+        $allocations = \App\Models\ResourceAllocation::where('bus_id', $bus->id)
+            ->where('source_type', '!=', \App\Models\TripTicket::class)
+            ->whereNotIn('status', ['cancelled', 'completed'])
+            ->where('starts_at', '<=', $end)
+            ->where('ends_at', '>=', $start)
+            ->orderBy('starts_at')
+            ->get();
+
         $entries = [];
 
         foreach ($travels as $row) {
@@ -235,6 +245,11 @@ class BusController extends Controller
             } elseif ($row->reference_type === 'trip_ticket') {
                 $tt = \App\Models\TripTicket::find($row->reference_id);
                 if ($tt) {
+                    $seatMap = null;
+                    if ($tt->invoice_id) {
+                        $booking = \App\Models\Booking::where('invoice_id', $tt->invoice_id)->first();
+                        $seatMap = $booking?->seat_map;
+                    }
                     $entries[] = [
                         'date'         => $row->travel_date,
                         'type'         => 'trip_ticket',
@@ -245,7 +260,7 @@ class BusController extends Controller
                         'drop_off'     => $tt->drop_off,
                         'pax'          => $tt->no_of_passengers,
                         'status'       => $tt->status,
-                        'seat_map'     => null,
+                        'seat_map'     => $seatMap,
                     ];
                 }
             }
@@ -276,6 +291,20 @@ class BusController extends Controller
             ];
         }
 
+        foreach ($allocations as $allocation) {
+            $entries[] = [
+                'date' => $allocation->starts_at->toDateString(),
+                'type' => 'resource_allocation',
+                'reference_id' => $allocation->source_id,
+                'reference_no' => $allocation->reference ?? class_basename($allocation->source_type),
+                'status' => $allocation->status,
+                'description' => class_basename($allocation->source_type) . ' reservation',
+                'starts_at' => $allocation->starts_at->toIso8601String(),
+                'ends_at' => $allocation->ends_at->toIso8601String(),
+                'seat_map' => null,
+            ];
+        }
+
         // Sort by date
         usort($entries, fn($a, $b) => strcmp($a['date'], $b['date']));
 
@@ -295,4 +324,3 @@ class BusController extends Controller
         ]);
     }
 }
-

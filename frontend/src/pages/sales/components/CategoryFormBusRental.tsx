@@ -127,9 +127,13 @@ export default function CategoryFormBusRental({ value, onChange, buses, drivers,
               totalSeats={buses.find((b: any) => b.id === value.busId)?.seating_capacity || 49}
               selectedSeats={value.selectedSeats}
               occupiedSeats={occupiedSeats}
-              onSeatToggle={(_seatNum) => {
-                // Read-only for custom Bus Rentals
-                return;
+              onSeatToggle={(seatNum) => {
+                if (occupiedSeats.includes(seatNum)) return;
+                const exists = value.selectedSeats.includes(seatNum);
+                const nextSeats = exists
+                  ? value.selectedSeats.filter(s => s !== seatNum)
+                  : [...value.selectedSeats, seatNum];
+                onChange({ selectedSeats: nextSeats });
               }}
             />
           </div>

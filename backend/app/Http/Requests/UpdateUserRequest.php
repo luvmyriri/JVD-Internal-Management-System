@@ -16,6 +16,7 @@ class UpdateUserRequest extends FormRequest
         return [
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],
+            'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-\s]+$/'],
             'role' => ['sometimes', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],
             'department' => ['nullable', 'string', 'max:100'],
             'custom_permissions' => ['nullable', 'array'],

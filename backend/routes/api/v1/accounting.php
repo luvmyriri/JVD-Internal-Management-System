@@ -29,6 +29,7 @@ use App\Http\Controllers\CashBudgetRequestController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\Accounting\FinancialReadinessController;
 
 Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->group(function () {
     // COLLECTIONS / FINANCE
@@ -55,6 +56,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         // Billing / Reports / Sales
         Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
         Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
+        Route::post('/billing/services/upload-image', [App\Http\Controllers\Accounting\BillingController::class, 'uploadServiceImage'])->name('billing.services.upload-image');
         Route::put('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'updateService'])->name('billing.services.update');
         Route::delete('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'deleteService'])->name('billing.services.delete');
         Route::get('/billing/services/{id}/occupancy', [App\Http\Controllers\Accounting\BillingController::class, 'getServiceOccupancy'])->name('billing.services.occupancy');
@@ -63,6 +65,12 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
             Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
             Route::get('/accounting/reconciliation', [App\Http\Controllers\Accounting\ReportController::class, 'reconciliation'])->name('accounting.reconciliation');
+            Route::get('/accounting/readiness/runs', [FinancialReadinessController::class, 'runs'])->name('accounting.readiness.runs');
+            Route::post('/accounting/readiness/runs', [FinancialReadinessController::class, 'run'])->name('accounting.readiness.run');
+            Route::get('/accounting/opening-balances', [FinancialReadinessController::class, 'batches'])->name('accounting.opening-balances.index');
+            Route::post('/accounting/opening-balances', [FinancialReadinessController::class, 'createBatch'])->name('accounting.opening-balances.store');
+            Route::post('/accounting/opening-balances/{batch}/approve', [FinancialReadinessController::class, 'approveBatch'])->name('accounting.opening-balances.approve');
+            Route::post('/accounting/opening-balances/{batch}/post', [FinancialReadinessController::class, 'postBatch'])->name('accounting.opening-balances.post');
         });
         Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Services\InvoiceFinalizationService;
 use App\Services\NotificationService;
 use App\Services\PortalDocumentService;
+use App\Services\SalesOrderService;
 use App\Mail\DocumentsCompleteMail;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
@@ -13,6 +14,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Public (unauthenticated), token-driven portal serving both document-upload requests
@@ -70,7 +72,19 @@ class CustomerPortalController extends Controller
 
             /** @var Contract $contract */
             $contract = $related instanceof ContractAmendment ? $related->contract : $related;
-            $contract->loadMissing(['invoice.itineraries', 'invoice.passengers', 'invoice.paymentSchedules']);
+            $contract->loadMissing([
+                'invoice.items.service',
+                'invoice.itineraries',
+                'invoice.passengers',
+                'invoice.paymentSchedules',
+                'invoice.joinerReservation.departure.bus',
+                'invoice.joinerReservation.departure.driver',
+                'invoice.joinerReservation.passengers.seat',
+            ]);
+
+            $invoice = $contract->invoice;
+            $joiner = $invoice->joinerReservation;
+            $joinerDeparture = $joiner?->departure;
 
             return response()->json([
                 'success' => true,
@@ -79,13 +93,51 @@ class CustomerPortalController extends Controller
                     'contract_number' => $contract->contract_number,
                     'terms_snapshot' => $related instanceof ContractAmendment ? $related->terms_snapshot : $contract->terms_snapshot,
                     'invoice_summary' => [
-                        'invoice_number' => $contract->invoice->invoice_number,
-                        'total_amount' => $contract->invoice->total_amount,
-                        'customer_name' => $contract->invoice->customer_name,
+                        'invoice_number' => $invoice->invoice_number,
+                        'subtotal' => (float) $invoice->subtotal,
+                        'tax_amount' => (float) $invoice->tax_amount,
+                        'total_amount' => (float) $invoice->total_amount,
+                        'amount_received' => (float) ($invoice->amount_received ?? 0),
+                        'balance' => (float) ($invoice->balance ?? 0),
+                        'customer_name' => $invoice->customer_name,
+                        'items' => $invoice->items->map(fn ($item) => [
+                            'id' => $item->id,
+                            'name' => $item->item_name ?? $item->service?->name ?? 'Travel service',
+                            'service_type' => $item->service_type ?? $item->service?->service_type,
+                            'description' => $item->item_description ?? $item->service?->description,
+                            'quantity' => (int) $item->quantity,
+                            'unit_price' => (float) $item->unit_price,
+                            'total_price' => (float) $item->total_price,
+                            'adults' => $item->adults !== null ? (int) $item->adults : null,
+                            'children' => $item->children !== null ? (int) $item->children : null,
+                            'adult_price' => $item->adult_price !== null ? (float) $item->adult_price : null,
+                            'child_price' => $item->child_price !== null ? (float) $item->child_price : null,
+                        ])->values(),
+                        'joiner_booking' => $joiner && $joinerDeparture ? [
+                            'reference' => $joiner->reference,
+                            'departure_code' => $joinerDeparture->code,
+                            'starts_at' => $joinerDeparture->starts_at?->toISOString(),
+                            'ends_at' => $joinerDeparture->ends_at?->toISOString(),
+                            'pickup_instructions' => $joinerDeparture->pickup_instructions,
+                            'vehicle' => $joinerDeparture->bus ? [
+                                'plate_number' => $joinerDeparture->bus->plate_number,
+                                'model' => $joinerDeparture->bus->model,
+                            ] : null,
+                            'driver' => $joinerDeparture->driver ? [
+                                'name' => trim($joinerDeparture->driver->first_name.' '.$joinerDeparture->driver->last_name),
+                                'phone' => $joinerDeparture->driver->phone,
+                                'email' => $joinerDeparture->driver->email,
+                            ] : null,
+                            'passengers' => $joiner->passengers->map(fn ($passenger) => [
+                                'name' => trim($passenger->first_name.' '.$passenger->last_name),
+                                'passenger_type' => $passenger->passenger_type,
+                                'seat_code' => $passenger->seat?->seat_code,
+                            ])->values(),
+                        ] : null,
                     ],
-                    'itinerary' => $contract->invoice->itineraries,
-                    'passengers' => $contract->invoice->passengers,
-                    'payment_schedule' => $contract->invoice->paymentSchedules,
+                    'itinerary' => $invoice->itineraries,
+                    'passengers' => $invoice->passengers,
+                    'payment_schedule' => $invoice->paymentSchedules,
                     'already_signed' => $portalToken->isConsumed(),
                 ],
             ]);
@@ -165,6 +217,15 @@ class CustomerPortalController extends Controller
 
         DB::beginTransaction();
         try {
+            if (!($related instanceof ContractAmendment)) {
+                $finalizer->assertPassportCasesCanBeBilled(
+                    $invoice->items->pluck('passport_case_id')->all(),
+                    $invoice->customer_id,
+                    $invoice->id,
+                    $invoice->customTransactionDetail?->passport_case_id
+                );
+            }
+
             $signatureData = [
                 'signature_image' => $validated['signature_image'],
                 'signature_typed_name' => $validated['signature_typed_name'],
@@ -180,20 +241,39 @@ class CustomerPortalController extends Controller
                 // Recalculate items from the invoice's persisted items (needed by finalizeWithinTransaction).
                 $processedItems = $invoice->items->map(fn ($i) => [
                     'service_id' => $i->service_id,
+                    'passport_case_id' => $i->passport_case_id,
                     'quantity' => $i->quantity,
                     'unit_price' => $i->unit_price,
                     'total_price' => $i->total_price,
                     'adults' => $i->adults,
                     'children' => $i->children,
+                    'adult_price' => $i->adult_price,
+                    'child_price' => $i->child_price,
+                    'item_name' => $i->item_name,
+                    'service_type' => $i->service_type,
+                    'item_description' => $i->item_description,
+                    'item_metadata' => $i->item_metadata,
                 ])->all();
 
                 $invoice = $finalizer->finalizeWithinTransaction($invoice, $processedItems);
                 $invoice->update(['contract_gate_status' => 'signed']);
+
+                $salesOrders = app(SalesOrderService::class);
+                if ($salesOrders->hasTypedCapturePayload($processedItems)) {
+                    $salesOrders->captureInvoice($invoice, $invoice->created_by);
+                }
             }
 
             $portalToken->update(['consumed_at' => now()]);
 
             DB::commit();
+        } catch (ValidationException $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'The contract details could not be validated.',
+                'errors' => $e->errors(),
+            ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['success' => false, 'message' => 'Failed to record signature.', 'error' => $e->getMessage()], 500);

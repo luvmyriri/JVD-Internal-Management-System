@@ -18,6 +18,7 @@ use App\Http\Controllers\Travel\PassengerController;
 use App\Http\Controllers\Travel\PassportCaseController;
 use App\Http\Controllers\Travel\LegalDocumentController;
 use App\Http\Controllers\Fleet\BusController;
+use App\Http\Controllers\Fleet\DriverAvailabilityController;
 use App\Http\Controllers\Procurement\AccreditationController;
 use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Inventory\InventoryController;
@@ -42,6 +43,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     Route::middleware('role:super_admin,executive_vice_president,logistics_in_charge')->group(function () {
         Route::post('buses',           [BusController::class, 'store'])->name('buses.store');
         Route::put('buses/{bus}',      [BusController::class, 'update'])->name('buses.update');
+        Route::get('driver-unavailability', [DriverAvailabilityController::class, 'index'])->name('driver-unavailability.index');
+        Route::post('driver-unavailability', [DriverAvailabilityController::class, 'store'])->name('driver-unavailability.store');
+        Route::delete('driver-unavailability/{unavailability}', [DriverAvailabilityController::class, 'destroy'])->name('driver-unavailability.destroy');
     });
 
     // Allow Corporate Secretary to assign drivers via patch

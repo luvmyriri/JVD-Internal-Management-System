@@ -23,6 +23,7 @@ export interface PassengerInput {
 
 export interface CustomTransactionDetailInput {
   category: string;
+  passport_case_id?: number;
   vehicle_type?: string;
   route?: string;
   rental_days?: number;
@@ -77,7 +78,7 @@ export interface ContractDraftPayload {
   driver_id?: number | null;
   seat_map?: any;
   notes?: string;
-  items: { service_id: number; quantity: number; unit_price?: number; adults?: number; children?: number; service_date?: string; destination?: string }[];
+  items: { service_id?: number | null; passport_case_id?: number; item_name?: string; service_type?: string; item_description?: string; item_metadata?: Record<string, unknown>; quantity: number; unit_price?: number; adults?: number; children?: number; adult_price?: number; child_price?: number; service_date?: string; destination?: string }[];
   custom_transaction_detail: CustomTransactionDetailInput;
   itinerary?: ItineraryDayInput[];
   passengers?: PassengerInput[];

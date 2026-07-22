@@ -13,6 +13,7 @@ class BusResource extends JsonResource
             'id'                => $this->id,
             'plate_number'      => $this->plate_number,
             'model'             => $this->model,
+            'vehicle_type'      => $this->vehicle_type ?? 'bus',
             'bus_category'      => $this->bus_category,
             'seating_capacity'  => $this->seating_capacity,
             'status'            => $this->status,

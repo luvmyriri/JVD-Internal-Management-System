@@ -11,6 +11,7 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Invoice;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\DocumentPdfService;
 
 class TransactionNotificationMail extends Mailable implements ShouldQueue
 {
@@ -24,12 +25,7 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
      */
     public function __construct(Invoice $invoice)
     {
-        $this->invoice = $invoice->load([
-            'items.service',
-            'booking.bus',
-            'booking.driver',
-            'itineraries',
-        ]);
+        $this->invoice = $invoice->load(Invoice::operationalDocumentRelations());
         
         // Generate ready-to-use GCash payment deep link
         $corporatePhone = '09764711294'; // Standard corporate GCash number
@@ -67,6 +63,7 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
      */
     public function attachments(): array
     {
+        $this->invoice->load(Invoice::operationalDocumentRelations());
         $pdfData = [
             'invoice' => $this->invoice,
             'taxRate' => 0.12,
@@ -74,15 +71,20 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
 
         $attachments = [];
 
-        // 1. Every transaction gets their Receipt/Invoice PDF
-        $invoicePdf = Pdf::loadView('pdf.invoice', $pdfData);
-        $invoiceName = "Receipt_{$this->invoice->invoice_number}.pdf";
+        // Every transaction receives the invoice; a receipt is a separate document
+        // generated only after payment is settled.
+        $documents = app(DocumentPdfService::class);
+        $invoicePdf = $documents->render('pdf.invoice', $pdfData);
+        $invoiceName = "Invoice_{$this->invoice->invoice_number}.pdf";
         $attachments[] = Attachment::fromData(fn () => $invoicePdf->output(), $invoiceName)
             ->withMime('application/pdf');
 
-        // 2. Partial/downpayment transactions also get their SOA Collection Form PDF
-        if ($this->invoice->status !== 'paid') {
-            $soaPdf = Pdf::loadView('pdf.statement_of_account', $pdfData);
+        if ($this->invoice->status === 'paid') {
+            $receiptPdf = $documents->render('pdf.payment-receipt', $pdfData);
+            $attachments[] = Attachment::fromData(fn () => $receiptPdf->output(), "Payment_Receipt_{$this->invoice->invoice_number}.pdf")
+                ->withMime('application/pdf');
+        } else {
+            $soaPdf = $documents->render('pdf.statement_of_account', $pdfData);
             $soaName = "SOA_Collection_Form_{$this->invoice->invoice_number}.pdf";
             $attachments[] = Attachment::fromData(fn () => $soaPdf->output(), $soaName)
                 ->withMime('application/pdf');

@@ -547,6 +547,14 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
   return (
     <Modal isOpen={true} onClose={onClose} title={ticket ? (ticket.status === 'draft' ? "Customize & Approve Trip Ticket" : "Edit Customized DTT") : "New Trip Ticket"} size="xl">
       <form onSubmit={handleSubmit} className="space-y-4 p-2 max-h-[75vh] overflow-y-auto custom-scrollbar">
+        {ticket?.sales_order_item && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
+            <p className="font-black">Sales-synchronized trip</p>
+            <p className="mt-1 text-xs leading-5 opacity-80">
+              Passenger count and travel dates come from {ticket.sales_order_item.title}. Reassigning the vehicle or driver here updates the typed private-tour fulfillment and centralized allocation together.
+            </p>
+          </div>
+        )}
         {/* Section 1: Document Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
           <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
@@ -942,7 +950,10 @@ export default function TripTickets() {
     const matchSearch =
       t.control_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase());
+      t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.invoice?.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.invoice?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.sales_order_item?.title?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchType = tripTypeFilter === 'all' || (t as any).trip_type === tripTypeFilter;
     const travel = (t.date_of_travel ?? '').slice(0, 10);
     const matchDate = (!dateRange.from || travel >= dateRange.from) && (!dateRange.to || travel <= dateRange.to);
@@ -962,6 +973,19 @@ export default function TripTickets() {
       header: 'Travel Date',
       render: (ticket) => (
         <span className="text-gray-600 dark:text-gray-300">{ticket.date_of_travel}</span>
+      ),
+    },
+    {
+      key: 'origin',
+      header: 'Origin',
+      render: (ticket) => ticket.sales_order_item ? (
+        <div>
+          <div className="font-bold text-blue-700 dark:text-blue-300">Sales handoff</div>
+          <div className="text-xs text-gray-500">{ticket.invoice?.invoice_number || ticket.sales_order_item.order?.order_number}</div>
+          <div className="max-w-48 truncate text-xs text-gray-400">{ticket.sales_order_item.title}</div>
+        </div>
+      ) : (
+        <span className="text-xs font-semibold text-gray-500">Manual dispatch</span>
       ),
     },
     {

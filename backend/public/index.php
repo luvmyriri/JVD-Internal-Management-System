@@ -5,6 +5,14 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+@ini_set('display_errors', '0');
+$tempDir = __DIR__ . '/../storage/app/temp';
+if (!is_dir($tempDir)) {
+    @mkdir($tempDir, 0777, true);
+}
+@ini_set('upload_tmp_dir', $tempDir);
+@ini_set('sys_temp_dir', $tempDir);
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
