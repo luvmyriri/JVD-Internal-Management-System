@@ -75,8 +75,8 @@ services:
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
-      - ./backend:/var/www/html:ro
-    command: sh -c "npm install ws && node ws-server.js"
+      - ./backend:/var/www/html
+    command: sh -c "node ws-server.js"
     expose:
       - "6001"
 
