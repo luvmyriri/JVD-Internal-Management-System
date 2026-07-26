@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -11,8 +11,8 @@ RUN apk add --no-cache \
     libpq \
     linux-headers
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_pgsql pgsql pcntl bcmath gd
+# Install PHP extensions (sockets required by spiral/goridge)
+RUN docker-php-ext-install pdo pdo_pgsql pgsql pcntl bcmath gd sockets
 
 # Install Redis extension
 RUN apk add --no-cache pcre-dev $PHPIZE_DEPS \
