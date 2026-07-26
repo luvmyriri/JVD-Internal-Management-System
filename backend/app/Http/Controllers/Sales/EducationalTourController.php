@@ -41,8 +41,14 @@ class EducationalTourController extends Controller
     }
     public function quote(Request $request)
     {
-        $data = $request->validate(['program_id' => ['required', 'exists:educational_tour_programs,id'], 'student_count' => ['required', 'integer', 'min:1'], 'chaperone_count' => ['required', 'integer', 'min:0']]);
-        $pricing = $this->education->calculate(EducationalTourProgram::findOrFail($data['program_id']), $data['student_count'], $data['chaperone_count']);
+        $data = $request->validate([
+            'program_id' => ['required', 'exists:educational_tour_programs,id'],
+            'student_count' => ['required', 'integer', 'min:1'],
+            'tour_guide_count' => ['nullable', 'integer', 'min:0'],
+            'chaperone_count' => ['nullable', 'integer', 'min:0'],
+        ]);
+        $guides = (int) ($data['tour_guide_count'] ?? $data['chaperone_count'] ?? 0);
+        $pricing = $this->education->calculate(EducationalTourProgram::findOrFail($data['program_id']), $data['student_count'], $guides);
         $taxRate = (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
         return response()->json(['data' => [...$pricing, 'tax_rate' => $taxRate, 'tax_amount' => round($pricing['subtotal'] * $taxRate, 2), 'total' => round($pricing['subtotal'] * (1 + $taxRate), 2)]]);
     }

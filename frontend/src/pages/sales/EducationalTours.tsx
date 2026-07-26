@@ -1,12 +1,17 @@
 import { useState, useMemo, useEffect } from 'react';
-import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, FileText, GraduationCap, Plus, Route, School, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bus, CheckCircle2, GraduationCap, Plus, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { educationalTourApi } from '../../api/educationalTours';
 import { Button, Modal } from '../../components/ds';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
+import SeatSelectorModal, { type SeatSelectionResult, type VehicleBookingMode } from '../../components/travel/SeatSelectorModal';
+import PassengerManifestModal, { type PassengerManifestRow } from '../../components/travel/PassengerManifestModal';
+import ProposedTripBudgetCard, { type BudgetLineItem } from '../../components/travel/ProposedTripBudgetCard';
+import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
+import ItineraryBuilder from './components/ItineraryBuilder';
+import type { ItineraryDayInput } from '../../api/contracts';
 
 type Assignment = { bus_id: string; driver_id: string; planned_passengers: string };
 
@@ -17,8 +22,39 @@ const getTomorrowStartEnd = () => {
   return { starts_at: `${dateStr}T08:00`, ends_at: `${dateStr}T17:00` };
 };
 
-const initialBooking = { program_id: '', school_name: 'St. Jude Academy', contact_person: 'Maria Santos', contact_email: 'maria.santos@stjude.edu.ph', contact_number: '09171234567', grade_level: 'Grade 10', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'St. Jude Main Campus', stops: '', student_count: '45', chaperone_count: '3', operations_notes: '', payment_method: 'Cash', payment_type: 'full', amount_received: '' };
-const initialProgram = { name: '', learning_objectives: '', default_stops: '', minimum_students: '20', students_per_chaperone: '20', students_per_free_chaperone: '20', student_price: '', additional_chaperone_price: '0', includes_meals: true, includes_coordinator: true, includes_insurance: true, includes_shirt: false };
+const initialBooking = {
+  program_id: '',
+  school_name: 'St. Jude Academy',
+  contact_person: 'Maria Santos',
+  contact_email: 'maria.santos@stjude.edu.ph',
+  contact_number: '09171234567',
+  grade_level: 'Grade 10',
+  starts_at: getTomorrowStartEnd().starts_at,
+  ends_at: getTomorrowStartEnd().ends_at,
+  pickup_location: 'St. Jude Main Campus',
+  stops: '',
+  student_count: '45',
+  tour_guide_count: '3',
+  operations_notes: '',
+  payment_method: 'Cash',
+  payment_type: 'full',
+  amount_received: '',
+};
+
+const initialProgram = {
+  name: '',
+  learning_objectives: '',
+  default_stops: '',
+  minimum_students: '20',
+  students_per_chaperone: '20',
+  students_per_free_chaperone: '20',
+  student_price: '',
+  additional_chaperone_price: '0',
+  includes_meals: true,
+  includes_coordinator: true,
+  includes_insurance: true,
+  includes_shirt: false,
+};
 
 export default function EducationalTours() {
   const navigate = useNavigate();
@@ -27,8 +63,34 @@ export default function EducationalTours() {
   const [assignments, setAssignments] = useState<Assignment[]>([{ bus_id: '', driver_id: '', planned_passengers: '48' }]);
   const [programForm, setProgramForm] = useState(initialProgram);
   const [programOpen, setProgramOpen] = useState(false);
+  const [seatModalOpen, setSeatModalOpen] = useState(false);
+  const [manifestModalOpen, setManifestModalOpen] = useState(false);
+  const [manifestPassengers, setManifestPassengers] = useState<PassengerManifestRow[]>([]);
+  const [bookingMode, setBookingMode] = useState<VehicleBookingMode>('entire_vehicle');
+  const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
+  const [inclusions, setInclusions] = useState<string[]>([
+    'Dedicated Aircon Tourist Bus Transportation',
+    'All Museum Entrance Tickets & Activity Passes',
+    'Student Plated Lunch Box & Bottled Water',
+    'Tour Coordinators & First Aid Personnel',
+    'Comprehensive Student Accident Insurance',
+  ]);
+  const [exclusions, setExclusions] = useState<string[]>([
+    'Personal Souvenir Shopping',
+    'Snacks outside prescribed meal plan',
+  ]);
+  const [itinerary, setItinerary] = useState<ItineraryDayInput[]>([
+    {
+      day_number: 1,
+      date: getTomorrowStartEnd().starts_at.slice(0, 10),
+      location: 'Metro Manila Educational Circuit',
+      activity_description: '07:00 AM Departure -> 09:00 AM Science Museum -> 12:00 PM Lunch -> 01:30 PM Heritage Exhibit -> 04:30 PM Return Trip.',
+      meal_plan: 'Plated Lunch Box Included',
+      accommodation_name: 'N/A (Day Tour)',
+    }
+  ]);
+
   const { data: programs = [] } = useQuery({ queryKey: ['educational-programs'], queryFn: educationalTourApi.programs });
-  const { data: recent = [] } = useQuery({ queryKey: ['educational-bookings'], queryFn: educationalTourApi.bookings });
 
   // Auto-select first program if none selected
   useEffect(() => {
@@ -40,9 +102,8 @@ export default function EducationalTours() {
 
   const validInterval = Boolean(booking.starts_at && booking.ends_at && booking.ends_at > booking.starts_at);
   const { data: resources } = useQuery({ queryKey: ['educational-resources', booking.starts_at, booking.ends_at], queryFn: () => educationalTourApi.resources(booking.starts_at, booking.ends_at), enabled: validInterval });
-  const { data: pricing, error: pricingError } = useQuery({ queryKey: ['educational-quote', booking.program_id, booking.student_count, booking.chaperone_count], queryFn: () => educationalTourApi.quote(Number(booking.program_id), Number(booking.student_count), Number(booking.chaperone_count)), enabled: Boolean(booking.program_id && booking.student_count) });
-  const travelers = Number(booking.student_count || 0) + Number(booking.chaperone_count || 0);
-  const allocated = assignments.reduce((sum, item) => sum + Number(item.planned_passengers || 0), 0);
+  const { data: pricing } = useQuery({ queryKey: ['educational-quote', booking.program_id, booking.student_count, booking.tour_guide_count], queryFn: () => educationalTourApi.quote(Number(booking.program_id), Number(booking.student_count), Number(booking.tour_guide_count)), enabled: Boolean(booking.program_id && booking.student_count) });
+  const travelers = Number(booking.student_count || 0) + Number(booking.tour_guide_count || 0);
 
   const selectedProgram = programs.find(p => p.id === Number(booking.program_id));
 
@@ -61,7 +122,43 @@ export default function EducationalTours() {
     }
   }, [resources, assignments, travelers]);
 
-  const createProgram = useMutation({ mutationFn: () => educationalTourApi.createProgram({ ...programForm, default_stops: programForm.default_stops.split('\n').map(stop => stop.trim()).filter(Boolean), minimum_students: Number(programForm.minimum_students), students_per_chaperone: Number(programForm.students_per_chaperone), students_per_free_chaperone: Number(programForm.students_per_free_chaperone), student_price: Number(programForm.student_price), additional_chaperone_price: Number(programForm.additional_chaperone_price) }), onSuccess: async created => { await queryClient.invalidateQueries({ queryKey: ['educational-programs'] }); setBooking(current => ({ ...current, program_id: String(created.id), stops: created.default_stops.join('\n') })); setProgramOpen(false); setProgramForm(initialProgram); toast.success('Educational program created and selected'); }, onError: (error: any) => { const errors = error?.response?.data?.errors as Record<string, string[]> | undefined; toast.error(errors ? Object.values(errors)[0]?.[0] : error?.response?.data?.message ?? 'Program could not be created'); } });
+  const handleSeatConfirm = (result: SeatSelectionResult) => {
+    setBookingMode(result.bookingMode);
+    setSelectedSeats(result.selectedSeats);
+    if (result.busId) {
+      setAssignments(prev => prev.map((item, idx) => idx === 0 ? {
+        ...item,
+        bus_id: String(result.busId),
+        driver_id: result.driverId ? String(result.driverId) : item.driver_id,
+        planned_passengers: String(result.paxCount),
+      } : item));
+    }
+    toast.success(`Vehicle seat option selected (${result.bookingMode === 'entire_vehicle' ? 'Entire Bus' : `${result.selectedSeats.length} seats`})`);
+  };
+
+  const createProgram = useMutation({
+    mutationFn: () =>
+      educationalTourApi.createProgram({
+        ...programForm,
+        default_stops: programForm.default_stops.split('\n').map(stop => stop.trim()).filter(Boolean),
+        minimum_students: Number(programForm.minimum_students),
+        students_per_chaperone: Number(programForm.students_per_chaperone),
+        students_per_free_chaperone: Number(programForm.students_per_free_chaperone),
+        student_price: Number(programForm.student_price),
+        additional_chaperone_price: Number(programForm.additional_chaperone_price),
+      }),
+    onSuccess: async created => {
+      await queryClient.invalidateQueries({ queryKey: ['educational-programs'] });
+      setBooking(current => ({ ...current, program_id: String(created.id), stops: created.default_stops.join('\n') }));
+      setProgramOpen(false);
+      setProgramForm(initialProgram);
+      toast.success('Educational program created and selected');
+    },
+    onError: (error: any) => {
+      const errors = error?.response?.data?.errors as Record<string, string[]> | undefined;
+      toast.error(errors ? Object.values(errors)[0]?.[0] : error?.response?.data?.message ?? 'Program could not be created');
+    },
+  });
 
   // Uniform Cart item construction matching Custom Transactions
   const cart: CartItem[] = useMemo(() => {
@@ -83,6 +180,7 @@ export default function EducationalTours() {
       quantityLocked: true,
       customPrice: subtotal,
       busId: primaryBusId,
+      selectedSeats: selectedSeats.length > 0 ? selectedSeats : undefined,
       driverId: primaryDriverId,
       travelDate: booking.starts_at ? booking.starts_at.slice(0, 10) : undefined,
       departureDate: booking.starts_at,
@@ -90,10 +188,12 @@ export default function EducationalTours() {
       pickupLocation: booking.pickup_location || 'School Pickup Point',
       destination: selectedProgram.name,
       paxCount: travelers,
+      passengers: manifestPassengers,
       lineName: `Educational Tour: ${booking.school_name || 'School Group'} (${selectedProgram.name})`,
-      lineDescription: `School: ${booking.school_name || 'School'}. Grade: ${booking.grade_level || 'General'}. Students: ${booking.student_count}. Chaperones: ${booking.chaperone_count}. Pickup: ${booking.pickup_location || 'TBD'}. Allocated: ${allocated}/${travelers} travelers across ${assignments.length} vehicle(s).`,
+      lineDescription: `School: ${booking.school_name || 'School'}. Grade: ${booking.grade_level || 'General'}. Students: ${booking.student_count}. Tour Guides: ${booking.tour_guide_count}. Pickup: ${booking.pickup_location || 'TBD'}. Option: ${bookingMode === 'entire_vehicle' ? 'Whole Bus Charter' : `Specific Seats (${selectedSeats.join(', ')})`}.`,
       serviceType: 'educational_tour',
       requiresContract: (pricing?.total ?? 0) >= 50000,
+      itinerary,
       lineMetadata: {
         program_id: selectedProgram.id,
         school_name: booking.school_name,
@@ -104,13 +204,20 @@ export default function EducationalTours() {
         starts_at: booking.starts_at,
         ends_at: booking.ends_at,
         student_count: Number(booking.student_count),
-        chaperone_count: Number(booking.chaperone_count),
+        tour_guide_count: Number(booking.tour_guide_count),
+        chaperone_count: Number(booking.tour_guide_count),
         assignments: assignments,
+        selected_seats: selectedSeats,
+        booking_mode: bookingMode,
+        passengers: manifestPassengers,
+        inclusions,
+        exclusions,
+        itinerary,
         stops: booking.stops,
         operations_notes: booking.operations_notes,
       }
     }];
-  }, [selectedProgram, pricing, booking, assignments, allocated, travelers]);
+  }, [selectedProgram, pricing, booking, assignments, travelers, selectedSeats, bookingMode, manifestPassengers, inclusions, exclusions, itinerary]);
 
   const customerPreset = useMemo(() => ({
     name: booking.school_name || booking.contact_person,
@@ -118,115 +225,163 @@ export default function EducationalTours() {
     phone: booking.contact_number,
   }), [booking.school_name, booking.contact_person, booking.contact_email, booking.contact_number]);
 
-  return <div className="w-full space-y-5 pb-12">
-    <header className="rounded-3xl bg-[#071b33] p-7 text-white"><button onClick={() => navigate('/sales')} className="mb-5 flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Sales workspace</button><div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#75b8ff]">School group operations</p><h1 className="mt-2 text-3xl font-black">Educational tour desk</h1><p className="mt-2 text-sm text-slate-300">Build the school program, enforce supervision, allocate every traveler, then hand a ready plan to operations.</p></div><Button onClick={() => setProgramOpen(true)} className="!bg-[#2f8cff] !text-white"><Plus className="h-4 w-4" /> New program</Button></div></header>
-
-    <div className="grid gap-5 xl:grid-cols-[260px_minmax(0,1fr)_440px]">
-      <aside className="rounded-3xl border border-border bg-surface p-5">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">1 · School program</p>
-            <p className="mt-1 text-xs text-muted">Choose the curriculum and supervision policy for this booking.</p>
-          </div>
-          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black text-blue-700 dark:bg-blue-950 dark:text-blue-200">{programs.length}</span>
+  return (
+    <div className="space-y-6">
+      <header className="flex flex-col gap-4 rounded-3xl bg-[#071b33] p-6 text-white lg:flex-row lg:items-center lg:justify-between">
+        <div>
+          <button onClick={() => navigate('/sales')} className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to Sales</button>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Sales module · School & Academic</p>
+          <h1 className="mt-1 text-2xl font-black">Educational Tour Checkout</h1>
+          <p className="mt-1 text-sm text-slate-300">Structure school exposure trips, passenger manifests, seat maps, daily itineraries, and inclusions.</p>
         </div>
-        <div className="mt-4 space-y-3">
-          {programs.length === 0 ? (
-            <button type="button" onClick={() => setProgramOpen(true)} className="w-full rounded-2xl border border-dashed border-blue-300 bg-blue-50/50 p-5 text-center text-xs font-bold text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200">
-              No educational programs yet. Create the first curriculum.
-            </button>
-          ) : programs.map(program => {
-            const inclusions = [program.includes_meals && 'Meals', program.includes_coordinator && 'Coordinator', program.includes_insurance && 'Insurance', program.includes_shirt && 'Tour shirt'].filter(Boolean);
-            return (
-              <button key={program.id} type="button" onClick={() => setBooking(current => ({ ...current, program_id: String(program.id), stops: program.default_stops.join('\n') }))} className={`w-full rounded-2xl border p-4 text-left transition ${booking.program_id === String(program.id) ? 'border-brand bg-blue-50 shadow-sm dark:bg-blue-950' : 'border-border hover:border-blue-200 hover:bg-surface-alt'}`}>
-                <div className="flex items-start justify-between gap-2">
-                  <p className="font-black text-ink">{program.name}</p>
-                  <span className="shrink-0 text-[10px] font-black uppercase text-brand">Min. {program.minimum_students}</span>
-                </div>
-                {program.learning_objectives && <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-muted">{program.learning_objectives}</p>}
-                <div className="mt-3 grid grid-cols-2 gap-2 text-[10px] text-muted">
-                  <span>PHP {Number(program.student_price).toLocaleString()} / student</span>
-                  <span>1 chaperone / {program.students_per_chaperone}</span>
-                  <span>{program.default_stops.length} educational stop(s)</span>
-                  <span>{inclusions.length ? inclusions.join(', ') : 'No bundled inclusions'}</span>
-                </div>
-              </button>
-            );
-          })}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button onClick={() => setManifestModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider">
+            <Users className="mr-1.5 h-4 w-4" /> Passenger Manifest ({manifestPassengers.length})
+          </Button>
+          <Button onClick={() => setSeatModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider">
+            <Bus className="mr-1.5 h-4 w-4" /> Select Bus & Seats
+          </Button>
+          <Button onClick={() => setProgramOpen(true)} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Program</Button>
         </div>
-      </aside>
+      </header>
 
-      <div className="space-y-5">
-        <section className="rounded-3xl border border-border bg-surface p-6"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">2 · School & schedule</p><div className="mt-5 grid gap-4 md:grid-cols-2"><input required value={booking.school_name} onChange={e => setBooking({ ...booking, school_name: e.target.value })} placeholder="School / organization" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><input required value={booking.contact_person} onChange={e => setBooking({ ...booking, contact_person: e.target.value })} placeholder="Contact person" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><input type="email" value={booking.contact_email} onChange={e => setBooking({ ...booking, contact_email: e.target.value })} placeholder="Email" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><input value={booking.contact_number} onChange={e => setBooking({ ...booking, contact_number: e.target.value })} placeholder="Contact number" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><input required value={booking.grade_level} onChange={e => setBooking({ ...booking, grade_level: e.target.value })} placeholder="Grade level" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><input required value={booking.pickup_location} onChange={e => setBooking({ ...booking, pickup_location: e.target.value })} placeholder="School pickup point" className="h-11 rounded-xl border border-border bg-surface px-3 text-sm" /><label className="text-xs font-bold text-muted">Departure<input required type="datetime-local" value={booking.starts_at} onChange={e => setBooking({ ...booking, starts_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label><label className="text-xs font-bold text-muted">Return<input required type="datetime-local" value={booking.ends_at} onChange={e => setBooking({ ...booking, ends_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label><label className="text-xs font-bold text-muted">Students<input required type="number" min="1" value={booking.student_count} onChange={e => setBooking({ ...booking, student_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label><label className="text-xs font-bold text-muted">Chaperones<input required type="number" min="0" value={booking.chaperone_count} onChange={e => setBooking({ ...booking, chaperone_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label><label className="text-xs font-bold text-muted md:col-span-2">Educational stops, one per line<textarea required value={booking.stops} onChange={e => setBooking({ ...booking, stops: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm text-ink" /></label></div></section>
+      <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
+        <div className="space-y-6">
+          <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-4">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Educational Catalog</p>
+                <h2 className="mt-1 text-lg font-black text-ink">Select exposure program</h2>
+              </div>
+              {selectedProgram && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand dark:bg-blue-950/40">₱{Number(selectedProgram.student_price).toLocaleString()} / Student</span>}
+            </div>
 
-        <section className="rounded-3xl border border-border bg-surface p-6"><div className="flex items-end justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">3 · Multi-vehicle allocation</p><h2 className="mt-1 text-lg font-black text-ink">{allocated} of {travelers} travelers allocated</h2></div><Button type="button" variant="ghost" onClick={() => setAssignments(current => [...current, { bus_id: '', driver_id: '', planned_passengers: '' }])}><Plus className="h-4 w-4" /> Vehicle</Button></div><div className="mt-5 space-y-3">{assignments.map((assignment, index) => <div key={index} className="grid gap-3 rounded-2xl bg-surface-alt p-4 md:grid-cols-[1fr_1fr_140px_40px]"><select required value={assignment.bus_id} onChange={e => setAssignments(current => current.map((item, i) => i === index ? { ...item, bus_id: e.target.value } : item))} className="h-10 rounded-xl border border-border bg-surface px-3 text-sm"><option value="">Select bus/coaster…</option>{resources?.buses.map(bus => <option key={bus.id} value={bus.id} disabled={!bus.available || assignments.some((item, i) => i !== index && item.bus_id === String(bus.id))}>{bus.plate_number} · {bus.model} · {bus.seating_capacity} seats{!bus.available ? ' · unavailable' : ''}</option>)}</select><select required value={assignment.driver_id} onChange={e => setAssignments(current => current.map((item, i) => i === index ? { ...item, driver_id: e.target.value } : item))} className="h-10 rounded-xl border border-border bg-surface px-3 text-sm"><option value="">Select driver…</option>{resources?.drivers.map(driver => <option key={driver.id} value={driver.id} disabled={!driver.available || assignments.some((item, i) => i !== index && item.driver_id === String(driver.id))}>{driver.first_name} {driver.last_name}{!driver.available ? ' · unavailable' : ''}</option>)}</select><input required type="number" min="1" value={assignment.planned_passengers} onChange={e => setAssignments(current => current.map((item, i) => i === index ? { ...item, planned_passengers: e.target.value } : item))} placeholder="Passengers" className="h-10 rounded-xl border border-border bg-surface px-3 text-sm" /><button type="button" disabled={assignments.length === 1} onClick={() => setAssignments(current => current.filter((_, i) => i !== index))} className="grid h-10 place-items-center text-red-500 disabled:opacity-30"><Trash2 className="h-4 w-4" /></button></div>)}</div></section>
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {programs.map(program => {
+                const active = String(program.id) === booking.program_id;
+                return (
+                  <button key={program.id} type="button" onClick={() => setBooking(b => ({ ...b, program_id: String(program.id), stops: program.default_stops.join('\n') }))} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-brand bg-blue-50/40 shadow-sm dark:bg-blue-950/20' : 'border-border bg-surface hover:border-slate-300'}`}>
+                    <div className="flex justify-between"><span className="text-[10px] font-black uppercase text-brand">Academic</span>{active && <CheckCircle2 className="h-4 w-4 text-brand" />}</div>
+                    <p className="mt-2 font-black text-ink">{program.name}</p>
+                    <p className="mt-1 text-xs text-muted">₱{Number(program.student_price).toLocaleString()} per student</p>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-6 grid gap-4 border-t border-border pt-6 md:grid-cols-2 lg:grid-cols-3">
+              <label className="text-xs font-bold text-muted">School Name<input type="text" value={booking.school_name} onChange={e => setBooking({ ...booking, school_name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+              <label className="text-xs font-bold text-muted">Contact Person<input type="text" value={booking.contact_person} onChange={e => setBooking({ ...booking, contact_person: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+              <label className="text-xs font-bold text-muted">Contact Phone<input type="text" value={booking.contact_number} onChange={e => setBooking({ ...booking, contact_number: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+            </div>
+
+            <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <label className="text-xs font-bold text-muted">Departure Date<input type="datetime-local" value={booking.starts_at} onChange={e => setBooking({ ...booking, starts_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+              <label className="text-xs font-bold text-muted">Return Date<input type="datetime-local" value={booking.ends_at} onChange={e => setBooking({ ...booking, ends_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+              <label className="text-xs font-bold text-muted">Student Count<input type="number" min="1" value={booking.student_count} onChange={e => setBooking({ ...booking, student_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+              <label className="text-xs font-bold text-muted">Tour Guide Count<input type="number" min="0" value={booking.tour_guide_count} onChange={e => setBooking({ ...booking, tour_guide_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+            </div>
+          </section>
+
+          {/* Structured Itinerary Section */}
+          <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+            <ItineraryBuilder value={itinerary} onChange={setItinerary} />
+          </section>
+
+          {/* Structured Inclusions & Exclusions Section */}
+          <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
+            <InclusionsExclusionsEditor inclusions={inclusions} exclusions={exclusions} onChange={(inc, exc) => { setInclusions(inc); setExclusions(exc); }} />
+          </section>
+        </div>
+
+        <aside className="sticky top-4 h-fit space-y-4">
+          <ProposedTripBudgetCard
+            proposedBudget={85000}
+            basePrice={pricing?.student_amount || (Number(selectedProgram?.student_price || 0) * Number(booking.student_count || 1))}
+            additions={[
+              ...(pricing?.chargeable_tour_guide_count && pricing.chargeable_tour_guide_count > 0
+                ? [{
+                    label: `${pricing.chargeable_tour_guide_count} Additional Tour Guide(s) @ ₱${Number(selectedProgram?.additional_chaperone_price || 0).toLocaleString()}`,
+                    amount: pricing.chaperone_amount || 0,
+                    type: 'addition' as const,
+                  }]
+                : [])
+            ]}
+            subtractions={[
+              ...(pricing?.free_tour_guide_count && pricing.free_tour_guide_count > 0
+                ? [{
+                    label: `${pricing.free_tour_guide_count} Complimentary Tour Guide(s) (FREE)`,
+                    amount: (pricing.free_tour_guide_count * Number(selectedProgram?.additional_chaperone_price || 0)),
+                    type: 'subtraction' as const,
+                  }]
+                : [])
+            ]}
+            taxAmount={pricing?.tax_amount || 0}
+            taxRate={pricing?.tax_rate || 0.12}
+            title="School Exposure Proposed Budget"
+          />
+
+          <SalesCheckout
+            cart={cart}
+            customerPreset={customerPreset}
+            removeFromCart={() => {}}
+            updateQuantity={() => {}}
+            clearCart={() => {}}
+            onCheckoutSuccess={() => {
+              queryClient.invalidateQueries({ queryKey: ['educational-bookings'] });
+              toast.success('Educational tour order finalized!');
+            }}
+          />
+        </aside>
       </div>
 
-      <aside className="sticky top-4 h-fit">
-        <SalesCheckout
-          cart={cart}
-          customerPreset={customerPreset}
-          removeFromCart={() => {}}
-          updateQuantity={() => {}}
-          clearCart={() => {}}
-          onCheckoutSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['educational-bookings'] });
-            toast.success('Educational tour finalized & synchronized with accounting & logistics!');
-          }}
-        />
-      </aside>
+      {/* Seat Selector Modal */}
+      <SeatSelectorModal
+        isOpen={seatModalOpen}
+        onClose={() => setSeatModalOpen(false)}
+        onConfirm={handleSeatConfirm}
+        buses={(resources?.buses || []).map(b => ({
+          id: b.id,
+          plate_number: b.plate_number,
+          model: b.model,
+          seating_capacity: b.seating_capacity,
+          driver: resources?.drivers.find(d => d.id === (b as any).assigned_driver),
+        }))}
+        initialBusId={assignments[0]?.bus_id ? Number(assignments[0].bus_id) : undefined}
+        initialMode={bookingMode}
+        initialSeats={selectedSeats}
+        travelDate={booking.starts_at ? booking.starts_at.slice(0, 10) : undefined}
+        returnDate={booking.ends_at ? booking.ends_at.slice(0, 10) : undefined}
+        paxCount={travelers}
+        packageName={selectedProgram?.name || 'Educational Program'}
+      />
+
+      {/* Passenger Manifest & Seat Assignment Modal */}
+      <PassengerManifestModal
+        isOpen={manifestModalOpen}
+        onClose={() => setManifestModalOpen(false)}
+        onSave={(rows) => {
+          setManifestPassengers(rows);
+          toast.success(`Passenger manifest updated (${rows.length} travelers registered)`);
+        }}
+        initialPassengers={manifestPassengers}
+        totalSeats={assignments[0]?.bus_id ? resources?.buses.find(b => String(b.id) === assignments[0].bus_id)?.seating_capacity || 49 : 49}
+        selectedSeats={selectedSeats}
+        leadCustomer={customerPreset}
+        title="Educational Tour Passenger Manifest"
+        packageName={selectedProgram?.name || 'Educational Exposure Trip'}
+      />
+
+      {/* Program Creation Modal */}
+      <Modal isOpen={programOpen} onClose={() => setProgramOpen(false)} title="Create educational program" size="lg" footer={null}>
+        <form onSubmit={event => { event.preventDefault(); createProgram.mutate(); }} className="grid gap-4 py-2 md:grid-cols-2">
+          <label className="text-xs font-bold text-muted md:col-span-2">Program name<input required value={programForm.name} onChange={e => setProgramForm({ ...programForm, name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+          <label className="text-xs font-bold text-muted">Student price<input required type="number" min="0" value={programForm.student_price} onChange={e => setProgramForm({ ...programForm, student_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+          <label className="text-xs font-bold text-muted">Tour Guide price<input required type="number" min="0" value={programForm.additional_chaperone_price} onChange={e => setProgramForm({ ...programForm, additional_chaperone_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+          <label className="text-xs font-bold text-muted md:col-span-2">Default Stops (One per line)<textarea value={programForm.default_stops} onChange={e => setProgramForm({ ...programForm, default_stops: e.target.value })} className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-surface p-3 text-sm font-semibold" /></label>
+          <div className="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><Button type="button" variant="ghost" onClick={() => setProgramOpen(false)}>Cancel</Button><Button type="submit" disabled={createProgram.isPending}>Create program</Button></div>
+        </form>
+      </Modal>
     </div>
-
-    <section className="rounded-3xl border border-border bg-surface p-6"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">School tour board</p><div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">{recent.slice(0, 9).map(item => <article key={item.id} className="rounded-2xl border border-border p-4"><div className="flex justify-between"><span className="text-[10px] font-black uppercase text-brand">{item.grade_level}</span><span className="text-[10px] font-black uppercase text-emerald-600">{item.status}</span></div><p className="mt-2 font-black text-ink">{item.school_name}</p><p className="mt-2 text-xs text-muted">{item.student_count} students · {item.chaperone_count} chaperones · {item.vehicles.length} vehicle(s)</p></article>)}</div></section>
-
-    <Modal isOpen={programOpen} onClose={() => setProgramOpen(false)} title="Create educational tour program" size="lg" footer={null}>
-      <form onSubmit={event => { event.preventDefault(); createProgram.mutate(); }} className="space-y-5 py-1">
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/70 p-4 dark:border-blue-900/50 dark:bg-blue-950/30">
-          <p className="flex items-center gap-2 text-sm font-black text-blue-950 dark:text-blue-100"><GraduationCap className="h-4 w-4" /> Curriculum definition</p>
-          <p className="mt-1 text-xs leading-relaxed text-blue-800 dark:text-blue-200">Define the curriculum, group rules, pricing, and inclusions here. No separate package setup is required.</p>
-          <div className="mt-4 grid gap-4">
-            <label className="text-xs font-bold text-muted">Program name<input required value={programForm.name} onChange={e => setProgramForm({ ...programForm, name: e.target.value })} placeholder="e.g. Science Discovery Tour" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-            <label className="text-xs font-bold text-muted">Learning objectives<textarea value={programForm.learning_objectives} onChange={e => setProgramForm({ ...programForm, learning_objectives: e.target.value })} placeholder="What students should learn or experience" rows={3} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm text-ink" /></label>
-            <label className="text-xs font-bold text-muted">Default educational stops, one per line<textarea required value={programForm.default_stops} onChange={e => setProgramForm({ ...programForm, default_stops: e.target.value })} placeholder={'Science museum\nPlanetarium\nHeritage center'} rows={4} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm text-ink" /></label>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand">Enrollment and supervision</p>
-            <div className="mt-3 grid gap-3">
-              <label className="text-xs font-bold text-muted">Minimum students<input required type="number" min="1" value={programForm.minimum_students} onChange={e => setProgramForm({ ...programForm, minimum_students: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-              <label className="text-xs font-bold text-muted">Students per required chaperone<input required type="number" min="1" value={programForm.students_per_chaperone} onChange={e => setProgramForm({ ...programForm, students_per_chaperone: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-              <label className="text-xs font-bold text-muted">Students per free chaperone<input required type="number" min="1" value={programForm.students_per_free_chaperone} onChange={e => setProgramForm({ ...programForm, students_per_free_chaperone: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-            </div>
-          </section>
-
-          <section className="rounded-2xl border border-border p-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand">School-group pricing</p>
-            <div className="mt-3 grid gap-3">
-              <label className="text-xs font-bold text-muted">Price per student (PHP)<input required type="number" min="0" step="0.01" value={programForm.student_price} onChange={e => setProgramForm({ ...programForm, student_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-              <label className="text-xs font-bold text-muted">Additional chaperone price (PHP)<input required type="number" min="0" step="0.01" value={programForm.additional_chaperone_price} onChange={e => setProgramForm({ ...programForm, additional_chaperone_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" /></label>
-            </div>
-          </section>
-        </div>
-
-        <section className="rounded-2xl border border-border p-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand">Program inclusions</p>
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {([['includes_meals', 'Student meals'], ['includes_coordinator', 'Tour coordinator'], ['includes_insurance', 'Travel insurance'], ['includes_shirt', 'Tour shirt']] as const).map(([key, label]) => (
-              <label key={key} className={`flex min-h-16 cursor-pointer items-center gap-2 rounded-xl border p-3 text-xs font-bold transition ${programForm[key] ? 'border-blue-300 bg-blue-50 text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100' : 'border-border text-muted'}`}>
-                <input type="checkbox" checked={programForm[key]} onChange={e => setProgramForm({ ...programForm, [key]: e.target.checked })} />
-                {label}
-              </label>
-            ))}
-          </div>
-        </section>
-
-        <div className="flex justify-end gap-3 border-t border-border pt-5">
-          <Button type="button" variant="ghost" onClick={() => setProgramOpen(false)}>Cancel</Button>
-          <Button type="submit" disabled={createProgram.isPending}><GraduationCap className="h-4 w-4" /> {createProgram.isPending ? 'Creating…' : 'Create educational program'}</Button>
-        </div>
-      </form>
-    </Modal>
-  </div>;
+  );
 }

@@ -99,7 +99,8 @@ class ContractController extends Controller
             );
 
             $paymentType = $validated['payment_type'] ?? 'full';
-            $amountReceived = (float) ($validated['amount_received'] ?? 0);
+            $isCash = $validated['payment_method'] === 'Cash';
+            $amountReceived = $isCash ? (float) ($validated['amount_received'] ?? 0) : 0.0;
 
             $finalizer->assertPaymentAmounts(
                 $validated['payment_method'],
@@ -122,7 +123,7 @@ class ContractController extends Controller
                 'change' => 0,
                 'payment_method' => $validated['payment_method'],
                 'payment_type' => $paymentType,
-                'balance' => $calc['totalAmount'],
+                'balance' => $isCash ? max(0, $calc['totalAmount'] - $amountReceived) : $calc['totalAmount'],
                 'due_date' => $validated['due_date'] ?? $validated['travel_date'] ?? null,
                 'status' => 'draft_pending_contract',
                 'requires_contract' => true,

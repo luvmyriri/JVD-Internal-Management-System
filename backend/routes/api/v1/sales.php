@@ -11,6 +11,7 @@ use App\Http\Controllers\Sales\SalesOrderController;
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sales')->group(function () {
         Route::get('/catalog', [CatalogController::class, 'index'])->name('sales.catalog');
+        Route::get('/bus-availability', [CatalogController::class, 'busAvailability'])->name('sales.bus-availability');
         Route::get('/joiner-departures', [JoinerDepartureController::class, 'index'])->name('sales.joiner-departures.index');
         Route::get('/joiner-departures/{departure}', [JoinerDepartureController::class, 'show'])->name('sales.joiner-departures.show');
         Route::get('/joiner-departure-resources', [JoinerDepartureController::class, 'resources'])->name('sales.joiner-departures.resources');

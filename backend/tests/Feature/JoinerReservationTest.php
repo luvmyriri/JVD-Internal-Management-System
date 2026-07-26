@@ -35,7 +35,6 @@ class JoinerReservationTest extends TestCase
     {
         $response = $this->actingAs($this->user)->postJson('/api/v1/sales/joiner-departures', [
             'service_id' => $this->service->id,
-            'code' => 'SGD-2026-08-03',
             'starts_at' => now()->addMonth()->setTime(5, 0)->toIso8601String(),
             'ends_at' => now()->addMonth()->addDays(3)->setTime(22, 0)->toIso8601String(),
             'booking_cutoff_at' => now()->addMonth()->subDay()->toIso8601String(),
@@ -44,7 +43,9 @@ class JoinerReservationTest extends TestCase
             'status' => 'published',
         ]);
 
-        $response->assertCreated()->assertJsonPath('data.code', 'SGD-2026-08-03');
+        $response->assertCreated();
+        // Code is now auto-generated in the format JNR-DESTINATION-MMDDYY-SEQ
+        $this->assertMatchesRegularExpression('/^JNR-[A-Z]+-\d{6}-\d{3}$/', $response->json('data.code'));
         $this->assertDatabaseCount('joiner_departure_seats', 3);
     }
 

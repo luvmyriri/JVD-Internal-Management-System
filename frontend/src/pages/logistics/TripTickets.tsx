@@ -11,6 +11,7 @@ import { Modal, Button } from '../../components/ui';
 import { DataTable, TimeframeFilter, type Column, type DateRangeValue } from '../../components/ds';
 import { useBuses } from '../../hooks/useFleet';
 import { useUsers } from '../../hooks/useUsers';
+import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 
 const statusStyles: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-400',
@@ -555,6 +556,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
             </p>
           </div>
         )}
+
         {/* Section 1: Document Details */}
         <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
           <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
@@ -619,11 +621,27 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
         </details>
 
         {/* Section 2: Route & Passenger Details */}
-        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30">
+        <details className="group border border-gray-100 dark:border-gray-800 rounded-2xl bg-gray-50/50 dark:bg-gray-800/30" open>
           <summary className="cursor-pointer list-none flex justify-between items-center p-4 text-xs font-black text-blue-600 uppercase tracking-widest outline-none">
             <span>Route & Passenger Details</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
+            {/* Interactive Location Map Pinning & Fuel Auto-Calculator */}
+            <TripLocationMapPicker
+              pickupLocation={form.pick_up || 'JVD Terminal, Manila'}
+              dropOffLocation={form.drop_off || 'Tagaytay City'}
+              vehicleType={(buses.find(b => String(b.id) === String(form.bus_id)) as any)?.vehicle_type || 'Bus'}
+              onLocationSelect={(pickup, dropoff, _distance, _liters, cost) => {
+                setForm(p => ({
+                  ...p,
+                  pick_up: pickup,
+                  drop_off: dropoff,
+                  diesel: formatMoneyInput(String(cost)),
+                }));
+                toast.success('Route pinned and diesel cost auto-calculated!');
+              }}
+            />
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Pick Up Location</label>
@@ -648,6 +666,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 />
               </div>
             </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">No. of Passengers</label>
@@ -659,12 +678,6 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                   onChange={e => {
                     const val = e.target.value.replace(/\D/g, '');
                     setForm(p => ({ ...p, no_of_passengers: val }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
                   }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -786,7 +799,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
             <span>Operational Allowances (₱)</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Meal</label>
                 <input
@@ -798,33 +811,6 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                     if ((clean.split('.').length - 1) > 1) return;
                     const formatted = formatMoneyInput(e.target.value);
                     setForm(p => ({ ...p, meal_allowance: formatted }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
-                  className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel</label>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={form.diesel}
-                  onChange={e => {
-                    const clean = parseMoneyInput(e.target.value);
-                    if ((clean.split('.').length - 1) > 1) return;
-                    const formatted = formatMoneyInput(e.target.value);
-                    setForm(p => ({ ...p, diesel: formatted }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
                   }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
@@ -841,12 +827,6 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                     const formatted = formatMoneyInput(e.target.value);
                     setForm(p => ({ ...p, sop: formatted }));
                   }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -862,16 +842,10 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                     const formatted = formatMoneyInput(e.target.value);
                     setForm(p => ({ ...p, easy_trip: formatted }));
                   }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
-                  }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-              <div className="space-y-2 col-span-2 md:col-span-1">
+              <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">AutoSweep</label>
                 <input
                   type="text"
@@ -882,12 +856,6 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                     if ((clean.split('.').length - 1) > 1) return;
                     const formatted = formatMoneyInput(e.target.value);
                     setForm(p => ({ ...p, autosweep: formatted }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.ctrlKey || e.metaKey) return;
-                    if (!/^[0-9.]$/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-                      e.preventDefault();
-                    }
                   }}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />

@@ -437,6 +437,37 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                           Pax Count: {item.paxCount} Pax
                         </p>
                       )}
+                      {item.passengers && item.passengers.length > 0 && (
+                        <div className="mt-2 rounded-xl bg-blue-50/70 p-2.5 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">
+                          <p className="text-[9px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300 mb-1 flex items-center gap-1">
+                            <LuUser className="w-3 h-3" /> Named Passenger Manifest ({item.passengers.length})
+                          </p>
+                          <div className="space-y-1">
+                            {item.passengers.slice(0, 5).map((p: any, pIdx: number) => (
+                              <div key={pIdx} className="flex items-center justify-between text-[10px] text-gray-700 dark:text-gray-300 font-semibold">
+                                <span className="flex items-center gap-1">
+                                  <span className="font-bold text-gray-900 dark:text-white">{p.first_name} {p.last_name}</span>
+                                  {p.role && (
+                                    <span className="rounded bg-white px-1 py-0.5 text-[8px] font-black uppercase text-gray-500 shadow-xs dark:bg-gray-800">
+                                      {p.role === 'tour_guide' ? 'Tour Guide' : p.role}
+                                    </span>
+                                  )}
+                                </span>
+                                {p.seat_code && (
+                                  <span className="font-black text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 px-1.5 py-0.5 rounded-md text-[9px]">
+                                    Seat {p.seat_code}
+                                  </span>
+                                )}
+                              </div>
+                            ))}
+                            {item.passengers.length > 5 && (
+                              <p className="text-[9px] text-blue-500 font-bold italic pt-0.5">
+                                + {item.passengers.length - 5} more registered travelers
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
                       <p className="text-[10px] text-gray-400 font-bold tracking-widest mt-0.5">₱{Number(item.customPrice ?? item.service.price).toLocaleString(undefined, { minimumFractionDigits: 2 })} / UNIT</p>
                     </div>
                     <div className="flex items-center gap-1.5">

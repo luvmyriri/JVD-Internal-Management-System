@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\User;
+use App\Services\SalesReferenceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -69,7 +70,7 @@ class CharterBookingService
             $customerId = $finalizer->resolveCustomerId($data['customer_id'] ?? null, $data['lead_name'], $data['lead_email'] ?? null, $data['lead_contact'] ?? null, null);
             $payment = $finalizer->computePaymentStatus($data['payment_method'], $data['payment_type'], $total, $received);
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-'.strtoupper(Str::random(8)), 'customer_id' => $customerId,
+                'invoice_number' => SalesReferenceService::generate('INV', $data['destination'] ?? null, now()), 'customer_id' => $customerId,
                 'customer_name' => $data['lead_name'], 'customer_email' => $data['lead_email'] ?? null, 'customer_contact' => $data['lead_contact'] ?? null,
                 'subtotal' => $pricing['subtotal'], 'tax_amount' => $tax, 'total_amount' => $total, 'amount_received' => $received,
                 'change' => max(0, $received - $total), 'payment_method' => $data['payment_method'], 'payment_type' => $data['payment_type'],
@@ -82,7 +83,7 @@ class CharterBookingService
             ]]);
 
             $booking = CharterBooking::create([
-                'reference' => (string) Str::uuid(), 'rate_plan_id' => $plan->id, 'customer_id' => $customerId, 'invoice_id' => $invoice->id,
+                'reference' => SalesReferenceService::generate('CHR', $data['destination'] ?? null, $data['starts_at']), 'rate_plan_id' => $plan->id, 'customer_id' => $customerId, 'invoice_id' => $invoice->id,
                 'bus_id' => $bus->id, 'driver_id' => $driver?->id, 'lead_name' => $data['lead_name'], 'lead_email' => $data['lead_email'] ?? null,
                 'lead_contact' => $data['lead_contact'] ?? null, 'starts_at' => $data['starts_at'], 'ends_at' => $data['ends_at'],
                 'pickup_location' => $data['pickup_location'], 'destination' => $data['destination'], 'stops' => $data['stops'] ?? [],

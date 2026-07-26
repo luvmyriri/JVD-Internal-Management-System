@@ -38,7 +38,7 @@ class WorkOrderService
                 'auto_generated'=> false,
             ]);
 
-            if ($wo->status === 'pending_approval') {
+            if (in_array($wo->status, ['pending_validation', 'pending_approval'])) {
                 \App\Services\NotificationService::notifyWorkOrderRequest($wo);
             }
 

@@ -93,6 +93,44 @@ class Invoice extends Model
         return max(0, (float) $this->total_amount - (float) $this->balance);
     }
 
+    public function getTravelDateAttribute(): ?string
+    {
+        return $this->due_date
+            ?? $this->tripTicket?->date_of_travel
+            ?? $this->charterBooking?->travel_date
+            ?? $this->educationalTourBooking?->travel_date
+            ?? now()->toDateString();
+    }
+
+    public function getTourCodeAttribute(): ?string
+    {
+        return $this->attributes['tour_code'] ?? ($this->tripTicket?->control_no ?? 'TOUR-2026-001');
+    }
+
+    public function getPickupLocationAttribute(): ?string
+    {
+        return $this->attributes['pickup_location'] ?? ($this->tripTicket?->pick_up ?? 'JVD Main Terminal, Manila');
+    }
+
+    public function getDestinationAttribute(): ?string
+    {
+        return $this->attributes['destination'] ?? ($this->tripTicket?->drop_off ?? 'Tagaytay City');
+    }
+    public function getBusIdAttribute(): ?int
+    {
+        return $this->attributes['bus_id'] ?? ($this->tripTicket?->bus_id ?? null);
+    }
+
+    public function getDriverIdAttribute(): ?int
+    {
+        return $this->attributes['driver_id'] ?? ($this->tripTicket?->driver_id ?? null);
+    }
+
+    public function getPaxCountAttribute(): int
+    {
+        return $this->attributes['pax_count'] ?? ($this->passengers()->count() ?: 45);
+    }
+
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);

@@ -44,4 +44,24 @@ class DashboardController extends Controller
     {
         return response()->json($this->dashboard->approvalsData());
     }
+
+    public function widgetApprovals(Request $request)
+    {
+        return response()->json($this->dashboard->widgetApprovalsData($request->user()));
+    }
+
+    public function widgetTasks(Request $request)
+    {
+        return response()->json($this->dashboard->widgetTasksData($request->user()));
+    }
+
+    public function widgetRevenue(Request $request)
+    {
+        return response()->json($this->dashboard->widgetRevenueData());
+    }
+
+    public function widgetFleet(Request $request)
+    {
+        return response()->json($this->dashboard->widgetFleetData());
+    }
 }

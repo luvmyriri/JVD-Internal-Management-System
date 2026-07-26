@@ -187,8 +187,13 @@ class InvoiceFinalizationService
             return ['status' => 'paid', 'balance' => 0];
         }
 
-        // GCash/Card: pending until callback
-        return ['status' => 'pending_payment', 'balance' => $totalAmount];
+        // GCash/Card (digital gateway): pending until callback/webhook confirmation
+        return [
+            'status' => 'pending_payment',
+            'balance' => $totalAmount,
+            'amount_received' => 0.0,
+            'change' => 0.0,
+        ];
     }
 
     /**

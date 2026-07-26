@@ -254,4 +254,24 @@ class User extends Authenticatable
     {
         return count(array_intersect($tags, $this->tags ?? [])) > 0;
     }
+
+    /**
+     * Resolve all active users authorized for an approval workflow based on:
+     * 1. Hardcoded domain default roles (super_admin and executive_vice_president always included)
+     * 2. Tag attributes (e.g. 'process:approve_budget', 'process:approve_procurement', 'process:approve_maintenance')
+     * 3. Custom abilities granted per user
+     */
+    public static function getApprovers(string $tagOrAbility, array $defaultRoles = []): \Illuminate\Database\Eloquent\Collection
+    {
+        $roles = array_unique(array_merge(['super_admin', 'executive_vice_president'], $defaultRoles));
+
+        return self::query()
+            ->where('is_active', true)
+            ->where(function ($q) use ($tagOrAbility, $roles) {
+                $q->whereIn('role', $roles)
+                  ->orWhereJsonContains('tags', $tagOrAbility)
+                  ->orWhereJsonContains('custom_abilities->grant', $tagOrAbility);
+            })
+            ->get();
+    }
 }

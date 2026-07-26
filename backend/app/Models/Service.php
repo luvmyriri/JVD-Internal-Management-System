@@ -59,6 +59,8 @@ class Service extends Model
         'fixed_date' => 'date',
         'bus_id' => 'integer',
         'driver_id' => 'integer',
+        'inclusions' => 'array',
+        'exclusions' => 'array',
     ];
 
     public function serviceCategory()

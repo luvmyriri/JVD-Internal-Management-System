@@ -88,7 +88,7 @@ export default function UserFormModal({
       isOpen={isOpen}
       onClose={onClose}
       title={selectedUser ? 'Modify User' : 'Add User'}
-      size="lg"
+      size="xl"
     >
       <div className="overflow-y-auto custom-scrollbar max-h-[75vh] p-2">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -369,7 +369,7 @@ export default function UserFormModal({
               <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
                {modules.map((module: string) => {
                    const perms = customPermissions[module];
 
@@ -417,26 +417,31 @@ export default function UserFormModal({
 
                    return (
                        <div key={module} className={cn(
-                         "flex flex-col p-2.5 rounded-xl border transition-colors",
+                         "flex flex-col justify-between p-3 rounded-xl border transition-colors gap-2",
                          effectiveAccessLevel === 'none' ? "bg-gray-50/50 border-gray-100 dark:bg-gray-800/50 dark:border-gray-700" :
                          effectiveAccessLevel === 'view' ? "bg-blue-50/50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/30" :
                          "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800/30"
                        )}>
-                           <div className="flex items-center gap-1.5 mb-2">
-                              <div className={cn(
-                                  "w-1.5 h-1.5 rounded-full shrink-0",
-                                  effectiveAccessLevel === 'none' ? 'bg-red-400' :
-                                  effectiveAccessLevel === 'view' ? 'bg-blue-400' : 'bg-emerald-400'
-                              )} />
-                              <span className="text-[11px] font-bold text-gray-700 dark:text-gray-300 capitalize truncate">
-                                {moduleName}
+                           <div className="flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <div className={cn(
+                                    "w-2 h-2 rounded-full shrink-0",
+                                    effectiveAccessLevel === 'none' ? 'bg-rose-400' :
+                                    effectiveAccessLevel === 'view' ? 'bg-blue-400' : 'bg-emerald-400'
+                                )} />
+                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 capitalize truncate" title={moduleName}>
+                                  {moduleName}
+                                </span>
+                              </div>
+                              <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider shrink-0">
+                                Base: {baseAccessLevel}
                               </span>
                            </div>
 
                            <select
                              value={accessLevel}
                              onChange={(e) => handleLevelChange(e.target.value)}
-                             className="w-full text-[10px] font-bold p-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                             className="w-full text-xs font-bold p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                            >
                              <option value="default">Default ({baseAccessLevel})</option>
                              <option value="none">No Access</option>

@@ -11,6 +11,7 @@ use App\Models\JoinerDepartureSeat;
 use App\Models\JoinerReservation;
 use App\Models\Service;
 use App\Services\JoinerReservationService;
+use App\Services\SalesReferenceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -64,8 +65,12 @@ class JoinerDepartureController extends Controller
         $this->assertResourcesAvailable($data);
         unset($data['seat_codes']);
 
-        $departure = DB::transaction(function () use ($data, $seatCodes, $request) {
-            $departure = JoinerDeparture::create([...$data, 'timezone' => $data['timezone'] ?? 'Asia/Manila', 'status' => $data['status'] ?? 'draft', 'created_by' => $request->user()->id]);
+        // Resolve the service name for the code slug (destination context)
+        $serviceNameForCode = Service::find($data['service_id'])?->name;
+
+        $departure = DB::transaction(function () use ($data, $seatCodes, $request, $serviceNameForCode) {
+            $code = SalesReferenceService::generate('JNR', $serviceNameForCode, $data['starts_at']);
+            $departure = JoinerDeparture::create([...$data, 'code' => $code, 'timezone' => $data['timezone'] ?? 'Asia/Manila', 'status' => $data['status'] ?? 'draft', 'created_by' => $request->user()->id]);
             foreach ($seatCodes as $seatCode) {
                 JoinerDepartureSeat::create(['departure_id' => $departure->id, 'seat_code' => $seatCode]);
             }

@@ -493,8 +493,22 @@ class TripTicketService
                 ]));
             }
 
-            // Notify Accounting!
+            // Notify Accounting & Driver!
             \App\Services\NotificationService::notifyCashBudgetSpawn($budget);
+
+            if ($ticket->driver_id) {
+                $driver = \App\Models\User::find($ticket->driver_id);
+                if ($driver) {
+                    $driver->notify(new \App\Notifications\SystemAlert(
+                        "Trip Ticket Approved — {$ticket->control_no}",
+                        "Trip Ticket #{$ticket->control_no} to " . ($ticket->drop_off ?? $ticket->destination ?? 'destination') . " on {$ticket->date_of_travel} has been approved.",
+                        "success",
+                        "/driver/trips",
+                        "trip_ticket",
+                        $ticket->id
+                    ));
+                }
+            }
         }
 
         return $ticket->load($this->relations());

@@ -69,6 +69,14 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/hr', [DashboardController::class, 'hr'])->name('dashboards.hr');
         
         Route::get('/approvals', [DashboardController::class, 'approvals'])->name('dashboards.approvals');
+
+        // ── Widget endpoints (header widget panel) ──
+        Route::prefix('widgets')->group(function () {
+            Route::get('/approvals', [DashboardController::class, 'widgetApprovals'])->name('dashboards.widgets.approvals');
+            Route::get('/tasks',     [DashboardController::class, 'widgetTasks'])->name('dashboards.widgets.tasks');
+            Route::get('/revenue',   [DashboardController::class, 'widgetRevenue'])->name('dashboards.widgets.revenue');
+            Route::get('/fleet',     [DashboardController::class, 'widgetFleet'])->name('dashboards.widgets.fleet');
+        });
     });
 });
 

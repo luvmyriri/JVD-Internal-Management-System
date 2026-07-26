@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\User;
+use App\Services\SalesReferenceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,21 +21,41 @@ class EducationalTourBookingService
 {
     public function calculate(EducationalTourProgram $program, int $students, int $chaperones): array
     {
+        $students = max(0, $students);
+        $chaperones = max(0, $chaperones);
         if ($students < $program->minimum_students) {
             throw ValidationException::withMessages(['student_count' => "This program requires at least {$program->minimum_students} students."]);
         }
-        $required = (int) ceil($students / $program->students_per_chaperone);
+        $perGuide = max(1, (int) ($program->students_per_chaperone ?: 20));
+        $perFreeGuide = max(1, (int) ($program->students_per_free_chaperone ?: 20));
+        $required = (int) ceil($students / $perGuide);
         if ($chaperones < $required) {
-            throw ValidationException::withMessages(['chaperone_count' => "At least {$required} chaperones are required for {$students} students."]);
+            throw ValidationException::withMessages([
+                'tour_guide_count' => "At least {$required} tour guides are required for {$students} students.",
+                'chaperone_count' => "At least {$required} tour guides are required for {$students} students.",
+            ]);
         }
-        $free = min($chaperones, (int) floor($students / $program->students_per_free_chaperone));
+        $free = min($chaperones, (int) floor($students / $perFreeGuide));
         $chargeable = max(0, $chaperones - $free);
         $studentAmount = round($students * (float) $program->student_price, 2);
-        $chaperoneAmount = round($chargeable * (float) $program->additional_chaperone_price, 2);
+        $additionalPrice = (float) $program->additional_chaperone_price;
+        $chaperoneAmount = round($chargeable * $additionalPrice, 2);
+        $freeGuideAllowance = round($free * $additionalPrice, 2);
+
         return [
-            'student_count' => $students, 'chaperone_count' => $chaperones, 'required_chaperones' => $required,
-            'free_chaperone_count' => $free, 'chargeable_chaperone_count' => $chargeable,
-            'student_amount' => $studentAmount, 'chaperone_amount' => $chaperoneAmount,
+            'student_count' => $students,
+            'tour_guide_count' => $chaperones,
+            'chaperone_count' => $chaperones,
+            'required_tour_guides' => $required,
+            'required_chaperones' => $required,
+            'free_tour_guide_count' => $free,
+            'free_chaperone_count' => $free,
+            'chargeable_tour_guide_count' => $chargeable,
+            'chargeable_chaperone_count' => $chargeable,
+            'student_amount' => $studentAmount,
+            'tour_guide_amount' => $chaperoneAmount,
+            'chaperone_amount' => $chaperoneAmount,
+            'complimentary_tour_guide_allowance' => $freeGuideAllowance,
             'subtotal' => round($studentAmount + $chaperoneAmount, 2),
         ];
     }
@@ -43,10 +64,11 @@ class EducationalTourBookingService
     {
         $booking = DB::transaction(function () use ($data, $actorId) {
             $program = EducationalTourProgram::where('is_active', true)->lockForUpdate()->findOrFail($data['program_id']);
-            $pricing = $this->calculate($program, (int) $data['student_count'], (int) $data['chaperone_count']);
-            $travelerCount = $data['student_count'] + $data['chaperone_count'];
+            $guides = (int) ($data['tour_guide_count'] ?? $data['chaperone_count'] ?? 0);
+            $pricing = $this->calculate($program, (int) $data['student_count'], $guides);
+            $travelerCount = $data['student_count'] + $guides;
             if (collect($data['assignments'])->sum('planned_passengers') !== $travelerCount) {
-                throw ValidationException::withMessages(['assignments' => 'Vehicle passenger allocations must equal the student and chaperone total.']);
+                throw ValidationException::withMessages(['assignments' => 'Vehicle passenger allocations must equal the student and tour guide total.']);
             }
 
             $assignments = [];
@@ -71,7 +93,7 @@ class EducationalTourBookingService
             $customerId = $finalizer->resolveCustomerId($data['customer_id'] ?? null, $data['school_name'], $data['contact_email'] ?? null, $data['contact_number'] ?? null, null);
             $payment = $finalizer->computePaymentStatus($data['payment_method'], $data['payment_type'], $total, $received);
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-'.strtoupper(Str::random(8)), 'customer_id' => $customerId, 'customer_name' => $data['school_name'],
+                'invoice_number' => SalesReferenceService::generate('INV', $data['pickup_location'] ?? null, now()), 'customer_id' => $customerId, 'customer_name' => $data['school_name'],
                 'customer_email' => $data['contact_email'] ?? null, 'customer_contact' => $data['contact_number'] ?? null,
                 'subtotal' => $pricing['subtotal'], 'tax_amount' => $tax, 'total_amount' => $total, 'amount_received' => $received,
                 'change' => max(0, $received - $total), 'payment_method' => $data['payment_method'], 'payment_type' => $data['payment_type'],
@@ -94,10 +116,10 @@ class EducationalTourBookingService
             if ($pricing['chargeable_chaperone_count'] > 0) {
                 $chaperoneLine = [
                     'service_id' => $program->service_id,
-                    'item_name' => $program->name.' - Additional Chaperones',
+                    'item_name' => $program->name.' - Additional Tour Guides',
                     'service_type' => 'educational_tour',
-                    'item_description' => 'Chargeable chaperones above the complimentary program allocation.',
-                    'item_metadata' => ['program_id' => $program->id, 'participant_type' => 'chaperone'],
+                    'item_description' => 'Chargeable tour guides above the complimentary program allocation.',
+                    'item_metadata' => ['program_id' => $program->id, 'participant_type' => 'tour_guide'],
                     'quantity' => $pricing['chargeable_chaperone_count'],
                     'unit_price' => $program->additional_chaperone_price,
                     'total_price' => $pricing['chaperone_amount'],
@@ -111,7 +133,7 @@ class EducationalTourBookingService
             $invoice = $finalizer->finalizeWithinTransaction($invoice, $processedItems);
 
             $booking = EducationalTourBooking::create([
-                'reference' => (string) Str::uuid(), 'program_id' => $program->id, 'customer_id' => $customerId, 'invoice_id' => $invoice->id,
+                'reference' => SalesReferenceService::generate('EDT', $program->name, $data['starts_at']), 'program_id' => $program->id, 'customer_id' => $customerId, 'invoice_id' => $invoice->id,
                 'school_name' => $data['school_name'], 'contact_person' => $data['contact_person'], 'contact_email' => $data['contact_email'] ?? null,
                 'contact_number' => $data['contact_number'] ?? null, 'grade_level' => $data['grade_level'], 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'], 'pickup_location' => $data['pickup_location'], 'stops_snapshot' => $data['stops'] ?? $program->default_stops,

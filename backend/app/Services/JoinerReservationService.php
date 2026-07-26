@@ -8,6 +8,7 @@ use App\Models\JoinerPassenger;
 use App\Models\JoinerReservation;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Services\SalesReferenceService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -64,10 +65,12 @@ class JoinerReservationService
             }
 
             $expiresAt = now()->addMinutes(15);
+            // Generate a human-readable reference from the departure's service name and date
+            $serviceName = $lockedDeparture->service()->value('name');
             $reservation = JoinerReservation::create([
                 'departure_id' => $lockedDeparture->id,
                 'customer_id' => $data['customer_id'] ?? null,
-                'reference' => (string) Str::uuid(),
+                'reference' => SalesReferenceService::generate('JNR', $serviceName, $lockedDeparture->starts_at),
                 'lead_name' => $data['lead_name'],
                 'lead_email' => $data['lead_email'] ?? null,
                 'lead_contact' => $data['lead_contact'] ?? null,
@@ -155,7 +158,7 @@ class JoinerReservationService
             $payment = $finalizer->computePaymentStatus($checkout['payment_method'], $checkout['payment_type'], $total, $received);
 
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-'.strtoupper(Str::random(8)),
+                'invoice_number' => SalesReferenceService::generate('INV', $departure->service()->value('name'), now()),
                 'customer_id' => $customerId,
                 'customer_name' => $locked->lead_name,
                 'customer_email' => $locked->lead_email,

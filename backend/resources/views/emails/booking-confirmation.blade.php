@@ -42,11 +42,11 @@
                                         <strong style="color: #111827; font-size: 14px;">₱{{ number_format($invoice->total_amount, 2) }}</strong>
                                     </td>
                                 </tr>
-                                @if($invoice->travel_date)
+                                @if($invoice->booking?->travel_date)
                                 <tr>
                                     <td colspan="2" style="font-size: 13px; color: #4b5563; line-height: 1.5; border-top: 1px solid #e5e7eb; padding-top: 16px;">
                                         <span style="font-size: 10px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px;">Travel Date</span><br>
-                                        <strong style="color: #111827; font-size: 14px;">{{ \Carbon\Carbon::parse($invoice->travel_date)->format('F d, Y') }}</strong>
+                                        <strong style="color: #111827; font-size: 14px;">{{ \Carbon\Carbon::parse($invoice->booking->travel_date)->format('F d, Y') }}</strong>
                                     </td>
                                 </tr>
                                 @endif

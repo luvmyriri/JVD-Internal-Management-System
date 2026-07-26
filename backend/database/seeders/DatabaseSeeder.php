@@ -44,6 +44,7 @@ class DatabaseSeeder extends Seeder
                 InvoiceSeeder::class,
                 AuditLogSeeder::class,
                 LegalDocumentSeeder::class,
+                SalesSystemSeeder::class,
             ]);
         }
     }

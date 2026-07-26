@@ -295,6 +295,271 @@ class DashboardService
         ];
     }
 
+    // ─── Widget-panel endpoints ──────────────────────────────────────────────────
+
+    /**
+     * Role-aware approvals widget: each role sees exactly the items relevant to them.
+     * super_admin / executive_vice_president see everything pending their sign-off.
+     * Domain managers see their own queue (e.g. head_mechanic sees pending WOs).
+     */
+    public function widgetApprovalsData(User $user): array
+    {
+        $role = $user->role ?? '';
+        $items = collect();
+
+        // Cash Budget Requests (pending accounting or super-admin sign-off)
+        if (in_array($role, ['super_admin', 'executive_vice_president', 'accounting_executive'])) {
+            $cbStatus = in_array($role, ['super_admin', 'executive_vice_president'])
+                ? 'pending_super_admin'
+                : 'pending_accounting';
+            $cbs = CashBudgetRequest::where('status', $cbStatus)
+                ->with(['preparedBy', 'tripTicket'])
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(fn ($cb) => [
+                    'id'         => $cb->id,
+                    'type'       => 'cash_budget',
+                    'type_label' => 'Cash Budget',
+                    'ref'        => $cb->tripTicket?->control_no ?? ('CB-' . $cb->id),
+                    'title'      => $cb->destination ?? $cb->tripTicket?->drop_off ?? 'Cash Budget Request',
+                    'subtitle'   => ($cb->preparedBy ? "{$cb->preparedBy->first_name} {$cb->preparedBy->last_name}" : 'N/A')
+                        . ' · ₱' . number_format($cb->total_amount ?? 0, 0),
+                    'amount'     => (float) ($cb->total_amount ?? 0),
+                    'date'       => $cb->created_at->toDateString(),
+                    'action_url' => '/operations/cash-budgets',
+                    'urgency'    => $cb->created_at->diffInDays(now()) > 2 ? 'high' : 'normal',
+                ]);
+            $items = $items->merge($cbs);
+        }
+
+        // Purchase Orders (pending CEO approval)
+        if (in_array($role, ['super_admin', 'executive_vice_president', 'purchasing_manager'])) {
+            $pos = PurchaseOrder::whereIn('status', ['pending_ceo_approval', 'pending_approval'])
+                ->with(['supplier', 'creator'])
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(fn ($po) => [
+                    'id'         => $po->id,
+                    'type'       => 'purchase_order',
+                    'type_label' => 'Purchase Order',
+                    'ref'        => $po->po_number,
+                    'title'      => $po->supplier?->company_name ?? $po->supplier?->name ?? 'Purchase Order',
+                    'subtitle'   => ($po->creator ? "{$po->creator->first_name} {$po->creator->last_name}" : 'N/A')
+                        . ' · ₱' . number_format($po->total_amount ?? 0, 0),
+                    'amount'     => (float) ($po->total_amount ?? 0),
+                    'date'       => $po->created_at->toDateString(),
+                    'action_url' => '/procurement/purchase-orders',
+                    'urgency'    => $po->created_at->diffInDays(now()) > 3 ? 'high' : 'normal',
+                ]);
+            $items = $items->merge($pos);
+        }
+
+        // Work Orders (pending validation or approval)
+        if (in_array($role, ['super_admin', 'executive_vice_president', 'head_mechanic', 'service_adviser', 'operations_manager'])) {
+            $woStatuses = in_array($role, ['head_mechanic'])
+                ? ['pending_validation']
+                : ['pending_approval', 'verified'];
+            $wos = WorkOrder::whereIn('status', $woStatuses)
+                ->with(['bus', 'creator'])
+                ->latest()
+                ->limit(10)
+                ->get()
+                ->map(fn ($wo) => [
+                    'id'         => $wo->id,
+                    'type'       => 'work_order',
+                    'type_label' => 'Work Order',
+                    'ref'        => $wo->wo_number,
+                    'title'      => $wo->description ?? 'Work Order',
+                    'subtitle'   => ($wo->bus ? "Bus {$wo->bus->plate_number}" : 'No Vehicle')
+                        . ' · ' . ucfirst($wo->priority ?? 'normal'),
+                    'amount'     => (float) ($wo->cost ?? 0),
+                    'date'       => $wo->created_at->toDateString(),
+                    'action_url' => '/procurement/work-orders',
+                    'urgency'    => $wo->priority === 'urgent' ? 'high' : 'normal',
+                ]);
+            $items = $items->merge($wos);
+        }
+
+        $sorted = $items->sortByDesc('date')->values();
+
+        return [
+            'approvals' => $sorted,
+            'total'     => $sorted->count(),
+        ];
+    }
+
+    /**
+     * Role-aware tasks widget: returns the most relevant pending items per role
+     * as a task-like list (upcoming trips, pending orders, etc.).
+     */
+    public function widgetTasksData(User $user): array
+    {
+        $role  = $user->role ?? '';
+        $tasks = collect();
+
+        // Drivers: upcoming trip tickets
+        if ($role === 'driver') {
+            $trips = TripTicket::where('driver_id', $user->id)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->orderBy('date_of_travel')
+                ->limit(8)
+                ->get()
+                ->map(fn ($t) => [
+                    'id'       => $t->id,
+                    'title'    => 'Trip: ' . ($t->drop_off ?? $t->destination ?? 'Destination TBD'),
+                    'subtitle' => ($t->date_of_travel ? \Carbon\Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
+                        . ' · ' . ($t->control_no ?? "TT-{$t->id}"),
+                    'status'   => $t->status,
+                    'type'     => 'trip',
+                    'url'      => '/driver/trips',
+                ]);
+            $tasks = $tasks->merge($trips);
+        }
+
+        // Accounting: pending invoices & budget requests
+        if (in_array($role, ['accounting_executive', 'super_admin', 'executive_vice_president'])) {
+            $pendingInvoices = Invoice::whereIn('status', ['issued', 'pending'])
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get()
+                ->map(fn ($inv) => [
+                    'id'       => $inv->id,
+                    'title'    => "Invoice {$inv->invoice_number}",
+                    'subtitle' => ($inv->customer_name ?? 'Unknown') . ' · ₱' . number_format($inv->total_amount ?? 0, 0),
+                    'status'   => 'pending',
+                    'type'     => 'invoice',
+                    'url'      => '/accounting/billing',
+                ]);
+            $pendingBudgets = CashBudgetRequest::where('status', 'pending_accounting')
+                ->orderByDesc('created_at')
+                ->limit(5)
+                ->get()
+                ->map(fn ($cb) => [
+                    'id'       => $cb->id,
+                    'title'    => 'Budget: ' . ($cb->destination ?? 'Budget Request'),
+                    'subtitle' => '₱' . number_format($cb->total_amount ?? 0, 0) . ' · Awaiting Verification',
+                    'status'   => 'scheduled',
+                    'type'     => 'budget',
+                    'url'      => '/operations/cash-budgets',
+                ]);
+            $tasks = $tasks->merge($pendingInvoices)->merge($pendingBudgets);
+        }
+
+        // Operations / Logistics: pending trip tickets
+        if (in_array($role, ['operations_manager', 'logistics_in_charge', 'dispatcher'])) {
+            $pendingTrips = TripTicket::whereIn('status', ['pending', 'approved'])
+                ->orderBy('date_of_travel')
+                ->limit(8)
+                ->get()
+                ->map(fn ($t) => [
+                    'id'       => $t->id,
+                    'title'    => 'Trip Ticket ' . ($t->control_no ?? "TT-{$t->id}"),
+                    'subtitle' => ($t->date_of_travel ? \Carbon\Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
+                        . ' → ' . ($t->drop_off ?? 'Destination TBD'),
+                    'status'   => $t->status,
+                    'type'     => 'trip',
+                    'url'      => '/logistics/trip-tickets',
+                ]);
+            $tasks = $tasks->merge($pendingTrips);
+        }
+
+        // Procurement / Mechanics: pending work orders
+        if (in_array($role, ['head_mechanic', 'service_adviser', 'purchasing_manager'])) {
+            $wos = WorkOrder::whereNotIn('status', ['completed', 'cancelled'])
+                ->orderByDesc('created_at')
+                ->limit(8)
+                ->get()
+                ->map(fn ($wo) => [
+                    'id'       => $wo->id,
+                    'title'    => $wo->wo_number . ': ' . \Illuminate\Support\Str::limit($wo->description ?? 'Work Order', 40),
+                    'subtitle' => ucfirst($wo->priority ?? 'normal') . ' · ' . ucwords(str_replace('_', ' ', $wo->status)),
+                    'status'   => in_array($wo->status, ['open', 'in_progress']) ? 'in_progress' : 'pending',
+                    'type'     => 'work_order',
+                    'url'      => '/procurement/work-orders',
+                ]);
+            $tasks = $tasks->merge($wos);
+        }
+
+        // Sales / Agent: their active job orders / bookings
+        if (in_array($role, ['sales_executive', 'travel_agent', 'agent', 'sales_associate'])) {
+            $jos = JobOrder::where('created_by', $user->id)
+                ->whereNotIn('status', ['completed', 'cancelled'])
+                ->orderByDesc('created_at')
+                ->limit(8)
+                ->get()
+                ->map(fn ($jo) => [
+                    'id'       => $jo->id,
+                    'title'    => $jo->jo_number . ': ' . \Illuminate\Support\Str::limit($jo->destination ?? 'Booking', 40),
+                    'subtitle' => 'Service Date: ' . ($jo->service_date ? \Carbon\Carbon::parse($jo->service_date)->format('M j, Y') : 'TBD'),
+                    'status'   => $jo->status === 'created' ? 'pending' : $jo->status,
+                    'type'     => 'job_order',
+                    'url'      => '/procurement/job-orders',
+                ]);
+            $tasks = $tasks->merge($jos);
+        }
+
+        $result = $tasks->values();
+
+        return [
+            'tasks' => $result,
+            'total' => $result->count(),
+        ];
+    }
+
+    /** Mini revenue summary for the widget panel. */
+    public function widgetRevenueData(): array
+    {
+        $today = Carbon::today();
+        $month = Carbon::now()->startOfMonth();
+
+        $todayRevenue  = Invoice::revenueBearing()->whereDate('created_at', $today)->sum(Invoice::collectedRevenueExpr());
+        $monthRevenue  = Invoice::revenueBearing()->where('created_at', '>=', $month)->sum(Invoice::collectedRevenueExpr());
+        $pendingAmount = Invoice::whereIn('status', ['issued', 'partial'])->sum('balance');
+        $overdueCount  = Invoice::whereIn('status', ['issued', 'partial'])->where('due_date', '<', $today->toDateString())->count();
+
+        $last7 = [];
+        for ($i = 6; $i >= 0; $i--) {
+            $day = Carbon::today()->subDays($i);
+            $rev = Invoice::revenueBearing()->whereDate('created_at', $day)->sum(Invoice::collectedRevenueExpr());
+            $last7[] = ['day' => $day->format('D'), 'amount' => (float) $rev];
+        }
+
+        return [
+            'today_revenue'  => (float) $todayRevenue,
+            'month_revenue'  => (float) $monthRevenue,
+            'pending_amount' => (float) $pendingAmount,
+            'overdue_count'  => (int) $overdueCount,
+            'last_7_days'    => $last7,
+        ];
+    }
+
+    /** Mini fleet snapshot for the widget panel. */
+    public function widgetFleetData(): array
+    {
+        $buses      = Bus::with(['driver'])->get();
+        $total      = $buses->count();
+        $onTrip     = TripTicket::whereNotIn('status', ['completed', 'cancelled'])->distinct('bus_id')->count('bus_id');
+        $available  = max(0, $total - $onTrip);
+        $inMaint    = WorkOrder::whereIn('status', ['open', 'in_progress'])->distinct('bus_id')->count('bus_id');
+
+        $fleetList = $buses->take(8)->map(fn ($b) => [
+            'id'          => $b->id,
+            'plate'       => $b->plate_number,
+            'driver'      => $b->driver ? "{$b->driver->first_name} {$b->driver->last_name}" : 'Unassigned',
+            'status'      => $b->status ?? 'available',
+        ]);
+
+        return [
+            'total'     => $total,
+            'on_trip'   => $onTrip,
+            'available' => $available,
+            'in_maintenance' => $inMaint,
+            'fleet'     => $fleetList,
+        ];
+    }
+
     // ─── Shared helpers ─────────────────────────────────────────────────────────
 
     /** Returns the 7x12 grid (density percentage) of client booking activity from the DB. */

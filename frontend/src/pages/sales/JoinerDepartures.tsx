@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Bus, CalendarPlus, Clock3, Eye, ImagePlus, MapPinned, Pencil, Plus, TicketCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react';
+import { ArrowLeft, Bus, CalendarPlus, ChevronLeft, ChevronRight, Clock3, Eye, ImagePlus, MapPinned, Pencil, Plus, TicketCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
@@ -90,6 +90,44 @@ function JoinerImage({ path, alt, className }: { path?: string; alt: string; cla
   }
 
   return <img src={imageUrl(path)} alt={alt} className={className} loading="lazy" onError={() => setFailed(true)} />;
+}
+
+function ProductSlideshow({ images, alt, className }: { images?: string[]; alt: string; className?: string }) {
+  const validImages = Array.isArray(images) ? images.filter(Boolean) : [];
+  const scrollRef = useRef<HTMLDivElement>(null);
+  
+  if (validImages.length === 0) return <JoinerImage path={undefined} alt={alt} className={className || ''} />;
+  
+  const scroll = (direction: 'left' | 'right') => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      scrollRef.current.scrollTo({ left: direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth, behavior: 'smooth' });
+    }
+  };
+
+  return (
+    <div className={`group relative ${className || ''}`}>
+      <div ref={scrollRef} className="h-full w-full flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+        {validImages.map((path, i) => (
+          <div key={i} className="h-full min-w-full snap-start relative flex-shrink-0">
+            <JoinerImage path={path} alt={`${alt} ${i + 1}`} className="h-full w-full object-cover" />
+          </div>
+        ))}
+      </div>
+      
+      {validImages.length > 1 && (
+        <>
+          <button type="button" onClick={(e) => { e.stopPropagation(); scroll('left'); }} className="absolute left-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 z-10"><ChevronLeft className="h-4 w-4" /></button>
+          <button type="button" onClick={(e) => { e.stopPropagation(); scroll('right'); }} className="absolute right-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 z-10"><ChevronRight className="h-4 w-4" /></button>
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 rounded-full bg-black/40 px-2.5 py-1.5 backdrop-blur-sm pointer-events-none">
+            {validImages.map((_, i) => (
+              <div key={i} className="h-1.5 w-1.5 rounded-full bg-white/80 shadow-sm" />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function JoinerDepartures() {
@@ -292,7 +330,7 @@ export default function JoinerDepartures() {
       {productsLoading ? <div className="mt-5 rounded-2xl bg-surface-alt p-8 text-center text-sm text-muted">Loading joiner products…</div> : products.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-border p-8 text-center"><MapPinned className="mx-auto h-8 w-8 text-muted" /><p className="mt-3 text-sm font-black text-ink">No joiner products yet</p><button onClick={openCreateProduct} className="mt-2 text-xs font-black text-brand">Create the first joiner offer</button></div> : <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {products.filter((product: any) => product?.id).map((product: Service) => <article key={product.id} className="overflow-hidden rounded-2xl border border-border bg-surface-alt">
           <div className="relative h-36 bg-slate-100 dark:bg-slate-800">
-            <JoinerImage path={Array.isArray(product.images) ? product.images.find(Boolean) : undefined} alt={product.name} className="h-full w-full object-cover" />
+            <ProductSlideshow images={product.images} alt={product.name} className="h-full w-full" />
             <div className="absolute right-2 top-2 flex gap-1 rounded-xl bg-black/60 p-1 backdrop-blur-sm">
               <button type="button" onClick={() => openEditProduct(product)} title="Edit product" className="grid h-7 w-7 place-items-center rounded-lg text-white hover:bg-white/20 transition"><Pencil className="h-3.5 w-3.5" /></button>
               <button type="button" onClick={() => { if (window.confirm(`Delete product "${product.name}"?`)) deleteProduct.mutate(product.id); }} title="Delete product" className="grid h-7 w-7 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100 transition"><Trash2 className="h-3.5 w-3.5" /></button>

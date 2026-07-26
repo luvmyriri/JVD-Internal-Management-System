@@ -17,11 +17,11 @@ use App\Models\AgentTask;
 class NotificationService
 {
     /**
-     * Notify administrators/accounting about a new KYC submission.
+     * Notify administrators/accreditation officers about a new KYC submission.
      */
     public static function notifyKycSubmission(Accreditation $accreditation)
     {
-        $admins = User::whereIn('role', ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'])->get();
+        $admins = User::getApprovers('process:approve_accreditation', ['operations_manager', 'corporate_secretary', 'procurement_officer']);
         foreach ($admins as $admin) {
             $admin->notify(new SystemAlert(
                 "KYC Submitted: " . $accreditation->entity_name,
@@ -38,21 +38,21 @@ class NotificationService
     public static function notifyPoSubmission(PurchaseOrder $po)
     {
         $creatorName = $po->creator ? ($po->creator->first_name . ' ' . $po->creator->last_name) : 'An agent';
-        $recipients = User::whereIn('role', ['super_admin', 'executive_vice_president', 'purchasing_manager', 'accounting_executive'])->get();
+        $recipients = User::getApprovers('process:approve_procurement', ['purchasing_manager', 'accounting_executive', 'procurement_officer']);
 
         $details = [
             'P.O. Number' => $po->po_number,
             'Supplier'    => $po->supplier->name ?? 'N/A',
-            'Grand Total' => '$' . number_format($po->total_amount, 2),
+            'Grand Total' => '₱' . number_format($po->total_amount, 2),
             'Created By'  => $creatorName,
             'Item Count'  => $po->lineItems->count() . ' items',
-            'Line Items'  => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ $' . number_format($item->unit_price, 2) . ')')->join("\n"),
+            'Line Items'  => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format($item->unit_price, 2) . ')')->join("\n"),
         ];
 
         foreach ($recipients as $recipient) {
             $recipient->notify(new ActionableApprovalNotification(
                 "PO Submitted: " . $po->po_number,
-                "$creatorName has submitted a new Purchase Order of amount $" . number_format($po->total_amount, 2) . " for your verification and approval.",
+                "$creatorName has submitted a new Purchase Order of amount ₱" . number_format($po->total_amount, 2) . " for your verification and approval.",
                 'purchase_order',
                 $po->id,
                 $details
@@ -67,20 +67,20 @@ class NotificationService
     {
         // 1. Send secure actionable approval links to CEO when verified by accounting
         if ($status === 'pending_ceo_approval') {
-            $ceos = User::whereIn('role', ['super_admin', 'executive_vice_president'])->get();
+            $ceos = User::getApprovers('process:approve_procurement', ['executive_vice_president']);
             $details = [
                 'P.O. Number'  => $po->po_number,
                 'Supplier'     => $po->supplier->name ?? 'N/A',
-                'Grand Total'  => '$' . number_format($po->total_amount, 2),
+                'Grand Total'  => '₱' . number_format($po->total_amount, 2),
                 'Verified By'  => $po->verifier ? ($po->verifier->first_name . ' ' . $po->verifier->last_name) : 'Accounting',
                 'Item Count'   => $po->lineItems->count() . ' items',
-                'Line Items'   => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ $' . number_format($item->unit_price, 2) . ')')->join("\n"),
+                'Line Items'   => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format($item->unit_price, 2) . ')')->join("\n"),
             ];
 
             foreach ($ceos as $ceo) {
                 $ceo->notify(new ActionableApprovalNotification(
                     "PO Pending CEO Approval: " . $po->po_number,
-                    "A Purchase Order of amount $" . number_format($po->total_amount, 2) . " has been verified by Accounting and is pending your final approval.",
+                    "A Purchase Order of amount ₱" . number_format($po->total_amount, 2) . " has been verified by Accounting and is pending your final approval.",
                     'purchase_order',
                     $po->id,
                     $details
@@ -119,7 +119,7 @@ class NotificationService
      */
     public static function notifyWorkOrderRequest(WorkOrder $wo)
     {
-        $approvers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'service_adviser', 'head_mechanic'])->get();
+        $approvers = User::getApprovers('process:approve_maintenance', ['service_adviser', 'head_mechanic', 'operations_manager']);
         
         $details = [
             'W.O. Number' => $wo->wo_number,
@@ -146,7 +146,7 @@ class NotificationService
      */
     public static function notifyWorkOrderVerification(WorkOrder $wo)
     {
-        $serviceAdvisers = User::whereIn('role', ['super_admin', 'executive_vice_president', 'service_adviser'])->get();
+        $serviceAdvisers = User::getApprovers('process:approve_maintenance', ['service_adviser']);
         
         $details = [
             'W.O. Number' => $wo->wo_number,
@@ -189,7 +189,7 @@ class NotificationService
      */
     public static function notifyCashBudgetSpawn(\App\Models\CashBudgetRequest $budget)
     {
-        $accountingStaff = User::whereIn('role', ['super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager'])->get();
+        $accountingStaff = User::getApprovers('process:approve_budget', ['accounting_executive', 'operations_manager', 'finance_manager']);
         
         $message = "A new Cash Budget Request of amount ₱" . number_format($budget->total_amount, 2) . " has been auto-generated for destination: " . ($budget->destination ?? 'N/A') . ". Ready for review.";
 
@@ -210,7 +210,7 @@ class NotificationService
      */
     public static function notifyPreTripCleared(\App\Models\TripTicket $ticket)
     {
-        $logisticsStaff = User::whereIn('role', ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher'])->get();
+        $logisticsStaff = User::getApprovers('process:override_schedule', ['logistics_in_charge', 'dispatcher', 'operations_manager']);
         
         $message = "Pre-trip safety inspection for Trip Ticket #" . $ticket->control_no . " (Plate: " . ($ticket->bus?->plate_number ?? $ticket->plate_no ?? 'TBA') . ") is fully completed and cleared for travel.";
 

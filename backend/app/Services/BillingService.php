@@ -338,7 +338,8 @@ class BillingService
             $totalAmount = $calc['totalAmount'];
 
             $paymentType = $request->payment_type ?? 'full';
-            $amountReceived = (double) $request->amount_received;
+            $isCash = $request->payment_method === 'Cash';
+            $amountReceived = $isCash ? (double) $request->amount_received : 0.0;
 
             $finalizer->assertPaymentAmounts(
                 $request->payment_method,
@@ -374,10 +375,10 @@ class BillingService
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
                 'amount_received' => $amountReceived,
-                'change' => max(0, $amountReceived - $totalAmount),
+                'change' => $isCash ? max(0, $amountReceived - $totalAmount) : 0.0,
                 'payment_method' => $request->payment_method,
                 'payment_type' => $paymentType,
-                'balance' => 0,
+                'balance' => $isCash ? max(0, $totalAmount - $amountReceived) : $totalAmount,
                 'due_date' => $request->due_date ?? $request->travel_date,
                 'status'          => 'pending_payment',
                 'created_by'      => auth()->id() ?? 1,

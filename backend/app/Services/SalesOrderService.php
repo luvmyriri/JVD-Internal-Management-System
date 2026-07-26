@@ -13,6 +13,7 @@ use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderItem;
 use App\Models\Service;
 use App\Models\User;
+use App\Services\SalesReferenceService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -517,7 +518,8 @@ class SalesOrderService
 
     private function number(string $prefix): string
     {
-        return sprintf('%s-%s-%s', $prefix, now()->format('Ymd'), strtoupper(Str::random(8)));
+        // Generate a date-contextual sequential reference e.g. ORD-072726-001
+        return SalesReferenceService::generate($prefix, null, now());
     }
 
     public function relations(): array

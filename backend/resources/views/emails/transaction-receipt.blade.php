@@ -197,33 +197,33 @@
                 </a>
             @endif
 
-            @if($invoice->travel_date || $invoice->bus_id || $invoice->driver_id || $invoice->tour_code || $invoice->pickup_location || $invoice->pax_count)
+            @if($invoice->booking?->travel_date || $invoice->booking?->bus_id || $invoice->booking?->driver_id || $invoice->booking?->tour_code || $invoice->booking?->pickup_location || $invoice->booking?->pax_count)
             <!-- Travel & Assignment Details -->
             <div class="financial-card" style="margin-bottom: 20px;">
                 <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">📅 Travel &amp; Assignment Specifications</h4>
                 <table class="financial-table">
-                    @if($invoice->travel_date)
+                    @if($invoice->booking?->travel_date)
                     <tr>
                         <td>Travel Date:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ \Carbon\Carbon::parse($invoice->travel_date)->format('F d, Y') }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ \Carbon\Carbon::parse($invoice->booking->travel_date)->format('F d, Y') }}</td>
                     </tr>
                     @endif
-                    @if($invoice->tour_code)
+                    @if($invoice->booking?->tour_code)
                     <tr>
                         <td>Tour/Joiner Code:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->tour_code }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->tour_code }}</td>
                     </tr>
                     @endif
-                    @if($invoice->pax_count)
+                    @if($invoice->booking?->pax_count)
                     <tr>
                         <td>Pax Count:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->pax_count }} Pax</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->pax_count }} Pax</td>
                     </tr>
                     @endif
-                    @if($invoice->pickup_location)
+                    @if($invoice->booking?->pickup_location)
                     <tr>
                         <td>Pickup Location:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->pickup_location }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->pickup_location }}</td>
                     </tr>
                     @endif
                     @if($invoice->bus)
@@ -238,10 +238,10 @@
                         <td class="text-right" style="color: #0f172a;">{{ $invoice->driver->first_name }} {{ $invoice->driver->last_name }}</td>
                     </tr>
                     @endif
-                    @if($invoice->seat_map && count($invoice->seat_map) > 0)
+                    @if($invoice->booking?->seat_map && count($invoice->booking->seat_map) > 0)
                     <tr>
                         <td>Selected Seats:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ implode(', ', $invoice->seat_map) }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ implode(', ', $invoice->booking->seat_map) }}</td>
                     </tr>
                     @endif
                 </table>
