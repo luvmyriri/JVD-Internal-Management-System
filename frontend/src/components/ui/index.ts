@@ -10,3 +10,8 @@ export { default as ConfirmDialog } from './ConfirmDialog';
 export { default as PipelineVisualizer } from './PipelineVisualizer';
 export * from './RequestMaintenanceModal';
 export * from './RequestCommissionModal';
+export * from './DashboardErrorBoundary';
+export { default as AuditLogDiffViewer } from './AuditLogDiffViewer';
+export { default as BusSeatAllocationModal } from './BusSeatAllocationModal';
+
+

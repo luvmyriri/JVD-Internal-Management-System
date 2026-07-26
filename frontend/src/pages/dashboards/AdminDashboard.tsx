@@ -638,6 +638,12 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               ))}
+              {localBookings.length === 0 && (
+                <div className="flex flex-col items-center justify-center flex-1 h-full py-10 text-muted">
+                  <LuGlobe className="w-8 h-8 mb-2 opacity-50 text-emerald-400" />
+                  <p className="text-[10px] font-black uppercase tracking-wider">No Local Travel Bookings Recorded</p>
+                </div>
+              )}
             </div>
           </div>
 
@@ -741,6 +747,12 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                  {internationalBookings.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-6 text-muted">
+                      <LuGlobe className="w-6 h-6 mb-1 opacity-40 text-rose-400" />
+                      <p className="text-[9px] font-black uppercase tracking-wider">No International Bookings</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -793,6 +805,12 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                  {pendingAndReservedBookings.length === 0 && (
+                    <div className="flex flex-col items-center justify-center py-6 text-muted">
+                      <LuTicket className="w-6 h-6 mb-1 opacity-40 text-blue-400" />
+                      <p className="text-[9px] font-black uppercase tracking-wider">No Pending or Reserved Bookings</p>
+                    </div>
+                  )}
                 </div>
             </div>
           </div>

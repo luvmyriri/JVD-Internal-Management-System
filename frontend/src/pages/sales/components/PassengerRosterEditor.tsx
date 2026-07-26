@@ -102,20 +102,29 @@ export default function PassengerRosterEditor({
             </div>
 
             <div className="grid grid-cols-2 gap-2">
-              <input
-                type="text"
-                placeholder="Emergency Contact / Phone (optional)"
-                value={p.emergency_contact || ''}
-                onChange={(e) => updateRow(i, { emergency_contact: e.target.value })}
-                className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-medium dark:text-white"
-              />
-              <input
-                type="text"
-                placeholder="Special Requests / Dietary Restrictions (optional)"
-                value={p.dietary_restrictions || ''}
-                onChange={(e) => updateRow(i, { dietary_restrictions: e.target.value, special_needs: e.target.value })}
-                className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-medium dark:text-white"
-              />
+              <div>
+                <label className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest block mb-0.5">
+                  Date of Birth * (Insurance Policy)
+                </label>
+                <input
+                  type="date"
+                  value={p.date_of_birth || ''}
+                  onChange={(e) => updateRow(i, { date_of_birth: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-blue-50/50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
+                />
+              </div>
+              <div>
+                <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest block mb-0.5">
+                  Special Requests / Dietary Notes
+                </label>
+                <input
+                  type="text"
+                  placeholder="Dietary / Medical / Notes"
+                  value={p.dietary_restrictions || p.special_needs || ''}
+                  onChange={(e) => updateRow(i, { dietary_restrictions: e.target.value, special_needs: e.target.value })}
+                  className="w-full px-3 py-1.5 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-xl text-xs font-medium text-gray-900 dark:text-white"
+                />
+              </div>
             </div>
           </div>
         ))

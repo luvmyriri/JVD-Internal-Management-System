@@ -11,6 +11,10 @@ import SalesCheckout, { type CartItem } from './SalesCheckout';
 import SeatSelectorModal, { type SeatSelectionResult, type VehicleBookingMode } from '../../components/travel/SeatSelectorModal';
 import PassengerManifestModal, { type PassengerManifestRow } from '../../components/travel/PassengerManifestModal';
 import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
+import { LuChevronDown, LuSearch, LuFilter, LuMapPin, LuCalendar, LuBus } from 'react-icons/lu';
+import { BusSeatAllocationModal } from '../../components/ui';
+import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
+
 
 const getTomorrowStartEnd = () => {
   const tomorrow = new Date();
@@ -28,6 +32,9 @@ export default function CharterSales() {
   const [booking, setBooking] = useState(bookingInitial);
   const [planForm, setPlanForm] = useState(planInitial);
   const [planOpen, setPlanOpen] = useState(false);
+  const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
+  const [busAllocationModalOpen, setBusAllocationModalOpen] = useState(false);
+  const [busAllocations, setBusAllocations] = useState<AllocatedBus[]>([]);
   const [seatModalOpen, setSeatModalOpen] = useState(false);
   const [manifestModalOpen, setManifestModalOpen] = useState(false);
   const [manifestPassengers, setManifestPassengers] = useState<PassengerManifestRow[]>([]);
@@ -44,7 +51,29 @@ export default function CharterSales() {
   const [busAssignments, setBusAssignments] = useState<Array<{ bus_id: string; driver_id: string }>>([
     { bus_id: '', driver_id: '' }
   ]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedClass, setSelectedClass] = useState('All');
+
   const { data: plans = [] } = useQuery({ queryKey: ['charter-rate-plans'], queryFn: charterApi.ratePlans });
+
+  const filteredPlans = useMemo(() => {
+    return plans.filter(plan => {
+      const q = searchQuery.trim().toLowerCase();
+      const matchesSearch = !q || [
+        plan.name,
+        plan.vehicle_class,
+      ].some(field => String(field || '').toLowerCase().includes(q));
+
+      const matchesClass = selectedClass === 'All' || (
+        selectedClass === 'Tourist Bus' ? (plan.vehicle_class?.toLowerCase().includes('bus') || plan.name.toLowerCase().includes('bus')) :
+        selectedClass === 'Coaster' ? (plan.vehicle_class?.toLowerCase().includes('coaster') || plan.name.toLowerCase().includes('coaster')) :
+        selectedClass === 'Van' ? (plan.vehicle_class?.toLowerCase().includes('van') || plan.name.toLowerCase().includes('van')) : true
+      );
+
+      return matchesSearch && matchesClass;
+    });
+  }, [plans, searchQuery, selectedClass]);
+
   const { data: bookings = [] } = useQuery({ queryKey: ['charter-bookings'], queryFn: charterApi.bookings });
   const { data: serviceResponse } = useQuery({ queryKey: ['billing-services'], queryFn: billingApi.getServices });
 
@@ -197,8 +226,8 @@ export default function CharterSales() {
         <Button onClick={() => setManifestModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider">
           <Users className="mr-1.5 h-4 w-4" /> Passenger Manifest ({manifestPassengers.length})
         </Button>
-        <Button onClick={() => setSeatModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider">
-          <Bus className="mr-1.5 h-4 w-4" /> Select Vehicle & Seats
+        <Button onClick={() => setBusAllocationModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider">
+          <Bus className="mr-1.5 h-4 w-4" /> Multi-Bus & Seat Selector {busAllocations.length > 0 ? `(${busAllocations.length} Bus)` : ''}
         </Button>
         <Button onClick={() => setPlanOpen(true)} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Rate Plan</Button>
       </div>
@@ -206,34 +235,183 @@ export default function CharterSales() {
 
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
       <div className="space-y-6">
-        <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="flex items-center justify-between border-b border-border pb-4">
+        {/* 1. Distinct Elevated Rate Plans Catalog Selection Container Card */}
+        <section className="rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-b from-blue-50/50 via-slate-50 to-white dark:from-slate-900/80 dark:via-gray-900/60 dark:to-gray-900 p-6 shadow-md space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-100 dark:border-gray-800 pb-4">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Rate plans</p>
-              <h2 className="mt-1 text-lg font-black text-ink">Select charter package</h2>
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-0.5 rounded-md bg-blue-600 text-white text-[9.5px] font-black uppercase tracking-widest shadow-sm">
+                  Catalog Picker
+                </span>
+                <span className="text-[10px] font-bold text-gray-500 dark:text-gray-400">
+                  {filteredPlans.length} {filteredPlans.length === 1 ? 'Rate Plan' : 'Rate Plans'} Available
+                </span>
+              </div>
+              <h2 className="mt-1 text-xl font-black text-ink tracking-tight">Select Charter Rate Plan</h2>
             </div>
-            {selectedPlan && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand dark:bg-blue-950/40">Starts @ ₱{Number(selectedPlan.base_price).toLocaleString()}</span>}
+
+            {/* Real-time Search Input */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+              <div className="relative">
+                <LuSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search rate plans..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full sm:w-56 pl-9 pr-3 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold text-ink focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all placeholder:text-gray-400"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {plans.map(plan => {
-              const active = String(plan.id) === booking.rate_plan_id;
-              return <button key={plan.id} type="button" onClick={() => setBooking(b => ({ ...b, rate_plan_id: String(plan.id) }))} className={`rounded-2xl border p-4 text-left transition ${active ? 'border-brand bg-blue-50/40 shadow-sm dark:bg-blue-950/20' : 'border-border bg-surface hover:border-slate-300'}`}>
-                <div className="flex justify-between"><span className="text-[10px] font-black uppercase text-brand">{plan.vehicle_class}</span>{active && <CheckCircle2 className="h-4 w-4 text-brand" />}</div>
-                <p className="mt-2 font-black text-ink">{plan.name}</p>
-                <p className="mt-1 text-xs text-muted">₱{Number(plan.base_price).toLocaleString()} · {plan.included_hours}h / {plan.included_kilometers}km</p>
-              </button>;
-            })}
+          {/* Vehicle Class Filter Pills Row */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
+            {['All', 'Tourist Bus', 'Coaster', 'Van'].map((vClass) => (
+              <button
+                key={vClass}
+                type="button"
+                onClick={() => setSelectedClass(vClass)}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-black tracking-wide transition-all shrink-0 ${
+                  selectedClass === vClass
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-blue-300'
+                }`}
+              >
+                {vClass}
+              </button>
+            ))}
           </div>
 
-          <div className="mt-6 grid gap-4 border-t border-border pt-6 md:grid-cols-2 lg:grid-cols-4">
+          {/* Height-Bounded Scrollable Rate Plans List */}
+          <div className="max-h-[380px] overflow-y-auto custom-scrollbar space-y-3 pr-1.5">
+            {filteredPlans.length === 0 ? (
+              <div className="py-12 text-center text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
+                <LuBus className="w-8 h-8 mx-auto opacity-30 mb-2" />
+                <p className="text-xs font-bold uppercase tracking-wider">No matching charter rate plans found</p>
+                <p className="text-[11px] text-gray-400 mt-1">Try adjusting your search query or vehicle class filter.</p>
+              </div>
+            ) : (
+              filteredPlans.map(plan => {
+                const active = String(plan.id) === booking.rate_plan_id;
+                const isExpanded = expandedPlanId === plan.id || active;
+
+                return (
+                  <div
+                    key={plan.id}
+                    className={`rounded-2xl border transition-all overflow-hidden ${
+                      active
+                        ? 'border-blue-600 bg-white dark:bg-gray-900 shadow-md ring-2 ring-blue-500/20'
+                        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900/60 hover:border-blue-300'
+                    }`}
+                  >
+                    {/* Collapsible Header Row */}
+                    <div
+                      onClick={() => {
+                        setBooking(b => ({ ...b, rate_plan_id: String(plan.id) }));
+                        setExpandedPlanId(expandedPlanId === plan.id ? null : plan.id);
+                      }}
+                      className="p-4 flex items-center justify-between cursor-pointer select-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                          active ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'
+                        }`}>
+                          {active && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </div>
+
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9.5px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded-md">
+                              {plan.vehicle_class || 'Tourist Bus'}
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-400">
+                              Includes {plan.included_hours}h / {plan.included_kilometers}km
+                            </span>
+                          </div>
+                          <h3 className="text-base font-black text-ink mt-0.5">{plan.name}</h3>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <div className="text-right">
+                          <span className="text-sm font-black text-blue-600 dark:text-blue-400">
+                            ₱{Number(plan.base_price).toLocaleString()}
+                          </span>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase">Base Rate</p>
+                        </div>
+                        <button
+                          type="button"
+                          className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition"
+                        >
+                          <LuChevronDown className={`w-5 h-5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Expanded Rate Plan Details Panel */}
+                    {isExpanded && (
+                      <div className="px-5 pb-5 pt-2 border-t border-gray-100 dark:border-gray-800/60 bg-gray-50/60 dark:bg-gray-800/30 space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs font-semibold">
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700">
+                            <p className="text-[9px] text-gray-400 font-bold uppercase">Excess Hourly Rate</p>
+                            <p className="text-sm font-black text-ink mt-0.5">₱{Number(plan.extra_hour_rate || 0).toLocaleString()} / hr</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700">
+                            <p className="text-[9px] text-gray-400 font-bold uppercase">Excess Distance Rate</p>
+                            <p className="text-sm font-black text-ink mt-0.5">₱{Number(plan.extra_kilometer_rate || 0).toLocaleString()} / km</p>
+                          </div>
+                          <div className="p-2.5 rounded-xl bg-white dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700">
+                            <p className="text-[9px] text-gray-400 font-bold uppercase">Overnight Fee</p>
+                            <p className="text-sm font-black text-ink mt-0.5">₱{Number(plan.overnight_rate || 0).toLocaleString()} / night</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-bold pt-1">
+                          <span className={`px-2.5 py-1 rounded-lg border ${
+                            plan.includes_driver
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                          }`}>
+                            {plan.includes_driver ? '✓ Professional Driver Included' : '✕ Driver Fee Separate'}
+                          </span>
+                          <span className={`px-2.5 py-1 rounded-lg border ${
+                            plan.includes_fuel
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300'
+                              : 'bg-gray-100 text-gray-500 border-gray-200'
+                          }`}>
+                            {plan.includes_fuel ? '✓ Full Tank Fuel Included' : '✕ Fuel Charged at Actual'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </section>
+
+        {/* 2. Isolated Schedule & Route Particulars Card */}
+        <section className="rounded-3xl border border-border bg-surface p-6 shadow-sm space-y-5">
+          <div className="flex items-center gap-3 border-b border-border pb-4">
+            <span className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 flex items-center justify-center font-bold shrink-0">
+              <LuCalendar size={20} />
+            </span>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Charter Schedule & Route</p>
+              <h2 className="text-lg font-black text-ink">Trip Route & Date Inputs</h2>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <label className="text-xs font-bold text-muted">Departure Date & Time<input type="datetime-local" value={booking.starts_at} onChange={e => setBooking({ ...booking, starts_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Return Date & Time<input type="datetime-local" value={booking.ends_at} onChange={e => setBooking({ ...booking, ends_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Passenger Count<input type="number" min="1" max="500" value={booking.passenger_count} onChange={e => setBooking({ ...booking, passenger_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Est. Distance (KM)<input type="number" min="0" value={booking.estimated_kilometers} onChange={e => setBooking({ ...booking, estimated_kilometers: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
           </div>
 
-          <div className="mt-4 grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-2 pt-1">
             <label className="text-xs font-bold text-muted">Pickup Location<input type="text" value={booking.pickup_location} onChange={e => setBooking({ ...booking, pickup_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Destination<input type="text" value={booking.destination} onChange={e => setBooking({ ...booking, destination: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
           </div>
@@ -336,6 +514,25 @@ export default function CharterSales() {
         />
       </aside>
     </div>
+
+    {/* Multi-Bus Allocation & Seat Selector Modal */}
+    <BusSeatAllocationModal
+      isOpen={busAllocationModalOpen}
+      onClose={() => setBusAllocationModalOpen(false)}
+      requiredCapacity={paxCount}
+      passengers={manifestPassengers}
+      initialAllocations={busAllocations}
+      availableDrivers={resources?.drivers || []}
+      onSaveAllocations={(allocs) => {
+        setBusAllocations(allocs);
+        if (allocs.length > 0) {
+          setBusAssignments(allocs.map(a => ({
+            bus_id: String(a.bus_id),
+            driver_id: a.driver_id ? String(a.driver_id) : '',
+          })));
+        }
+      }}
+    />
 
     {/* Seat Selector Modal */}
     <SeatSelectorModal

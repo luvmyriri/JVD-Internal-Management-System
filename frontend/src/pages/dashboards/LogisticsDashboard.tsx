@@ -80,11 +80,11 @@ export default function LogisticsDashboard() {
       header: 'Status',
       render: (ticket) => (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          ticket.status === 'in_progress' ? 'bg-amber-100 text-amber-700' :
-          ticket.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
+          ticket?.status === 'in_progress' ? 'bg-amber-100 text-amber-700' :
+          ticket?.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
           'bg-slate-100 text-slate-700'
         }`}>
-          {ticket.status.replace('_', ' ').toUpperCase()}
+          {ticket?.status ? ticket.status.replace('_', ' ').toUpperCase() : 'N/A'}
         </span>
       ),
     },

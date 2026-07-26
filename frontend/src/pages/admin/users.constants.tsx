@@ -25,6 +25,7 @@ export interface User {
   custom_permissions?: any;
   effective_permissions?: any;
   tags?: string[];
+  dashboard_preference?: string | null;
 }
 
 export const PRESET_TAGS = [

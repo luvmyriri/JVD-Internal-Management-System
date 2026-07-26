@@ -83,6 +83,8 @@ export interface User {
   } | null;
   effective_permissions?: RolePermissions;
   tags?: string[];
+  /** Per-user dashboard override set by admin. Overrides the role→dashboard default mapping. */
+  dashboard_preference?: string | null;
   must_change_password: boolean;
   last_login: string | null;
   created_by: number | null;

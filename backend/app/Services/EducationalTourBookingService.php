@@ -19,44 +19,34 @@ use Illuminate\Validation\ValidationException;
 
 class EducationalTourBookingService
 {
-    public function calculate(EducationalTourProgram $program, int $students, int $chaperones): array
+    public function calculate(EducationalTourProgram $program, int $students, int $tourGuides): array
     {
         $students = max(0, $students);
-        $chaperones = max(0, $chaperones);
+        $tourGuides = max(0, $tourGuides);
         if ($students < $program->minimum_students) {
             throw ValidationException::withMessages(['student_count' => "This program requires at least {$program->minimum_students} students."]);
         }
-        $perGuide = max(1, (int) ($program->students_per_chaperone ?: 20));
-        $perFreeGuide = max(1, (int) ($program->students_per_free_chaperone ?: 20));
-        $required = (int) ceil($students / $perGuide);
-        if ($chaperones < $required) {
-            throw ValidationException::withMessages([
-                'tour_guide_count' => "At least {$required} tour guides are required for {$students} students.",
-                'chaperone_count' => "At least {$required} tour guides are required for {$students} students.",
-            ]);
-        }
-        $free = min($chaperones, (int) floor($students / $perFreeGuide));
-        $chargeable = max(0, $chaperones - $free);
+
+        $chargeable = $tourGuides;
         $studentAmount = round($students * (float) $program->student_price, 2);
-        $additionalPrice = (float) $program->additional_chaperone_price;
-        $chaperoneAmount = round($chargeable * $additionalPrice, 2);
-        $freeGuideAllowance = round($free * $additionalPrice, 2);
+        $additionalPrice = (float) ($program->additional_chaperone_price ?? 0);
+        $guideAmount = round($chargeable * $additionalPrice, 2);
 
         return [
             'student_count' => $students,
-            'tour_guide_count' => $chaperones,
-            'chaperone_count' => $chaperones,
-            'required_tour_guides' => $required,
-            'required_chaperones' => $required,
-            'free_tour_guide_count' => $free,
-            'free_chaperone_count' => $free,
+            'tour_guide_count' => $tourGuides,
+            'chaperone_count' => $tourGuides,
+            'required_tour_guides' => 0,
+            'required_chaperones' => 0,
+            'free_tour_guide_count' => 0,
+            'free_chaperone_count' => 0,
             'chargeable_tour_guide_count' => $chargeable,
             'chargeable_chaperone_count' => $chargeable,
             'student_amount' => $studentAmount,
-            'tour_guide_amount' => $chaperoneAmount,
-            'chaperone_amount' => $chaperoneAmount,
-            'complimentary_tour_guide_allowance' => $freeGuideAllowance,
-            'subtotal' => round($studentAmount + $chaperoneAmount, 2),
+            'tour_guide_amount' => $guideAmount,
+            'chaperone_amount' => $guideAmount,
+            'complimentary_tour_guide_allowance' => 0,
+            'subtotal' => round($studentAmount + $guideAmount, 2),
         ];
     }
 

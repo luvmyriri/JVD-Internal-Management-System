@@ -21,6 +21,10 @@ import { useAuth } from '../../context/AuthContext';
 import { Button, Modal } from '../../components/ds';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
+import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
+import ItineraryBuilder from './components/ItineraryBuilder';
+import type { ItineraryDayInput } from '../../api/contracts';
+
 
 interface PackageForm {
   name: string;
@@ -70,6 +74,9 @@ export default function FixedPackages() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [continueAfterSave, setContinueAfterSave] = useState(false);
   const [form, setForm] = useState<PackageForm>(INITIAL_FORM);
+  const [inclusionsList, setInclusionsList] = useState<string[]>([]);
+  const [exclusionsList, setExclusionsList] = useState<string[]>([]);
+  const [itineraryDays, setItineraryDays] = useState<ItineraryDayInput[]>([]);
 
   const { data: response, isLoading } = useQuery({
     queryKey: ['billing-services'],
@@ -95,12 +102,18 @@ export default function FixedPackages() {
     setEditingId(null);
     setContinueAfterSave(false);
     setForm(INITIAL_FORM);
+    setInclusionsList([]);
+    setExclusionsList([]);
+    setItineraryDays([]);
   };
 
   const openCreate = () => {
     setEditingId(null);
     setContinueAfterSave(false);
     setForm(INITIAL_FORM);
+    setInclusionsList(['Air-conditioned tourist transport', 'Hotel accommodation', 'Daily plated breakfast', 'Tour coordinator']);
+    setExclusionsList(['Personal souvenir shopping', 'Snacks & meals outside itinerary', 'Driver & guide tipping']);
+    setItineraryDays([{ day_number: 1, activity_description: 'Arrival, hotel check-in & welcome dinner', location: 'Hotel' }]);
     setFormOpen(true);
   };
 
@@ -108,6 +121,24 @@ export default function FixedPackages() {
     const config = service.package_config ?? {};
     setEditingId(service.id);
     setContinueAfterSave(continueToBooking);
+
+    const inc = Array.isArray(service.inclusions)
+      ? service.inclusions
+      : typeof service.inclusions === 'string' && service.inclusions.trim()
+      ? service.inclusions.split('\n').map(s => s.trim()).filter(Boolean)
+      : ['Air-conditioned tourist transport', 'Hotel accommodation'];
+
+    const exc = Array.isArray(service.exclusions)
+      ? service.exclusions
+      : typeof service.exclusions === 'string' && service.exclusions.trim()
+      ? service.exclusions.split('\n').map(s => s.trim()).filter(Boolean)
+      : ['Personal souvenir shopping'];
+
+    const rawDays = (config as any).days ?? config.default_itinerary;
+    const days: ItineraryDayInput[] = Array.isArray(rawDays)
+      ? rawDays.map((item: any, idx: number) => typeof item === 'object' ? item : { day_number: idx + 1, activity_description: String(item), location: config.destination })
+      : [{ day_number: 1, activity_description: 'Arrival, transfer and check-in', location: config.destination }];
+
     setForm({
       name: service.name || '',
       description: service.description || '',
@@ -123,11 +154,14 @@ export default function FixedPackages() {
       adultPrice: formatMoneyInput(String(service.adult_price ?? service.price ?? 0)),
       childPrice: formatMoneyInput(String(service.child_price ?? service.adult_price ?? service.price ?? 0)),
       itinerary: (config.default_itinerary ?? []).join('\n'),
-      inclusions: service.inclusions || '',
-      exclusions: service.exclusions || '',
+      inclusions: '',
+      exclusions: '',
       costBreakdown: service.cost_breakdown || '',
       images: service.images ?? [],
     });
+    setInclusionsList(inc);
+    setExclusionsList(exc);
+    setItineraryDays(days);
     setFormOpen(true);
   };
 
@@ -164,17 +198,18 @@ export default function FixedPackages() {
           booking_lead_days: Number(form.bookingLeadDays || 0),
           valid_from: form.validFrom || undefined,
           valid_until: form.validUntil || undefined,
-          default_itinerary: form.itinerary.split('\n').map((row) => row.trim()).filter(Boolean),
+          default_itinerary: itineraryDays.map((row) => `Day ${row.day_number}: ${row.activity_description || ''}`),
+          days: itineraryDays,
         },
-        inclusions: form.inclusions,
-        exclusions: form.exclusions,
+        inclusions: inclusionsList,
+        exclusions: exclusionsList,
         cost_breakdown: form.costBreakdown,
         images: form.images,
       };
 
       return editingId
-        ? billingApi.updateService(editingId, payload)
-        : billingApi.createService(payload);
+        ? billingApi.updateService(editingId, payload as any)
+        : billingApi.createService(payload as any);
     },
     onSuccess: async () => {
       const checkoutServiceId = continueAfterSave ? editingId : null;
@@ -274,9 +309,23 @@ export default function FixedPackages() {
             <label className="text-xs font-bold text-muted">Valid until<input type="date" min={form.validFrom || undefined} className={inputClass} value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} /></label>
             <label className="text-xs font-bold text-muted">Minimum booking lead time (days)<input min="0" type="number" className={inputClass} value={form.bookingLeadDays} onChange={(e) => setForm({ ...form, bookingLeadDays: e.target.value })} /></label>
             <label className="text-xs font-bold text-muted md:col-span-2">Customer-facing description<textarea required rows={3} className={textareaClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted md:col-span-2">Default itinerary (one day / item per line)<textarea required rows={5} className={textareaClass} value={form.itinerary} onChange={(e) => setForm({ ...form, itinerary: e.target.value })} placeholder="Day 1 - Arrival, transfer and city tour" /></label>
-            <label className="text-xs font-bold text-muted">Inclusions (one per line)<textarea rows={5} className={textareaClass} value={form.inclusions} onChange={(e) => setForm({ ...form, inclusions: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Exclusions (one per line)<textarea rows={5} className={textareaClass} value={form.exclusions} onChange={(e) => setForm({ ...form, exclusions: e.target.value })} /></label>
+            <div className="md:col-span-2 space-y-4 pt-2">
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <p className="text-xs font-black uppercase text-brand mb-2">Structured Daily Itinerary</p>
+                <ItineraryBuilder value={itineraryDays} onChange={setItineraryDays} />
+              </div>
+
+              <div className="rounded-2xl border border-border bg-surface p-4">
+                <InclusionsExclusionsEditor
+                  inclusions={inclusionsList}
+                  exclusions={exclusionsList}
+                  onChange={(inc, exc) => {
+                    setInclusionsList(inc);
+                    setExclusionsList(exc);
+                  }}
+                />
+              </div>
+            </div>
             {canManage && <label className="text-xs font-bold text-muted md:col-span-2">Internal cost breakdown<textarea rows={3} className={textareaClass} value={form.costBreakdown} onChange={(e) => setForm({ ...form, costBreakdown: e.target.value })} /></label>}
           </div>
 

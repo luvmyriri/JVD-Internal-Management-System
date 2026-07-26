@@ -12,6 +12,7 @@ import { Modal, Button } from '../../components/ui';
 import { cn } from '../../utils';
 import type { ModulePermission } from '../../api/rolePermissions';
 import { ROLES, DEPARTMENTS, PRESET_TAGS, type User } from './users.constants';
+import UserAccessPanel from './UserAccessPanel';
 
 interface UserFormModalProps {
   isOpen: boolean;
@@ -49,6 +50,8 @@ interface UserFormModalProps {
 
   customPermissions: Record<string, ModulePermission>;
   setCustomPermissions: React.Dispatch<React.SetStateAction<Record<string, ModulePermission>>>;
+  dashboardPreference?: string | null;
+  setDashboardPreference?: (v: string | null) => void;
 }
 
 export default function UserFormModal({
@@ -82,6 +85,8 @@ export default function UserFormModal({
   setShowNewPw,
   customPermissions,
   setCustomPermissions,
+  dashboardPreference,
+  setDashboardPreference,
 }: UserFormModalProps) {
   return (
     <Modal
@@ -358,101 +363,26 @@ export default function UserFormModal({
           </details>
         )}
 
-        {/* ── Super Admin: Custom Permissions ── */}
-        {selectedUser && isSuperAdmin && (
-          <div className="space-y-3 pt-2">
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
-              <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5">
-                <LuShieldCheck size={12} /> Custom Permissions (Overrides Role)
+        {/* ── Access & Dashboard Overrides ── */}
+        {selectedUser && (
+          <details className="group" open>
+            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
+              <span className="flex items-center gap-2">
+                <LuShieldCheck className="text-emerald-500" />
+                <span>Access & Dashboard Overrides</span>
               </span>
-              <div className="flex-1 h-px bg-gray-100 dark:bg-gray-800" />
+              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
+            </summary>
+            <div className="pt-4 px-1">
+              <UserAccessPanel
+                role={watchedRole || selectedUser.role}
+                initialCustomPermissions={customPermissions}
+                initialDashboardPreference={dashboardPreference}
+                onPermissionsChange={(perms) => setCustomPermissions(perms)}
+                onDashboardPreferenceChange={(pref) => setDashboardPreference && setDashboardPreference(pref)}
+              />
             </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mt-3">
-               {modules.map((module: string) => {
-                   const perms = customPermissions[module];
-
-                   // Determine current access level
-                   let accessLevel = 'default';
-                   if (perms) {
-                       if (!perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
-                           accessLevel = 'none';
-                       } else if (perms.can_view && !perms.can_create && !perms.can_edit && !perms.can_delete) {
-                           accessLevel = 'view';
-                       } else {
-                           accessLevel = 'full';
-                       }
-                   }
-
-                   const basePerms = configData?.data?.[selectedUser?.role || watchedRole]?.[module];
-                   let baseAccessLevel = 'none';
-                   if (basePerms) {
-                       if (basePerms.can_view && !basePerms.can_create && !basePerms.can_edit && !basePerms.can_delete) {
-                           baseAccessLevel = 'view';
-                       } else if (basePerms.can_view) {
-                           baseAccessLevel = 'full';
-                       }
-                   }
-
-                   const effectiveAccessLevel = accessLevel === 'default' ? baseAccessLevel : accessLevel;
-
-                   const handleLevelChange = (level: string) => {
-                       setCustomPermissions(prev => {
-                           const updated = { ...prev };
-                           if (level === 'default') {
-                               delete updated[module];
-                           } else if (level === 'none') {
-                               updated[module] = { can_view: false, can_create: false, can_edit: false, can_delete: false };
-                           } else if (level === 'view') {
-                               updated[module] = { can_view: true, can_create: false, can_edit: false, can_delete: false };
-                           } else if (level === 'full') {
-                               updated[module] = { can_view: true, can_create: true, can_edit: true, can_delete: true };
-                           }
-                           return updated;
-                       });
-                   };
-
-                   const moduleName = configData?.meta?.modules?.[module] || module.replace(/_/g, ' ');
-
-                   return (
-                       <div key={module} className={cn(
-                         "flex flex-col justify-between p-3 rounded-xl border transition-colors gap-2",
-                         effectiveAccessLevel === 'none' ? "bg-gray-50/50 border-gray-100 dark:bg-gray-800/50 dark:border-gray-700" :
-                         effectiveAccessLevel === 'view' ? "bg-blue-50/50 border-blue-100 dark:bg-blue-900/20 dark:border-blue-800/30" :
-                         "bg-emerald-50/50 border-emerald-100 dark:bg-emerald-900/20 dark:border-emerald-800/30"
-                       )}>
-                           <div className="flex items-center justify-between gap-1.5">
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <div className={cn(
-                                    "w-2 h-2 rounded-full shrink-0",
-                                    effectiveAccessLevel === 'none' ? 'bg-rose-400' :
-                                    effectiveAccessLevel === 'view' ? 'bg-blue-400' : 'bg-emerald-400'
-                                )} />
-                                <span className="text-xs font-bold text-gray-700 dark:text-gray-300 capitalize truncate" title={moduleName}>
-                                  {moduleName}
-                                </span>
-                              </div>
-                              <span className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider shrink-0">
-                                Base: {baseAccessLevel}
-                              </span>
-                           </div>
-
-                           <select
-                             value={accessLevel}
-                             onChange={(e) => handleLevelChange(e.target.value)}
-                             className="w-full text-xs font-bold p-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                           >
-                             <option value="default">Default ({baseAccessLevel})</option>
-                             <option value="none">No Access</option>
-                             <option value="view">View Only</option>
-                             <option value="full">Full Access</option>
-                           </select>
-                       </div>
-                   );
-               })}
-            </div>
-          </div>
+          </details>
         )}
 
         {!selectedUser && (

@@ -22,6 +22,7 @@ class UpdateUserRequest extends FormRequest
             'custom_permissions' => ['nullable', 'array'],
             'tags' => ['sometimes', 'nullable', 'array'],
             'tags.*' => ['string', 'max:100'],
+            'dashboard_preference' => ['nullable', 'string', 'in:admin,accounting,operations,logistics,procurement,maintenance,hr,agent,driver'],
         ];
     }
 }

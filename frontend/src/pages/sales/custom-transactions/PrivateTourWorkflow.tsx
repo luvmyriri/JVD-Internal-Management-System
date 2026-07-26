@@ -19,6 +19,8 @@ import { charterApi, type CharterResources } from '../../../api/charters';
 import { formatMoneyInput, parseMoneyInput } from '../../../utils';
 import type { PrivateTourWorkflowProps, PreparedServiceLine } from './workflowTypes';
 import { splitLines, toIsoDateTime } from './workflowTypes';
+import { BusSeatAllocationModal } from '../../../components/ui';
+import type { AllocatedBus } from '../../../components/ui/BusSeatAllocationModal';
 
 type TravelerType = 'adult' | 'child';
 
@@ -65,7 +67,7 @@ const buildItinerary = (
   }));
 };
 
-export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTourWorkflowProps) {
+export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader = false }: PrivateTourWorkflowProps & { hideHeader?: boolean }) {
   const loadedCatalogId = useRef<number | null>(null);
   const config = catalogService?.package_config;
 
@@ -82,6 +84,8 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
   const [requiresContract, setRequiresContract] = useState(false);
   const [busId, setBusId] = useState('');
   const [driverId, setDriverId] = useState('');
+  const [busAllocationModalOpen, setBusAllocationModalOpen] = useState(false);
+  const [busAllocations, setBusAllocations] = useState<AllocatedBus[]>([]);
   const [travelers, setTravelers] = useState<TravelerRow[]>(() => {
     const initialCount = Math.max(1, config?.minimum_pax ?? 1);
     return Array.from({ length: initialCount }, () => makeTraveler());
@@ -91,6 +95,8 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
     config?.destination,
     config?.duration_days,
   ));
+
+  const requiredBuses = useMemo(() => Math.max(1, Math.ceil((travelers.length || 1) / 49)), [travelers.length]);
 
   useEffect(() => {
     if (!catalogService || loadedCatalogId.current === catalogService.id) return;
@@ -131,6 +137,7 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
   useEffect(() => {
     setBusId('');
     setDriverId('');
+    setBusAllocations([]);
   }, [startsAt, endsAt]);
 
   const adults = travelers.filter((traveler) => traveler.travelerType === 'adult').length;
@@ -161,6 +168,33 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
     ),
     enabled: availabilityWindowValid,
   });
+
+  // Auto-sync multi-bus allocations when resources load
+  useEffect(() => {
+    if (resources?.buses && resources.buses.length > 0 && busAllocations.length < requiredBuses) {
+      const newAllocs: AllocatedBus[] = [];
+      for (let i = 0; i < requiredBuses; i++) {
+        const bus = resources.buses[i % resources.buses.length];
+        const driver = resources.drivers[i % (resources.drivers.length || 1)];
+        if (bus) {
+          newAllocs.push({
+            bus_id: bus.id,
+            bus_name: `${bus.model || 'Tourist Bus'} (${bus.seating_capacity || 49} Seater)`,
+            plate_number: bus.plate_number,
+            capacity: bus.seating_capacity || 49,
+            driver_id: driver ? driver.id : undefined,
+            driver_name: driver ? `${driver.first_name} ${driver.last_name}` : undefined,
+            seat_assignments: {},
+          });
+        }
+      }
+      setBusAllocations(newAllocs);
+      if (newAllocs[0]) {
+        setBusId(String(newAllocs[0].bus_id));
+        setDriverId(newAllocs[0].driver_id ? String(newAllocs[0].driver_id) : '');
+      }
+    }
+  }, [resources, requiredBuses, busAllocations.length]);
 
   const selectedBus = resources?.buses.find((bus) => bus.id === Number(busId));
   const selectedDriver = resources?.drivers.find((driver) => driver.id === Number(driverId));
@@ -292,24 +326,26 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <header className="rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-950 via-slate-950 to-slate-900 p-5 text-white shadow-sm sm:p-6">
-        <button type="button" onClick={onBack} className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-blue-200 transition hover:text-white">
-          <LuArrowLeft className="h-4 w-4" /> All service workflows
-        </button>
-        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Private tour booking file</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight">Build the itinerary around one named party.</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Dates, traveler pricing, itinerary, and optional fleet allocation stay attached to this transaction.</p>
-          </div>
-          {catalogService && (
-            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs">
-              <span className="block text-[9px] font-black uppercase tracking-widest text-blue-200">Catalog source</span>
-              <strong className="mt-1 block">#{catalogService.id} · {catalogService.name}</strong>
+      {!hideHeader && (
+        <header className="rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-950 via-slate-950 to-slate-900 p-5 text-white shadow-sm sm:p-6">
+          <button type="button" onClick={onBack} className="mb-5 inline-flex items-center gap-2 text-xs font-bold text-blue-200 transition hover:text-white">
+            <LuArrowLeft className="h-4 w-4" /> All service workflows
+          </button>
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-blue-300">Private tour booking file</p>
+              <h2 className="mt-2 text-2xl font-black tracking-tight">Build the itinerary around one named party.</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Dates, traveler pricing, itinerary, and optional fleet allocation stay attached to this transaction.</p>
             </div>
-          )}
-        </div>
-      </header>
+            {catalogService && (
+              <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-xs">
+                <span className="block text-[9px] font-black uppercase tracking-widest text-blue-200">Catalog source</span>
+                <strong className="mt-1 block">#{catalogService.id} · {catalogService.name}</strong>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
 
       <div className="grid gap-5 min-[1800px]:grid-cols-[minmax(0,1fr)_320px]">
         <div className="space-y-5">
@@ -374,13 +410,78 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
             <label className={`${labelClass} mt-4`}>Requests specific to this party<textarea rows={3} className={inputClass} value={specialRequests} onChange={(event) => setSpecialRequests(event.target.value)} placeholder="Dietary, mobility, rooming, or timing notes" /></label>
           </section>
 
-          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-950/40"><LuBus className="h-5 w-5" /></span><div><h3 className="font-black text-ink">Optional logistics assignment</h3><p className="text-xs text-muted">Availability is checked against charters, joiners, trip tickets, maintenance, and centralized allocations.</p></div></div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className={labelClass}>Available vehicle<select className={inputClass} value={busId} onChange={(event) => setBusId(event.target.value)} disabled={!availabilityWindowValid || checkingAvailability || availabilityFailed || !resources}><option value="">{!availabilityWindowValid ? 'Set valid dates first' : checkingAvailability ? 'Checking availability…' : suitableBuses.length === 0 ? 'No suitable vehicle — assign later' : 'Assign later'}</option>{resources?.buses.map((bus) => <option key={bus.id} value={bus.id} disabled={!bus.available || travelers.length > bus.seating_capacity}>{bus.plate_number} · {bus.model} · {bus.seating_capacity} seats{!bus.available ? ' · unavailable' : travelers.length > bus.seating_capacity ? ' · too small' : ''}</option>)}</select></label>
-              <label className={labelClass}>Available driver<select className={inputClass} value={driverId} onChange={(event) => setDriverId(event.target.value)} disabled={!availabilityWindowValid || checkingAvailability || availabilityFailed || !resources}><option value="">{!availabilityWindowValid ? 'Set valid dates first' : checkingAvailability ? 'Checking availability…' : availableDrivers.length === 0 ? 'No available driver — assign later' : 'Assign later'}</option>{resources?.drivers.map((driver) => <option key={driver.id} value={driver.id} disabled={!driver.available}>{driver.first_name} {driver.last_name}{!driver.available ? ' · unavailable' : ''}</option>)}</select></label>
+          <section className="rounded-3xl border border-border bg-surface p-5 sm:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
+              <div className="flex items-center gap-3">
+                <span className="grid h-10 w-10 place-items-center rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-950/40">
+                  <LuBus className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="font-black text-ink">Fleet & Driver Logistics Assignment</h3>
+                  <p className="text-xs text-muted">Auto-calculates required 49-seater buses and assigns specific drivers to every vehicle.</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setBusAllocationModalOpen(true)}
+                className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-black uppercase tracking-wider shadow shrink-0 flex items-center gap-1.5"
+              >
+                <LuBus className="h-4 w-4" /> Multi-Bus & Drivers ({busAllocations.length} Bus{busAllocations.length !== 1 ? 'es' : ''})
+              </button>
             </div>
-            <p className={`mt-3 flex items-center gap-2 text-xs font-bold ${availabilityFailed ? 'text-red-600' : 'text-muted'}`}>{checkingAvailability ? <><span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" /> Checking the allocation calendar…</> : availabilityFailed ? <><LuCircleAlert /> Availability could not be verified. <button type="button" onClick={() => retryAvailability()} className="underline">Retry</button></> : resources ? <><LuCircleCheck className="text-emerald-600" /> {suitableBuses.length} suitable vehicle(s) and {availableDrivers.length} driver(s) available for this exact tour window.</> : <><LuCalendarDays /> Set valid tour dates to check logistics.</>}</p>
+
+            {/* 49-Seater Fleet Calculation Banner */}
+            <div className="p-4 rounded-2xl bg-blue-50/80 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-blue-600 text-white text-[9px] font-black uppercase tracking-widest">
+                      49-Seater Fleet Calculation
+                    </span>
+                    <span className="text-xs font-black text-blue-900 dark:text-blue-200">
+                      {travelers.length} Traveler(s) → {requiredBuses} x 49-Seater Bus(es) Required ({requiredBuses * 49} Seats Capacity)
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-blue-700 dark:text-blue-300 mt-1">
+                    Assign fleet buses and dedicated drivers for each chartered 49-seater vehicle needed for this private tour.
+                  </p>
+                </div>
+              </div>
+
+              {/* Allocated Buses & Drivers Status Badges */}
+              <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-blue-200/60 dark:border-blue-900/40">
+                <span className="text-[10px] font-black text-blue-900 dark:text-blue-300 uppercase tracking-wider">
+                  Assigned Fleet:
+                </span>
+                {busAllocations.length === 0 ? (
+                  <span className="text-[10px] text-amber-700 dark:text-amber-300 font-bold italic">
+                    ⚠️ No buses allocated yet (Click Multi-Bus & Drivers to assign)
+                  </span>
+                ) : (
+                  busAllocations.map((alloc, aIdx) => (
+                    <span
+                      key={aIdx}
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-black border flex items-center gap-1.5 ${
+                        alloc.driver_name
+                          ? 'bg-white dark:bg-gray-800 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100 shadow-sm'
+                          : 'bg-amber-100 dark:bg-amber-950/60 border-amber-300 dark:border-amber-800 text-amber-900 dark:text-amber-200'
+                      }`}
+                    >
+                      <span>🚌 Bus #{aIdx + 1}: {alloc.plate_number}</span>
+                      <span className="opacity-40">|</span>
+                      <span>👨‍✈️ {alloc.driver_name || 'Driver Unassigned'}</span>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className={labelClass}>Primary Bus<select className={inputClass} value={busId} onChange={(event) => setBusId(event.target.value)} disabled={!availabilityWindowValid || checkingAvailability || availabilityFailed || !resources}><option value="">{!availabilityWindowValid ? 'Set valid dates first' : checkingAvailability ? 'Checking availability…' : 'Assign via Multi-Bus tool'}</option>{resources?.buses.map((bus) => <option key={bus.id} value={bus.id} disabled={!bus.available}>{bus.plate_number} · {bus.model} · {bus.seating_capacity} seats{!bus.available ? ' · unavailable' : ''}</option>)}</select></label>
+              <label className={labelClass}>Primary Driver<select className={inputClass} value={driverId} onChange={(event) => setDriverId(event.target.value)} disabled={!availabilityWindowValid || checkingAvailability || availabilityFailed || !resources}><option value="">{!availabilityWindowValid ? 'Set valid dates first' : checkingAvailability ? 'Checking availability…' : 'Assign via Multi-Bus tool'}</option>{resources?.drivers.map((driver) => <option key={driver.id} value={driver.id} disabled={!driver.available}>{driver.first_name} {driver.last_name}{!driver.available ? ' · unavailable' : ''}</option>)}</select></label>
+            </div>
+            <p className={`mt-3 flex items-center gap-2 text-xs font-bold ${availabilityFailed ? 'text-red-600' : 'text-muted'}`}>{checkingAvailability ? <><span className="h-2 w-2 animate-pulse rounded-full bg-blue-500" /> Checking the allocation calendar…</> : availabilityFailed ? <><LuCircleAlert /> Availability could not be verified. <button type="button" onClick={() => retryAvailability()} className="underline">Retry</button></> : resources ? <><LuCircleCheck className="text-emerald-600" /> {resources.buses.filter(b => b.available).length} vehicle(s) and {resources.drivers.filter(d => d.available).length} driver(s) available for this tour window.</> : <><LuCalendarDays /> Set valid tour dates to check logistics.</>}</p>
           </section>
         </div>
 
@@ -405,6 +506,23 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack }: PrivateTo
           <p className="flex gap-2 text-[11px] leading-4 text-muted"><LuUserRound className="mt-0.5 h-4 w-4 shrink-0" /> The checkout customer remains the invoice recipient; this roster identifies every person traveling.</p>
         </aside>
       </div>
+
+      {/* Multi-Bus Allocation & Driver Selector Modal */}
+      <BusSeatAllocationModal
+        isOpen={busAllocationModalOpen}
+        onClose={() => setBusAllocationModalOpen(false)}
+        requiredCapacity={travelers.length}
+        passengers={travelers.map((t) => ({ first_name: t.first_name, last_name: t.last_name, role: t.travelerType, date_of_birth: t.date_of_birth }))}
+        initialAllocations={busAllocations}
+        availableDrivers={resources?.drivers || []}
+        onSaveAllocations={(allocs) => {
+          setBusAllocations(allocs);
+          if (allocs[0]) {
+            setBusId(String(allocs[0].bus_id));
+            setDriverId(allocs[0].driver_id ? String(allocs[0].driver_id) : '');
+          }
+        }}
+      />
     </form>
   );
 }

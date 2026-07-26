@@ -53,7 +53,7 @@ export default function ProcurementDashboard() {
       header: 'Amount',
       render: (po) => (
         <span className="text-slate-600">
-          ₱{parseFloat(po.total_amount).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
+          ₱{parseFloat(po?.total_amount || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})}
         </span>
       ),
     },

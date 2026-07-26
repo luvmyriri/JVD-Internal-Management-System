@@ -74,16 +74,17 @@ class EducationalTourBookingTest extends TestCase
         $this->assertArrayNotHasKey('service_id', $listed);
     }
 
-    public function test_chaperone_requirement_and_complimentary_pricing_are_server_enforced(): void
+    public function test_tour_guides_are_optional_and_calculated_per_guide(): void
     {
         $pricing = app(EducationalTourBookingService::class)->calculate($this->program, 60, 4);
-        $this->assertSame(3, $pricing['required_chaperones']);
-        $this->assertSame(3, $pricing['free_chaperone_count']);
-        $this->assertSame(1, $pricing['chargeable_chaperone_count']);
-        $this->assertEquals(121500, $pricing['subtotal']);
+        $this->assertSame(0, $pricing['required_chaperones']);
+        $this->assertSame(4, $pricing['chargeable_tour_guide_count']);
+        $this->assertEquals(126000, $pricing['subtotal']);
 
-        $this->expectException(ValidationException::class);
-        app(EducationalTourBookingService::class)->calculate($this->program, 60, 2);
+        // Optional: 0 tour guides is allowed without exception
+        $pricingNoGuides = app(EducationalTourBookingService::class)->calculate($this->program, 60, 0);
+        $this->assertSame(0, $pricingNoGuides['tour_guide_count']);
+        $this->assertEquals(120000, $pricingNoGuides['subtotal']);
     }
 
     public function test_group_checkout_creates_multi_vehicle_booking_and_invoice(): void
@@ -95,7 +96,7 @@ class EducationalTourBookingTest extends TestCase
         $bookingId = $response->json('data.id');
         $this->assertDatabaseCount('educational_tour_vehicles', 2);
         $this->assertDatabaseHas('educational_tour_bookings', ['school_name' => 'JVD Academy', 'student_count' => 60, 'chaperone_count' => 3]);
-        $this->assertDatabaseHas('invoices', ['customer_name' => 'JVD Academy', 'total_amount' => 134400]);
+        $this->assertDatabaseHas('invoices', ['customer_name' => 'JVD Academy', 'total_amount' => 139440]);
         $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $response->json('data.invoice.id'),
             'service_id' => null,
@@ -139,7 +140,7 @@ class EducationalTourBookingTest extends TestCase
                 ['bus_id' => $this->busOne->id, 'driver_id' => $this->driverOne->id, 'planned_passengers' => 49],
                 ['bus_id' => $this->busTwo->id, 'driver_id' => $this->driverTwo->id, 'planned_passengers' => 14],
             ],
-            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 134400,
+            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 139440,
         ];
     }
 }

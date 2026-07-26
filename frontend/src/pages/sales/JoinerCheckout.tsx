@@ -194,7 +194,25 @@ export default function JoinerCheckout() {
       <aside className="rounded-3xl border border-border bg-surface p-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">1 · Departure</p><div className="mt-4 space-y-2">{departures.map((item: JoinerDeparture) => <button key={item.id} onClick={() => { setDepartureId(item.id); setSelectedSeats([]); }} className={`w-full rounded-2xl border p-4 text-left ${departureId === item.id ? 'border-brand bg-blue-50 dark:bg-blue-950' : 'border-border'}`}><p className="text-[10px] font-black uppercase tracking-wider text-brand">{item.code}</p><p className="mt-1 font-black text-ink">{item.service?.name || item.code}</p><p className="mt-2 flex gap-2 text-xs text-muted"><Clock3 className="h-4 w-4" />{new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', hour: 'numeric' }).format(new Date(item.starts_at))}</p></button>)}</div></aside>
 
       <main className="space-y-5">
-        <section className="rounded-3xl border border-border bg-surface p-6"><div className="flex items-center justify-between"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">2 · Seats</p><h2 className="mt-1 text-xl font-black text-ink">Choose available seats</h2></div><span className="text-xs font-bold text-muted">{selectedSeats.length} selected</span></div>{isFetching ? <Loader2 className="mx-auto my-12 animate-spin text-brand" /> : !departure ? <p className="my-10 text-center text-sm text-muted">Choose a departure first.</p> : <div className="mt-6"><BusLayout totalSeats={departure.bus?.seating_capacity || departure.capacity || 49} hasRestroom={(departure.bus as any)?.bus_category === 'VIP'} selectedSeats={selectedSeats} occupiedSeats={occupiedSeats} onSeatToggle={handleSeatToggle} /></div>}</section>
+        <section className="rounded-3xl border border-border bg-surface p-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">2 · Departure Seats & Vehicle</p>
+              <h2 className="mt-1 text-xl font-black text-ink">Choose available seats</h2>
+            </div>
+            <div className="flex items-center gap-2">
+              {departure?.bus && (
+                <span className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-[11px] font-black text-blue-900 dark:text-blue-200 flex items-center gap-1.5">
+                  <span>🚌 Vehicle: {departure.bus.plate_number || '49-Seater Bus'}</span>
+                  <span className="opacity-40">|</span>
+                  <span>👨‍✈️ {departure.driver ? `${departure.driver.first_name} ${departure.driver.last_name}` : (departure.bus as any)?.driver ? `${(departure.bus as any).driver.first_name} ${(departure.bus as any).driver.last_name}` : 'Assigned Driver'}</span>
+                </span>
+              )}
+              <span className="text-xs font-bold text-muted bg-gray-100 dark:bg-gray-800 px-3 py-1.5 rounded-xl">{selectedSeats.length} seat(s) selected</span>
+            </div>
+          </div>
+          {isFetching ? <Loader2 className="mx-auto my-12 animate-spin text-brand" /> : !departure ? <p className="my-10 text-center text-sm text-muted">Choose a departure first.</p> : <div className="mt-6"><BusLayout totalSeats={departure.bus?.seating_capacity || departure.capacity || 49} hasRestroom={(departure.bus as any)?.bus_category === 'VIP'} selectedSeats={selectedSeats} occupiedSeats={occupiedSeats} onSeatToggle={handleSeatToggle} /></div>}
+        </section>
 
         <section className="rounded-3xl border border-border bg-surface p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -244,7 +262,7 @@ export default function JoinerCheckout() {
                 <select aria-label={`Passenger type for seat ${passenger.seat_code}`} value={passenger.passenger_type} onChange={e => setPassengers(current => current.map((item, i) => i === index ? { ...item, passenger_type: e.target.value as Passenger['passenger_type'] } : item))} className="h-10 rounded-xl border border-border bg-surface px-3 text-sm">
                   <option value="adult">Adult</option><option value="child">Child</option>
                 </select>
-                <input value={passenger.emergency_contact} onChange={e => setPassengers(current => current.map((item, i) => i === index ? { ...item, emergency_contact: e.target.value } : item))} placeholder="Emergency contact" className="h-10 rounded-xl border border-border bg-surface px-3 text-sm" />
+                <input type="date" value={passenger.date_of_birth} onChange={e => setPassengers(current => current.map((item, i) => i === index ? { ...item, date_of_birth: e.target.value } : item))} title="Date of birth (Required for insurance)" className="h-10 rounded-xl border border-border bg-surface px-3 text-xs font-bold text-ink" />
                 <button type="button" onClick={() => handleRemoveSeat(passenger.seat_code)} className="grid h-9 w-9 place-items-center rounded-lg text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" title="Remove seat">
                   ✕
                 </button>

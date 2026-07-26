@@ -56,6 +56,7 @@ export default function Users() {
     }, 300);
     return () => clearTimeout(handler);
   }, [searchInput]);
+
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -69,6 +70,7 @@ export default function Users() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [assignedBusId, setAssignedBusId] = useState<number | ''>('');
   const [customPermissions, setCustomPermissions] = useState<Record<string, ModulePermission>>({});
+  const [dashboardPreference, setDashboardPreference] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -148,25 +150,24 @@ export default function Users() {
       setValue('department', user.department);
       setValue('phone', user.phone || '');
       setTags(user.tags || []);
+      setDashboardPreference(user.dashboard_preference ?? null);
     } else {
       setSelectedUser(null);
       reset({
         role: 'reservation_officer',
         department: 'Operations',
-        send_invitation: true
+        send_invitation: true,
       });
       setTags([]);
+      setDashboardPreference(null);
     }
     setTagInput('');
-    // Reset password fields whenever modal opens
     setNewPassword('');
     setNewPasswordConfirm('');
     setShowNewPw(false);
-    // Pre-fill assigned bus for drivers
     if (user) {
       const currentBus = allBuses.find((b: any) => b.driver?.id === user.id);
       setAssignedBusId(currentBus ? currentBus.id : '');
-      // Safely parse or cast custom_permissions — malformed JSON must not crash the panel.
       setCustomPermissions((() => {
         const raw = user.custom_permissions;
         if (!raw) return {};
@@ -174,7 +175,6 @@ export default function Users() {
         try {
           return JSON.parse(raw);
         } catch {
-          console.warn('Invalid custom_permissions JSON for user', user.id);
           return {};
         }
       })());
@@ -187,15 +187,13 @@ export default function Users() {
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
-    // Initialize customPermissions state safely from the user being viewed to avoid leakage
     setCustomPermissions((() => {
       const raw = user.custom_permissions;
       if (!raw) return {};
       if (typeof raw !== 'string') return raw;
       try {
         return JSON.parse(raw);
-      } catch (e) {
-        console.error('Invalid custom_permissions JSON for user', user.id, e);
+      } catch {
         return {};
       }
     })());
@@ -205,7 +203,6 @@ export default function Users() {
   const onSubmit = async (data: any) => {
     try {
       if (selectedUser) {
-        // If super_admin filled in a new password, set it first
         if (isSuperAdmin && newPassword.trim()) {
           if (newPassword !== newPasswordConfirm) {
             toast.error('Passwords do not match.');
@@ -220,48 +217,49 @@ export default function Users() {
             data: { new_password: newPassword, new_password_confirmation: newPasswordConfirm },
           });
         }
-        
-        const updateData = { ...data, tags };
+
+        const updateData: any = { ...data, tags, dashboard_preference: dashboardPreference };
         if (isSuperAdmin) {
-            updateData.custom_permissions = customPermissions;
+          updateData.custom_permissions = customPermissions;
         }
-        
+
         await updateUserMutation.mutateAsync({ id: selectedUser.id, data: updateData });
 
-        // Handle bus assignment for driver role
         const currentRole = data.role;
         const prevBus = allBuses.find((b: any) => b.driver?.id === selectedUser.id);
         const prevBusId = prevBus?.id ?? null;
 
         if (currentRole === 'driver') {
-          // Role is driver — sync the bus
           if (assignedBusId !== prevBusId) {
             if (assignedBusId) {
-              // Assign to new bus (backend atomically handles unassignment from any previous bus)
               await assignDriverToBus.mutateAsync({ busId: Number(assignedBusId), driverId: selectedUser.id });
             } else if (prevBusId) {
-              // If new assignment is empty, unassign from the previous bus
               await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
             }
           }
         } else if (prevBusId) {
-          // Role changed away from driver — unassign their bus
           await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
         }
         setIsModalOpen(false);
         setNewPassword('');
         setNewPasswordConfirm('');
         setCustomPermissions({});
+        setDashboardPreference(null);
         setTags([]);
         reset();
       } else {
         const sendInvite = data.send_invitation !== false;
-        const res = await createUserMutation.mutateAsync({ ...data, tags, send_invitation: sendInvite });
+        const res = await createUserMutation.mutateAsync({
+          ...data,
+          tags,
+          dashboard_preference: dashboardPreference,
+          send_invitation: sendInvite,
+        });
         const tempPw = res?.data?.data?.temporary_password;
         setIsModalOpen(false);
         setTags([]);
+        setDashboardPreference(null);
         reset();
-        // If no invitation sent, show temp password modal
         if (!sendInvite && tempPw) {
           setTempPasswords([{ name: `${data.first_name} ${data.last_name}`, email: data.email, password: tempPw }]);
           setShowTempPasswordModal(true);
@@ -740,6 +738,8 @@ export default function Users() {
         setShowNewPw={setShowNewPw}
         customPermissions={customPermissions}
         setCustomPermissions={setCustomPermissions}
+        dashboardPreference={dashboardPreference}
+        setDashboardPreference={setDashboardPreference}
       />
 
       {/* View User Modal */}

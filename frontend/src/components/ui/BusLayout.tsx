@@ -301,10 +301,10 @@ export default function BusLayout({
       )}
 
       {/* ── Bus Shell ── */}
-      <div className="w-full flex justify-center overflow-x-auto pb-2">
+      <div className="w-full flex overflow-x-auto pb-4 pt-1 custom-scrollbar">
         <div
-          className="relative bg-white dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-700 shadow-xl"
-          style={{ borderRadius: '3rem', padding: compact ? '1rem 1.25rem' : '1.5rem 1.75rem', minWidth: 'max-content' }}
+          className="relative bg-white dark:bg-gray-800 border-4 border-gray-200 dark:border-gray-700 shadow-xl mx-auto shrink-0"
+          style={{ borderRadius: compact ? '2.25rem' : '3rem', padding: compact ? '1rem 1.25rem' : '1.5rem 1.75rem', minWidth: 'max-content' }}
         >
           {/* windshield strip at top */}
           <div className="absolute top-0 left-[15%] right-[5%] h-5 bg-sky-100/60 dark:bg-sky-900/20 border-b-2 border-gray-200 dark:border-gray-700 rounded-b-3xl" />

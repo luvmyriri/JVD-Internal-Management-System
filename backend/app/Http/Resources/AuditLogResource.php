@@ -24,6 +24,8 @@ class AuditLogResource extends JsonResource
                 'first_name'  => $this->user->first_name,
                 'last_name'   => $this->user->last_name,
                 'role'        => $this->user->role,
+                'department'  => $this->user->department,
+                'avatar_url'  => $this->user->avatar_url,
             ]),
             'created_at'  => $this->created_at->toISOString(),
         ];

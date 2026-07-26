@@ -28,6 +28,7 @@ class User extends Authenticatable
         'custom_permissions',
         'custom_abilities',
         'tags',
+        'dashboard_preference',
         'totp_secret',
         'is_active',
         'last_login',

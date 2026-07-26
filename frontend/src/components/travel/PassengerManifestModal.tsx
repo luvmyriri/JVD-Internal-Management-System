@@ -241,10 +241,10 @@ export default function PassengerManifestModal({
         </div>
 
         {/* Main Content Grid (Roster Table vs Seat Map) */}
-        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_340px]">
+        <div className="mt-4 grid gap-6 lg:grid-cols-[1fr_380px] items-stretch min-h-[460px]">
           
           {/* Passenger Roster List */}
-          <div className="space-y-3 max-h-[480px] overflow-y-auto pr-2 custom-scrollbar">
+          <div className="space-y-3 max-h-[480px] min-h-[420px] overflow-y-auto pr-2 custom-scrollbar">
             {passengers.map((p, idx) => {
               const isActive = p.rowId === activeRowId;
               return (
@@ -332,36 +332,39 @@ export default function PassengerManifestModal({
                     </div>
                   </div>
 
-                  <div className="mt-2 grid gap-3 sm:grid-cols-3">
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
                     <div>
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Date of Birth</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                          Date of Birth * (Insurance Policy)
+                        </label>
+                        <span className="text-[8px] font-extrabold uppercase bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 px-1.5 py-0.2 rounded">
+                          Required
+                        </span>
+                      </div>
                       <input
                         type="date"
+                        required
                         value={p.date_of_birth || ''}
                         onChange={(e) => updatePassenger(p.rowId, { date_of_birth: e.target.value })}
-                        className="mt-0.5 w-full rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                        className="mt-0.5 w-full rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/40 px-3 py-2 text-xs font-bold text-gray-900 dark:text-white"
                       />
                     </div>
                     <div>
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Emergency Contact</label>
+                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Special Requests / Medical Notes</label>
                       <input
                         type="text"
-                        placeholder="Phone / Contact"
-                        value={p.emergency_contact || ''}
-                        onChange={(e) => updatePassenger(p.rowId, { emergency_contact: e.target.value })}
-                        className="mt-0.5 w-full rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Special Requests / Notes</label>
-                      <input
-                        type="text"
-                        placeholder="Dietary / Medical"
+                        placeholder="Dietary / Medical / Wheelchair"
                         value={p.dietary_restrictions || p.special_needs || ''}
                         onChange={(e) => updatePassenger(p.rowId, { dietary_restrictions: e.target.value, special_needs: e.target.value })}
                         className="mt-0.5 w-full rounded-xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-semibold dark:border-gray-700 dark:bg-gray-800 dark:text-white"
                       />
                     </div>
+                  </div>
+
+                  <div className="mt-2 flex items-center justify-between px-1 text-[10px] text-gray-400 font-medium border-t border-gray-50 dark:border-gray-800/60 pt-2">
+                    <span>📞 Passenger contact details inherited from primary purchaser ({leadCustomer?.phone || leadCustomer?.name || 'Order Account'})</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓ Insured Passenger Record</span>
                   </div>
                 </div>
               );
@@ -369,8 +372,8 @@ export default function PassengerManifestModal({
           </div>
 
           {/* Interactive Seat Map Reference Panel */}
-          <div className="flex flex-col rounded-3xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/40">
-            <div className="mb-3 flex items-center justify-between px-1">
+          <div className="flex flex-col min-h-[420px] rounded-3xl border border-gray-100 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-950/40">
+            <div className="mb-3 flex items-center justify-between px-1 flex-shrink-0">
               <span className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300">
                 Seat Selector Map
               </span>
@@ -378,7 +381,7 @@ export default function PassengerManifestModal({
                 Click seat to assign
               </span>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-center">
               <BusLayout
                 totalSeats={totalSeats}
                 selectedSeats={assignedSeatCodes}

@@ -75,18 +75,18 @@ export default function MaintenanceDashboard() {
       header: 'Priority',
       render: (wo) => (
         <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          wo.priority === 'critical' ? 'bg-red-100 text-red-700' :
-          wo.priority === 'urgent' ? 'bg-amber-100 text-amber-700' :
+          wo?.priority === 'critical' ? 'bg-red-100 text-red-700' :
+          wo?.priority === 'urgent' ? 'bg-amber-100 text-amber-700' :
           'bg-blue-100 text-blue-700'
         }`}>
-          {wo.priority.toUpperCase()}
+          {wo?.priority ? wo.priority.toUpperCase() : 'NORMAL'}
         </span>
       ),
     },
     {
       key: 'status',
       header: 'Status',
-      render: (wo) => <span className="text-slate-500">{wo.status.replace('_', ' ')}</span>,
+      render: (wo) => <span className="text-slate-500">{wo?.status ? wo.status.replace('_', ' ') : 'N/A'}</span>,
     },
     {
       key: 'action',

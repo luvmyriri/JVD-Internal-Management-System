@@ -30,7 +30,7 @@ export default function FixedPackageCheckout() {
       <div className="flex max-w-md gap-3 rounded-2xl border border-white/10 bg-white/10 p-4 text-xs text-slate-200"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" /><span>Checkout finalization writes the invoice, accounting entry, private-tour fulfillment, and any bus/driver allocation in one transaction.</span></div>
     </header>
     <div className="grid items-start gap-5 2xl:grid-cols-[minmax(0,1fr)_440px]">
-      <PrivateTourWorkflow catalogService={service} onAdd={addLine} onBack={() => navigate('/sales/fixed-packages')} />
+      <PrivateTourWorkflow catalogService={service} onAdd={addLine} onBack={() => navigate('/sales/fixed-packages')} hideHeader={true} />
       <aside className="2xl:sticky 2xl:top-4 2xl:h-[calc(100vh-110px)] 2xl:min-h-[720px]"><SalesCheckout cart={cart} removeFromCart={removeFromCart} updateQuantity={updateQuantity} clearCart={() => setCart([])} /></aside>
     </div>
   </div>;

@@ -34,7 +34,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // ADMINISTRATION — Audit Logs (dynamic permissions)
     // ──────────────────────────────────────
     Route::middleware('role:super_admin,executive_vice_president,admin:view')->group(function () {
-        Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+        Route::get('/audit-logs/stats',  [AuditLogController::class, 'stats'])->name('audit-logs.stats');
+        Route::get('/audit-logs/export', [AuditLogController::class, 'export'])->name('audit-logs.export');
+        Route::get('/audit-logs',        [AuditLogController::class, 'index'])->name('audit-logs.index');
     });
 
     // ──────────────────────────────────────

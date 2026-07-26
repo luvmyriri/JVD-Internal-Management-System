@@ -77,7 +77,7 @@ export default function OperationsDashboard() {
       header: 'Status',
       render: (ticket) => (
         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700">
-          {ticket.status.replace('_', ' ').toUpperCase()}
+          {ticket?.status ? ticket.status.replace('_', ' ').toUpperCase() : 'N/A'}
         </span>
       ),
     },

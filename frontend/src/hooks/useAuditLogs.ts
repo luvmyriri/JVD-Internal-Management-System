@@ -10,14 +10,24 @@ export interface AuditLog {
   old_values: any;
   new_values: any;
   ip_address: string;
-  performed_by: {
+  performed_by?: {
     id: number;
     employee_id: string;
     first_name: string;
     last_name: string;
     role: string;
-  };
+    department?: string;
+    avatar_url?: string | null;
+  } | null;
   created_at: string;
+}
+
+export interface AuditLogStats {
+  total_events: number;
+  mutations_today: number;
+  active_users_today: number;
+  top_module: string;
+  action_breakdown: Record<string, number>;
 }
 
 interface AuditLogsResponse {
@@ -33,9 +43,12 @@ interface AuditLogsResponse {
 
 interface UseAuditLogsParams {
   page?: number;
+  search?: string;
   user_id?: number;
   module?: string;
   action?: string;
+  entity_type?: string;
+  entity_id?: number;
   date_from?: string;
   date_to?: string;
   per_page?: number;
@@ -49,5 +62,17 @@ export function useAuditLogs(params: UseAuditLogsParams = {}) {
       return data;
     },
     placeholderData: keepPreviousData,
+    staleTime: 10_000,
+  });
+}
+
+export function useAuditLogStats() {
+  return useQuery({
+    queryKey: ['audit-log-stats'],
+    queryFn: async () => {
+      const { data } = await api.get<{ success: boolean; data: AuditLogStats }>('/audit-logs/stats');
+      return data.data;
+    },
+    staleTime: 30_000,
   });
 }

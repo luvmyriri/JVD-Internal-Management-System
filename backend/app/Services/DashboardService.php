@@ -748,6 +748,14 @@ class DashboardService
         };
     }
 
+    private const INTERNATIONAL_KEYWORDS = [
+        'japan', 'tokyo', 'osaka', 'korea', 'seoul', 'singapore', 'thailand', 'bangkok',
+        'vietnam', 'hanoi', 'saigon', 'usa', 'america', 'uk', 'london', 'europe', 'paris',
+        'dubai', 'uae', 'canada', 'australia', 'sydney', 'taiwan', 'taipei', 'hongkong',
+        'china', 'beijing', 'shanghai', 'bali', 'indonesia', 'malaysia', 'kuala lumpur',
+        'visa', 'passport', 'schengen', 'international', 'overseas', 'foreign', 'flight', 'pln'
+    ];
+
     /** Determine if a Job Order is local (Philippine). */
     private function isLocalJobOrder($jo): bool
     {
@@ -763,35 +771,39 @@ class DashboardService
 
     private function isLocalBooking($inv): bool
     {
-        // Check via first service item's category/name
-        $firstItem = $inv->items->first();
-        if ($firstItem) {
-            $cat  = strtolower($firstItem->service?->category ?? $firstItem->service_type ?? '');
-            $name = strtolower($firstItem->item_name ?? $firstItem->service?->name ?? '');
-            if (str_contains($cat, 'bus rental') || str_contains($name, 'bus rental')) {
-                return true;
-            }
-            // Check service name for Philippine destinations
-            foreach (self::LOCAL_DESTINATION_KEYWORDS as $kw) {
-                if (str_contains($name, $kw)) return true;
+        $dest   = strtolower($this->getBookingDestination($inv));
+        $notes  = strtolower($inv->getRawOriginal('notes') ?? '');
+        $client = strtolower($inv->customer_name ?? '');
+
+        $combined = "{$dest} {$notes} {$client}";
+
+        foreach (self::INTERNATIONAL_KEYWORDS as $kw) {
+            if (str_contains($combined, $kw)) {
+                return false;
             }
         }
-        // Fallback: check customer_name/notes for destination hints
-        $lower = strtolower($inv->getRawOriginal('notes') ?? '');
-        foreach (self::LOCAL_DESTINATION_KEYWORDS as $kw) {
-            if (str_contains($lower, $kw)) return true;
-        }
-        return false;
+
+        return true;
     }
 
-    /** Get a human-readable destination label from invoice items or notes. */
+    /** Get a human-readable destination label from invoice items, description, or notes. */
     private function getBookingDestination($inv): string
     {
-        $firstItem = $inv->items->first();
-        if ($firstItem) {
-            return $firstItem->item_name ?? $firstItem->service?->name ?? 'N/A';
+        if (!empty($inv->description) && $inv->description !== 'N/A') {
+            return $inv->description;
         }
-        return $inv->getRawOriginal('notes') ?? 'N/A';
+
+        $firstItem = $inv->items?->first();
+        if ($firstItem && !empty($firstItem->item_name) && $firstItem->item_name !== 'N/A') {
+            return $firstItem->item_name;
+        }
+
+        $notes = $inv->getRawOriginal('notes');
+        if (!empty($notes) && strlen(trim($notes)) > 2 && !str_contains(strtolower($notes), 'payment')) {
+            return $notes;
+        }
+
+        return 'Local Destination';
     }
 
     private function localTravelBookings(int $limit = 6): array
