@@ -525,7 +525,7 @@ class InvoiceFinalizationService
             $payData = [
                 'line_items' => $this->buildPayMongoLineItems($invoice, $processedItems),
                 'description' => "JVD Order #{$invoice->invoice_number}",
-                'payment_method_types' => $invoice->payment_method === 'GCash' ? ['gcash'] : ['card', 'paymaya', 'dob', 'qrph'],
+                'payment_method_types' => $invoice->payment_method === 'GCash' ? ['gcash', 'qrph'] : ['card', 'paymaya', 'dob', 'qrph', 'gcash'],
             ];
 
             $session = $paymongo->createCheckoutSession($payData);
