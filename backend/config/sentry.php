@@ -54,6 +54,6 @@ return [
 
     'send_default_pii' => env('SENTRY_SEND_DEFAULT_PII', false),
 
-    'traces_sample_rate' => env('SENTRY_TRACES_SAMPLE_RATE', 1.0),
+    'traces_sample_rate' => (float) env('SENTRY_TRACES_SAMPLE_RATE', 0.0),
 
 ];
