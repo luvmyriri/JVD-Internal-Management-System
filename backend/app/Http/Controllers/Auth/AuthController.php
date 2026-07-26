@@ -65,6 +65,7 @@ class AuthController extends Controller
         // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
         if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
             \Auth::login($user);
+            $token = $user->createToken('auth_token')->plainTextToken;
             $user->update([
                 'last_login' => now(),
                 'two_factor_verified_at' => now(),
@@ -73,6 +74,7 @@ class AuthController extends Controller
             return response()->json([
                 'success' => true,
                 'data' => [
+                    'token' => $token,
                     'user' => new UserResource($user),
                     'permissions' => $user->getAllPermissions(),
                     'requires_2fa' => false,
@@ -159,6 +161,7 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
         \Auth::login($user);
+        $token = $user->createToken('auth_token')->plainTextToken;
         $user->update([
             'last_login' => now(),
             'two_factor_verified_at' => now(),
@@ -167,6 +170,7 @@ class AuthController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
+                'token' => $token,
                 'user' => new UserResource($user),
                 'permissions' => $user->getAllPermissions(),
                 'requires_2fa' => false,
@@ -204,10 +208,12 @@ class AuthController extends Controller
         ]);
 
         \Auth::login($user);
+        $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
             'data' => [
+                'token' => $token,
                 'user' => new UserResource($user),
                 'permissions' => $user->getAllPermissions(),
                 'requires_password_change' => $user->must_change_password,
