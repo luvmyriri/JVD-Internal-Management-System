@@ -132,12 +132,23 @@ export default function Login() {
   const [isBtnHovered, setIsBtnHovered] = useState(false);
   const [pageTitle, setPageTitle] = useState(() => localStorage.getItem('jvd_page_title') || 'JVD ETMC');
   const [slideTransition, setSlideTransition] = useState(() => localStorage.getItem('jvd_slide_transition') || 'fade');
+  const DEFAULT_DOCUMENTS = [
+    {
+      title: 'Company Profile & Credentials',
+      description: 'Official JVD ETMC Profile, Accreditations & Licenses',
+      url: '/documents/Company-Profile.pdf'
+    }
+  ];
+
   const [documents, setDocuments] = useState<{title: string; description: string; url: string}[]>(() => {
     try {
       const cached = localStorage.getItem('jvd_documents');
-      if (cached) return JSON.parse(cached);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
     } catch {}
-    return [];
+    return DEFAULT_DOCUMENTS;
   });
 
   useEffect(() => {
@@ -175,9 +186,11 @@ export default function Login() {
             setSlideTransition(data.landing_page_slide_transition);
             localStorage.setItem('jvd_slide_transition', data.landing_page_slide_transition);
           }
-          if (data.landing_page_documents) {
+          if (data.landing_page_documents && Array.isArray(data.landing_page_documents) && data.landing_page_documents.length > 0) {
             setDocuments(data.landing_page_documents);
             localStorage.setItem('jvd_documents', JSON.stringify(data.landing_page_documents));
+          } else {
+            setDocuments(DEFAULT_DOCUMENTS);
           }
         }
       } catch (err) {
