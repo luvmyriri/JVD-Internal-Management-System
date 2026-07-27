@@ -224,4 +224,30 @@ class UserManagementTest extends TestCase
 
         $this->assertEquals('NewName', $otherAdmin->fresh()->first_name);
     }
+
+    public function test_admin_can_update_user_email_and_employee_id()
+    {
+        $target = User::factory()->create([
+            'email' => 'old.email@jvd.com',
+            'employee_id' => 'EMP-1111',
+            'role' => 'reservation_officer',
+        ]);
+
+        $res = $this->actingAs($this->admin)
+                    ->putJson("/api/v1/users/{$target->id}", [
+                        'email' => 'new.email@jvd.com',
+                        'employee_id' => 'EMP-2222',
+                        'first_name' => 'UpdatedFirst',
+                        'last_name' => 'UpdatedLast',
+                    ]);
+
+        $res->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.email', 'new.email@jvd.com')
+            ->assertJsonPath('data.employee_id', 'EMP-2222');
+
+        $fresh = $target->fresh();
+        $this->assertEquals('new.email@jvd.com', $fresh->email);
+        $this->assertEquals('EMP-2222', $fresh->employee_id);
+    }
 }

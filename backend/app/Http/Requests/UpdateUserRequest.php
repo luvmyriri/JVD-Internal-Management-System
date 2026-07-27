@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -13,7 +14,12 @@ class UpdateUserRequest extends FormRequest
 
     public function rules(): array
     {
+        $user = $this->route('user');
+        $userId = $user instanceof \App\Models\User ? $user->id : $user;
+
         return [
+            'employee_id' => ['sometimes', 'string', 'max:50', Rule::unique('users', 'employee_id')->ignore($userId)],
+            'email' => ['sometimes', 'string', 'email', 'max:255', Rule::unique('users', 'email')->ignore($userId)],
             'first_name' => ['sometimes', 'string', 'max:100'],
             'last_name' => ['sometimes', 'string', 'max:100'],
             'phone' => ['nullable', 'string', 'max:40', 'regex:/^[0-9+()\-\s]+$/'],
@@ -23,6 +29,8 @@ class UpdateUserRequest extends FormRequest
             'tags' => ['sometimes', 'nullable', 'array'],
             'tags.*' => ['string', 'max:100'],
             'dashboard_preference' => ['nullable', 'string', 'in:admin,accounting,operations,logistics,procurement,maintenance,hr,agent,driver'],
+            'avatar_url' => ['nullable', 'string', 'max:2048'],
+            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }
