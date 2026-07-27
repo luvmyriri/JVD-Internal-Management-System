@@ -101,7 +101,7 @@ class UserController extends Controller
 
         $userData = [
             'employee_id' => $employeeId,
-            'email' => $request->email,
+            'email' => strtolower(trim($request->email)),
             'phone' => $request->phone,
             'first_name' => $request->first_name,
             'last_name' => $request->last_name,
@@ -175,6 +175,9 @@ class UserController extends Controller
         }
 
         $validated = $request->validated();
+        if (isset($validated['email'])) {
+            $validated['email'] = strtolower(trim($validated['email']));
+        }
 
         $oldValues = $user->getOriginal();
         $user->update($validated);
