@@ -417,11 +417,11 @@ export default function AdminDashboard() {
   };
 
   return (
-    <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-y-auto custom-scrollbar">
+    <div className="flex flex-col gap-6 pb-12 w-full max-w-full overflow-x-hidden">
 
       {/* ── Top KPI Row ── */}
       {showKpiCards && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 relative z-20 shrink-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 relative z-20 shrink-0">
 
         {/* KPI 1: Total Users */}
         <div className="relative rounded-2xl p-5 bg-gradient-to-br from-blue-500 to-blue-700 text-white shadow-lg shadow-blue-300/30 dark:shadow-blue-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default min-h-[130px]">
@@ -588,15 +588,15 @@ export default function AdminDashboard() {
       )}
 
       {/* ── 3-Column Analytics Grid ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-2 min-h-0 flex-1 relative z-10">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 relative z-10 w-full">
 
         {/* Column 1: Fleet Calendar */}
-        <div className="h-full min-h-[500px] min-w-0">
+        <div className="w-full min-h-[420px]">
           <CalendarFleetAvailability tickets={tickets} buses={buses} />
         </div>
 
         {/* Column 2: Heatmap + Travel Bookings */}
-        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
+        <div className="flex flex-col gap-6 w-full">
 
           {/* Local Travel Bookings List */}
           <div className="flex-[4] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col animate-fadeIn">
@@ -703,7 +703,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Column 3: Performers + Charts */}
-        <div className="flex flex-col gap-2 h-full min-h-0 min-w-0">
+        <div className="flex flex-col gap-6 w-full">
 
           {/* Top Performers / Travel */}
           <div className="flex-[4.5] min-h-[250px] bg-surface rounded-2xl border border-border shadow-sm p-2.5 flex flex-col">
