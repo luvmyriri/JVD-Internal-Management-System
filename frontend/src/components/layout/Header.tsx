@@ -1602,6 +1602,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   <LuSettings className="w-4 h-4 text-blue-600" />
                   Settings
                 </button>
+                <button
+                  id="header-setup-wizard"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/set-password');
+                  }}
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                    theme === 'dark' 
+                      ? 'text-gray-300 hover:bg-gray-800' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <LuSparkles className="w-4 h-4 text-amber-500" />
+                  Account Setup Wizard
+                </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button
                   id="header-logout"
