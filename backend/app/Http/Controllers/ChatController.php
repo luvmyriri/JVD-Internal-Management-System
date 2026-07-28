@@ -23,8 +23,8 @@ class ChatController extends Controller
                 CURLOPT_POSTFIELDS     => json_encode($payload),
                 CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
                 CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 2, // don't block the response
-                CURLOPT_CONNECTTIMEOUT => 1,
+                CURLOPT_TIMEOUT_MS     => 200, // Non-blocking 200ms timeout
+                CURLOPT_CONNECTTIMEOUT_MS => 100,
             ]);
             curl_exec($ch);
             curl_close($ch);

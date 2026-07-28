@@ -297,16 +297,28 @@ export default function EducationalTours() {
   };
 
   const createProgram = useMutation({
-    mutationFn: () =>
-      educationalTourApi.createProgram({
-        ...programForm,
-        default_stops: programForm.default_stops.split('\n').map(stop => stop.trim()).filter(Boolean),
-        minimum_students: Number(programForm.minimum_students),
-        students_per_chaperone: Number(programForm.students_per_chaperone),
-        students_per_free_chaperone: Number(programForm.students_per_free_chaperone),
-        student_price: Number(programForm.student_price),
-        additional_chaperone_price: Number(programForm.additional_chaperone_price),
-      }),
+    mutationFn: () => {
+      const source = activeTab === 'builder' ? builderForm : programForm;
+      const stopsRaw = source.default_stops || '';
+      const stopsArray = typeof stopsRaw === 'string' 
+        ? stopsRaw.split('\n').map(stop => stop.trim()).filter(Boolean)
+        : (Array.isArray(stopsRaw) ? stopsRaw : ['Main Activity Spot']);
+
+      return educationalTourApi.createProgram({
+        name: source.name,
+        learning_objectives: (source as any).learning_objectives || 'Educational tour exposure',
+        default_stops: stopsArray.length > 0 ? stopsArray : ['Main Activity Spot'],
+        minimum_students: Number(source.minimum_students || 20),
+        students_per_chaperone: Number((source as any).students_per_chaperone || 20),
+        students_per_free_chaperone: Number((source as any).students_per_free_chaperone || 20),
+        student_price: Number(source.student_price || 0),
+        additional_chaperone_price: Number(source.additional_chaperone_price || 0),
+        includes_meals: (source as any).includes_meals ?? true,
+        includes_coordinator: (source as any).includes_coordinator ?? true,
+        includes_insurance: (source as any).includes_insurance ?? true,
+        includes_shirt: (source as any).includes_shirt ?? false,
+      });
+    },
     onSuccess: async created => {
       await queryClient.invalidateQueries({ queryKey: ['educational-programs'] });
       setBooking(current => ({ ...current, program_id: String(created.id), stops: created.default_stops.join('\n') }));

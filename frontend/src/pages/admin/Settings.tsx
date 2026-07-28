@@ -400,6 +400,37 @@ export default function Settings() {
               </button>
             </div>
           )}
+
+          {/* Customizable Dashboard Cards Launcher */}
+          <div className="flex items-center justify-between p-6 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900/40 transition-all col-span-1 md:col-span-2">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-slate-950 font-black">
+                <LuFileText className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                  Personal Dashboard Cards & Layout
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                  Customize and pull off dashboard cards from modules assigned to your role.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const currentLayout = localStorage.getItem('jvd_custom_dashboard_layout');
+                const defaultIds = ['accounting_revenue', 'fleet_status', 'sales_bookings', 'hr_headcount', 'system_approvals', 'system_quick_actions'];
+                const widgetIds = currentLayout ? JSON.parse(currentLayout) : defaultIds;
+                localStorage.setItem('jvd_custom_dashboard_layout', JSON.stringify(widgetIds));
+                localStorage.setItem('jvd_active_dashboard_view', 'custom');
+                window.location.href = '/dashboard';
+              }}
+              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition"
+            >
+              Manage Workspace Cards
+            </button>
+          </div>
         </div>
       </div>
 

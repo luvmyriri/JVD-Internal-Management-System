@@ -853,11 +853,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
     };
   }, [user]);
 
-  // High-efficiency notifications polling (every 15s)
+  // High-efficiency notifications and chat polling fallback
   useEffect(() => {
     if (!user) return;
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
+    const notifInterval = setInterval(fetchNotifications, 15000);
+    const chatInterval = setInterval(fetchUsersAndMapToChats, 3000);
+    return () => {
+      clearInterval(notifInterval);
+      clearInterval(chatInterval);
+    };
   }, [user]);
 
   // Just-in-Time chat polling (every 5s, only if offline AND chat is actively open)

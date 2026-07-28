@@ -96,6 +96,12 @@ class CatalogController extends Controller
             }
         }
 
+        $passengers = \App\Models\InvoicePassenger::whereIn('invoice_id', $invoices->pluck('id'))->get();
+        foreach ($passengers as $p) {
+            $code = preg_replace('/^S/i', '', trim((string)($p->seat_code ?? $p->seat_number ?? '')));
+            if ($code) $occupiedSeats[] = $code;
+        }
+
         $occupiedSeats = array_values(array_unique($occupiedSeats));
 
         $driverId = $bus->assigned_driver;
