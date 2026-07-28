@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+import { Modal, Button } from '../ui';
 import { 
   AVAILABLE_WIDGETS, 
   WIDGET_CATEGORIES, 
@@ -60,8 +62,8 @@ export const WidgetCatalogModal: React.FC<WidgetCatalogModalProps> = ({
   const [selectedIds, setSelectedIds] = useState<string[]>(activeWidgetIds);
 
   const handleToggle = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    setSelectedIds((prev: string[]) =>
+      prev.includes(id) ? prev.filter((item: string) => item !== id) : [...prev, id]
     );
   };
 
