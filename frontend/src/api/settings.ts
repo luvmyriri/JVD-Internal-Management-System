@@ -8,6 +8,7 @@ export interface PublicSettings {
   landing_page_title: string;
   landing_page_slide_transition: string;
   landing_page_documents?: { title: string; description: string; url: string }[];
+  enable_2fa?: boolean;
 }
 
 export const settingsApi = {
@@ -29,5 +30,14 @@ export const settingsApi = {
           'Content-Type': 'multipart/form-data',
         },
       }
+    ),
+
+  /**
+   * Update system-wide 2FA requirement toggle (Super Admin only)
+   */
+  update2FA: (enable2FA: boolean) =>
+    client.post<{ status: string; message: string; enable_2fa: boolean }>(
+      '/admin/settings/2fa',
+      { enable_2fa: enable2FA }
     ),
 };

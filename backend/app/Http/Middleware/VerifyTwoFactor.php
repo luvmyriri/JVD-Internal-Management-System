@@ -14,8 +14,11 @@ class VerifyTwoFactor
      */
     public function handle(Request $request, Closure $next): Response
     {
-        // If 2FA is globally disabled, bypass the check
-        if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
+        // If 2FA is globally disabled in System Settings or .env, bypass the check
+        $global2FA = filter_var(\App\Models\SystemSetting::getValue('enable_2fa', true), FILTER_VALIDATE_BOOLEAN)
+            && filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN);
+
+        if (!$global2FA) {
             return $next($request);
         }
 

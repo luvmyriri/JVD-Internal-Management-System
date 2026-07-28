@@ -469,16 +469,15 @@ export default function Header({ onMenuClick }: HeaderProps) {
             isRead = lastMsg.sender_id === currentUserId ? true : (lastMsg.read_at ? true : false);
             lastMessageTimestamp = new Date(lastMsg.created_at).getTime();
           } else {
-            // Generate fallback welcome message
             let initialMsgText = `Hi there! I am ${fName} from the ${u.department || 'JVD'} team. Let me know if you need any assistance!`;
-            if (u.email === 'minda@jvd.com' || u.email === 'minda.lamsen@jvd.com') {
-              initialMsgText = 'Hey Emman, I just uploaded the new bus fleet report. Can you verify the pricing fields?';
-            } else if (u.email === 'jaymart@jvd.com' || u.email === 'jaymart.lamsen@jvd.com') {
-              initialMsgText = 'Can we check the POS billing discount calculation tomorrow morning? I noticed a small discrepancy.';
-            } else if (u.email === 'hr@jvd.com' || u.email === 'sarah.hr@jvd.com') {
-              initialMsgText = 'The employee records and contract templates are now updated in the system.';
-            } else if (u.email === 'driver@jvd.com' || u.email === 'driver1@jvd.com') {
-              initialMsgText = 'I checked my scheduled trips and assigned bus. Everything is clear and ready for tomorrow!';
+            if (u.role === 'service_adviser' || u.role === 'head_mechanic') {
+              initialMsgText = `Hi! I'm ${fName}. I've updated the fleet maintenance and service logs. Let me know if you need verification!`;
+            } else if (u.role === 'purchasing_manager' || u.role === 'logistics_in_charge') {
+              initialMsgText = `Hello! I'm ${fName}. The procurement and logistics status reports are updated.`;
+            } else if (u.role === 'corporate_secretary' || u.role === 'operations_manager') {
+              initialMsgText = `Greetings! The employee records and operational schedules are up to date.`;
+            } else if (u.role === 'driver') {
+              initialMsgText = `Hello! I'm ${fName}. I've checked my scheduled trips and assigned vehicle. Ready for dispatch!`;
             }
 
             mappedMessages = [{

@@ -46,6 +46,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
 
     Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
+        Route::post('/admin/settings/2fa',          [SystemSettingController::class, 'update2FA'])->name('settings.2fa.update');
         // Super Admin can directly set a specific password for any user
         Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
 

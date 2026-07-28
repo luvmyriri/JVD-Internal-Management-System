@@ -63,8 +63,11 @@ class AuthController extends Controller
 
         RateLimiter::clear($key);
 
-        // --- DEV BYPASS: Check if 2FA is globally disabled in .env ---
-        if (!filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN)) {
+        // Check if 2FA is globally enabled in System Settings or .env
+        $global2FAEnabled = filter_var(\App\Models\SystemSetting::getValue('enable_2fa', true), FILTER_VALIDATE_BOOLEAN)
+            && filter_var(env('REQUIRE_2FA', true), FILTER_VALIDATE_BOOLEAN);
+
+        if (!$global2FAEnabled) {
             \Auth::login($user);
             $token = $user->createToken('auth_token')->plainTextToken;
             $user->update([

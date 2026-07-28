@@ -27,6 +27,8 @@ class SystemSettingController extends Controller
             $documents = [];
         }
 
+        $enable2FA = filter_var(SystemSetting::getValue('enable_2fa', true), FILTER_VALIDATE_BOOLEAN);
+
         return response()->json([
             'status' => 'success',
             'data' => [
@@ -37,7 +39,29 @@ class SystemSettingController extends Controller
                 'landing_page_title' => $title,
                 'landing_page_slide_transition' => $transition,
                 'landing_page_documents' => $documents,
+                'enable_2fa' => $enable2FA,
             ]
+        ]);
+    }
+
+    /**
+     * Toggle system-wide Google Authenticator 2FA requirement.
+     */
+    public function update2FA(Request $request)
+    {
+        $validated = $request->validate([
+            'enable_2fa' => 'required|boolean',
+        ]);
+
+        $enabled = (bool) $validated['enable_2fa'];
+        SystemSetting::setValue('enable_2fa', $enabled);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $enabled 
+                ? 'Google Authenticator 2FA requirement is now ENABLED.' 
+                : 'Google Authenticator 2FA requirement is now DISABLED.',
+            'enable_2fa' => $enabled,
         ]);
     }
 

@@ -13,7 +13,8 @@ import {
   LuImage, 
   LuSettings,
   LuLoader,
-  LuFileText
+  LuFileText,
+  LuShieldCheck
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 
@@ -100,6 +101,7 @@ export default function Settings() {
   const [slideDuration, setSlideDuration] = useState<number>(6);
   const [landingPageTitle, setLandingPageTitle] = useState<string>('JVD ETMC');
   const [slideTransition, setSlideTransition] = useState<string>('fade');
+  const [enable2FA, setEnable2FA] = useState<boolean>(true);
   const [existingDocuments, setExistingDocuments] = useState<{title: string; description: string; url: string}[]>([]);
   const [newDocuments, setNewDocuments] = useState<{title: string; description: string; file: File}[]>([]);
 
@@ -126,6 +128,7 @@ export default function Settings() {
         setLandingPageTitle(data.landing_page_title || 'JVD ETMC');
         setSlideTransition(data.landing_page_slide_transition || 'fade');
         setExistingDocuments(data.landing_page_documents || []);
+        setEnable2FA(data.enable_2fa !== false);
       }
     } catch (error) {
       console.error('Failed to load branding configurations:', error);
@@ -294,6 +297,18 @@ export default function Settings() {
     }
   };
 
+  const handleToggle2FA = async () => {
+    const nextState = !enable2FA;
+    setEnable2FA(nextState);
+    try {
+      const res = await settingsApi.update2FA(nextState);
+      toast.success(res.data.message);
+    } catch (err: any) {
+      setEnable2FA(!nextState);
+      toast.error(err?.response?.data?.message || 'Failed to update 2FA setting');
+    }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 p-6 md:p-8">
       {/* Overview Block */}
@@ -355,6 +370,36 @@ export default function Settings() {
               </div>
             </div>
           </div>
+
+          {/* Google Authenticator 2FA Toggle Config */}
+          {isSuperAdmin && (
+            <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 transition-all col-span-1 md:col-span-2">
+              <div className="flex items-center gap-4">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${enable2FA ? 'bg-rose-500 text-white' : 'bg-gray-400 text-white'}`}>
+                  <LuShieldCheck className="w-6 h-6" />
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">
+                    Google Authenticator 2FA Requirement
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                    {enable2FA
+                      ? '2FA is ENABLED. Staff must enter Google Authenticator TOTP codes during login.'
+                      : '2FA is DISABLED. Staff can log in directly with their email and password.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggle2FA}
+                className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${enable2FA ? 'bg-rose-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${enable2FA ? 'translate-x-7' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

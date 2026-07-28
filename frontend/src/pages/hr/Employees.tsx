@@ -895,9 +895,8 @@ export default function Employees() {
                   <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Employee Reference ID</label>
                   <input
                     {...register('employee_id')}
-                    readOnly
-                    className="w-full px-4 py-3 bg-gray-50/50 dark:bg-gray-900/50 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-black text-gray-400 dark:text-gray-500 focus:outline-none cursor-not-allowed font-mono"
-                    placeholder="[Auto-generated]"
+                    className="w-full px-4 py-3 bg-white dark:bg-gray-950 border border-gray-300 dark:border-gray-800 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 font-mono"
+                    placeholder="e.g. JVD-EMP-1001"
                   />
                 </div>
               </div>
