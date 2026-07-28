@@ -1,9 +1,7 @@
-import React, { useState } from 'react';
-import { Modal, Button } from '../ui';
 import { 
   AVAILABLE_WIDGETS, 
   WIDGET_CATEGORIES, 
-  DashboardWidgetDefinition 
+  type DashboardWidgetDefinition 
 } from '../../config/dashboardWidgets';
 import { 
   LuSearch, 

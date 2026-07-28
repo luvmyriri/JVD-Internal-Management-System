@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { passportCaseApi } from '../../../api/travel';
+import { passportingApi } from '../../../api/passporting';
 import { LuGlobe, LuFileText, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ export default function PassportCasesCard() {
   const navigate = useNavigate();
   const { data: casesRaw, isLoading } = useQuery({
     queryKey: ['passport-cases-widget'],
-    queryFn: () => passportCaseApi.list({ per_page: 20 }).then(r => r.data),
+    queryFn: () => passportingApi.list({ per_page: 20 }).then((r: any) => r.data),
     staleTime: 1000 * 60 * 2,
   });
 

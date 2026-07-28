@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { fleetApi } from '../../../api/fleet';
-import { LuBus, LuWrench, LuCheckCircle, LuLoader } from 'react-icons/lu';
+import { LuBus, LuWrench, LuCheck, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
 export default function FleetStatusCard() {
@@ -43,7 +43,7 @@ export default function FleetStatusCard() {
         <div className="grid grid-cols-2 gap-4">
           <div className="p-4 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-900/30">
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-1">
-              <LuCheckCircle size={16} />
+              <LuCheck size={16} />
               <span className="text-[10px] font-black uppercase tracking-widest">Operational</span>
             </div>
             <p className="text-2xl font-black text-emerald-700 dark:text-emerald-300">

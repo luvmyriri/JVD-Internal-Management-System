@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { workOrderApi } from '../../../api/procurement';
+import { workOrderApi } from '../../../api/workOrders';
 import { LuWrench, LuClock, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ export default function WorkOrdersCard() {
   const navigate = useNavigate();
   const { data: ordersRaw, isLoading } = useQuery({
     queryKey: ['work-orders-widget'],
-    queryFn: () => workOrderApi.list({ per_page: 20 }).then(r => r.data),
+    queryFn: () => workOrderApi.list({ per_page: 20 }).then((r: any) => r.data),
     staleTime: 1000 * 60 * 2,
   });
 

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { purchaseOrderApi } from '../../../api/procurement';
+import { purchaseOrderApi } from '../../../api/purchaseOrders';
 import { LuShoppingBag, LuFileCheck, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ export default function PurchaseOrdersCard() {
   const navigate = useNavigate();
   const { data: posRaw, isLoading } = useQuery({
     queryKey: ['po-widget'],
-    queryFn: () => purchaseOrderApi.list({ per_page: 20 }).then(r => r.data),
+    queryFn: () => purchaseOrderApi.list({ per_page: 20 }).then((r: any) => r.data),
     staleTime: 1000 * 60 * 2,
   });
 

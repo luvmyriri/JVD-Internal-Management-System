@@ -7,7 +7,7 @@ export default function HeadcountOverviewCard() {
   const navigate = useNavigate();
   const { data: dashboardData, isLoading } = useQuery({
     queryKey: ['dashboard', 'hr'],
-    queryFn: dashboardApi.getHR,
+    queryFn: dashboardApi.getHr,
     staleTime: 1000 * 60 * 2,
   });
 

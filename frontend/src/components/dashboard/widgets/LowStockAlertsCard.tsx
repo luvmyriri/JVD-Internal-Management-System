@@ -1,13 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { inventoryApi } from '../../../api/inventory';
-import { LuBox, LuAlertTriangle, LuCheckCircle, LuLoader } from 'react-icons/lu';
+import { LuBox, LuTriangle, LuCheck, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
 export default function LowStockAlertsCard() {
   const navigate = useNavigate();
   const { data: suppliesRaw, isLoading } = useQuery({
     queryKey: ['supplies-widget'],
-    queryFn: () => inventoryApi.listSupplies({ per_page: 100 }).then(r => r.data),
+    queryFn: () => inventoryApi.getLowStock().then((r: any) => r.data),
     staleTime: 1000 * 60 * 5,
   });
 
@@ -42,7 +42,7 @@ export default function LowStockAlertsCard() {
         <div className="p-4 bg-orange-50/50 dark:bg-orange-950/20 rounded-2xl border border-orange-100 dark:border-orange-900/30 flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5 text-orange-600 dark:text-orange-400 mb-1">
-              {lowStock.length > 0 ? <LuAlertTriangle size={16} /> : <LuCheckCircle size={16} />}
+              {lowStock.length > 0 ? <LuTriangle size={16} /> : <LuCheck size={16} />}
               <span className="text-[10px] font-black uppercase tracking-widest">Reorder Alerts</span>
             </div>
             <p className="text-2xl font-black text-orange-700 dark:text-orange-300">

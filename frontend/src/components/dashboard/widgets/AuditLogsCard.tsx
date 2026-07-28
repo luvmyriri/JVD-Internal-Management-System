@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { auditLogApi } from '../../../api/admin';
+import { auditLogApi } from '../../../api/auditLogs';
 import { LuShield, LuUser, LuClock, LuLoader } from 'react-icons/lu';
 import { useNavigate } from 'react-router-dom';
 
@@ -7,7 +7,7 @@ export default function AuditLogsCard() {
   const navigate = useNavigate();
   const { data: logsRaw, isLoading } = useQuery({
     queryKey: ['audit-logs-widget'],
-    queryFn: () => auditLogApi.list({ per_page: 5 }).then(r => r.data),
+    queryFn: () => auditLogApi.list({ per_page: 5 }).then((r: any) => r.data),
     staleTime: 1000 * 30,
   });
 
