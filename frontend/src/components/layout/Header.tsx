@@ -18,6 +18,7 @@ import {
   LuExternalLink,
   LuTriangleAlert,
   LuCircleAlert,
+  LuSparkles,
   LuMessageCircle,
   LuSearch,
   LuSend,
