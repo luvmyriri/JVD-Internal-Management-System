@@ -86,12 +86,38 @@ export default function CharterSales() {
 
   const services = useMemo(() => {
     const items = (serviceResponse?.data?.data ?? []) as Service[];
-    return items.filter(service => {
+    const filtered = items.filter(service => {
       const cat = String(service.category || '').toLowerCase();
       const type = String(service.service_type || '').toLowerCase();
-      return ['transport', 'bus rental', 'charter', 'bus', 'packages', 'joiners'].includes(cat) || ['bus_rental', 'transfer_service'].includes(type) || service.is_sales_catalog !== false;
+      const name = String(service.name || '').toLowerCase();
+
+      // Exclude non-transport categories and keywords (tours, educational programs, visa, passporting, hotels, tutorials)
+      const isIrrelevant = ['educational', 'tour', 'package', 'joiner', 'visa', 'passport', 'hotel', 'consultation', 'processing', 'tutorial', 'learning'].some(ex =>
+        cat.includes(ex) || type.includes(ex) || name.includes(ex)
+      );
+
+      if (isIrrelevant) {
+        // Keep only if name explicitly specifies bus rental / charter / transport / transfer service
+        const isExplicitBusCharter = /bus rental|charter|bus charter|transport service|transfer service|bus -/i.test(name);
+        if (!isExplicitBusCharter) return false;
+      }
+
+      return (
+        ['transport', 'bus rental', 'charter', 'bus', 'fleet', 'vehicle', 'logistics'].includes(cat) ||
+        ['bus_rental', 'transfer_service', 'transport', 'charter'].includes(type) ||
+        /bus|charter|rental|transport|transfer|coaster|van/i.test(name)
+      );
     });
+
+    return filtered.length > 0 ? filtered : items;
   }, [serviceResponse]);
+
+  // Auto-select first matching catalog service when modal is opened or services load
+  useEffect(() => {
+    if (services.length > 0 && (!planForm.service_id || !services.some(s => String(s.id) === planForm.service_id))) {
+      setPlanForm(pf => ({ ...pf, service_id: String(services[0].id) }));
+    }
+  }, [services, planOpen]);
 
   const selectedPlan = plans.find(plan => plan.id === Number(booking.rate_plan_id));
   const validInterval = Boolean(booking.starts_at && booking.ends_at && booking.ends_at > booking.starts_at);
