@@ -405,33 +405,26 @@ export default function Settings() {
           )}
 
           {/* Customizable Dashboard Cards Launcher */}
-          <div className="flex items-center justify-between p-6 bg-amber-50/50 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-900/40 transition-all col-span-1 md:col-span-2">
+          <div className="flex items-center justify-between p-6 bg-blue-50/50 dark:bg-blue-950/20 rounded-2xl border border-blue-200 dark:border-blue-900/40 transition-all col-span-1 md:col-span-2">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-amber-500 text-slate-950 font-black">
-                <LuFileText className="w-6 h-6" />
+              <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-blue-600 text-white font-black">
+                <LuSparkles className="w-6 h-6" />
               </div>
               <div>
                 <p className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">
                   Personal Dashboard Cards & Layout
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                  Customize and pull off dashboard cards from modules assigned to your role.
+                  Customize, select, and arrange dashboard cards from modules assigned to your role.
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={() => {
-                const currentLayout = localStorage.getItem('jvd_custom_dashboard_layout');
-                const defaultIds = ['accounting_revenue', 'fleet_status', 'sales_bookings', 'hr_headcount', 'system_approvals', 'system_quick_actions'];
-                const widgetIds = currentLayout ? JSON.parse(currentLayout) : defaultIds;
-                localStorage.setItem('jvd_custom_dashboard_layout', JSON.stringify(widgetIds));
-                localStorage.setItem('jvd_active_dashboard_view', 'custom');
-                window.location.href = '/dashboard';
-              }}
-              className="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs uppercase tracking-wider rounded-xl shadow-md transition"
+              onClick={() => navigate('/settings/dashboard-customizer')}
+              className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs uppercase tracking-wider rounded-xl shadow-md transition cursor-pointer"
             >
-              Manage Workspace Cards
+              Customize Workspace Cards
             </button>
           </div>
         </div>
@@ -773,24 +766,6 @@ export default function Settings() {
           </div>
         </div>
       )}
-
-      {/* Dedicated Dashboard Customizer Section */}
-      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div>
-          <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
-            <LuSparkles className="w-5 h-5 text-blue-500" /> Personal Dashboard Cards Customizer
-          </h3>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            Open the dedicated workspace page to add, remove, and arrange dashboard cards across system modules.
-          </p>
-        </div>
-        <button
-          onClick={() => navigate('/settings/dashboard-customizer')}
-          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
-        >
-          <LuSparkles size={16} /> Open Dashboard Customizer
-        </button>
-      </div>
 
       {/* Version Footer */}
       <div className="text-center pt-4">
