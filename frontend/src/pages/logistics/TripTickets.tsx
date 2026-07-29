@@ -442,14 +442,16 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
     autosweep: formatMoneyInput(String(ticket?.autosweep || 0)),
     passenger_name: ticket?.passenger_name || '',
     trip_type: (ticket as any)?.trip_type || 'domestic' as 'domestic' | 'international',
+    odometer_reading: (ticket as any)?.odometer_reading?.toString() || '',
   });
 
   const [conflicts, setConflicts] = useState<any[]>([]);
   const [isCheckingConflict, setIsCheckingConflict] = useState<boolean>(false);
   const [overrideConflict, setOverrideConflict] = useState<boolean>(false);
 
-  // Auto-estimate distance, fuel (DOE rates) & tolls based on pickup/dropoff route
-  const handleAutoEstimateRoute = () => {
+  // Automated background calculation of distance, fuel (DOE rates) & tolls based on pickup/dropoff route
+  useEffect(() => {
+    if (!form.pick_up && !form.drop_off) return;
     const routeStr = `${form.pick_up} ${form.drop_off}`.toLowerCase();
     let estKm = 120;
     if (routeStr.includes('baguio') || routeStr.includes('ilocos') || routeStr.includes('bicol')) estKm = 320;
@@ -465,13 +467,12 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
 
     setForm(prev => ({
       ...prev,
-      diesel: formatMoneyInput(String(estDieselCost)),
-      easy_trip: formatMoneyInput(String(estEasyTrip)),
-      autosweep: formatMoneyInput(String(estAutosweep)),
-      odometer_reading: String(estKm),
+      diesel: prev.diesel === '0' || !prev.diesel ? formatMoneyInput(String(estDieselCost)) : prev.diesel,
+      easy_trip: prev.easy_trip === '0' || !prev.easy_trip ? formatMoneyInput(String(estEasyTrip)) : prev.easy_trip,
+      autosweep: prev.autosweep === '0' || !prev.autosweep ? formatMoneyInput(String(estAutosweep)) : prev.autosweep,
+      odometer_reading: prev.odometer_reading === '0' || !prev.odometer_reading ? String(estKm) : prev.odometer_reading,
     }));
-    toast.success(`Estimated: ${estKm} km route (DOE Diesel: ₱${estDieselCost.toLocaleString()}, Tolls: ₱${(estEasyTrip + estAutosweep).toLocaleString()})`);
-  };
+  }, [form.pick_up, form.drop_off]);
 
   useEffect(() => {
     let active = true;
@@ -651,16 +652,6 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
             <span>Route & Passenger Details</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Route Estimate & Fuel Calculator</span>
-              <button
-                type="button"
-                onClick={handleAutoEstimateRoute}
-                className="px-3 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition cursor-pointer"
-              >
-                ⚡ Auto-Calculate Fuel (DOE Rate) & Tolls
-              </button>
-            </div>
             {/* Interactive Location Map Pinning & Fuel Auto-Calculator */}
             <TripLocationMapPicker
               pickupLocation={form.pick_up || 'JVD Terminal, Manila'}

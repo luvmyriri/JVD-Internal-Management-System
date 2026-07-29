@@ -31,17 +31,23 @@ class TripTicketService
      */
     public function ensureDraftForSalesItem(SalesOrderItem $item, ?int $actorId = null): ?TripTicket
     {
-        // Force-refresh order.invoice because SalesOrderService may have assigned
-        // invoice_id moments earlier while this item still held a stale relation.
         $item->load(['order.invoice', 'fulfillment', 'service']);
-        if ($item->service_type !== 'private_tour'
-            || !($item->fulfillment instanceof PrivateTourBooking)
-            || (!$item->fulfillment->bus_id && !$item->fulfillment->driver_id)
-            || !$item->order?->invoice_id) {
+        if (!$item->order?->invoice_id) {
             return null;
         }
 
-        return DB::transaction(function () use ($item, $actorId) {
+        $fulfillment = $item->fulfillment;
+        $snapshot = $item->details_snapshot ?? [];
+
+        $startsAt = $fulfillment?->starts_at ?? $snapshot['starts_at'] ?? $snapshot['departure_date'] ?? now()->toIso8601String();
+        $endsAt = $fulfillment?->ends_at ?? $snapshot['ends_at'] ?? $snapshot['return_date'] ?? $startsAt;
+        $busId = $fulfillment?->bus_id ?? $snapshot['bus_id'] ?? null;
+        $driverId = $fulfillment?->driver_id ?? $snapshot['driver_id'] ?? null;
+        $pickup = $fulfillment?->pickup_location ?? $snapshot['pickup_location'] ?? 'To be confirmed by Logistics';
+        $destination = $fulfillment?->destination ?? $snapshot['destination'] ?? 'To be confirmed by Logistics';
+        $paxCount = $fulfillment?->passenger_count ?? $snapshot['passenger_count'] ?? $item->quantity ?? 1;
+
+        return DB::transaction(function () use ($item, $actorId, $startsAt, $endsAt, $busId, $driverId, $pickup, $destination, $paxCount) {
             $existing = TripTicket::where('sales_order_item_id', $item->id)
                 ->lockForUpdate()
                 ->first();
@@ -49,12 +55,11 @@ class TripTicketService
                 return $existing->load($this->relations());
             }
 
-            $fulfillment = $item->fulfillment;
-            $start = Carbon::parse($fulfillment->starts_at);
-            $end = Carbon::parse($fulfillment->ends_at);
-            $days = $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1;
+            $start = Carbon::parse($startsAt);
+            $end = Carbon::parse($endsAt);
+            $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
             $invoice = $item->order->invoice;
-            $bus = $fulfillment->bus_id ? Bus::find($fulfillment->bus_id) : null;
+            $bus = $busId ? Bus::find($busId) : null;
 
             $year = now()->year;
             $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")
@@ -72,14 +77,14 @@ class TripTicketService
                 'issue_date' => now()->toDateString(),
                 'date_of_travel' => $start->toDateString(),
                 'duration' => "{$days} ".($days === 1 ? 'day' : 'days'),
-                'pick_up' => $fulfillment->pickup_location ?: 'To be confirmed by Logistics',
-                'destination' => $fulfillment->destination,
-                'drop_off' => $fulfillment->destination,
-                'bus_id' => $fulfillment->bus_id,
+                'pick_up' => $pickup,
+                'destination' => $destination,
+                'drop_off' => $destination,
+                'bus_id' => $busId,
                 'plate_no' => $bus?->plate_number,
-                'no_of_passengers' => $fulfillment->passenger_count,
-                'driver_id' => $fulfillment->driver_id,
-                'passenger_name' => $invoice?->customer_name,
+                'no_of_passengers' => $paxCount,
+                'driver_id' => $driverId,
+                'passenger_name' => $invoice?->customer_name ?? 'Valued Customer',
                 'trip_type' => 'domestic',
                 'status' => 'draft',
                 'requested_by' => $actorId ?? $item->order->agent_id,
