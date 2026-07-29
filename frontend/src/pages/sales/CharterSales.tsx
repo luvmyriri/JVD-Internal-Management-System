@@ -14,6 +14,7 @@ import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclus
 import { LuChevronDown, LuSearch, LuFilter, LuMapPin, LuCalendar, LuBus } from 'react-icons/lu';
 import { BusSeatAllocationModal } from '../../components/ui';
 import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
+import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 
 
 const getTomorrowStartEnd = () => {
@@ -24,7 +25,7 @@ const getTomorrowStartEnd = () => {
 };
 
 const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: '', passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
-const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '100', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
+const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '100', pickup_location: 'Manila Hub (Pasay Bus Terminal, Metro Manila)', drop_off_location: 'Tagaytay City (Taal Lake Overview, Cavite)', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
 export default function CharterSales() {
   const navigate = useNavigate();
@@ -448,6 +449,23 @@ export default function CharterSales() {
             <label className="text-xs font-bold text-muted">Pickup Location<input type="text" value={booking.pickup_location} onChange={e => setBooking({ ...booking, pickup_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Destination<input type="text" value={booking.destination} onChange={e => setBooking({ ...booking, destination: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
           </div>
+
+          {/* Interactive Leaflet Location Map Picker for Booking Route */}
+          <div className="pt-2">
+            <TripLocationMapPicker
+              pickupLocation={booking.pickup_location || 'Manila Office'}
+              dropOffLocation={booking.destination || 'Tagaytay City'}
+              vehicleType={selectedPlan?.vehicle_class === 'van' ? 'Van' : selectedPlan?.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'}
+              onLocationSelect={(pickup, dropoff, distanceKm) => {
+                setBooking(b => ({
+                  ...b,
+                  pickup_location: pickup,
+                  destination: dropoff,
+                  estimated_kilometers: String(distanceKm),
+                }));
+              }}
+            />
+          </div>
         </section>
 
         {/* Fleet Allocation & Seat Selector Section */}
@@ -629,6 +647,42 @@ export default function CharterSales() {
           </label>
         </div>
 
+        {/* Pickup & Destination Route Inputs with Leaflet Map */}
+        <div className="rounded-2xl border border-gray-200 dark:border-gray-800 p-4 space-y-4 bg-gray-50/50 dark:bg-gray-800/30">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-black text-brand uppercase tracking-widest flex items-center gap-1.5">
+              <LuMapPin className="w-4 h-4 text-orange-500" /> Route Pickup & Drop-Off Locations
+            </p>
+            <span className="text-[10px] text-gray-400 font-bold">Auto-calculates Minimum Billable KM</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="text-xs font-bold text-muted">
+              Pickup Location
+              <input type="text" required value={planForm.pickup_location} onChange={e => setPlanForm({ ...planForm, pickup_location: e.target.value })} placeholder="e.g. Manila Hub / Pasay Terminal" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold" />
+            </label>
+            <label className="text-xs font-bold text-muted">
+              Drop-Off Location / Destination
+              <input type="text" required value={planForm.drop_off_location} onChange={e => setPlanForm({ ...planForm, drop_off_location: e.target.value })} placeholder="e.g. Tagaytay City / Burnham Park Baguio" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold" />
+            </label>
+          </div>
+
+          {/* Embedded Leaflet Interactive Map Picker inside Rate Plan Creation */}
+          <TripLocationMapPicker
+            pickupLocation={planForm.pickup_location || 'Manila Hub'}
+            dropOffLocation={planForm.drop_off_location || 'Tagaytay City'}
+            vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'}
+            onLocationSelect={(pickup, dropoff, distanceKm) => {
+              setPlanForm(pf => ({
+                ...pf,
+                pickup_location: pickup,
+                drop_off_location: dropoff,
+                min_km_basis: String(distanceKm),
+              }));
+            }}
+          />
+        </div>
+
         {/* KM-Based Rate Engine — replaces flat base price input */}
         <div className="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -641,8 +695,8 @@ export default function CharterSales() {
               <input required type="number" min="0" step="0.01" value={planForm.rate_per_km} onChange={e => setPlanForm({ ...planForm, rate_per_km: e.target.value })} placeholder="e.g. 45" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" />
             </label>
             <label className="text-xs font-bold text-muted">
-              Minimum Billable KM
-              <input required type="number" min="0" value={planForm.min_km_basis} onChange={e => setPlanForm({ ...planForm, min_km_basis: e.target.value })} placeholder="e.g. 100" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" />
+              Minimum Billable KM (Auto-Calculated from Map, Editable)
+              <input required type="number" min="0" value={planForm.min_km_basis} onChange={e => setPlanForm({ ...planForm, min_km_basis: e.target.value })} placeholder="e.g. 100" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold border-amber-300 dark:border-amber-700 focus:ring-amber-500" />
             </label>
           </div>
           {/* Computed Base Price Preview */}

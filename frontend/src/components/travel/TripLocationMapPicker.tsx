@@ -97,6 +97,18 @@ export default function TripLocationMapPicker({
   const [dropoffName, setDropoffName] = useState(dropOffLocation);
   const [pickupCoord, setPickupCoord] = useState<[number, number]>([14.5378, 120.9992]);
   const [dropoffCoord, setDropoffCoord] = useState<[number, number]>([14.1153, 120.9621]);
+
+  useEffect(() => {
+    if (pickupLocation && pickupLocation !== pickupName) {
+      setPickupName(pickupLocation);
+    }
+  }, [pickupLocation]);
+
+  useEffect(() => {
+    if (dropOffLocation && dropOffLocation !== dropoffName) {
+      setDropoffName(dropOffLocation);
+    }
+  }, [dropOffLocation]);
   
   // Base 1-way distance from OSRM
   const [oneWayKm, setOneWayKm] = useState<number>(65);

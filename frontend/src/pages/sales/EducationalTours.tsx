@@ -16,6 +16,7 @@ import { BusSeatAllocationModal } from '../../components/ui';
 import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import type { ItineraryDayInput } from '../../api/contracts';
 import BusLayout from '../../components/ui/BusLayout';
+import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 
 
 
@@ -513,7 +514,7 @@ export default function EducationalTours() {
                       className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink"
                     />
                   </label>
-                  <label className="text-xs font-bold text-muted">
+                  <label className="text-xs font-bold text-muted md:col-span-2 lg:col-span-1">
                     Default Pickup Point
                     <input
                       type="text"
@@ -523,6 +524,23 @@ export default function EducationalTours() {
                       className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink"
                     />
                   </label>
+                </div>
+
+                {/* Leaflet Location Map Picker for Educational Tour Pickup & Destination */}
+                <div className="pt-2">
+                  <TripLocationMapPicker
+                    pickupLocation={booking.pickup_location || 'School Campus Gate'}
+                    dropOffLocation={itinerary[0]?.location || 'Metro Manila Educational Circuit'}
+                    vehicleType="Bus"
+                    onLocationSelect={(pickup, dropoff) => {
+                      setBooking(b => ({ ...b, pickup_location: pickup }));
+                      if (itinerary[0]) {
+                        const updated = [...itinerary];
+                        updated[0] = { ...updated[0], location: dropoff };
+                        setItinerary(updated);
+                      }
+                    }}
+                  />
                 </div>
               </section>
 
