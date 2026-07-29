@@ -34,7 +34,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:create')->group(function () {
             Route::post('/quotations', [SalesQuotationController::class, 'store'])->name('sales.quotations.store');
             Route::post('/joiner-departures', [JoinerDepartureController::class, 'store'])->name('sales.joiner-departures.store');
+            Route::put('/joiner-departures/{departure}', [JoinerDepartureController::class, 'update'])->name('sales.joiner-departures.update');
             Route::post('/joiner-departures/{departure}/holds', [JoinerDepartureController::class, 'hold'])->name('sales.joiner-departures.hold');
+
             Route::post('/joiner-reservations/{reservation}/confirm', [JoinerDepartureController::class, 'confirm'])->name('sales.joiner-reservations.confirm');
             Route::post('/charter-rate-plans', [CharterController::class, 'storeRatePlan'])->name('sales.charters.rate-plans.store');
             Route::post('/charter-bookings', [CharterController::class, 'storeBooking'])->name('sales.charters.bookings.store');

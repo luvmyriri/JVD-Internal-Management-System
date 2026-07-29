@@ -88,6 +88,8 @@ export const catalogApi = {
   getJoinerDepartures: () => client.get('/sales/joiner-departures', { params: { upcoming: true } }).then(res => res.data.data as JoinerDeparture[]),
   getJoinerDeparture: (id: number) => client.get(`/sales/joiner-departures/${id}`).then(res => res.data.data as JoinerDeparture),
   createJoinerDeparture: (data: Record<string, unknown>) => client.post('/sales/joiner-departures', data).then(res => res.data.data as JoinerDeparture),
+  updateJoinerDeparture: (id: number, data: Record<string, unknown>) => client.put(`/sales/joiner-departures/${id}`, data).then(res => res.data.data as JoinerDeparture),
+
   getJoinerResources: (startsAt: string, endsAt: string) => client.get('/sales/joiner-departure-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as JoinerResources),
   getJoinerManifest: (departureId: number) => client.get(`/sales/joiner-departures/${departureId}/manifest`, { responseType: 'blob' }).then(res => res.data as Blob),
   holdJoinerSeats: (departureId: number, data: Record<string, unknown>) => client.post(`/sales/joiner-departures/${departureId}/holds`, data).then(res => res.data.data as JoinerReservationResult),

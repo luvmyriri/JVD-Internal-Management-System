@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bus, CheckCircle2, GraduationCap, Plus, Printer, Users } from 'lucide-react';
+import { ArrowLeft, Bus, CheckCircle2, GraduationCap, Pencil, Plus, Printer, Users } from 'lucide-react';
+
 import toast from 'react-hot-toast';
 import { educationalTourApi } from '../../api/educationalTours';
 import { Button, Modal } from '../../components/ds';
@@ -83,6 +84,8 @@ export default function EducationalTours() {
     additional_chaperone_price: '1200',
   });
   const [programOpen, setProgramOpen] = useState(false);
+  const [editingProgramId, setEditingProgramId] = useState<number | null>(null);
+
   const [expandedProgramId, setExpandedProgramId] = useState<number | null>(null);
   const [busAllocationModalOpen, setBusAllocationModalOpen] = useState(false);
   const [busAllocations, setBusAllocations] = useState<AllocatedBus[]>([]);
@@ -305,7 +308,7 @@ export default function EducationalTours() {
         ? stopsRaw.split('\n').map(stop => stop.trim()).filter(Boolean)
         : (Array.isArray(stopsRaw) ? stopsRaw : ['Main Activity Spot']);
 
-      return educationalTourApi.createProgram({
+      const payload = {
         name: source.name,
         learning_objectives: (source as any).learning_objectives || 'Educational tour exposure',
         default_stops: stopsArray.length > 0 ? stopsArray : ['Main Activity Spot'],
@@ -318,19 +321,26 @@ export default function EducationalTours() {
         includes_coordinator: (source as any).includes_coordinator ?? true,
         includes_insurance: (source as any).includes_insurance ?? true,
         includes_shirt: (source as any).includes_shirt ?? false,
-      });
+      };
+
+      if (editingProgramId) {
+        return educationalTourApi.updateProgram(editingProgramId, payload);
+      }
+      return educationalTourApi.createProgram(payload);
     },
     onSuccess: async created => {
       await queryClient.invalidateQueries({ queryKey: ['educational-programs'] });
       setBooking(current => ({ ...current, program_id: String(created.id), stops: created.default_stops.join('\n') }));
       setProgramOpen(false);
+      setEditingProgramId(null);
       setProgramForm(initialProgram);
-      toast.success('Educational program created and selected');
+      toast.success(editingProgramId ? 'Educational program updated' : 'Educational program created and selected');
     },
     onError: (error: any) => {
       const errors = error?.response?.data?.errors as Record<string, string[]> | undefined;
-      toast.error(errors ? Object.values(errors)[0]?.[0] : error?.response?.data?.message ?? 'Program could not be created');
+      toast.error(errors ? Object.values(errors)[0]?.[0] : error?.response?.data?.message ?? 'Program could not be saved');
     },
+
   });
 
   // Uniform Cart item construction matching Custom Transactions
@@ -807,16 +817,36 @@ export default function EducationalTours() {
                                     </span>
                                   ))}
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePrintProgramManifest(program);
-                                  }}
-                                  className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm"
-                                >
-                                  <Printer className="w-3.5 h-3.5" /> Program Manifest & Print
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingProgramId(program.id);
+                                      setProgramForm({
+                                        name: program.name,
+                                        student_price: String(program.student_price),
+                                        additional_chaperone_price: String(program.additional_chaperone_price),
+                                        default_stops: (program.default_stops || []).join('\n'),
+                                        minimum_students: String(program.minimum_students || 20),
+                                      } as any);
+                                      setProgramOpen(true);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-amber-100 transition-all shadow-sm"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" /> Edit Program
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePrintProgramManifest(program);
+                                    }}
+                                    className="px-3 py-1.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-blue-100 transition-all shadow-sm"
+                                  >
+                                    <Printer className="w-3.5 h-3.5" /> Program Manifest & Print
+                                  </button>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -1165,16 +1195,17 @@ export default function EducationalTours() {
         packageName={selectedProgram?.name || 'Educational Exposure Trip'}
       />
 
-      {/* Program Creation Modal */}
-      <Modal isOpen={programOpen} onClose={() => setProgramOpen(false)} title="Create educational program" size="lg" footer={null}>
+      {/* Program Creation / Edit Modal */}
+      <Modal isOpen={programOpen} onClose={() => { setProgramOpen(false); setEditingProgramId(null); }} title={editingProgramId ? "Edit educational program" : "Create educational program"} size="lg" footer={null}>
         <form onSubmit={event => { event.preventDefault(); createProgram.mutate(); }} className="grid gap-4 py-2 md:grid-cols-2">
           <label className="text-xs font-bold text-muted md:col-span-2">Program name<input required value={programForm.name} onChange={e => setProgramForm({ ...programForm, name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
           <label className="text-xs font-bold text-muted">Student price<input required type="number" min="0" value={programForm.student_price} onChange={e => setProgramForm({ ...programForm, student_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
           <label className="text-xs font-bold text-muted">Tour Guide price<input required type="number" min="0" value={programForm.additional_chaperone_price} onChange={e => setProgramForm({ ...programForm, additional_chaperone_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
           <label className="text-xs font-bold text-muted md:col-span-2">Default Stops (One per line)<textarea value={programForm.default_stops} onChange={e => setProgramForm({ ...programForm, default_stops: e.target.value })} className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-surface p-3 text-sm font-semibold" /></label>
-          <div className="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><Button type="button" variant="ghost" onClick={() => setProgramOpen(false)}>Cancel</Button><Button type="submit" disabled={createProgram.isPending}>Create program</Button></div>
+          <div className="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><Button type="button" variant="ghost" onClick={() => { setProgramOpen(false); setEditingProgramId(null); }}>Cancel</Button><Button type="submit" disabled={createProgram.isPending}>{editingProgramId ? 'Save changes' : 'Create program'}</Button></div>
         </form>
       </Modal>
+
     </div>
   );
 }

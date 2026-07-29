@@ -76,6 +76,24 @@ class JoinerDepartureController extends Controller
         return response()->json(['data' => $departure->load(['service', 'bus', 'driver', 'seats'])], 201);
     }
 
+    public function update(Request $request, JoinerDeparture $departure)
+    {
+        $data = $request->validate([
+            'starts_at' => ['sometimes', 'date'],
+            'ends_at' => ['sometimes', 'date', 'after:starts_at'],
+            'booking_cutoff_at' => ['sometimes', 'date'],
+            'capacity' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'bus_id' => ['nullable', 'integer', 'exists:buses,id'],
+            'driver_id' => ['nullable', 'integer', 'exists:users,id'],
+            'pickup_instructions' => ['nullable', 'string', 'max:255'],
+            'status' => ['sometimes', 'in:draft,published,closed,cancelled,departed,completed'],
+        ]);
+
+        $departure->update($data);
+        return response()->json(['data' => $departure->fresh()->load(['service', 'bus', 'driver', 'seats'])]);
+    }
+
+
     public function hold(HoldJoinerSeatsRequest $request, JoinerDeparture $departure)
     {
         return response()->json(['data' => $this->reservations->hold($departure, $request->validated(), $request->user()->id)], 201);

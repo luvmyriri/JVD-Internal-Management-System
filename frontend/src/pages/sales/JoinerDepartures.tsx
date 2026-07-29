@@ -5,7 +5,8 @@ import { ArrowLeft, Bus, CalendarPlus, ChevronLeft, ChevronRight, Clock3, Eye, I
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
-import { catalogApi } from '../../api/catalog';
+import { catalogApi, type JoinerDeparture } from '../../api/catalog';
+
 import { Button, Modal } from '../../components/ds';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
@@ -290,6 +291,48 @@ export default function JoinerDepartures() {
     },
   });
 
+  const [editingDepartureId, setEditingDepartureId] = useState<number | null>(null);
+
+  const openEditDeparture = (departure: JoinerDeparture) => {
+    setEditingDepartureId(departure.id);
+    setForm({
+      service_id: String(departure.service?.id || ''),
+      code: departure.code || '',
+      starts_at: departure.starts_at ? departure.starts_at.slice(0, 16) : '',
+      ends_at: departure.ends_at ? departure.ends_at.slice(0, 16) : '',
+      booking_cutoff_at: departure.booking_cutoff_at ? departure.booking_cutoff_at.slice(0, 16) : '',
+      capacity: String(departure.capacity || 12),
+      status: departure.status || 'published',
+      pickup_instructions: departure.pickup_instructions || '',
+      bus_id: departure.bus?.id ? String(departure.bus.id) : '',
+      driver_id: departure.driver?.id ? String(departure.driver.id) : '',
+    });
+    setOpen(true);
+  };
+
+  const updateDeparture = useMutation({
+    mutationFn: () => catalogApi.updateJoinerDeparture(editingDepartureId!, {
+      starts_at: form.starts_at,
+      ends_at: form.ends_at,
+      booking_cutoff_at: form.booking_cutoff_at,
+      capacity: Number(form.capacity),
+      status: form.status,
+      bus_id: form.bus_id ? Number(form.bus_id) : null,
+      driver_id: form.driver_id ? Number(form.driver_id) : null,
+      pickup_instructions: form.pickup_instructions,
+    }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['joiner-departures'] });
+      setOpen(false);
+      setEditingDepartureId(null);
+      setForm(initialForm);
+      toast.success('Departure updated successfully!');
+    },
+    onError: (error: any) => {
+      toast.error(error?.response?.data?.message || 'Could not update departure');
+    }
+  });
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (!availabilityWindowValid) {
@@ -304,13 +347,20 @@ export default function JoinerDepartures() {
       toast.error('Select a driver who is available for this exact departure interval.');
       return;
     }
-    create.mutate();
+    if (editingDepartureId) {
+      updateDeparture.mutate();
+    } else {
+      create.mutate();
+    }
   };
 
+
   const openDeparture = (product?: Service) => {
+    setEditingDepartureId(null);
     setForm({ ...initialForm, service_id: product ? String(product.id) : '' });
     setOpen(true);
   };
+
 
   return <div className="w-full space-y-5 pb-12">
     <header className="flex flex-col gap-4 rounded-3xl bg-[#071b33] p-7 text-white md:flex-row md:items-end md:justify-between">
@@ -352,14 +402,27 @@ export default function JoinerDepartures() {
           <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.18em] text-brand">{departure.code}</p><h2 className="mt-2 text-lg font-black text-ink">{departure.service?.name || departure.code || 'Joiner Tour'}</h2></div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${departure.status === 'published' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{departure.status}</span></div>
           <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-surface-alt p-4 text-xs"><span className="flex gap-2 text-muted"><Clock3 className="h-4 w-4" />{new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(departure.starts_at))}</span><span className="flex justify-end gap-2 font-black text-ink"><UsersRound className="h-4 w-4" />{available} available</span></div>
           <div className="mt-4 flex gap-2 text-[10px] font-bold uppercase tracking-wider text-muted"><span>{departure.confirmed_count} confirmed</span><span>·</span><span>{departure.held_count} held</span><span>·</span><span>{departure.capacity} capacity</span></div>
-          <div className="mt-5 grid grid-cols-2 gap-2"><Button variant="ghost" onClick={() => navigate(`/sales/departures/${departure.id}`)}><Eye className="h-4 w-4" /> Details</Button>{departure.status === 'published' && available > 0 && <Button onClick={() => navigate(`/sales/joiners/checkout?departure=${departure.id}`)}><TicketCheck className="h-4 w-4" /> Book seats</Button>}</div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => openEditDeparture(departure)} className="!border !border-amber-200 !text-amber-700 hover:!bg-amber-50 dark:!border-amber-800 dark:!text-amber-400">
+              <Pencil className="h-3.5 w-3.5" /> Manage Run
+            </Button>
+            <Button variant="ghost" onClick={() => navigate(`/sales/departures/${departure.id}`)}>
+              <Eye className="h-3.5 w-3.5" /> Details
+            </Button>
+            {departure.status === 'published' && available > 0 && (
+              <Button onClick={() => navigate(`/sales/joiners/checkout?departure=${departure.id}`)}>
+                <TicketCheck className="h-3.5 w-3.5" /> Book seats
+              </Button>
+            )}
+          </div>
           </div>
         </article>;
       })}
       </div>
     </section>
 
-    <Modal isOpen={open} onClose={() => setOpen(false)} title="Create fixed departure" size="lg" footer={null}>
+    <Modal isOpen={open} onClose={() => { setOpen(false); setEditingDepartureId(null); }} title={editingDepartureId ? "Manage / Edit fixed departure" : "Create fixed departure"} size="lg" footer={null}>
+
       <form onSubmit={submit} className="space-y-5 py-2">
         <div className="rounded-2xl bg-blue-50 p-4 text-xs leading-5 text-blue-900 dark:bg-blue-950 dark:text-blue-100">Dates entered here belong to this departure. Customers can select the run, but cannot change its schedule.</div>
         <div className="grid gap-4 md:grid-cols-2">
