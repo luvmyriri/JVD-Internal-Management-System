@@ -8,11 +8,12 @@ use App\Models\CharterRatePlan;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
+use App\Models\PmsSchedule;
+use App\Models\SystemSetting;
+use App\Models\TripTicket;
 use App\Models\User;
-use App\Services\SalesReferenceService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class CharterBookingService
@@ -49,22 +50,36 @@ class CharterBookingService
         $booking = DB::transaction(function () use ($data, $actorId) {
             $plan = CharterRatePlan::where('is_active', true)->lockForUpdate()->findOrFail($data['rate_plan_id']);
             $bus = Bus::lockForUpdate()->findOrFail($data['bus_id']);
-            $driver = !empty($data['driver_id']) ? User::lockForUpdate()->findOrFail($data['driver_id']) : null;
+            $driver = ! empty($data['driver_id']) ? User::lockForUpdate()->findOrFail($data['driver_id']) : null;
 
-            if ($bus->status !== 'available') throw ValidationException::withMessages(['bus_id' => 'The selected vehicle is not in available status.']);
-            if (($bus->vehicle_type ?? 'bus') !== $plan->vehicle_class) throw ValidationException::withMessages(['bus_id' => "Select a {$plan->vehicle_class} for this rate plan."]);
-            if ($data['passenger_count'] > $bus->seating_capacity) throw ValidationException::withMessages(['passenger_count' => "Passenger count exceeds the vehicle's {$bus->seating_capacity} seats."]);
-            if ($driver && ($driver->role !== 'driver' || !$driver->is_active)) throw ValidationException::withMessages(['driver_id' => 'Select an active driver.']);
-            if ($plan->includes_driver && !$driver) throw ValidationException::withMessages(['driver_id' => 'This rate plan includes a driver; assign an available driver before confirmation.']);
+            if ($bus->status !== 'available') {
+                throw ValidationException::withMessages(['bus_id' => 'The selected vehicle is not in available status.']);
+            }
+            if (($bus->vehicle_type ?? 'bus') !== $plan->vehicle_class) {
+                throw ValidationException::withMessages(['bus_id' => "Select a {$plan->vehicle_class} for this rate plan."]);
+            }
+            if ($data['passenger_count'] > $bus->seating_capacity) {
+                throw ValidationException::withMessages(['passenger_count' => "Passenger count exceeds the vehicle's {$bus->seating_capacity} seats."]);
+            }
+            if ($driver && ($driver->role !== 'driver' || ! $driver->is_active)) {
+                throw ValidationException::withMessages(['driver_id' => 'Select an active driver.']);
+            }
+            if ($plan->includes_driver && ! $driver) {
+                throw ValidationException::withMessages(['driver_id' => 'This rate plan includes a driver; assign an available driver before confirmation.']);
+            }
             $this->assertAvailable($bus->id, $driver?->id, $data['starts_at'], $data['ends_at']);
 
             $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers']);
-            $taxRate = (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
+            $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
             $tax = round($pricing['subtotal'] * $taxRate, 2);
             $total = round($pricing['subtotal'] + $tax, 2);
             $received = (float) $data['amount_received'];
-            if ($data['payment_method'] === 'Cash' && $data['payment_type'] === 'full' && $received < $total) throw ValidationException::withMessages(['amount_received' => 'Full cash payment must cover the invoice total.']);
-            if ($data['payment_type'] === 'downpayment' && $received <= 0) throw ValidationException::withMessages(['amount_received' => 'A downpayment must be greater than zero.']);
+            if ($data['payment_method'] === 'Cash' && $data['payment_type'] === 'full' && $received < $total) {
+                throw ValidationException::withMessages(['amount_received' => 'Full cash payment must cover the invoice total.']);
+            }
+            if ($data['payment_type'] === 'downpayment' && $received <= 0) {
+                throw ValidationException::withMessages(['amount_received' => 'A downpayment must be greater than zero.']);
+            }
 
             $finalizer = app(InvoiceFinalizationService::class);
             $customerId = $finalizer->resolveCustomerId($data['customer_id'] ?? null, $data['lead_name'], $data['lead_email'] ?? null, $data['lead_contact'] ?? null, null);
@@ -88,12 +103,15 @@ class CharterBookingService
                 'lead_contact' => $data['lead_contact'] ?? null, 'starts_at' => $data['starts_at'], 'ends_at' => $data['ends_at'],
                 'pickup_location' => $data['pickup_location'], 'destination' => $data['destination'], 'stops' => $data['stops'] ?? [],
                 'passenger_count' => $data['passenger_count'], 'estimated_kilometers' => $data['estimated_kilometers'],
+                'booking_mode' => $data['booking_mode'] ?? 'entire_vehicle', 'selected_seats' => $data['selected_seats'] ?? [],
+                'passengers' => $data['passengers'] ?? [],
                 'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
                 'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
                 'subtotal' => $pricing['subtotal'], 'pricing_snapshot' => [...$pricing, 'rate_plan' => $plan->only(['id', 'name', 'vehicle_class', 'included_hours', 'included_kilometers', 'extra_hour_rate', 'extra_kilometer_rate', 'overnight_rate'])],
                 'status' => 'confirmed', 'operations_notes' => $data['operations_notes'] ?? null, 'created_by' => $actorId,
             ]);
             app(ResourceAllocationService::class)->reserve($booking, $bus->id, $driver?->id, $booking->starts_at, $booking->ends_at, $booking->reference);
+
             return $booking->load(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
         });
 
@@ -102,6 +120,135 @@ class CharterBookingService
         ]);
 
         return $booking->fresh(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
+    }
+
+    public function update(CharterBooking $booking, array $data): CharterBooking
+    {
+        return DB::transaction(function () use ($booking, $data) {
+            $booking = CharterBooking::lockForUpdate()->with('ratePlan')->findOrFail($booking->id);
+            if (! in_array($booking->status, ['confirmed', 'awaiting_payment', 'in_progress'], true)) {
+                throw ValidationException::withMessages(['booking' => 'Only active charter bookings can be edited.']);
+            }
+
+            $assignmentInput = $data['assignments'] ?? [['bus_id' => $data['bus_id'], 'driver_id' => $data['driver_id'] ?? null]];
+            $assignments = $this->validateAssignments($booking->ratePlan, $assignmentInput, (int) $data['passenger_count']);
+            [$bus, $driver] = $assignments[0];
+            if (($data['booking_mode'] ?? null) === 'selected_seats' && count($data['selected_seats'] ?? []) > (int) $data['passenger_count']) {
+                throw ValidationException::withMessages(['selected_seats' => 'Selected seats cannot exceed the passenger count.']);
+            }
+
+            $allocation = app(ResourceAllocationService::class);
+            $allocation->release($booking);
+            foreach ($assignments as [$assignedBus, $assignedDriver]) {
+                $allocation->reserve($booking, $assignedBus->id, $assignedDriver?->id, $data['starts_at'], $data['ends_at'], $booking->reference);
+            }
+
+            $booking->update([
+                'lead_name' => $data['lead_name'],
+                'lead_email' => $data['lead_email'] ?? null,
+                'lead_contact' => $data['lead_contact'] ?? null,
+                'bus_id' => $bus->id,
+                'driver_id' => $driver?->id,
+                'starts_at' => $data['starts_at'],
+                'ends_at' => $data['ends_at'],
+                'pickup_location' => $data['pickup_location'],
+                'destination' => $data['destination'],
+                'stops' => $data['stops'] ?? [],
+                'passenger_count' => $data['passenger_count'],
+                'booking_mode' => $data['booking_mode'],
+                'selected_seats' => $data['selected_seats'] ?? [],
+                'passengers' => $data['passengers'] ?? [],
+                'fleet_assignments' => collect($assignments)->map(fn ($assignment) => [
+                    'bus_id' => $assignment[0]->id,
+                    'driver_id' => $assignment[1]?->id,
+                    'plate_number' => $assignment[0]->plate_number,
+                    'model' => $assignment[0]->model,
+                    'seating_capacity' => $assignment[0]->seating_capacity,
+                ])->all(),
+                'operations_notes' => $data['operations_notes'] ?? null,
+            ]);
+
+            return $booking->fresh(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
+        });
+    }
+
+    public function createFromInvoice(Invoice $invoice, array $data, int $actorId): CharterBooking
+    {
+        $plan = CharterRatePlan::where('is_active', true)->lockForUpdate()->findOrFail($data['rate_plan_id']);
+        $assignmentInput = $data['assignments'] ?? [['bus_id' => $data['bus_id'], 'driver_id' => $data['driver_id'] ?? null]];
+        $assignments = $this->validateAssignments($plan, $assignmentInput, (int) $data['passenger_count']);
+        foreach ($assignments as [$assignedBus, $assignedDriver]) {
+            $this->assertAvailable($assignedBus->id, $assignedDriver?->id, $data['starts_at'], $data['ends_at']);
+        }
+        [$bus, $driver] = $assignments[0];
+        $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers']);
+
+        $booking = CharterBooking::create([
+            'reference' => SalesReferenceService::generate('CHR', $data['destination'], $data['starts_at']),
+            'rate_plan_id' => $plan->id, 'customer_id' => $invoice->customer_id, 'invoice_id' => $invoice->id,
+            'bus_id' => $bus->id, 'driver_id' => $driver?->id, 'lead_name' => $invoice->customer_name,
+            'lead_email' => $invoice->customer_email, 'lead_contact' => $invoice->customer_contact,
+            'starts_at' => $data['starts_at'], 'ends_at' => $data['ends_at'], 'pickup_location' => $data['pickup_location'],
+            'destination' => $data['destination'], 'stops' => $data['stops'] ?? [], 'passenger_count' => $data['passenger_count'],
+            'booking_mode' => $data['booking_mode'] ?? 'entire_vehicle', 'selected_seats' => $data['selected_seats'] ?? [],
+            'passengers' => $data['passengers'] ?? [], 'estimated_kilometers' => $data['estimated_kilometers'],
+            'fleet_assignments' => collect($assignments)->map(fn ($assignment) => [
+                'bus_id' => $assignment[0]->id,
+                'driver_id' => $assignment[1]?->id,
+                'plate_number' => $assignment[0]->plate_number,
+                'model' => $assignment[0]->model,
+                'seating_capacity' => $assignment[0]->seating_capacity,
+            ])->all(),
+            'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
+            'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
+            'subtotal' => $invoice->subtotal, 'pricing_snapshot' => [...$pricing, 'invoice_subtotal' => (float) $invoice->subtotal],
+            'status' => 'confirmed', 'operations_notes' => $data['operations_notes'] ?? null, 'created_by' => $actorId,
+        ]);
+        foreach ($assignments as [$assignedBus, $assignedDriver]) {
+            app(ResourceAllocationService::class)->reserve($booking, $assignedBus->id, $assignedDriver?->id, $booking->starts_at, $booking->ends_at, $booking->reference);
+        }
+
+        return $booking;
+    }
+
+    private function validateAssignments(CharterRatePlan $plan, array $assignmentInput, int $passengerCount): array
+    {
+        if ($assignmentInput === []) {
+            throw ValidationException::withMessages(['assignments' => 'Assign at least one vehicle.']);
+        }
+        $busIds = collect($assignmentInput)->pluck('bus_id')->filter();
+        if ($busIds->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages(['assignments' => 'A vehicle can only be assigned once.']);
+        }
+        $driverIds = collect($assignmentInput)->pluck('driver_id')->filter();
+        if ($driverIds->duplicates()->isNotEmpty()) {
+            throw ValidationException::withMessages(['assignments' => 'A driver can only be assigned once.']);
+        }
+        $assignments = [];
+        $totalCapacity = 0;
+        foreach ($assignmentInput as $index => $assignment) {
+            $bus = Bus::lockForUpdate()->findOrFail($assignment['bus_id']);
+            $driver = ! empty($assignment['driver_id']) ? User::lockForUpdate()->findOrFail($assignment['driver_id']) : null;
+            if ($bus->status !== 'available') {
+                throw ValidationException::withMessages(["assignments.$index.bus_id" => 'The selected vehicle is not in available status.']);
+            }
+            if (($bus->vehicle_type ?? 'bus') !== $plan->vehicle_class) {
+                throw ValidationException::withMessages(["assignments.$index.bus_id" => "Select a {$plan->vehicle_class} for this rate plan."]);
+            }
+            if ($driver && ($driver->role !== 'driver' || ! $driver->is_active)) {
+                throw ValidationException::withMessages(["assignments.$index.driver_id" => 'Select an active driver.']);
+            }
+            if ($plan->includes_driver && ! $driver) {
+                throw ValidationException::withMessages(["assignments.$index.driver_id" => 'This rate plan requires a driver for every vehicle.']);
+            }
+            $totalCapacity += (int) $bus->seating_capacity;
+            $assignments[] = [$bus, $driver];
+        }
+        if ($totalCapacity < $passengerCount) {
+            throw ValidationException::withMessages(['passenger_count' => "Passenger count exceeds the selected fleet's {$totalCapacity}-seat capacity."]);
+        }
+
+        return $assignments;
     }
 
     public function assertAvailable(int $busId, ?int $driverId, string $startsAt, string $endsAt): void
@@ -114,16 +261,16 @@ class CharterBookingService
         }
         $startDate = Carbon::parse($startsAt)->toDateString();
         $endDate = Carbon::parse($endsAt)->toDateString();
-        if (\App\Models\TripTicket::where('bus_id', $busId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
+        if (TripTicket::where('bus_id', $busId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
             throw ValidationException::withMessages(['bus_id' => 'Vehicle has an existing trip ticket during this interval.']);
         }
-        if (\App\Models\PmsSchedule::where('bus_id', $busId)->where('status', '!=', 'cancelled')->whereBetween('maintenance_date', [$startDate, $endDate])->exists()) {
+        if (PmsSchedule::where('bus_id', $busId)->where('status', '!=', 'cancelled')->whereBetween('maintenance_date', [$startDate, $endDate])->exists()) {
             throw ValidationException::withMessages(['bus_id' => 'Vehicle has scheduled maintenance during this interval.']);
         }
         if ($driverId && ($overlap(CharterBooking::where('driver_id', $driverId))->exists() || $overlap(JoinerDeparture::where('driver_id', $driverId))->exists())) {
             throw ValidationException::withMessages(['driver_id' => 'Driver is already assigned during this interval.']);
         }
-        if ($driverId && \App\Models\TripTicket::where('driver_id', $driverId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
+        if ($driverId && TripTicket::where('driver_id', $driverId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
             throw ValidationException::withMessages(['driver_id' => 'Driver has an existing trip ticket during this interval.']);
         }
     }

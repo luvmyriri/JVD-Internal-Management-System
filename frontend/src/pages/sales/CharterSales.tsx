@@ -18,6 +18,8 @@ import { LuChevronDown, LuSearch, LuFilter, LuMapPin, LuCalendar, LuBus } from '
 import { BusSeatAllocationModal } from '../../components/ui';
 import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
+import CharterBookingManager from './components/CharterBookingManager';
+import { getStorageUrl } from '../../utils';
 
 
 const getTomorrowStartEnd = () => {
@@ -84,23 +86,6 @@ export default function CharterSales() {
   const [searchParams] = useSearchParams();
   const manageId = searchParams.get('manage_id');
   const [viewRatePlanModal, setViewRatePlanModal] = useState<CharterRatePlan | null>(null);
-
-  // Auto-select first rate plan if none selected
-  useEffect(() => {
-    if (plans.length > 0 && !booking.rate_plan_id) {
-      setBooking(b => ({ ...b, rate_plan_id: String(plans[0].id) }));
-    }
-  }, [plans, booking.rate_plan_id]);
-
-  useEffect(() => {
-    if (manageId && plans.length > 0) {
-      const match = plans.find(p => String(p.id) === manageId);
-      if (match) {
-        openEditRatePlan(match);
-      }
-    }
-  }, [manageId, plans]);
-
 
   const services = useMemo(() => {
     const items = (serviceResponse?.data?.data ?? []) as Service[];
@@ -311,6 +296,9 @@ export default function CharterSales() {
         starts_at: booking.starts_at,
         ends_at: booking.ends_at,
         estimated_kilometers: Number(booking.estimated_kilometers),
+        passenger_count: paxCount,
+        pickup_location: booking.pickup_location,
+        destination: booking.destination,
         stops: booking.stops,
         buses_required: busesRequired,
         bus_assignments: busAssignments,
@@ -348,6 +336,8 @@ export default function CharterSales() {
         <Button onClick={() => setPlanOpen(true)} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Rate Plan</Button>
       </div>
     </header>
+
+    <CharterBookingManager bookings={bookings} targetId={manageId} />
 
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
       <div className="space-y-6">
@@ -429,14 +419,19 @@ export default function CharterSales() {
                       }}
                       className="p-4 flex items-center justify-between cursor-pointer select-none"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                          {plan.service?.images?.[0]
+                            ? <img src={getStorageUrl(plan.service.images[0])} alt={plan.name} className="h-full w-full object-cover" />
+                            : <div className="grid h-full place-items-center"><Bus className="h-6 w-6 text-slate-300" /></div>}
+                        </div>
                         <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                           active ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'
                         }`}>
                           {active && <CheckCircle2 className="w-3.5 h-3.5" />}
                         </div>
 
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-[9.5px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded-md">
                               {plan.vehicle_class || 'Tourist Bus'}
@@ -445,7 +440,7 @@ export default function CharterSales() {
                               Includes {plan.included_hours}h / {plan.included_kilometers}km
                             </span>
                           </div>
-                          <h3 className="text-base font-black text-ink mt-0.5">{plan.name}</h3>
+                          <h3 className="mt-0.5 truncate text-base font-black text-ink">{plan.name}</h3>
                         </div>
                       </div>
 
@@ -637,9 +632,10 @@ export default function CharterSales() {
         <SalesCheckout
           cart={cart}
           customerPreset={customerPreset}
-          removeFromCart={() => {}}
+          removeFromCart={() => setBooking(current => ({ ...current, rate_plan_id: '' }))}
           updateQuantity={() => {}}
           clearCart={() => {}}
+          onEditCartItem={() => setBusAllocationModalOpen(true)}
           onCheckoutSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['charter-bookings'] });
             toast.success('Charter order finalized & synchronized with accounting & logistics!');

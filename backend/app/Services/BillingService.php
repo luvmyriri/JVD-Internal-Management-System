@@ -2,22 +2,28 @@
 
 namespace App\Services;
 
-
+use App\Exceptions\MaxPaxExceededException;
+use App\Http\Requests\Accounting\StoreInvoiceRequest;
+use App\Http\Requests\Accounting\StoreServiceRequest;
+use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
+use App\Http\Requests\Accounting\UpdateServiceRequest;
+use App\Http\Resources\InvoiceResource;
+use App\Mail\TransactionNotificationMail;
+use App\Models\Booking;
+use App\Models\CollectionPayment;
+use App\Models\CustomTransactionDetail;
+use App\Models\IntegrationEvent;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\InvoicePassenger;
+use App\Models\Itinerary;
 use App\Models\Service;
+use App\Notifications\SystemAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use App\Notifications\SystemAlert;
-
 use Illuminate\Support\Facades\Mail;
-use App\Mail\TransactionNotificationMail;
-use App\Http\Resources\InvoiceResource;
-use App\Exceptions\MaxPaxExceededException;
-use App\Services\InvoiceFinalizationService;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class BillingService
@@ -32,9 +38,9 @@ class BillingService
         // Search
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('invoice_number', 'like', "%$search%")
-                  ->orWhere('customer_name', 'like', "%$search%");
+                    ->orWhere('customer_name', 'like', "%$search%");
             });
         }
 
@@ -69,13 +75,13 @@ class BillingService
             'data' => InvoiceResource::collection($invoices)->resolve(),
             'meta' => [
                 'current_page' => $invoices->currentPage(),
-                'last_page'    => $invoices->lastPage(),
-                'per_page'     => $invoices->perPage(),
-                'total'        => $invoices->total(),
-                'from'         => $invoices->firstItem(),
-                'to'           => $invoices->lastItem(),
+                'last_page' => $invoices->lastPage(),
+                'per_page' => $invoices->perPage(),
+                'total' => $invoices->total(),
+                'from' => $invoices->firstItem(),
+                'to' => $invoices->lastItem(),
             ],
-            'stats' => $stats
+            'stats' => $stats,
         ]);
     }
 
@@ -88,13 +94,13 @@ class BillingService
 
         // Strip cost_breakdown from non-admin/super_admin users
         $userRole = auth()->user()?->role;
-        if (!in_array($userRole, ['super_admin', 'admin'])) {
+        if (! in_array($userRole, ['super_admin', 'admin'])) {
             $services->makeHidden('cost_breakdown');
         }
 
         return response()->json([
             'success' => true,
-            'data' => $services
+            'data' => $services,
         ]);
     }
 
@@ -103,10 +109,10 @@ class BillingService
         $service = Service::findOrFail($id);
         $travelDate = $request->query('travel_date');
 
-        if (!$travelDate) {
+        if (! $travelDate) {
             return response()->json([
                 'success' => false,
-                'message' => 'Travel date is required'
+                'message' => 'Travel date is required',
             ], 400);
         }
 
@@ -127,7 +133,7 @@ class BillingService
         ]);
     }
 
-    public function storeService(\App\Http\Requests\Accounting\StoreServiceRequest $request)
+    public function storeService(StoreServiceRequest $request)
     {
         $validated = $request->validated();
 
@@ -138,12 +144,12 @@ class BillingService
                     $image = substr($base64Image, strpos($base64Image, ',') + 1);
                     $type = strtolower($type[1]); // jpg, png, gif
 
-                    if (!in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
+                    if (! in_array($type, ['jpg', 'jpeg', 'gif', 'png'])) {
                         continue;
                     }
 
                     $image = str_replace(' ', '+', $image);
-                    $imageName = 'services/' . Str::random(10) . '.' . $type;
+                    $imageName = 'services/'.Str::random(10).'.'.$type;
                     Storage::disk('public')->put($imageName, base64_decode($image));
                     $imageUrls[] = $imageName;
                 }
@@ -185,17 +191,17 @@ class BillingService
         return response()->json([
             'success' => true,
             'message' => 'Service created successfully',
-            'data' => $service
+            'data' => $service,
         ], 201);
     }
 
     /**
      * Update an existing service.
      */
-    public function updateService(\App\Http\Requests\Accounting\UpdateServiceRequest $request, $id)
+    public function updateService(UpdateServiceRequest $request, $id)
     {
         $service = Service::findOrFail($id);
-        
+
         $validated = $request->validated();
 
         $imageUrls = $service->images ?? [];
@@ -203,13 +209,17 @@ class BillingService
             // New images are base64, existing ones are relative paths or external URLs
             $newImageUrls = [];
             foreach ($request->images as $img) {
-                if (empty($img)) continue;
+                if (empty($img)) {
+                    continue;
+                }
                 if (preg_match('/^data:image\/(\w+);base64,/', $img, $type)) {
                     $image = substr($img, strpos($img, ',') + 1);
                     $ext = strtolower($type[1]);
-                    if ($ext === 'jpeg') $ext = 'jpg';
+                    if ($ext === 'jpeg') {
+                        $ext = 'jpg';
+                    }
                     $image = str_replace(' ', '+', $image);
-                    $imageName = 'services/' . Str::random(10) . '.' . $ext;
+                    $imageName = 'services/'.Str::random(10).'.'.$ext;
                     Storage::disk('public')->put($imageName, base64_decode($image));
                     $newImageUrls[] = $imageName;
                 } else {
@@ -225,7 +235,7 @@ class BillingService
                             $cleanPath = preg_replace('/^(?:\/storage\/|\/public\/|storage\/|public\/)+/i', '', $img);
                         }
                     }
-                    if (!empty($cleanPath)) {
+                    if (! empty($cleanPath)) {
                         $newImageUrls[] = $cleanPath;
                     }
                 }
@@ -266,7 +276,7 @@ class BillingService
         return response()->json([
             'success' => true,
             'message' => 'Service updated successfully',
-            'data' => $service
+            'data' => $service,
         ]);
     }
 
@@ -291,26 +301,26 @@ class BillingService
     public function deleteService($id)
     {
         $service = Service::findOrFail($id);
-        
+
         // Delete associated images
         if ($service->images) {
             foreach ($service->images as $path) {
                 Storage::disk('public')->delete($path);
             }
         }
-        
+
         $service->delete();
 
         return response()->json([
             'success' => true,
-            'message' => 'Service deleted successfully'
+            'message' => 'Service deleted successfully',
         ]);
     }
 
     /**
      * Store a newly created invoice in storage.
      */
-    public function store(\App\Http\Requests\Accounting\StoreInvoiceRequest $request)
+    public function store(StoreInvoiceRequest $request)
     {
         $validated = $request->validated();
 
@@ -323,12 +333,13 @@ class BillingService
                 $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count, $request->tax_rate);
             } catch (MaxPaxExceededException $e) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
                     'errors' => [
-                        'max_pax' => ["Exceeds maximum passenger capacity. {$e->remainingSlots} slots remaining out of {$e->maxPax}."]
-                    ]
+                        'max_pax' => ["Exceeds maximum passenger capacity. {$e->remainingSlots} slots remaining out of {$e->maxPax}."],
+                    ],
                 ], 422);
             }
 
@@ -339,7 +350,7 @@ class BillingService
 
             $paymentType = $request->payment_type ?? 'full';
             $isCash = $request->payment_method === 'Cash';
-            $amountReceived = $isCash ? (double) $request->amount_received : 0.0;
+            $amountReceived = $isCash ? (float) $request->amount_received : 0.0;
 
             $finalizer->assertPaymentAmounts(
                 $request->payment_method,
@@ -365,7 +376,7 @@ class BillingService
 
             // Create Invoice (status/balance set below by finalizeWithinTransaction)
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
+                'invoice_number' => 'INV-'.strtoupper(Str::random(8)),
                 'customer_id' => $customerId,
                 'customer_name' => $request->customer_name,
                 'customer_address' => $request->customer_address,
@@ -380,29 +391,33 @@ class BillingService
                 'payment_type' => $paymentType,
                 'balance' => $isCash ? max(0, $totalAmount - $amountReceived) : $totalAmount,
                 'due_date' => $request->due_date ?? $request->travel_date,
-                'status'          => 'pending_payment',
-                'created_by'      => auth()->id() ?? 1,
-                'notes'           => $request->notes,
+                'status' => 'pending_payment',
+                'created_by' => auth()->id() ?? 1,
+                'notes' => $request->notes,
             ]);
 
             $salesOrders = app(SalesOrderService::class);
+            $dedicatedGroupLine = collect($processedItems)->first(
+                fn (array $item) => in_array($item['service_type'] ?? null, ['bus_rental', 'educational_tour'], true)
+                    && ! empty($item['item_metadata'])
+            );
             $legacyBookingAttributes = [
-                'invoice_id'      => $invoice->id,
-                'bus_id'          => $request->bus_id,
-                'driver_id'       => $request->driver_id,
-                'seat_map'        => $request->seat_map,
-                'travel_date'     => $request->travel_date,
-                'arrival_datetime'=> $request->arrival_datetime,
+                'invoice_id' => $invoice->id,
+                'bus_id' => $request->bus_id,
+                'driver_id' => $request->driver_id,
+                'seat_map' => $request->seat_map,
+                'travel_date' => $request->travel_date,
+                'arrival_datetime' => $request->arrival_datetime,
                 'departure_datetime' => $request->departure_datetime,
                 'pickup_location' => $request->pickup_location,
-                'tour_code'       => $request->tour_code,
-                'pax_count'       => $request->pax_count,
+                'tour_code' => $request->tour_code,
+                'pax_count' => $request->pax_count,
             ];
 
             // Typed service engines own their schedules, travelers and allocations.
             // Retain Booking only for genuine legacy lines with top-level booking data.
-            if ($salesOrders->shouldCreateLegacyBooking($processedItems, $legacyBookingAttributes)) {
-                \App\Models\Booking::create($legacyBookingAttributes);
+            if (! $dedicatedGroupLine && $salesOrders->shouldCreateLegacyBooking($processedItems, $legacyBookingAttributes)) {
+                Booking::create($legacyBookingAttributes);
             }
 
             // Create Invoice Items
@@ -425,19 +440,28 @@ class BillingService
                 ]);
             }
 
-            if (!empty($validated['custom_transaction_detail'])) {
-                \App\Models\CustomTransactionDetail::create([
+            if ($dedicatedGroupLine) {
+                app(GroupBookingCaptureService::class)->capture(
+                    $invoice,
+                    $dedicatedGroupLine,
+                    $validated,
+                    auth()->id() ?? 1
+                );
+            }
+
+            if (! empty($validated['custom_transaction_detail'])) {
+                CustomTransactionDetail::create([
                     'invoice_id' => $invoice->id,
                     ...$validated['custom_transaction_detail'],
                 ]);
             }
 
             foreach ($validated['itinerary'] ?? [] as $day) {
-                \App\Models\Itinerary::create(['invoice_id' => $invoice->id, ...$day]);
+                Itinerary::create(['invoice_id' => $invoice->id, ...$day]);
             }
 
             foreach ($validated['passengers'] ?? [] as $passenger) {
-                \App\Models\InvoicePassenger::create(['invoice_id' => $invoice->id, ...$passenger]);
+                InvoicePassenger::create(['invoice_id' => $invoice->id, ...$passenger]);
             }
 
             // Status/balance recompute, PayMongo session, auto-JobOrder — must run inside this transaction.
@@ -458,11 +482,12 @@ class BillingService
             return response()->json([
                 'success' => true,
                 'message' => 'Invoice created successfully',
-                'data' => (new InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve()
+                'data' => (new InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve(),
             ], 201);
 
         } catch (ValidationException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'The invoice details could not be validated.',
@@ -470,10 +495,11 @@ class BillingService
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine(),
-                'error' => $e->getMessage()
+                'message' => 'Error: '.$e->getMessage().' in '.$e->getFile().' on line '.$e->getLine(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -485,35 +511,35 @@ class BillingService
     {
         $invoice = Invoice::with(Invoice::operationalDocumentRelations())->find($id);
 
-        if (!$invoice) {
+        if (! $invoice) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invoice not found.'
+                'message' => 'Invoice not found.',
             ], 404);
         }
 
         return response()->json([
             'success' => true,
-            'data' => (new InvoiceResource($invoice))->resolve()
+            'data' => (new InvoiceResource($invoice))->resolve(),
         ]);
     }
 
     /**
      * Update invoice status (e.g., mark as paid).
      */
-    public function updateStatus(\App\Http\Requests\Accounting\UpdateInvoiceStatusRequest $request, $id)
+    public function updateStatus(UpdateInvoiceStatusRequest $request, $id)
     {
         // C-04: only accept known invoice statuses — never persist an arbitrary string.
         $validated = $request->validated();
 
         $invoice = Invoice::findOrFail($id);
-        
+
         DB::transaction(function () use ($invoice, $validated) {
             $invoice->update([
                 'status' => $validated['status'],
             ]);
 
-            app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+            app(BillingCollectionService::class)->syncCollection($invoice);
         });
 
         if ($invoice->customer_email) {
@@ -521,14 +547,14 @@ class BillingService
                 @set_time_limit(120);
                 Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
             } catch (\Exception $mailEx) {
-                \Log::error("Failed to send POS status update email to {$invoice->customer_email}: " . $mailEx->getMessage());
+                \Log::error("Failed to send POS status update email to {$invoice->customer_email}: ".$mailEx->getMessage());
             }
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Invoice status updated successfully',
-            'data' => $invoice
+            'data' => $invoice,
         ]);
     }
 
@@ -542,12 +568,13 @@ class BillingService
 
         // C-10: never process a payment webhook when the secret is unconfigured or the
         // signature is missing — otherwise anyone can forge "paid" events.
-        if (!$secret) {
+        if (! $secret) {
             \Log::error('PayMongo webhook secret is not configured; rejecting webhook.');
+
             return response()->json(['error' => 'Webhook processing is not configured.'], 503);
         }
 
-        if (!$signatureHeader) {
+        if (! $signatureHeader) {
             return response()->json(['error' => 'Missing webhook signature'], 401);
         }
 
@@ -560,7 +587,7 @@ class BillingService
                 }
             }
 
-            if (!isset($parsedSignature['t'])) {
+            if (! isset($parsedSignature['t'])) {
                 return response()->json(['error' => 'Invalid signature format'], 401);
             }
 
@@ -568,9 +595,10 @@ class BillingService
 
             if (abs(time() - (int) $timestamp) > 300) {
                 \Log::warning('PayMongo webhook signature expired', ['age_seconds' => abs(time() - (int) $timestamp)]);
+
                 return response()->json(['error' => 'Webhook signature expired'], 401);
             }
-            $signedPayload = $timestamp . '.' . $request->getContent();
+            $signedPayload = $timestamp.'.'.$request->getContent();
             $expectedSignature = hash_hmac('sha256', $signedPayload, $secret);
 
             $isValid = false;
@@ -581,16 +609,16 @@ class BillingService
                 $isValid = true;
             }
 
-            if (!$isValid) {
+            if (! $isValid) {
                 return response()->json(['error' => 'Invalid webhook signature'], 401);
             }
         }
 
         $payload = $request->all();
         $providerEventId = $payload['data']['id'] ?? 'payload_'.hash('sha256', $request->getContent());
-        $eventReceipt = \App\Models\IntegrationEvent::firstOrCreate(
-            ['provider'=>'paymongo','external_id'=>$providerEventId],
-            ['event_type'=>$payload['data']['attributes']['type'] ?? 'unknown','payload_hash'=>hash('sha256',$request->getContent()),'status'=>'received','received_at'=>now()]
+        $eventReceipt = IntegrationEvent::firstOrCreate(
+            ['provider' => 'paymongo', 'external_id' => $providerEventId],
+            ['event_type' => $payload['data']['attributes']['type'] ?? 'unknown', 'payload_hash' => hash('sha256', $request->getContent()), 'status' => 'received', 'received_at' => now()]
         );
 
         if (isset($payload['data']['attributes']['type'])) {
@@ -598,13 +626,13 @@ class BillingService
 
             if ($eventType === 'checkout_session.payment.paid') {
                 $sessionData = $payload['data']['attributes']['data']['attributes'] ?? [];
-                
+
                 // Usually PayMongo sends the checkout session ID in the event
                 // E.g. $sessionData['checkout_session_id']
                 // Let's find the invoice by payment_id which we stored as the session ID
                 $sessionId = $sessionData['checkout_session_id'] ?? null;
 
-                if (!$sessionId) {
+                if (! $sessionId) {
                     // Fallback to checking the payment object id if stored differently
                     $paymentId = $payload['data']['attributes']['data']['id'] ?? null;
                     $invoice = Invoice::where('payment_id', $paymentId)->first();
@@ -622,16 +650,16 @@ class BillingService
                     $invoice = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId) {
                         $lockedInvoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
                         $key = $eventId ? "paymongo:{$eventId}" : "paymongo-session:{$lockedInvoice->payment_id}";
-                        $existing = \App\Models\CollectionPayment::where('idempotency_key', $key)->first();
+                        $existing = CollectionPayment::where('idempotency_key', $key)->first();
                         if ($existing) {
                             return $lockedInvoice;
                         }
 
                         // Create the collection while the invoice is still outstanding; this
                         // guarantees the gateway payment has the same AR posting path as cash.
-                        app(\App\Services\BillingCollectionService::class)->syncCollection($lockedInvoice);
+                        app(BillingCollectionService::class)->syncCollection($lockedInvoice);
                         $collection = $lockedInvoice->fresh()->collection;
-                        if (!$collection) {
+                        if (! $collection) {
                             throw new \RuntimeException('Unable to create collection for PayMongo payment.');
                         }
 
@@ -648,16 +676,16 @@ class BillingService
                     });
 
                     $freshInvoice = $invoice->fresh();
-                    app(\App\Services\SalesOrderService::class)->captureInvoice($freshInvoice, $freshInvoice->created_by);
-                    app(\App\Services\SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
-                    $eventReceipt->update(['status'=>'processed','invoice_id'=>$invoice->id,'processed_at'=>now()]);
+                    app(SalesOrderService::class)->captureInvoice($freshInvoice, $freshInvoice->created_by);
+                    app(SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
+                    $eventReceipt->update(['status' => 'processed', 'invoice_id' => $invoice->id, 'processed_at' => now()]);
 
                     if ($invoice->customer_email) {
                         try {
                             @set_time_limit(120);
                             Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
                         } catch (\Exception $mailEx) {
-                            \Log::error("Failed to send updated payment receipt email via webhook to {$invoice->customer_email}: " . $mailEx->getMessage());
+                            \Log::error("Failed to send updated payment receipt email via webhook to {$invoice->customer_email}: ".$mailEx->getMessage());
                         }
                     }
 
@@ -670,15 +698,14 @@ class BillingService
                             '/accounting/billing'
                         ));
                     }
-                }
-                else {
-                    $eventReceipt->update(['status'=>'failed','error'=>'No invoice matched the PayMongo checkout session.','processed_at'=>now()]);
+                } else {
+                    $eventReceipt->update(['status' => 'failed', 'error' => 'No invoice matched the PayMongo checkout session.', 'processed_at' => now()]);
                 }
             }
         }
 
         if ($eventReceipt->status === 'received') {
-            $eventReceipt->update(['status'=>'ignored','processed_at'=>now()]);
+            $eventReceipt->update(['status' => 'ignored', 'processed_at' => now()]);
         }
 
         return response()->json(['status' => 'received']);

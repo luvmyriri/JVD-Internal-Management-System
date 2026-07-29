@@ -203,7 +203,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
   const isContactValid = useMemo(() => {
     if (!customerContact) return true;
-    const cleaned = customerContact.replace(/[\s\-\(\)]/g, '');
+    const cleaned = customerContact.replace(/[-\s()]/g, '');
     return /^(09|\+639|639)\d{9}$/.test(cleaned);
   }, [customerContact]);
 
@@ -219,6 +219,43 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   // item is explicitly flagged. No automatic threshold/downpayment inference.
   const evaluateContractGate = () => {
     return cart.some(item => !!item.requiresContract);
+  };
+
+  const invoiceItems = () => cart.map(item => ({
+    service_id: item.service.id,
+    item_name: item.lineName || item.service.name,
+    service_type: item.serviceType || item.service.service_type || undefined,
+    item_description: item.lineDescription,
+    item_metadata: item.lineMetadata,
+    quantity: item.quantity,
+    unit_price: item.customPrice ?? item.service.price,
+    description: item.lineDescription,
+    adults: item.adults,
+    children: item.childrenCount,
+    adult_price: item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price,
+    child_price: item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price,
+    service_date: item.serviceDate,
+    destination: item.destination,
+  }));
+
+  const contractDetail = (): CustomTransactionDetailInput => {
+    const explicit = cart.find(item => item.customCategoryDetail)?.customCategoryDetail;
+    if (explicit) return explicit;
+
+    const item = cart.find(entry => entry.requiresContract) ?? cart[0];
+    return {
+      category: item.serviceType || item.service.category || 'sales_booking',
+      destination: item.destination,
+      route: [item.pickupLocation, item.destination].filter(Boolean).join(' to ') || undefined,
+      school_name: item.lineMetadata?.school_name,
+      grade_level: item.lineMetadata?.grade_level,
+      expected_pax: item.paxCount,
+      itinerary_stops: Array.isArray(item.lineMetadata?.stops)
+        ? item.lineMetadata.stops.join('\n')
+        : item.lineMetadata?.stops,
+      booking_type: item.lineMetadata?.booking_mode,
+      booking_details: item.lineDescription,
+    };
   };
 
   const resetCheckoutForm = () => {
@@ -244,39 +281,31 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setIsProcessing(true);
     try {
       if (evaluateContractGate()) {
-        const customCategoryItem = cart.find(item => !!item.customCategoryDetail);
+        const contractItem = cart.find(item => !!item.customCategoryDetail)
+          ?? cart.find(item => !!item.requiresContract)
+          ?? cart[0];
         const response = await contractsApi.draft({
           customer_id: selectedCustomerId || undefined,
           customer_name: customerName || undefined,
           customer_address: customerAddress || undefined,
           customer_email: customerEmail || undefined,
-          customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
+          customer_contact: customerContact ? customerContact.replace(/[-\s()]/g, '') : undefined,
           payment_method: paymentMethod,
           payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
           amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
           tax_rate: vatRate,
           travel_date: cart.find(item => item.travelDate)?.travelDate,
           pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation,
-          tour_code: cart.find(item => item.tourCode)?.tourCode,
+          tour_code: cart.find(item => item.tourCode || item.destination)?.tourCode
+            || cart.find(item => item.destination)?.destination,
           pax_count: cart.find(item => item.paxCount)?.paxCount,
           bus_id: cart.find(item => item.busId)?.busId || null,
           driver_id: cart.find(item => item.driverId)?.driverId || null,
           seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
-          items: cart.map(item => ({
-            service_id: item.service.id,
-            quantity: item.quantity,
-            unit_price: item.customPrice ?? item.service.price,
-            description: item.lineDescription,
-            adults: item.adults,
-            children: item.childrenCount,
-            adult_price: item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price,
-            child_price: item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price,
-            service_date: item.serviceDate,
-            destination: item.destination
-          })),
-          custom_transaction_detail: customCategoryItem!.customCategoryDetail!,
-          itinerary: customCategoryItem!.itinerary,
-          passengers: customCategoryItem!.passengers,
+          items: invoiceItems(),
+          custom_transaction_detail: contractDetail(),
+          itinerary: contractItem.itinerary,
+          passengers: contractItem.passengers,
         });
 
         setDraftContract(response.data.data);
@@ -291,30 +320,21 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         customer_name: customerName || undefined,
         customer_address: customerAddress || undefined,
         customer_email: customerEmail || undefined,
-        customer_contact: customerContact ? customerContact.replace(/[\s\-\(\)]/g, '') : undefined,
+        customer_contact: customerContact ? customerContact.replace(/[-\s()]/g, '') : undefined,
         payment_method: paymentMethod,
         payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
         amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
         change: paymentMethod === 'Cash' ? Number(change) : undefined,
         tax_rate: vatRate,
-        items: cart.map(item => ({
-          service_id: item.service.id,
-          quantity: item.quantity,
-          unit_price: item.customPrice ?? item.service.price,
-          description: item.lineDescription,
-          adults: item.adults,
-          children: item.childrenCount,
-          adult_price: item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price,
-          child_price: item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price,
-          service_date: item.serviceDate,
-          destination: item.destination
-        })),
+        items: invoiceItems(),
         bus_id: cart.find(item => item.busId)?.busId || null,
         driver_id: cart.find(item => item.driverId)?.driverId || null,
         seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
         travel_date: cart.find(item => item.travelDate)?.travelDate || null,
         pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation || null,
-        tour_code: cart.find(item => item.tourCode)?.tourCode || null,
+        tour_code: cart.find(item => item.tourCode || item.destination)?.tourCode
+          || cart.find(item => item.destination)?.destination
+          || null,
         pax_count: cart.find(item => item.paxCount)?.paxCount || null,
         arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
         departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
@@ -486,11 +506,17 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
-                      <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
-                      <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
-                    </div>
+                    {item.quantityLocked ? (
+                      <button type="button" onClick={() => onEditCartItem?.(item)} className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-blue-700 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+                        Configured package · Edit details
+                      </button>
+                    ) : (
+                      <div className="flex items-center bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-700 p-1 shadow-sm">
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity - 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuMinus className="w-3 h-3" /></button>
+                        <span className="w-10 text-center text-xs font-black text-gray-900 dark:text-white">{item.quantity}</span>
+                        <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
+                      </div>
+                    )}
                     <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                 </div>

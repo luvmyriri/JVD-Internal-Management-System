@@ -47,6 +47,99 @@ const paymentColumns: Column<CollectionPayment>[] = [
   },
 ];
 
+function StatusBadge({ status }: { status: string }) {
+  const styles: Record<string, string> = {
+    completed: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50',
+    pending: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
+    partial: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
+    overdue: 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50',
+  };
+  const icons: Record<string, React.ReactNode> = {
+    completed: <LuFileCheck className="w-3 h-3" />,
+    pending: <LuClock className="w-3 h-3" />,
+    partial: <LuActivity className="w-3 h-3" />,
+    overdue: <LuX className="w-3 h-3" />,
+  };
+  const normalizedStatus = status || 'pending';
+
+  return (
+    <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit ${styles[normalizedStatus] || styles.pending}`}>
+      {icons[normalizedStatus] || icons.pending}
+      {normalizedStatus.replace('_', ' ')}
+    </span>
+  );
+}
+
+function RefundWorkflowPanel({ collection }: { collection: Collection }) {
+  const queryClient = useQueryClient();
+  const order = (collection as any)?.invoice?.sales_order;
+  const adjustments = order?.adjustments ?? [];
+  const credits = order?.credit_notes ?? [];
+  const refunds = order?.refunds ?? [];
+  const cancellation = [...adjustments].reverse().find((item: any) => item.type === 'cancellation');
+  const credit = [...credits].reverse().find((item: any) => item.status === 'posted');
+  const refund = [...refunds].reverse()[0] ?? credit?.refunds?.slice?.(-1)?.[0];
+
+  const action = useMutation({
+    mutationFn: async (kind: 'request-cancellation' | 'approve-cancellation' | 'request-refund' | 'approve-refund' | 'process-refund') => {
+      if (kind === 'request-cancellation') {
+        const reason = window.prompt('Reason for cancellation request:');
+        if (!reason?.trim()) throw new Error('cancelled');
+        return collectionApi.cancelAndRefund(collection.id, reason.trim());
+      }
+      if (kind === 'approve-cancellation') return collectionApi.approveAdjustment(cancellation.id);
+      if (kind === 'request-refund') {
+        const amountText = window.prompt('Refund amount:', String(credit?.total_amount ?? (collection as any).paid_amount ?? ''));
+        if (!amountText) throw new Error('cancelled');
+        const amount = Number(parseMoneyInput(amountText));
+        const method = window.prompt('Refund method (Cash, Bank Transfer, or PayMongo):', 'Cash');
+        const reason = window.prompt('Refund reason:', cancellation?.reason ?? 'Customer cancellation');
+        if (!amount || !method?.trim() || !reason?.trim()) throw new Error('cancelled');
+        return collectionApi.requestRefund(credit.id, { amount, refund_method: method.trim(), reason: reason.trim() });
+      }
+      if (kind === 'approve-refund') return collectionApi.approveRefund(refund.id);
+      const reference = window.prompt('Destination/reference number for the refund:', '');
+      if (reference === null) throw new Error('cancelled');
+      return collectionApi.processApprovedRefund(refund.id, reference.trim() || undefined);
+    },
+    onSuccess: async (response: any) => {
+      toast.success(response?.message ?? 'Refund workflow updated');
+      await queryClient.invalidateQueries({ queryKey: ['collections'] });
+    },
+    onError: (error: any) => {
+      if (error?.message !== 'cancelled') toast.error(error?.response?.data?.message ?? 'Refund workflow action failed');
+    },
+  });
+
+  if (!order && !(collection as any).invoice_id) return null;
+
+  return (
+    <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/20">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Controlled cancellation & refund</p>
+          <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-300">
+            {!cancellation && 'No cancellation request submitted.'}
+            {cancellation?.status === 'pending_approval' && 'Cancellation is waiting for approval.'}
+            {cancellation?.status === 'approved' && !credit && 'Cancellation approved; preparing credit note.'}
+            {credit && !refund && `Credit note ${credit.credit_note_number} posted. Refund may now be requested.`}
+            {refund?.status === 'pending_approval' && `Refund ${refund.refund_number} is waiting for approval.`}
+            {refund?.status === 'approved' && `Refund ${refund.refund_number} is approved and ready to process.`}
+            {refund?.status === 'processed' && `Refund ${refund.refund_number} has been processed and posted to the ledger.`}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {!cancellation && (collection as any).invoice_id && <Button size="sm" onClick={() => action.mutate('request-cancellation')} isLoading={action.isPending}>Request cancellation</Button>}
+          {cancellation?.status === 'pending_approval' && <Button size="sm" onClick={() => action.mutate('approve-cancellation')} isLoading={action.isPending}>Approve cancellation</Button>}
+          {credit && !refund && <Button size="sm" onClick={() => action.mutate('request-refund')} isLoading={action.isPending}>Request refund</Button>}
+          {refund?.status === 'pending_approval' && <Button size="sm" onClick={() => action.mutate('approve-refund')} isLoading={action.isPending}>Approve refund</Button>}
+          {refund?.status === 'approved' && <Button size="sm" onClick={() => action.mutate('process-refund')} isLoading={action.isPending}>Process refund</Button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function CreateCollectionModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [form, setForm] = useState({
@@ -352,11 +445,10 @@ export default function Collections() {
   });
 
   const cancelRefundMutation = useMutation({
-    mutationFn: (id: number) => collectionApi.cancelAndRefund(id),
+    mutationFn: ({ id, reason }: { id: number; reason: string }) => collectionApi.cancelAndRefund(id, reason),
     onSuccess: (res: any) => {
-      toast.success(res?.message || 'Transaction cancelled and refund recorded');
+      toast.success(res?.message || 'Cancellation submitted for approval');
       queryClient.invalidateQueries({ queryKey: ['collections'] });
-      setSelectedCollection(prev => prev ? { ...prev, payment_status: 'cancelled' } : null);
     },
     onError: (err: any) => {
       toast.error(err?.response?.data?.message || 'Failed to cancel and refund');
@@ -381,9 +473,8 @@ export default function Collections() {
   };
 
   const handleCancelRefund = (id: number) => {
-    if (window.confirm('Are you sure you want to cancel this transaction? This will record a refund for any payments made.')) {
-      cancelRefundMutation.mutate(id);
-    }
+    const reason = window.prompt('Reason for cancellation request:');
+    if (reason?.trim()) cancelRefundMutation.mutate({ id, reason: reason.trim() });
   };
 
   const handleSendSoaEmail = (id: number) => {
@@ -430,30 +521,6 @@ export default function Collections() {
     } finally {
       setIsDownloadingSoa(false);
     }
-  };
-
-  const StatusBadge = ({ status }: { status: string }) => {
-    const styles: any = {
-      completed: 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50',
-      pending: 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50',
-      partial: 'bg-blue-50 text-blue-600 border-blue-100 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50',
-      overdue: 'bg-rose-50 text-rose-600 border-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50',
-    };
-    const icons: any = {
-      completed: <LuFileCheck className="w-3 h-3" />,
-      pending: <LuClock className="w-3 h-3" />,
-      partial: <LuActivity className="w-3 h-3" />,
-      overdue: <LuX className="w-3 h-3" />,
-    };
-
-    const s = status || 'pending';
-
-    return (
-      <span className={`px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest flex items-center gap-2 w-fit ${styles[s] || styles.pending}`}>
-        {icons[s] || icons.pending}
-        {s.replace('_', ' ')}
-      </span>
-    );
   };
 
   const columns: Column<Collection>[] = [
@@ -789,6 +856,8 @@ export default function Collections() {
               />
             </div>
 
+            <RefundWorkflowPanel collection={selectedCollection} />
+
             {/* Payments Table */}
             <div className="space-y-4">
               <div className="flex justify-between items-center">
@@ -838,7 +907,7 @@ export default function Collections() {
                         onClick={() => handleCancelRefund(selectedCollection.id)}
                         isLoading={cancelRefundMutation.isPending}
                       >
-                        <LuX className="w-4 h-4 mr-1" /> Cancel & Refund
+                        <LuX className="w-4 h-4 mr-1" /> Request Cancellation
                       </Button>
                       <Button size="sm" onClick={() => setShowPaymentModal(true)}>
                         <LuPlus className="w-4 h-4 mr-1" /> Add Payment

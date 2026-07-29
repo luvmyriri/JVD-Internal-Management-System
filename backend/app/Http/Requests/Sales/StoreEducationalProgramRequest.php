@@ -6,7 +6,10 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreEducationalProgramRequest extends FormRequest
 {
-    public function authorize(): bool { return true; }
+    public function authorize(): bool
+    {
+        return true;
+    }
 
     protected function prepareForValidation(): void
     {
@@ -19,10 +22,11 @@ class StoreEducationalProgramRequest extends FormRequest
     }
 
     public function rules(): array
-
     {
         return [
             'name' => ['required', 'string', 'max:150'],
+            'images' => ['nullable', 'array', 'max:12'],
+            'images.*' => ['required', 'string', 'max:2000000'],
             'learning_objectives' => ['nullable', 'string', 'max:5000'], 'default_stops' => ['required', 'array', 'min:1', 'max:30'],
             'default_stops.*' => ['required', 'string', 'max:255'], 'minimum_students' => ['required', 'integer', 'min:1', 'max:5000'],
             'students_per_chaperone' => ['required', 'integer', 'min:1', 'max:100'], 'students_per_free_chaperone' => ['required', 'integer', 'min:1', 'max:100'],

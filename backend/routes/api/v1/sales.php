@@ -1,12 +1,12 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Sales\CatalogController;
-use App\Http\Controllers\Sales\SalesQuotationController;
-use App\Http\Controllers\Sales\JoinerDepartureController;
 use App\Http\Controllers\Sales\CharterController;
 use App\Http\Controllers\Sales\EducationalTourController;
+use App\Http\Controllers\Sales\JoinerDepartureController;
 use App\Http\Controllers\Sales\SalesOrderController;
+use App\Http\Controllers\Sales\SalesQuotationController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('sales')->group(function () {
@@ -42,10 +42,14 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('/charter-rate-plans/{ratePlan}', [CharterController::class, 'updateRatePlan'])->name('sales.charters.rate-plans.update');
 
             Route::post('/charter-bookings', [CharterController::class, 'storeBooking'])->name('sales.charters.bookings.store');
+            Route::put('/charter-bookings/{booking}', [CharterController::class, 'updateBooking'])->name('sales.charters.bookings.update');
+            Route::post('/charter-bookings/{booking}/cancel', [CharterController::class, 'requestCancellation'])->name('sales.charters.bookings.cancel');
             Route::post('/educational-programs', [EducationalTourController::class, 'storeProgram'])->name('sales.educational.programs.store');
             Route::put('/educational-programs/{program}', [EducationalTourController::class, 'updateProgram'])->name('sales.educational.programs.update');
 
             Route::post('/educational-bookings', [EducationalTourController::class, 'storeBooking'])->name('sales.educational.bookings.store');
+            Route::put('/educational-bookings/{booking}', [EducationalTourController::class, 'updateBooking'])->name('sales.educational.bookings.update');
+            Route::post('/educational-bookings/{booking}/cancel', [EducationalTourController::class, 'requestCancellation'])->name('sales.educational.bookings.cancel');
             Route::post('/orders', [SalesOrderController::class, 'store'])->name('sales.orders.store');
             Route::post('/orders/{order}/items', [SalesOrderController::class, 'addItem'])->name('sales.orders.items.store');
             Route::delete('/orders/{order}/items/{item}', [SalesOrderController::class, 'removeItem'])->name('sales.orders.items.destroy');

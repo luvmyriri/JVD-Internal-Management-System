@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ArrowLeft, Bus, CheckCircle2, GraduationCap, Pencil, Plus, Printer, Users } from 'lucide-react';
+import { ArrowLeft, Bus, CheckCircle2, GraduationCap, ImagePlus, Pencil, Plus, Printer, Users, X } from 'lucide-react';
 
 import toast from 'react-hot-toast';
 import { educationalTourApi } from '../../api/educationalTours';
@@ -19,6 +19,9 @@ import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import type { ItineraryDayInput } from '../../api/contracts';
 import BusLayout from '../../components/ui/BusLayout';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
+import EducationalBookingManager from './components/EducationalBookingManager';
+import { getStorageUrl } from '../../utils';
+import { billingApi } from '../../api/billing';
 
 
 
@@ -65,6 +68,7 @@ const initialProgram = {
   includes_coordinator: true,
   includes_insurance: true,
   includes_shirt: false,
+  images: [] as string[],
 };
 
 export default function EducationalTours() {
@@ -133,15 +137,6 @@ export default function EducationalTours() {
   const { data: programs = [] } = useQuery({ queryKey: ['educational-programs'], queryFn: educationalTourApi.programs });
   const { data: bookings = [] } = useQuery({ queryKey: ['educational-bookings'], queryFn: educationalTourApi.bookings });
 
-
-  useEffect(() => {
-    if (manageId && programs.length > 0) {
-      const match = programs.find(p => String(p.id) === manageId);
-      if (match) {
-        openEditProgram(match);
-      }
-    }
-  }, [manageId, programs]);
 
   const filteredPrograms = useMemo(() => {
 
@@ -258,17 +253,11 @@ export default function EducationalTours() {
       additional_chaperone_price: String(program.additional_chaperone_price),
       default_stops: (program.default_stops || []).join('\n'),
       minimum_students: String(program.minimum_students || 20),
+      images: program.images ?? [],
     } as any);
     setProgramOpen(true);
   };
 
-
-  // Auto-select first program if none selected
-  useEffect(() => {
-    if (programs.length > 0 && !booking.program_id) {
-      handleSelectProgram(programs[0]);
-    }
-  }, [programs, booking.program_id]);
 
   const validInterval = Boolean(booking.starts_at && booking.ends_at && booking.ends_at > booking.starts_at);
   const { data: resources } = useQuery({ queryKey: ['educational-resources', booking.starts_at, booking.ends_at], queryFn: () => educationalTourApi.resources(booking.starts_at, booking.ends_at), enabled: validInterval });
@@ -349,6 +338,7 @@ export default function EducationalTours() {
         includes_coordinator: (source as any).includes_coordinator ?? true,
         includes_insurance: (source as any).includes_insurance ?? true,
         includes_shirt: (source as any).includes_shirt ?? false,
+        images: (source as any).images ?? [],
       };
 
       if (editingProgramId) {
@@ -414,6 +404,8 @@ export default function EducationalTours() {
         grade_level: booking.grade_level,
         starts_at: booking.starts_at,
         ends_at: booking.ends_at,
+        pickup_location: booking.pickup_location,
+        destination: selectedProgram.name,
         student_count: Number(booking.student_count),
         tour_guide_count: Number(booking.tour_guide_count),
         chaperone_count: Number(booking.tour_guide_count),
@@ -705,6 +697,8 @@ export default function EducationalTours() {
             </div>
           </header>
 
+          <EducationalBookingManager bookings={bookings} targetId={manageId} />
+
           <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
             <div className="space-y-6">
               {/* 1. Distinct Elevated Catalog Selection Container Card */}
@@ -785,21 +779,26 @@ export default function EducationalTours() {
                             }}
                             className="p-4 flex items-center justify-between cursor-pointer select-none"
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex min-w-0 items-center gap-3">
+                              <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-slate-100 dark:bg-slate-800">
+                                {program.images?.[0]
+                                  ? <img src={getStorageUrl(program.images[0])} alt={program.name} className="h-full w-full object-cover" />
+                                  : <div className="grid h-full place-items-center"><GraduationCap className="h-6 w-6 text-slate-300" /></div>}
+                              </div>
                               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
                                 active ? 'border-blue-600 bg-blue-600 text-white' : 'border-gray-300 dark:border-gray-600'
                               }`}>
                                 {active && <CheckCircle2 className="w-3.5 h-3.5" />}
                               </div>
 
-                              <div>
+                              <div className="min-w-0">
                                 <div className="flex items-center gap-2">
                                   <span className="text-[9.5px] font-black uppercase text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded-md">
                                     Academic Exposure
                                   </span>
                                   <span className="text-[10px] font-bold text-gray-400">Min. {program.minimum_students || 20} Students</span>
                                 </div>
-                                <h3 className="text-base font-black text-ink mt-0.5">{program.name}</h3>
+                                <h3 className="mt-0.5 truncate text-base font-black text-ink">{program.name}</h3>
                               </div>
                             </div>
 
@@ -856,8 +855,9 @@ export default function EducationalTours() {
                                         student_price: String(program.student_price),
                                         additional_chaperone_price: String(program.additional_chaperone_price),
                                         default_stops: (program.default_stops || []).join('\n'),
-                                        minimum_students: String(program.minimum_students || 20),
-                                      } as any);
+                                         minimum_students: String(program.minimum_students || 20),
+                                         images: program.images ?? [],
+                                       } as any);
                                       setProgramOpen(true);
                                     }}
                                     className="px-3 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200 text-xs font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-amber-100 transition-all shadow-sm"
@@ -1153,9 +1153,10 @@ export default function EducationalTours() {
               <SalesCheckout
                 cart={cart}
                 customerPreset={customerPreset}
-                removeFromCart={() => {}}
+                removeFromCart={() => setBooking(current => ({ ...current, program_id: '' }))}
                 updateQuantity={() => {}}
                 clearCart={() => {}}
+                onEditCartItem={() => setBusAllocationModalOpen(true)}
                 onCheckoutSuccess={() => {
                   queryClient.invalidateQueries({ queryKey: ['educational-bookings'] });
                   toast.success('Educational tour order finalized!');
@@ -1230,6 +1231,10 @@ export default function EducationalTours() {
           <label className="text-xs font-bold text-muted">Student price<input required type="number" min="0" value={programForm.student_price} onChange={e => setProgramForm({ ...programForm, student_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
           <label className="text-xs font-bold text-muted">Tour Guide price<input required type="number" min="0" value={programForm.additional_chaperone_price} onChange={e => setProgramForm({ ...programForm, additional_chaperone_price: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
           <label className="text-xs font-bold text-muted md:col-span-2">Default Stops (One per line)<textarea value={programForm.default_stops} onChange={e => setProgramForm({ ...programForm, default_stops: e.target.value })} className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-surface p-3 text-sm font-semibold" /></label>
+          <div className="md:col-span-2">
+            <div className="flex items-center justify-between"><span className="text-xs font-bold text-muted">Program images</span><Button type="button" variant="secondary" size="sm" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = async (event: any) => { for (const file of Array.from(event.target.files as FileList)) { const response = await billingApi.uploadServiceImage(file); const path = response.data.path ?? response.data.url; if (path) setProgramForm(current => ({ ...current, images: [...current.images, path] })); } }; input.click(); }}><ImagePlus className="h-4 w-4" /> Add images</Button></div>
+            {programForm.images.length > 0 && <div className="mt-3 grid grid-cols-3 gap-3 sm:grid-cols-5">{programForm.images.map((image, index) => <div key={`${image}-${index}`} className="relative h-24 overflow-hidden rounded-xl"><img src={getStorageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => setProgramForm(current => ({ ...current, images: current.images.filter((_, itemIndex) => itemIndex !== index) }))} className="absolute right-1 top-1 rounded-full bg-black/70 p-1.5 text-white"><X className="h-3 w-3" /></button></div>)}</div>}
+          </div>
           <div className="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><Button type="button" variant="ghost" onClick={() => { setProgramOpen(false); setEditingProgramId(null); }}>Cancel</Button><Button type="submit" disabled={createProgram.isPending}>{editingProgramId ? 'Save changes' : 'Create program'}</Button></div>
         </form>
       </Modal>

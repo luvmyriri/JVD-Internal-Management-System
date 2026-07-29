@@ -4,10 +4,14 @@ namespace App\Http\Controllers\Sales;
 
 use App\Exceptions\MaxPaxExceededException;
 use App\Http\Controllers\Controller;
-use App\Services\ContractPdfService;
-use App\Services\InvoiceFinalizationService;
-use App\Services\SalesOrderService;
+use App\Http\Requests\Sales\AttachPaymentScheduleRequest;
+use App\Http\Requests\Sales\CreateContractAmendmentRequest;
+use App\Http\Requests\Sales\DraftContractRequest;
+use App\Http\Requests\Sales\SignContractAtCounterRequest;
+use App\Http\Requests\Sales\UpdateContractDraftRequest;
+use App\Http\Resources\InvoiceResource;
 use App\Mail\ContractSentForSignatureMail;
+use App\Models\Booking;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
 use App\Models\CustomerPortalToken;
@@ -18,6 +22,11 @@ use App\Models\InvoicePassenger;
 use App\Models\Itinerary;
 use App\Models\PaymentSchedule;
 use App\Models\SystemSetting;
+use App\Services\ContractPdfService;
+use App\Services\GroupBookingCaptureService;
+use App\Services\InvoiceFinalizationService;
+use App\Services\PortalLinkResolver;
+use App\Services\SalesOrderService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -64,7 +73,7 @@ class ContractController extends Controller
      * auto-JobOrder-creation — those only happen once the contract is signed (see
      * CustomerPortalController::signContract / signAtCounter below).
      */
-    public function draft(\App\Http\Requests\Sales\DraftContractRequest $request): JsonResponse
+    public function draft(DraftContractRequest $request): JsonResponse
     {
         $validated = $request->validated();
 
@@ -76,6 +85,7 @@ class ContractController extends Controller
                 $calc = $finalizer->calculateItems($validated['items'], $validated['travel_date'] ?? null, $validated['pax_count'] ?? null, $validated['tax_rate'] ?? null);
             } catch (MaxPaxExceededException $e) {
                 DB::rollBack();
+
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),
@@ -110,7 +120,7 @@ class ContractController extends Controller
             );
 
             $invoice = Invoice::create([
-                'invoice_number' => 'INV-' . strtoupper(Str::random(8)),
+                'invoice_number' => 'INV-'.strtoupper(Str::random(8)),
                 'customer_id' => $customerId,
                 'customer_name' => $validated['customer_name'] ?? null,
                 'customer_address' => $validated['customer_address'] ?? null,
@@ -135,6 +145,10 @@ class ContractController extends Controller
             // Booking-specific fields live on the Booking model, not the Invoice (strict mode
             // rejects them on Invoice). Mirror BillingService::store's invoice→booking split.
             $salesOrders = app(SalesOrderService::class);
+            $dedicatedGroupLine = collect($calc['processedItems'])->first(
+                fn (array $item) => in_array($item['service_type'] ?? null, ['bus_rental', 'educational_tour'], true)
+                    && ! empty($item['item_metadata'])
+            );
             $legacyBookingAttributes = [
                 'invoice_id' => $invoice->id,
                 'bus_id' => $validated['bus_id'] ?? null,
@@ -150,8 +164,8 @@ class ContractController extends Controller
 
             // Contract drafts keep legacy Booking only for non-typed lines that actually
             // use the old top-level booking fields. Typed lines retain sole ownership.
-            if ($salesOrders->shouldCreateLegacyBooking($calc['processedItems'], $legacyBookingAttributes)) {
-                \App\Models\Booking::create($legacyBookingAttributes);
+            if (! $dedicatedGroupLine && $salesOrders->shouldCreateLegacyBooking($calc['processedItems'], $legacyBookingAttributes)) {
+                Booking::create($legacyBookingAttributes);
             }
 
             foreach ($calc['processedItems'] as $pItem) {
@@ -171,6 +185,15 @@ class ContractController extends Controller
                     'adult_price' => $pItem['adult_price'],
                     'child_price' => $pItem['child_price'],
                 ]);
+            }
+
+            if ($dedicatedGroupLine) {
+                app(GroupBookingCaptureService::class)->capture(
+                    $invoice,
+                    $dedicatedGroupLine,
+                    $validated,
+                    auth()->id() ?? 1
+                );
             }
 
             CustomTransactionDetail::create(array_merge(
@@ -207,6 +230,7 @@ class ContractController extends Controller
             ], 201);
         } catch (ValidationException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'The contract details could not be validated.',
@@ -214,11 +238,12 @@ class ContractController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Failed to create contract draft.', 'error' => $e->getMessage()], 500);
         }
     }
 
-    public function updateDraft(\App\Http\Requests\Sales\UpdateContractDraftRequest $request, Contract $contract): JsonResponse
+    public function updateDraft(UpdateContractDraftRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'draft') {
             return response()->json(['success' => false, 'message' => 'Only draft contracts can be edited.'], 422);
@@ -231,7 +256,7 @@ class ContractController extends Controller
         return response()->json(['success' => true, 'data' => $contract->fresh()]);
     }
 
-    public function attachPaymentSchedule(\App\Http\Requests\Sales\AttachPaymentScheduleRequest $request, Contract $contract): JsonResponse
+    public function attachPaymentSchedule(AttachPaymentScheduleRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'draft') {
             return response()->json(['success' => false, 'message' => 'Only draft contracts can have a payment schedule attached.'], 422);
@@ -269,7 +294,7 @@ class ContractController extends Controller
 
     public function sendForSignature(Request $request, Contract $contract): JsonResponse
     {
-        if (!in_array($contract->status, ['draft', 'sent_for_signature'])) {
+        if (! in_array($contract->status, ['draft', 'sent_for_signature'])) {
             return response()->json(['success' => false, 'message' => 'This contract cannot be sent for signature in its current state.'], 422);
         }
 
@@ -282,7 +307,7 @@ class ContractController extends Controller
             'expires_at' => now()->addDays($expiresInDays),
         ]);
 
-        $signingLink = \App\Services\PortalLinkResolver::buildPortalLink($token->token, $request);
+        $signingLink = PortalLinkResolver::buildPortalLink($token->token, $request);
 
         $mailError = null;
         if ($contract->invoice->customer_email) {
@@ -306,7 +331,7 @@ class ContractController extends Controller
      * Staff-authenticated in-person signing — same capture/finalize logic as the public
      * portal path, but witnessed by a logged-in staff member at the counter.
      */
-    public function signAtCounter(\App\Http\Requests\Sales\SignContractAtCounterRequest $request, Contract $contract): JsonResponse
+    public function signAtCounter(SignContractAtCounterRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status === 'signed') {
             return response()->json(['success' => false, 'message' => 'This contract has already been signed.'], 422);
@@ -355,6 +380,7 @@ class ContractController extends Controller
             DB::commit();
         } catch (ValidationException $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
                 'message' => 'The contract details could not be validated.',
@@ -362,6 +388,7 @@ class ContractController extends Controller
             ], 422);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json(['success' => false, 'message' => 'Failed to record signature.', 'error' => $e->getMessage()], 500);
         }
 
@@ -370,7 +397,7 @@ class ContractController extends Controller
         return response()->json([
             'success' => true,
             'message' => 'Contract signed at counter.',
-            'data' => (new \App\Http\Resources\InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve(),
+            'data' => (new InvoiceResource($invoice->load(Invoice::operationalDocumentRelations())))->resolve(),
         ]);
     }
 
@@ -386,7 +413,7 @@ class ContractController extends Controller
         return response()->json(['success' => true, 'message' => 'Contract voided.']);
     }
 
-    public function createAmendment(\App\Http\Requests\Sales\CreateContractAmendmentRequest $request, Contract $contract): JsonResponse
+    public function createAmendment(CreateContractAmendmentRequest $request, Contract $contract): JsonResponse
     {
         if ($contract->status !== 'signed') {
             return response()->json(['success' => false, 'message' => 'Only a signed contract can be amended.'], 422);
@@ -411,7 +438,7 @@ class ContractController extends Controller
     public function sendAmendmentForSignature(ContractAmendment $amendment): JsonResponse
     {
         $token = CustomerPortalToken::generateFor('ContractAmendment', $amendment->id, 'contract_signature', null, 14);
-        $signingLink = \App\Services\PortalLinkResolver::buildPortalLink($token->token);
+        $signingLink = PortalLinkResolver::buildPortalLink($token->token);
 
         $mailError = null;
         if ($amendment->contract->invoice->customer_email) {
@@ -428,6 +455,7 @@ class ContractController extends Controller
     public function pdf(Contract $contract)
     {
         $pdf = app(ContractPdfService::class)->generate($contract);
+
         return $pdf->stream("Contract_{$contract->contract_number}.pdf");
     }
 

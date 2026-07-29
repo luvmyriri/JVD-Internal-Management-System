@@ -15,7 +15,7 @@ export interface CharterRatePlan {
   includes_fuel: boolean;
   includes_tolls: boolean;
   includes_parking: boolean;
-  service: { id: number; name: string; description?: string };
+  service: { id: number; name: string; description?: string; images?: string[] };
 }
 
 export interface CharterPricing {
@@ -43,11 +43,19 @@ export interface CharterBooking {
   id: number;
   reference: string;
   lead_name: string;
+  lead_email?: string | null;
+  lead_contact?: string | null;
   starts_at: string;
   ends_at: string;
   pickup_location: string;
   destination: string;
+  stops?: string[];
   passenger_count: number;
+  booking_mode?: 'entire_vehicle' | 'selected_seats';
+  selected_seats?: string[];
+  passengers?: Array<Record<string, unknown>>;
+  fleet_assignments?: Array<{ bus_id: number; driver_id?: number | null; plate_number?: string; model?: string; seating_capacity?: number }>;
+  operations_notes?: string | null;
   subtotal: number;
   status: string;
   rate_plan: CharterRatePlan;
@@ -64,5 +72,7 @@ export const charterApi = {
   createRatePlan: (data: Record<string, unknown>) => client.post('/sales/charter-rate-plans', data).then(res => res.data.data as CharterRatePlan),
   updateRatePlan: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-rate-plans/${id}`, data).then(res => res.data.data as CharterRatePlan),
   createBooking: (data: Record<string, unknown>) => client.post('/sales/charter-bookings', data).then(res => res.data.data as CharterBooking),
+  updateBooking: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-bookings/${id}`, data).then(res => res.data.data as CharterBooking),
+  cancelBooking: (id: number, reason: string) => client.post(`/sales/charter-bookings/${id}/cancel`, { reason }).then(res => res.data),
 };
 

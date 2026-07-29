@@ -9,13 +9,23 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\EducationalTourBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class EducationalTourBookingTest extends TestCase
 {
     use RefreshDatabase;
-    private User $user; private User $driverOne; private User $driverTwo; private Bus $busOne; private Bus $busTwo; private EducationalTourProgram $program;
+
+    private User $user;
+
+    private User $driverOne;
+
+    private User $driverTwo;
+
+    private Bus $busOne;
+
+    private Bus $busTwo;
+
+    private EducationalTourProgram $program;
 
     protected function setUp(): void
     {
@@ -50,11 +60,13 @@ class EducationalTourBookingTest extends TestCase
             'includes_coordinator' => true,
             'includes_insurance' => true,
             'includes_shirt' => false,
+            'images' => ['/storage/services/heritage-tour.jpg'],
         ])->assertCreated()
             ->assertJsonPath('data.name', 'Heritage and Civic Learning Tour')
             ->assertJsonPath('data.default_stops.1', 'City Hall')
             ->assertJsonPath('data.students_per_chaperone', 15)
-            ->assertJsonPath('data.student_price', 1850);
+            ->assertJsonPath('data.student_price', 1850)
+            ->assertJsonPath('data.images.0', '/storage/services/heritage-tour.jpg');
 
         $created = $response->json('data');
         $this->assertArrayNotHasKey('service_id', $created);
@@ -110,7 +122,8 @@ class EducationalTourBookingTest extends TestCase
 
     public function test_every_traveler_must_be_allocated_to_exactly_one_vehicle(): void
     {
-        $payload = $this->payload(); $payload['assignments'][1]['planned_passengers'] = 10;
+        $payload = $this->payload();
+        $payload['assignments'][1]['planned_passengers'] = 10;
         $this->actingAs($this->user)->postJson('/api/v1/sales/educational-bookings', $payload)
             ->assertUnprocessable()->assertJsonValidationErrors('assignments');
         $this->assertSame(0, EducationalTourBooking::count());
@@ -119,7 +132,8 @@ class EducationalTourBookingTest extends TestCase
     public function test_vehicle_and_driver_cannot_overlap_an_existing_school_tour(): void
     {
         $this->actingAs($this->user)->postJson('/api/v1/sales/educational-bookings', $this->payload())->assertCreated();
-        $payload = $this->payload(); $payload['school_name'] = 'Second School';
+        $payload = $this->payload();
+        $payload['school_name'] = 'Second School';
         $payload['assignments'][0]['driver_id'] = User::factory()->create(['role' => 'driver', 'is_active' => true])->id;
         $payload['assignments'][1]['bus_id'] = Bus::create(['plate_number' => 'EDU-03', 'model' => 'Coaster 2', 'vehicle_type' => 'coaster', 'seating_capacity' => 20, 'status' => 'available'])->id;
         $payload['assignments'][1]['driver_id'] = User::factory()->create(['role' => 'driver', 'is_active' => true])->id;
@@ -128,9 +142,31 @@ class EducationalTourBookingTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('assignments.0.bus_id');
     }
 
+    public function test_active_school_booking_can_update_fleet_blueprint_and_manifest(): void
+    {
+        $created = $this->actingAs($this->user)
+            ->postJson('/api/v1/sales/educational-bookings', $this->payload())
+            ->assertCreated();
+        $bookingId = $created->json('data.id');
+        $payload = $this->payload();
+        unset($payload['program_id'], $payload['student_count'], $payload['chaperone_count'], $payload['payment_method'], $payload['payment_type'], $payload['amount_received']);
+        $payload['school_name'] = 'Updated JVD Academy';
+        $payload['booking_mode'] = 'selected_seats';
+        $payload['selected_seats'] = ['EDU-01-1A'];
+        $payload['passengers'] = [['first_name' => 'Maria', 'last_name' => 'Santos', 'role' => 'student', 'seat_code' => 'EDU-01-1A']];
+
+        $this->actingAs($this->user)->putJson("/api/v1/sales/educational-bookings/{$bookingId}", $payload)
+            ->assertOk()
+            ->assertJsonPath('data.school_name', 'Updated JVD Academy')
+            ->assertJsonPath('data.selected_seats.0', 'EDU-01-1A')
+            ->assertJsonPath('data.passengers.0.first_name', 'Maria')
+            ->assertJsonCount(2, 'data.vehicles');
+    }
+
     private function payload(): array
     {
         $start = now()->addMonth()->setTime(5, 0);
+
         return [
             'program_id' => $this->program->id, 'school_name' => 'JVD Academy', 'contact_person' => 'Teacher Reyes',
             'contact_email' => 'teacher@example.com', 'contact_number' => '09171234567', 'grade_level' => 'Grade 10',

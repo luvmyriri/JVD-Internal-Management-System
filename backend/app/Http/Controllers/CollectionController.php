@@ -2,27 +2,39 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\TransactionNotificationMail;
 use App\Models\Collection;
+use App\Models\CollectionPayment;
+use App\Models\Invoice;
+use App\Services\AuditLogService;
+use App\Services\SalesLifecycleService;
+use App\Services\SalesOrderService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use App\Services\AuditLogService;
-use App\Mail\TransactionNotificationMail;
 
 class CollectionController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Collection::with(['payments', 'invoice.items.service', 'customer']);
+        $query = Collection::with([
+            'payments',
+            'invoice.items.service',
+            'invoice.salesOrder.adjustments',
+            'invoice.salesOrder.creditNotes.refunds',
+            'invoice.salesOrder.refunds',
+            'customer',
+        ]);
 
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('client_name', 'like', "%$search%")
-                  ->orWhere('service_type', 'like', "%$search%")
-                  ->orWhereHas('invoice', function($iq) use ($search) {
-                      $iq->where('invoice_number', 'like', "%$search%");
-                  });
+                    ->orWhere('service_type', 'like', "%$search%")
+                    ->orWhereHas('invoice', function ($iq) use ($search) {
+                        $iq->where('invoice_number', 'like', "%$search%");
+                    });
             });
         }
 
@@ -40,7 +52,7 @@ class CollectionController extends Controller
 
         // Hide fully-settled (zero balance) records unless the user explicitly views 'completed'
         $isViewingCompleted = $request->has('status') && $request->status === 'completed';
-        if (!$isViewingCompleted) {
+        if (! $isViewingCompleted) {
             $query->where('remaining_balance', '>', 0);
         }
 
@@ -58,7 +70,7 @@ class CollectionController extends Controller
 
         return response()->json([
             'data' => $collections,
-            'stats' => $stats
+            'stats' => $stats,
         ]);
     }
 
@@ -92,7 +104,7 @@ class CollectionController extends Controller
 
             $collection = Collection::create($collectionData);
 
-            if (!empty($validated['payments'])) {
+            if (! empty($validated['payments'])) {
                 foreach ($validated['payments'] as $payment) {
                     $collection->payments()->create($payment);
                 }
@@ -110,16 +122,17 @@ class CollectionController extends Controller
     public function show($id)
     {
         $user = auth()->user();
-        if (!$user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
+        if (! $user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
             return response()->json(['error' => 'Unauthorized.'], 403);
         }
+
         return Collection::with('payments')->findOrFail($id);
     }
 
     public function update(Request $request, $id)
     {
         $collection = Collection::findOrFail($id);
-        
+
         $validated = $request->validate([
             'client_name' => 'sometimes|string',
             'service_type' => 'sometimes|nullable|string',
@@ -154,7 +167,7 @@ class CollectionController extends Controller
                         @set_time_limit(120);
                         Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
                     } catch (\Exception $mailEx) {
-                        \Log::error("Failed to send updated payment receipt email on update to {$invoice->customer_email}: " . $mailEx->getMessage());
+                        \Log::error("Failed to send updated payment receipt email on update to {$invoice->customer_email}: ".$mailEx->getMessage());
                     }
                 }
             }
@@ -166,8 +179,14 @@ class CollectionController extends Controller
     public function destroy($id)
     {
         $collection = Collection::findOrFail($id);
+        if ($collection->invoice_id || $collection->auto_generated || $collection->payments()->exists()) {
+            return response()->json([
+                'message' => 'Posted or paid collections cannot be deleted. Use the controlled cancellation and refund workflow.',
+            ], 422);
+        }
         AuditLogService::log('delete', 'accounting', 'Collection', $collection->id, $collection->toArray(), null);
         $collection->delete();
+
         return response()->json(['message' => 'Collection deleted successfully.']);
     }
 
@@ -179,10 +198,10 @@ class CollectionController extends Controller
             $remaining = $collection->billing_amount - $collection->payments()->sum('amount');
             if ($remaining > 0) {
                 $collection->payments()->create([
-                    'payment_date'   => date('Y-m-d'),
+                    'payment_date' => date('Y-m-d'),
                     'payment_method' => 'Cash',
-                    'amount'         => $remaining,
-                    'balance'        => 0,
+                    'amount' => $remaining,
+                    'balance' => 0,
                 ]);
             }
 
@@ -193,18 +212,19 @@ class CollectionController extends Controller
         if ($collection->invoice_id && $collection->invoice && $collection->invoice->customer_email) {
             $invoice = $collection->invoice;
 
-                if ($invoice->customer_email) {
-                    try {
-                        @set_time_limit(120);
-                        Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
-                    } catch (\Exception $mailEx) {
-                        \Log::error("Failed to send fully paid invoice email to {$invoice->customer_email}: " . $mailEx->getMessage());
-                    }
+            if ($invoice->customer_email) {
+                try {
+                    @set_time_limit(120);
+                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                } catch (\Exception $mailEx) {
+                    \Log::error("Failed to send fully paid invoice email to {$invoice->customer_email}: ".$mailEx->getMessage());
                 }
             }
+        }
+
         return response()->json([
             'message' => 'Collection confirmed as fully paid.',
-            'data'    => $collection->load('payments'),
+            'data' => $collection->load('payments'),
         ]);
     }
 
@@ -227,12 +247,12 @@ class CollectionController extends Controller
 
         // Idempotency: a repeated submit (double-click, network retry) carrying the same key
         // must not post a second payment + ledger entry. Return the already-recorded result.
-        if (!empty($validated['idempotency_key'])) {
-            $existing = \App\Models\CollectionPayment::where('idempotency_key', $validated['idempotency_key'])->first();
+        if (! empty($validated['idempotency_key'])) {
+            $existing = CollectionPayment::where('idempotency_key', $validated['idempotency_key'])->first();
             if ($existing) {
                 return response()->json([
                     'message' => 'Payment already recorded.',
-                    'data'    => $collection->load('payments'),
+                    'data' => $collection->load('payments'),
                 ]);
             }
         }
@@ -241,12 +261,12 @@ class CollectionController extends Controller
         $remaining = (float) ($collection->remaining_balance ?? $collection->billing_amount ?? $collection->rate ?? 0);
         if ((float) $validated['amount'] > $remaining + 0.01) {
             return response()->json([
-                'message' => 'Payment amount cannot exceed the remaining balance of ₱' . number_format($remaining, 2) . '.',
+                'message' => 'Payment amount cannot exceed the remaining balance of ₱'.number_format($remaining, 2).'.',
             ], 422);
         }
 
         $payment = $collection->payments()->create($validated);
-        
+
         $collection->recalculate();
 
         if ($collection->invoice_id) {
@@ -256,21 +276,21 @@ class CollectionController extends Controller
                     @set_time_limit(120);
                     Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
                 } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send updated payment receipt email on addPayment to {$invoice->customer_email}: " . $mailEx->getMessage());
+                    \Log::error("Failed to send updated payment receipt email on addPayment to {$invoice->customer_email}: ".$mailEx->getMessage());
                 }
             }
         }
 
         return response()->json([
             'message' => 'Payment added successfully.',
-            'data' => $collection->load('payments')
+            'data' => $collection->load('payments'),
         ]);
     }
 
     public function updateRemarks(Request $request, $id)
     {
         $collection = Collection::findOrFail($id);
-        
+
         $validated = $request->validate([
             'remarks' => 'nullable|string',
         ]);
@@ -279,7 +299,7 @@ class CollectionController extends Controller
 
         return response()->json([
             'message' => 'Remarks updated.',
-            'data' => $collection
+            'data' => $collection,
         ]);
     }
 
@@ -288,86 +308,10 @@ class CollectionController extends Controller
      */
     public function processRefund(Request $request, $id)
     {
-        $validated = $request->validate([
-            'amount' => 'required|numeric|min:0.01',
-            'reason' => 'required|string|max:255',
-            'refund_type' => 'required|string|in:online,offline',
-            'cancellation_fee' => 'nullable|numeric|min:0',
-            'policy_terms' => 'nullable|string',
-        ]);
-
-        $invoice = Invoice::with(['payments'])->find($id);
-        $collection = null;
-        if (!$invoice) {
-            $collection = Collection::with(['payments', 'invoice'])->find($id);
-            $invoice = $collection?->invoice;
-        }
-
-        $refundAmount = (float) $validated['amount'];
-        $cancellationFee = (float) ($validated['cancellation_fee'] ?? 0);
-        $netRefund = max(0, $refundAmount - $cancellationFee);
-
-        $paymongoId = null;
-        if ($invoice) {
-            $lastPayment = $invoice->payments()->whereNotNull('paymongo_payment_id')->latest()->first();
-            $paymongoId = $lastPayment?->paymongo_payment_id;
-        }
-
-        $refundResult = ['success' => true, 'refund_id' => 'cash_ref_' . uniqid()];
-
-        if ($validated['refund_type'] === 'online' && $paymongoId) {
-            $paymongo = new \App\Services\PayMongoService();
-            $refundResult = $paymongo->createRefund($paymongoId, $netRefund, $validated['reason']);
-            if (!$refundResult['success']) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'PayMongo refund processing failed: ' . ($refundResult['error'] ?? 'Unknown error'),
-                ], 422);
-            }
-        }
-
-        if ($invoice) {
-            \App\Models\Payment::create([
-                'invoice_id' => $invoice->id,
-                'amount' => -$netRefund,
-                'payment_method' => $validated['refund_type'] === 'online' ? 'PayMongo Refund' : 'Cash/Bank Refund',
-                'payment_date' => now()->toDateString(),
-                'reference_number' => $refundResult['refund_id'] ?? ('REF-' . strtoupper(uniqid())),
-                'notes' => "Refund Processed: {$validated['reason']}. Cancellation Fee: ₱{$cancellationFee}",
-                'recorded_by' => auth()->id(),
-            ]);
-
-            $invoice->increment('balance', $netRefund);
-            if ($invoice->balance >= $invoice->total_amount) {
-                $invoice->update(['status' => 'cancelled']);
-            }
-        }
-
-        \App\Services\AuditLogService::log(
-            'process_refund',
-            'Accounting',
-            'Invoice',
-            $invoice?->id ?? (int)$id,
-            null,
-            [
-                'refund_amount' => $refundAmount,
-                'cancellation_fee' => $cancellationFee,
-                'net_refund' => $netRefund,
-                'reason' => $validated['reason'],
-                'refund_type' => $validated['refund_type'],
-                'refund_id' => $refundResult['refund_id'] ?? null,
-            ]
-        );
-
         return response()->json([
-            'success' => true,
-            'message' => "Refund of ₱" . number_format($netRefund, 2) . " processed successfully.",
-            'data' => [
-                'refund_id' => $refundResult['refund_id'] ?? null,
-                'net_refund' => $netRefund,
-                'cancellation_fee' => $cancellationFee,
-            ]
-        ]);
+            'success' => false,
+            'message' => 'Direct refunds are disabled. Submit cancellation, approve its credit note, then request, approve, and process the refund through the controlled workflow.',
+        ], 409);
     }
 
     public function sendSoaNotification($id)
@@ -381,10 +325,10 @@ class CollectionController extends Controller
             $email = $collection->customer->email;
         }
 
-        if (!$email) {
+        if (! $email) {
             return response()->json([
                 'success' => false,
-                'message' => 'No valid customer email address found for this collection.'
+                'message' => 'No valid customer email address found for this collection.',
             ], 400);
         }
 
@@ -394,14 +338,15 @@ class CollectionController extends Controller
         try {
             @set_time_limit(120);
             Mail::to($email)->send(new TransactionNotificationMail($invoice));
+
             return response()->json([
                 'success' => true,
-                'message' => 'Statement of Account notification email sent to ' . $email
+                'message' => 'Statement of Account notification email sent to '.$email,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to send email: ' . $e->getMessage()
+                'message' => 'Failed to send email: '.$e->getMessage(),
             ], 500);
         }
     }
@@ -424,33 +369,33 @@ class CollectionController extends Controller
         if ($collection->invoice) {
             $invoice = $collection->invoice;
             // Attach the payment history from the collection side as well
-            if (!$invoice->relationLoaded('payments')) {
+            if (! $invoice->relationLoaded('payments')) {
                 $invoice->setRelation('payments', $collection->payments);
             }
         } else {
             // Build a virtual Invoice object that the Blade template can consume
-            $invoice = new \App\Models\Invoice([
-                'invoice_number'   => 'COL-' . str_pad($collection->id, 6, '0', STR_PAD_LEFT),
-                'customer_name'    => $collection->client_name,
-                'customer_email'   => $email ?? '',
+            $invoice = new Invoice([
+                'invoice_number' => 'COL-'.str_pad($collection->id, 6, '0', STR_PAD_LEFT),
+                'customer_name' => $collection->client_name,
+                'customer_email' => $email ?? '',
                 'customer_contact' => $collection->customer?->phone ?? '',
                 'customer_address' => $collection->customer?->address ?? '',
-                'subtotal'         => ($collection->billing_amount ?? $collection->rate ?? 0) / 1.12,
-                'tax_amount'       => ($collection->billing_amount ?? $collection->rate ?? 0) - (($collection->billing_amount ?? $collection->rate ?? 0) / 1.12),
-                'total_amount'     => $collection->billing_amount ?? $collection->rate ?? 0,
-                'amount_received'  => $collection->paid_amount ?? 0,
-                'change'           => 0,
-                'payment_method'   => $collection->payments->last()?->payment_method ?? 'Cash',
-                'payment_type'     => 'downpayment',
-                'balance'          => $collection->remaining_balance ?? ($collection->rate ?? 0),
-                'due_date'         => $collection->due_date,
-                'travel_date'      => $collection->travel_date ?? $collection->due_date,
-                'pick_up'          => $collection->pick_up ?? null,
-                'drop_off'         => $collection->drop_off ?? null,
-                'service_type'     => $collection->service_type,
+                'subtotal' => ($collection->billing_amount ?? $collection->rate ?? 0) / 1.12,
+                'tax_amount' => ($collection->billing_amount ?? $collection->rate ?? 0) - (($collection->billing_amount ?? $collection->rate ?? 0) / 1.12),
+                'total_amount' => $collection->billing_amount ?? $collection->rate ?? 0,
+                'amount_received' => $collection->paid_amount ?? 0,
+                'change' => 0,
+                'payment_method' => $collection->payments->last()?->payment_method ?? 'Cash',
+                'payment_type' => 'downpayment',
+                'balance' => $collection->remaining_balance ?? ($collection->rate ?? 0),
+                'due_date' => $collection->due_date,
+                'travel_date' => $collection->travel_date ?? $collection->due_date,
+                'pick_up' => $collection->pick_up ?? null,
+                'drop_off' => $collection->drop_off ?? null,
+                'service_type' => $collection->service_type,
                 'other_service_type' => $collection->other_service_type,
-                'status'           => ($collection->remaining_balance ?? 1) <= 0 ? 'paid' : (($collection->paid_amount ?? 0) > 0 ? 'partial' : 'pending'),
-                'created_at'       => $collection->created_at,
+                'status' => ($collection->remaining_balance ?? 1) <= 0 ? 'paid' : (($collection->paid_amount ?? 0) > 0 ? 'partial' : 'pending'),
+                'created_at' => $collection->created_at,
             ]);
 
             $invoice->setRelation('items', collect([]));
@@ -469,11 +414,11 @@ class CollectionController extends Controller
     public function viewSoa($id)
     {
         $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
-        $pdfData    = $this->buildSoaInvoice($collection);
+        $pdfData = $this->buildSoaInvoice($collection);
 
-        $fileName = 'SOA_' . ($pdfData['invoice']->invoice_number ?? 'COL-' . $id) . '.pdf';
+        $fileName = 'SOA_'.($pdfData['invoice']->invoice_number ?? 'COL-'.$id).'.pdf';
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.statement_of_account', $pdfData)
+        $pdf = Pdf::loadView('pdf.statement_of_account', $pdfData)
             ->setPaper('A4', 'portrait');
 
         return $pdf->stream($fileName, ['Attachment' => false]);
@@ -485,11 +430,11 @@ class CollectionController extends Controller
     public function downloadSoa($id)
     {
         $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
-        $pdfData    = $this->buildSoaInvoice($collection);
+        $pdfData = $this->buildSoaInvoice($collection);
 
-        $fileName = 'SOA_' . ($pdfData['invoice']->invoice_number ?? 'COL-' . $id) . '.pdf';
+        $fileName = 'SOA_'.($pdfData['invoice']->invoice_number ?? 'COL-'.$id).'.pdf';
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.statement_of_account', $pdfData)
+        $pdf = Pdf::loadView('pdf.statement_of_account', $pdfData)
             ->setPaper('A4', 'portrait');
 
         return $pdf->download($fileName);
@@ -497,26 +442,20 @@ class CollectionController extends Controller
 
     public function cancelAndRefund($id)
     {
-        try {
-            $collection = Collection::with('invoice.salesOrder')->findOrFail($id);
-            if (!$collection->invoice) {
-                return response()->json(['success'=>false,'message'=>'This collection has no invoice to cancel.'],422);
-            }
-            $order = $collection->invoice->salesOrder
-                ?? app(\App\Services\SalesOrderService::class)->captureInvoice($collection->invoice, auth()->id());
-            $adjustment = app(\App\Services\SalesLifecycleService::class)->request(
-                $order, 'cancellation', request('reason', 'Cancellation requested from Collections'), [], auth()->id() ?? 1
-            );
-            return response()->json([
-                'success' => true,
-                'message' => 'Cancellation submitted for approval. Any eligible refund will require a posted credit note and separate approval.',
-                'data' => $adjustment,
-            ], 202);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to submit cancellation: ' . $e->getMessage()
-            ], 500);
+        $collection = Collection::with('invoice.salesOrder')->findOrFail($id);
+        if (! $collection->invoice) {
+            return response()->json(['success' => false, 'message' => 'This collection has no invoice to cancel.'], 422);
         }
+        $order = $collection->invoice->salesOrder
+            ?? app(SalesOrderService::class)->captureInvoice($collection->invoice, auth()->id());
+        $adjustment = app(SalesLifecycleService::class)->request(
+            $order, 'cancellation', request('reason', 'Cancellation requested from Collections'), [], auth()->id() ?? 1
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cancellation submitted for approval. Any eligible refund will require a posted credit note and separate approval.',
+            'data' => $adjustment,
+        ], 202);
     }
 }

@@ -16,8 +16,11 @@ class CharterBookingTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private User $driver;
+
     private Bus $bus;
+
     private CharterRatePlan $plan;
 
     protected function setUp(): void
@@ -89,9 +92,92 @@ class CharterBookingTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('passenger_count');
     }
 
+    public function test_shared_sales_checkout_creates_the_editable_charter_fulfillment(): void
+    {
+        $start = now()->addMonths(2)->startOfDay();
+        $response = $this->actingAs($this->user)->postJson('/api/v1/billing', [
+            'customer_name' => 'Corporate Client',
+            'customer_email' => 'client@example.com',
+            'customer_contact' => '09171234567',
+            'payment_method' => 'Cash',
+            'payment_type' => 'full',
+            'amount_received' => 19600,
+            'tax_rate' => 0.12,
+            'bus_id' => $this->bus->id,
+            'driver_id' => $this->driver->id,
+            'pickup_location' => 'JVD Office',
+            'tour_code' => 'Baguio City',
+            'pax_count' => 40,
+            'departure_datetime' => $start->toIso8601String(),
+            'arrival_datetime' => $start->copy()->addDay()->toIso8601String(),
+            'items' => [[
+                'service_id' => $this->plan->service_id,
+                'item_name' => 'Bus Charter',
+                'service_type' => 'bus_rental',
+                'quantity' => 1,
+                'unit_price' => 17500,
+                'item_metadata' => [
+                    'rate_plan_id' => $this->plan->id,
+                    'starts_at' => $start->toIso8601String(),
+                    'ends_at' => $start->copy()->addDay()->toIso8601String(),
+                    'pickup_location' => 'JVD Office',
+                    'destination' => 'Baguio City',
+                    'estimated_kilometers' => 150,
+                    'passenger_count' => 40,
+                    'booking_mode' => 'selected_seats',
+                    'selected_seats' => ['1A', '1B'],
+                    'passengers' => [
+                        ['first_name' => 'Ana', 'last_name' => 'Santos', 'role' => 'adult', 'seat_code' => '1A'],
+                    ],
+                    'bus_assignments' => [
+                        ['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id],
+                    ],
+                ],
+            ]],
+        ]);
+
+        $response->assertCreated();
+        $invoiceId = $response->json('data.id');
+        $this->assertDatabaseHas('charter_bookings', [
+            'invoice_id' => $invoiceId,
+            'destination' => 'Baguio City',
+            'booking_mode' => 'selected_seats',
+        ]);
+        $booking = CharterBooking::where('invoice_id', $invoiceId)->firstOrFail();
+        $this->assertSame(['1A', '1B'], $booking->selected_seats);
+        $this->assertSame('Ana', $booking->passengers[0]['first_name']);
+        $this->assertDatabaseHas('sales_order_items', [
+            'service_type' => 'bus_rental',
+            'fulfillment_type' => $booking->getMorphClass(),
+            'fulfillment_id' => $booking->id,
+        ]);
+    }
+
+    public function test_active_charter_booking_can_update_operations_and_manifest(): void
+    {
+        $created = $this->actingAs($this->user)
+            ->postJson('/api/v1/sales/charter-bookings', $this->payload())
+            ->assertCreated();
+        $bookingId = $created->json('data.id');
+        $payload = $this->payload();
+        unset($payload['rate_plan_id'], $payload['estimated_kilometers'], $payload['payment_method'], $payload['payment_type'], $payload['amount_received']);
+        $payload['lead_name'] = 'Updated Corporate Client';
+        $payload['assignments'] = [['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id]];
+        $payload['booking_mode'] = 'selected_seats';
+        $payload['selected_seats'] = ['2A'];
+        $payload['passengers'] = [['first_name' => 'Jose', 'last_name' => 'Rizal', 'role' => 'adult', 'seat_code' => '2A']];
+
+        $this->actingAs($this->user)->putJson("/api/v1/sales/charter-bookings/{$bookingId}", $payload)
+            ->assertOk()
+            ->assertJsonPath('data.lead_name', 'Updated Corporate Client')
+            ->assertJsonPath('data.selected_seats.0', '2A')
+            ->assertJsonPath('data.passengers.0.first_name', 'Jose');
+    }
+
     private function payload(): array
     {
         $start = now()->addMonth()->startOfDay();
+
         return [
             'rate_plan_id' => $this->plan->id, 'lead_name' => 'Corporate Client', 'lead_email' => 'client@example.com',
             'lead_contact' => '09171234567', 'bus_id' => $this->bus->id, 'driver_id' => $this->driver->id,

@@ -16,6 +16,7 @@ export interface EducationalProgram {
   includes_coordinator: boolean;
   includes_insurance: boolean;
   includes_shirt: boolean;
+  images?: string[];
   created_at?: string;
   updated_at?: string;
 }
@@ -33,6 +34,7 @@ export interface CreateEducationalProgramPayload {
   includes_coordinator: boolean;
   includes_insurance: boolean;
   includes_shirt: boolean;
+  images?: string[];
 }
 
 export interface EducationalPricing {
@@ -64,12 +66,21 @@ export interface EducationalBooking {
   reference: string;
   school_name: string;
   grade_level: string;
+  contact_person: string;
+  contact_email?: string | null;
+  contact_number?: string | null;
   starts_at: string;
   ends_at: string;
+  pickup_location: string;
+  stops_snapshot?: string[];
   student_count: number;
   tour_guide_count?: number;
   chaperone_count: number;
   status: string;
+  booking_mode?: 'entire_vehicle' | 'selected_seats';
+  selected_seats?: string[];
+  passengers?: Array<Record<string, unknown>>;
+  operations_notes?: string | null;
   program: EducationalProgram;
   vehicles: Array<{ id: number; planned_passengers: number; bus: EducationalResources['buses'][number]; driver: EducationalResources['drivers'][number] }>;
   invoice: { id: number; invoice_number: string; status: string; balance: number };
@@ -83,5 +94,7 @@ export const educationalTourApi = {
   createProgram: (data: CreateEducationalProgramPayload) => client.post('/sales/educational-programs', data).then(res => res.data.data as EducationalProgram),
   updateProgram: (id: number, data: CreateEducationalProgramPayload) => client.put(`/sales/educational-programs/${id}`, data).then(res => res.data.data as EducationalProgram),
   createBooking: (data: Record<string, unknown>) => client.post('/sales/educational-bookings', data).then(res => res.data.data as EducationalBooking),
+  updateBooking: (id: number, data: Record<string, unknown>) => client.put(`/sales/educational-bookings/${id}`, data).then(res => res.data.data as EducationalBooking),
+  cancelBooking: (id: number, reason: string) => client.post(`/sales/educational-bookings/${id}/cancel`, { reason }).then(res => res.data),
 };
 
