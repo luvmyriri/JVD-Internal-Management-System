@@ -177,7 +177,8 @@ export default function Sales() {
                   : 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5" /> Nearing (&lt;7 Days) ({nearingCount})
+              <AlertTriangle className="w-3.5 h-3.5" /> Nearing Within 7 Days ({nearingCount})
+
             </button>
             <button
               onClick={() => setActiveFilter('unassigned')}
