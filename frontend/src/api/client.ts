@@ -37,11 +37,16 @@ client.interceptors.request.use(
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 Unauthorized — clear session and redirect to login
+    // 401 Unauthorized — clear session ONLY if primary auth session check fails
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const requestUrl = error.config?.url || '';
+      const isAuthCheck = requestUrl.includes('/auth/me') || requestUrl.includes('/login') || requestUrl.includes('/user');
+      
+      if (isAuthCheck || !localStorage.getItem('auth_token')) {
+        localStorage.removeItem('auth_token');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       return Promise.reject(error);
     }

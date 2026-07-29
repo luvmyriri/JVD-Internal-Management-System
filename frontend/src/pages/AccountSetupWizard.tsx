@@ -130,7 +130,7 @@ export default function AccountSetupWizard() {
   const handleStep3Next = () => {
     // Save selected widget layout to localStorage
     localStorage.setItem('jvd_custom_dashboard_layout', JSON.stringify(selectedWidgetIds));
-    localStorage.setItem('jvd_active_dashboard_view', 'custom');
+    localStorage.setItem('jvd_active_dashboard_view', 'default');
     toast.success('Custom dashboard cards saved!');
     setStep(4);
   };
