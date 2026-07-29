@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LuMapPin, LuFuel, LuCompass, LuSearch, LuCheck, LuArrowRight, LuRefreshCw, LuSlidersHorizontal } from 'react-icons/lu';
+import { LuMapPin, LuCompass, LuSearch, LuX, LuRefreshCw } from 'react-icons/lu';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -25,6 +25,42 @@ interface TripLocationMapPickerProps {
   readOnly?: boolean;
   onLocationSelect?: (pickup: string, dropoff: string, distanceKm: number, dieselLiters: number, dieselCost: number) => void;
 }
+
+const PH_LOCATIONS_DATABASE: Array<{ display_name: string; lat: string; lon: string }> = [
+  { display_name: 'Manila Hub (Pasay Bus Terminal, Metro Manila)', lat: '14.5378', lon: '120.9992' },
+  { display_name: 'Cubao Bus Terminal (Quezon City, Metro Manila)', lat: '14.6195', lon: '121.0511' },
+  { display_name: 'PITX Terminal (Parañaque Integrated Terminal Exchange)', lat: '14.5105', lon: '120.9904' },
+  { display_name: 'NAIA Airport Terminal 3 (Pasay City)', lat: '14.5204', lon: '121.0153' },
+  { display_name: 'Tagaytay City (Taal Lake Overview, Cavite)', lat: '14.1153', lon: '120.9621' },
+  { display_name: 'Baguio City (Session Road / Burnham Park, Benguet)', lat: '16.4023', lon: '120.5960' },
+  { display_name: 'Subic Bay Freeport Zone (Zambales)', lat: '14.8219', lon: '120.2831' },
+  { display_name: 'Batangas Port Passenger Terminal (Batangas City)', lat: '13.7565', lon: '121.0583' },
+  { display_name: 'Sagada Mountain Province (Echo Valley)', lat: '17.0811', lon: '120.9014' },
+  { display_name: 'La Union (San Juan Surf Beach)', lat: '16.6644', lon: '120.3206' },
+  { display_name: 'Clark Freeport Zone (Angeles, Pampanga)', lat: '15.1855', lon: '120.5408' },
+  { display_name: 'Vigan Historic City (Calle Crisologo, Ilocos Sur)', lat: '17.5747', lon: '120.3869' },
+  { display_name: 'Laoag City (Ilocos Norte)', lat: '18.1960', lon: '120.5927' },
+  { display_name: 'Legazpi City (Mayon Volcano View, Albay)', lat: '13.1391', lon: '123.7438' },
+  { display_name: 'Naga City (Camarines Sur)', lat: '13.6218', lon: '123.1948' },
+  { display_name: 'Lucena City (Quezon Province)', lat: '13.9372', lon: '121.6169' },
+  { display_name: 'Puerto Galera (Mindoro)', lat: '13.5008', lon: '120.9540' },
+  { display_name: 'Calapan Port (Oriental Mindoro)', lat: '13.4243', lon: '121.1872' },
+  { display_name: 'San Fernando (Pampanga)', lat: '15.0333', lon: '120.6833' },
+  { display_name: 'Tarlac City (Tarlac)', lat: '15.4802', lon: '120.5979' },
+  { display_name: 'Cabanatuan City (Nueva Ecija)', lat: '15.4863', lon: '120.9678' },
+  { display_name: 'Olongapo City (Zambales)', lat: '14.8386', lon: '120.2842' },
+  { display_name: 'Baler (Aurora Province)', lat: '15.7592', lon: '121.5615' },
+  { display_name: 'Banaue Rice Terraces (Ifugao)', lat: '16.9133', lon: '121.0583' },
+  { display_name: 'Cebu City (Central Visayas)', lat: '10.3157', lon: '123.8854' },
+  { display_name: 'Davao City (Mindanao)', lat: '7.1907', lon: '125.4553' },
+  { display_name: 'Iloilo City (Panay Island)', lat: '10.7202', lon: '122.5621' },
+  { display_name: 'Bacolod City (Negros Occidental)', lat: '10.6765', lon: '122.9509' },
+  { display_name: 'Boracay Island (Malay, Aklan)', lat: '11.9674', lon: '121.9248' },
+  { display_name: 'Puerto Princesa City (Palawan)', lat: '9.7392', lon: '118.7353' },
+  { display_name: 'Coron Busuanga (Palawan)', lat: '11.9986', lon: '120.2043' },
+  { display_name: 'Siargao Island (General Luna, Surigao del Norte)', lat: '9.7867', lon: '126.1578' },
+  { display_name: 'Panglao Island (Bohol)', lat: '9.5786', lon: '123.7745' },
+];
 
 const PRESET_ROUTES: Array<{
   pickup: RoutePinLocation;
@@ -62,7 +98,7 @@ export default function TripLocationMapPicker({
   pickupLocation = 'Manila Hub (Pasay Terminal)',
   dropOffLocation = 'Tagaytay City',
   vehicleType = 'Bus',
-  fuelPricePerLiter = 65.0,
+  fuelPricePerLiter = 68.5,
   readOnly = false,
   onLocationSelect,
 }: TripLocationMapPickerProps) {
@@ -71,7 +107,7 @@ export default function TripLocationMapPicker({
   const [pickupCoord, setPickupCoord] = useState<[number, number]>([14.5378, 120.9992]);
   const [dropoffCoord, setDropoffCoord] = useState<[number, number]>([14.1153, 120.9621]);
   const [distanceKm, setDistanceKm] = useState<number>(65);
-  const [fuelPrice, setFuelPrice] = useState<number>(fuelPricePerLiter);
+  const [fuelPrice] = useState<number>(fuelPricePerLiter);
   const [isRouting, setIsRouting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -91,7 +127,7 @@ export default function TripLocationMapPicker({
         return 9.0;
       case 'Bus':
       default:
-        return 3.5;
+        return 5.5;
     }
   }, [vehicleType]);
 
@@ -117,7 +153,6 @@ export default function TripLocationMapPicker({
         setDistanceKm(routeDistanceKm);
 
         if (mapInstanceRef.current && route.geometry?.coordinates) {
-          // Draw polyline on map
           if (routeLayerRef.current) {
             mapInstanceRef.current.removeLayer(routeLayerRef.current);
           }
@@ -129,7 +164,7 @@ export default function TripLocationMapPicker({
         }
       }
     } catch (err) {
-      console.warn('OSRM routing fetch warning, falling back to Haversine formula:', err);
+      console.warn('OSRM routing fetch warning:', err);
     } finally {
       setIsRouting(false);
     }
@@ -146,30 +181,27 @@ export default function TripLocationMapPicker({
     });
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
     mapInstanceRef.current = map;
 
-    // Render Markers
-    const markerA = L.marker(pickupCoord, { draggable: !readOnly, title: 'Pin A: Pickup' }).addTo(map);
-    const markerB = L.marker(dropoffCoord, { draggable: !readOnly, title: 'Pin B: Dropoff' }).addTo(map);
+    const markerA = L.marker(pickupCoord, { draggable: !readOnly, title: 'Pickup Point' }).addTo(map);
+    const markerB = L.marker(dropoffCoord, { draggable: !readOnly, title: 'Destination' }).addTo(map);
 
     markerA.bindPopup(`<b>Pickup Point</b><br/>${pickupName}`).openPopup();
     markerB.bindPopup(`<b>Destination</b><br/>${dropoffName}`);
 
     if (!readOnly) {
       markerA.on('dragend', (e) => {
-        const target = e.target as L.Marker;
-        const pos = target.getLatLng();
+        const pos = (e.target as L.Marker).getLatLng();
         setPickupCoord([pos.lat, pos.lng]);
         fetchOSRMRoute(pos.lat, pos.lng, dropoffCoord[0], dropoffCoord[1]);
       });
 
       markerB.on('dragend', (e) => {
-        const target = e.target as L.Marker;
-        const pos = target.getLatLng();
+        const pos = (e.target as L.Marker).getLatLng();
         setDropoffCoord([pos.lat, pos.lng]);
         fetchOSRMRoute(pickupCoord[0], pickupCoord[1], pos.lat, pos.lng);
       });
@@ -204,18 +236,42 @@ export default function TripLocationMapPicker({
     }
   };
 
-  const handleSearchLocation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery.trim()) return;
+  const handleSearchLocation = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = searchQuery.trim().toLowerCase();
+    if (!query) return;
+
     setIsSearching(true);
 
     try {
-      const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=ph&q=${encodeURIComponent(searchQuery)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setSearchResults(data || []);
+      // 1. Local database search
+      const localMatches = PH_LOCATIONS_DATABASE.filter((loc) =>
+        loc.display_name.toLowerCase().includes(query)
+      );
+
+      // 2. Open-Meteo Geocoding API fallback
+      let externalResults: any[] = [];
+      try {
+        const geoRes = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=en&format=json`
+        );
+        const geoData = await geoRes.json();
+        if (geoData.results && Array.isArray(geoData.results)) {
+          externalResults = geoData.results.map((r: any) => ({
+            display_name: `${r.name}, ${r.admin1 || r.country || 'Philippines'}`,
+            lat: String(r.latitude),
+            lon: String(r.longitude),
+          }));
+        }
+      } catch (err) {
+        console.warn('Open-Meteo fallback warning:', err);
+      }
+
+      const combined = [...localMatches, ...externalResults];
+      setSearchResults(combined.length > 0 ? combined : PH_LOCATIONS_DATABASE.slice(0, 8));
     } catch (err) {
-      console.error('Nominatim search error:', err);
+      console.error('Search error:', err);
+      setSearchResults(PH_LOCATIONS_DATABASE.slice(0, 8));
     } finally {
       setIsSearching(false);
     }
@@ -226,31 +282,39 @@ export default function TripLocationMapPicker({
     const lng = parseFloat(result.lon);
     const shortName = result.display_name.split(',')[0];
 
+    let newPickup = pickupName;
+    let newDropoff = dropoffName;
+    let newPickupCoord = pickupCoord;
+    let newDropoffCoord = dropoffCoord;
+
     if (type === 'pickup') {
+      newPickup = shortName;
+      newPickupCoord = [lat, lng];
       setPickupName(shortName);
       setPickupCoord([lat, lng]);
       if (markersRef.current[0]) markersRef.current[0].setLatLng([lat, lng]);
-      fetchOSRMRoute(lat, lng, dropoffCoord[0], dropoffCoord[1]);
     } else {
+      newDropoff = shortName;
+      newDropoffCoord = [lat, lng];
       setDropoffName(shortName);
       setDropoffCoord([lat, lng]);
       if (markersRef.current[1]) markersRef.current[1].setLatLng([lat, lng]);
-      fetchOSRMRoute(pickupCoord[0], pickupCoord[1], lat, lng);
+    }
+
+    fetchOSRMRoute(newPickupCoord[0], newPickupCoord[1], newDropoffCoord[0], newDropoffCoord[1]);
+
+    if (onLocationSelect) {
+      const liters = Math.round((distanceKm / kmPerLiter) * 10) / 10;
+      const cost = Math.round(liters * fuelPrice);
+      onLocationSelect(newPickup, newDropoff, distanceKm, liters, cost);
     }
 
     setSearchResults([]);
     setSearchQuery('');
   };
 
-  const handleApplyCalculations = () => {
-    if (onLocationSelect) {
-      onLocationSelect(pickupName, dropoffName, distanceKm, estimatedLiters, estimatedDieselCost);
-    }
-  };
-
   return (
     <div className="rounded-3xl border border-gray-100 bg-white p-5 shadow-xl dark:border-gray-800 dark:bg-gray-900 space-y-4">
-      
       {/* Map Header */}
       <div className="flex items-center justify-between border-b border-gray-100 pb-3 dark:border-gray-800">
         <div className="flex items-center gap-2.5">
@@ -282,7 +346,7 @@ export default function TripLocationMapPicker({
                 key={i}
                 type="button"
                 onClick={() => handleSelectPreset(route)}
-                className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50/70 px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:border-orange-300 hover:bg-orange-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+                className="inline-flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50/70 px-2.5 py-1 text-[11px] font-bold text-gray-700 hover:border-orange-300 hover:bg-orange-50 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <LuMapPin className="h-3 w-3 text-orange-500" />
                 {route.destination.name.split(' ')[0]} ({route.distanceKm} km)
@@ -294,22 +358,42 @@ export default function TripLocationMapPicker({
 
       {/* Real-Time Geocoding Search Bar */}
       {!readOnly && (
-        <div className="relative">
+        <div className="relative z-30">
           <form onSubmit={handleSearchLocation} className="flex gap-2">
             <div className="relative flex-1">
               <LuSearch className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search location in the Philippines (e.g. Baguio, Tagaytay, Batangas Port)..."
-                className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 pl-9 pr-4 py-2 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  if (e.target.value.trim().length >= 2) {
+                    const query = e.target.value.trim().toLowerCase();
+                    const matches = PH_LOCATIONS_DATABASE.filter((loc) =>
+                      loc.display_name.toLowerCase().includes(query)
+                    );
+                    setSearchResults(matches);
+                  } else {
+                    setSearchResults([]);
+                  }
+                }}
+                placeholder="Search location in the Philippines (e.g. Baguio, Tagaytay, Batangas Port, Cubao)..."
+                className="w-full rounded-2xl border border-gray-200 bg-gray-50/50 pl-9 pr-4 py-2 text-xs font-bold text-gray-900 dark:border-gray-700 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-orange-500"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setSearchResults([]); }}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
+                >
+                  <LuX className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
             <button
               type="submit"
               disabled={isSearching}
-              className="rounded-2xl bg-orange-600 px-4 py-2 text-xs font-black uppercase text-white hover:bg-orange-700 disabled:opacity-50"
+              className="rounded-2xl bg-orange-600 px-4 py-2 text-xs font-black uppercase text-white hover:bg-orange-700 disabled:opacity-50 cursor-pointer"
             >
               {isSearching ? 'Searching...' : 'Search'}
             </button>
@@ -317,23 +401,26 @@ export default function TripLocationMapPicker({
 
           {/* Search Dropdown Results */}
           {searchResults.length > 0 && (
-            <div className="absolute z-50 mt-1 max-h-48 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
-              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest px-2 py-1">Set Location Pin:</p>
+            <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl dark:border-gray-700 dark:bg-gray-800">
+              <div className="flex items-center justify-between px-2 py-1 border-b border-gray-100 dark:border-gray-700 mb-1">
+                <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Select Location Pin Target:</p>
+                <button onClick={() => setSearchResults([])} className="text-[10px] text-gray-400 hover:text-gray-600">Close ✕</button>
+              </div>
               {searchResults.map((item, index) => (
-                <div key={index} className="flex items-center justify-between border-b border-gray-100 p-2 last:border-0 dark:border-gray-700">
+                <div key={index} className="flex items-center justify-between border-b border-gray-100 p-2.5 last:border-0 dark:border-gray-700/60 hover:bg-gray-50 dark:hover:bg-gray-750 transition rounded-xl">
                   <span className="text-xs font-medium text-gray-800 dark:text-gray-200 truncate max-w-xs">{item.display_name}</span>
-                  <div className="flex gap-1">
+                  <div className="flex gap-1.5 shrink-0">
                     <button
                       type="button"
                       onClick={() => handleSelectSearchResult(item, 'pickup')}
-                      className="rounded-lg bg-emerald-100 px-2 py-1 text-[10px] font-black text-emerald-800 hover:bg-emerald-200"
+                      className="rounded-lg bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 text-[10px] font-black text-emerald-800 dark:text-emerald-300 hover:bg-emerald-200 cursor-pointer"
                     >
                       Set Pickup
                     </button>
                     <button
                       type="button"
                       onClick={() => handleSelectSearchResult(item, 'dropoff')}
-                      className="rounded-lg bg-rose-100 px-2 py-1 text-[10px] font-black text-rose-800 hover:bg-rose-200"
+                      className="rounded-lg bg-orange-100 dark:bg-orange-950/60 px-2.5 py-1 text-[10px] font-black text-orange-800 dark:text-orange-300 hover:bg-orange-200 cursor-pointer"
                     >
                       Set Destination
                     </button>
@@ -346,54 +433,29 @@ export default function TripLocationMapPicker({
       )}
 
       {/* Leaflet OpenStreetMap Canvas */}
-      <div className="relative h-56 w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800">
+      <div className="relative h-56 w-full overflow-hidden rounded-2xl border border-gray-200 dark:border-gray-800 z-0">
         <div ref={mapContainerRef} className="h-full w-full z-0" />
       </div>
 
-      {/* Live Operational Metrics & Calculations */}
-      <div className="grid gap-3 sm:grid-cols-4">
-        <div>
-          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Est. Road Distance</label>
-          <div className="mt-1 flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-black text-blue-800 dark:border-blue-900/40 dark:bg-blue-950/40 dark:text-blue-300">
-            {distanceKm} KM
-          </div>
+      {/* Distance & Fuel Summary Stats Bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center">
+        <div className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Est. Road Distance</span>
+          <span className="text-xs font-black text-gray-900 dark:text-white mt-0.5 block">{distanceKm} KM</span>
         </div>
-
-        <div>
-          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Fuel Efficiency</label>
-          <div className="mt-1 flex items-center gap-1.5 rounded-xl border border-purple-200 bg-purple-50 px-3 py-2 text-xs font-black text-purple-800 dark:border-purple-900/40 dark:bg-purple-950/40 dark:text-purple-300">
-            {vehicleType} ({kmPerLiter} KM/L)
-          </div>
+        <div className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Fuel Efficiency</span>
+          <span className="text-xs font-black text-gray-900 dark:text-white mt-0.5 block">{vehicleType} ({kmPerLiter} KM/L)</span>
         </div>
-
-        <div>
-          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Est. Diesel Liters</label>
-          <div className="mt-1 flex items-center gap-1.5 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-black text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/40 dark:text-amber-300">
-            <LuFuel className="h-4 w-4 text-amber-600" />
-            {estimatedLiters} L
-          </div>
+        <div className="p-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+          <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest block">Est. Diesel Liters</span>
+          <span className="text-xs font-black text-amber-600 dark:text-amber-400 mt-0.5 block">{estimatedLiters} L</span>
         </div>
-
-        <div>
-          <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Est. Diesel Cost (₱)</label>
-          <div className="mt-1 flex items-center gap-1.5 rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-black text-orange-800 dark:border-orange-900/40 dark:bg-orange-950/40 dark:text-orange-300">
-            ₱{estimatedDieselCost.toLocaleString()}
-          </div>
+        <div className="p-2.5 rounded-2xl bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/40">
+          <span className="text-[9px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-widest block">Est. Diesel Cost (₱)</span>
+          <span className="text-xs font-black text-orange-700 dark:text-orange-300 mt-0.5 block">₱{estimatedDieselCost.toLocaleString()}</span>
         </div>
       </div>
-
-      {!readOnly && (
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={handleApplyCalculations}
-            className="inline-flex items-center gap-1.5 rounded-2xl bg-orange-600 px-5 py-2.5 text-xs font-black uppercase tracking-wider text-white hover:bg-orange-700 shadow-md"
-          >
-            <LuCheck className="h-4 w-4" /> Apply Pinned Route & Diesel Calculations
-          </button>
-        </div>
-      )}
-
     </div>
   );
 }
