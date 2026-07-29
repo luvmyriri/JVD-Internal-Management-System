@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Bus, CalendarPlus, ChevronLeft, ChevronRight, Clock3, Eye, ImagePlus, MapPinned, Pencil, Plus, TicketCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react';
+import { ArrowLeft, Bus, CalendarPlus, ChevronLeft, ChevronRight, Clock3, Eye, ImagePlus, MapPinned, Pencil, Plus, Search, TicketCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import { catalogApi, type JoinerDeparture } from '../../api/catalog';
 import { Button, Modal } from '../../components/ds';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
+import PackageBuilderShell from './components/PackageBuilderShell';
 
 const initialForm = { service_id: '', code: '', starts_at: '', ends_at: '', booking_cutoff_at: '', capacity: '12', status: 'draft', pickup_instructions: '', bus_id: '', driver_id: '' };
 const initialProduct = { name: '', destination: '', description: '', adult_price: '', child_price: '', itinerary: '', inclusions: '', exclusions: '', images: [] as string[] };
@@ -143,22 +144,13 @@ export default function JoinerDepartures() {
   const manageId = searchParams.get('manage_id');
   const [viewProduct, setViewProduct] = useState<Service | null>(null);
   const [viewDeparture, setViewDeparture] = useState<JoinerDeparture | null>(null);
+  const [productSearch, setProductSearch] = useState('');
 
   const { data: rawDepartures, isLoading } = useQuery({ queryKey: ['joiner-departures', 'upcoming'], queryFn: catalogApi.getJoinerDepartures });
   const departures = useMemo(() => {
     const list = Array.isArray(rawDepartures) ? rawDepartures : [];
     return list.filter(d => d && typeof d === 'object' && d.id);
   }, [rawDepartures]);
-
-  useEffect(() => {
-    if (manageId && departures.length > 0) {
-      const match = departures.find(d => String(d.id) === manageId);
-      if (match) {
-        openEditDeparture(match);
-      }
-    }
-  }, [manageId, departures]);
-
 
   const { data: servicesResponse, isLoading: productsLoading } = useQuery({ queryKey: ['billing-services'], queryFn: billingApi.getServices });
   const availabilityWindowValid = Boolean(form.starts_at && form.ends_at && form.ends_at > form.starts_at);
@@ -167,6 +159,12 @@ export default function JoinerDepartures() {
     const raw = servicesResponse?.data?.data ?? servicesResponse?.data ?? [];
     return (Array.isArray(raw) ? raw : []).filter(service => service && typeof service === 'object' && service.id && resolveServiceType(service) === 'joiner_tour');
   }, [servicesResponse]);
+  const filteredProducts = useMemo(() => {
+    const needle = productSearch.trim().toLowerCase();
+    if (!needle) return products;
+    return products.filter((product: Service) => [product.name, product.description, product.package_config?.destination]
+      .some((value) => String(value || '').toLowerCase().includes(needle)));
+  }, [products, productSearch]);
   const requestedCapacity = Number(form.capacity) || 0;
   const buses = useMemo(() => (Array.isArray(resources?.buses) ? resources.buses : []).filter(b => b && typeof b === 'object' && b.id), [resources]);
   const drivers = useMemo(() => (Array.isArray(resources?.drivers) ? resources.drivers : []).filter(d => d && typeof d === 'object' && d.id), [resources]);
@@ -349,8 +347,7 @@ export default function JoinerDepartures() {
     }
   });
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
+  const saveDeparture = () => {
     if (!availabilityWindowValid) {
       toast.error('Return must be after the departure date and time.');
       return;
@@ -370,12 +367,161 @@ export default function JoinerDepartures() {
     }
   };
 
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    saveDeparture();
+  };
+
 
   const openDeparture = (product?: Service) => {
     setEditingDepartureId(null);
     setForm({ ...initialForm, service_id: product ? String(product.id) : '' });
     setOpen(true);
   };
+
+  useEffect(() => {
+    if (manageId && departures.length > 0) {
+      const match = departures.find(departure => String(departure.id) === manageId);
+      if (match) openEditDeparture(match);
+    }
+  }, [manageId, departures]);
+
+  if (productOpen) {
+    const closeProductBuilder = () => {
+      setProductOpen(false);
+      setEditingProductId(null);
+      setProductForm(initialProduct);
+    };
+    const addProductImages = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = async (event: any) => {
+        const files = Array.from(event.target.files as FileList);
+        for (const file of files) {
+          try {
+            const res = await billingApi.uploadServiceImage(file);
+            const uploadedPath = res?.data?.path ?? res?.data?.url;
+            if (uploadedPath) setProductForm(current => ({ ...current, images: [...current.images, uploadedPath] }));
+          } catch {
+            const compressed = await compressImage(file);
+            setProductForm(current => ({ ...current, images: [...current.images, compressed] }));
+          }
+        }
+      };
+      input.click();
+    };
+
+    return (
+      <PackageBuilderShell
+        eyebrow="Studio · Joiner product builder"
+        title={editingProductId ? 'Refine Joiner Tour Product' : 'Build & Launch Joiner Tour Product'}
+        description="Define the sellable trip once—destination, story, rates, itinerary, inclusions, exclusions, and gallery. Dated fleet runs are scheduled after this product is saved."
+        onCancel={closeProductBuilder}
+        onSave={() => saveProduct.mutate()}
+        saveLabel={editingProductId ? 'Save product changes' : 'Save & schedule departure'}
+        isSaving={saveProduct.isPending}
+        preview={(
+          <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
+            <span className="rounded-md bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Joiner offer preview</span>
+            <div className="mt-5 h-40 overflow-hidden rounded-2xl bg-white/5"><JoinerImage path={productForm.images[0]} alt="" className="h-full w-full object-cover" /></div>
+            <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-emerald-300">{productForm.destination || 'Destination pending'}</p>
+            <h2 className="mt-1 text-xl font-black">{productForm.name || 'Untitled joiner product'}</h2>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{productForm.description || 'Add the customer-facing trip story.'}</p>
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-xs">
+              <div><span className="block text-slate-400">Adult seat</span><strong>₱{Number(parseMoneyInput(productForm.adult_price || '0')).toLocaleString()}</strong></div>
+              <div><span className="block text-slate-400">Child seat</span><strong>₱{Number(parseMoneyInput(productForm.child_price || '0')).toLocaleString()}</strong></div>
+              <div className="col-span-2"><span className="block text-slate-400">Default itinerary</span><strong>{productForm.itinerary.split('\n').filter(Boolean).length} stop(s)</strong></div>
+            </div>
+            <Button onClick={() => saveProduct.mutate()} disabled={saveProduct.isPending} className="mt-6 w-full !bg-emerald-500 !text-white">{editingProductId ? 'Save product changes' : 'Save & schedule departure'}</Button>
+          </div>
+        )}
+      >
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">1 · Product identity</p><h2 className="mt-1 text-lg font-black text-ink">What customers will browse</h2></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-xs font-bold text-muted">Joiner product name<input required value={productForm.name} onChange={e => setProductForm({ ...productForm, name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted">Destination<input required value={productForm.destination} onChange={e => setProductForm({ ...productForm, destination: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted">Adult seat rate<input required value={productForm.adult_price} onChange={e => setProductForm({ ...productForm, adult_price: formatMoneyInput(e.target.value) })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted">Child seat rate<input required value={productForm.child_price} onChange={e => setProductForm({ ...productForm, child_price: formatMoneyInput(e.target.value) })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted md:col-span-2">Customer-facing description<textarea required value={productForm.description} onChange={e => setProductForm({ ...productForm, description: e.target.value })} rows={4} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm" /></label>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">2 · Trip experience</p><h2 className="mt-1 text-lg font-black text-ink">Itinerary & package boundaries</h2></div>
+          <label className="text-xs font-bold text-muted">Default itinerary (one day or stop per line)<textarea required value={productForm.itinerary} onChange={e => setProductForm({ ...productForm, itinerary: e.target.value })} rows={7} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm" /></label>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-xs font-bold text-muted">Inclusions (one per line)<textarea value={productForm.inclusions} onChange={e => setProductForm({ ...productForm, inclusions: e.target.value })} rows={6} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted">Exclusions (one per line)<textarea value={productForm.exclusions} onChange={e => setProductForm({ ...productForm, exclusions: e.target.value })} rows={6} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-sm" /></label>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3 border-b border-border pb-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">3 · Product gallery</p><h2 className="mt-1 text-lg font-black text-ink">Images customers recognize</h2></div><Button type="button" variant="ghost" onClick={addProductImages}><ImagePlus className="h-4 w-4" /> Add images</Button></div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{productForm.images.map((image, index) => <div key={`${image.slice(0, 20)}-${index}`} className="relative h-28 overflow-hidden rounded-2xl"><img src={imageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => setProductForm(current => ({ ...current, images: current.images.filter((_, itemIndex) => itemIndex !== index) }))} className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-white"><X className="h-3 w-3" /></button></div>)}</div>
+        </section>
+      </PackageBuilderShell>
+    );
+  }
+
+  if (open) {
+    const selectedProduct = products.find((product: Service) => String(product.id) === form.service_id);
+    const closeDepartureBuilder = () => {
+      setOpen(false);
+      setEditingDepartureId(null);
+      setForm(initialForm);
+    };
+    return (
+      <PackageBuilderShell
+        eyebrow="Studio · Dated departure builder"
+        title={editingDepartureId ? 'Manage Fixed Joiner Departure' : 'Schedule Joiner Departure'}
+        description="Turn one joiner product into a dated, finite-seat run with an exact cutoff, capacity, vehicle, driver, and pickup instruction."
+        onCancel={closeDepartureBuilder}
+        onSave={saveDeparture}
+        saveLabel={editingDepartureId ? 'Save departure changes' : 'Publish departure'}
+        isSaving={create.isPending || updateDeparture.isPending}
+        preview={(
+          <div className="rounded-3xl bg-gradient-to-br from-blue-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
+            <span className="rounded-md bg-blue-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Departure preview</span>
+            <h2 className="mt-5 text-xl font-black">{selectedProduct?.name || 'Choose a joiner product'}</h2>
+            <p className="mt-1 text-xs text-blue-300">{form.code || 'Departure code pending'}</p>
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-4 text-xs">
+              <div className="flex justify-between"><span className="text-slate-400">Departure</span><strong>{form.starts_at ? new Date(form.starts_at).toLocaleString('en-PH') : 'Not set'}</strong></div>
+              <div className="flex justify-between"><span className="text-slate-400">Capacity</span><strong>{form.capacity} seats</strong></div>
+              <div className="flex justify-between"><span className="text-slate-400">Vehicle</span><strong>{selectedBus?.plate_number || 'Assign later'}</strong></div>
+              <div className="flex justify-between"><span className="text-slate-400">Driver</span><strong>{selectedDriver ? `${selectedDriver.first_name} ${selectedDriver.last_name}` : 'Assign later'}</strong></div>
+            </div>
+            <Button onClick={saveDeparture} disabled={create.isPending || updateDeparture.isPending} className="mt-6 w-full !bg-blue-600 !text-white">{editingDepartureId ? 'Save departure changes' : 'Publish departure'}</Button>
+          </div>
+        )}
+      >
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">1 · Product & schedule</p><h2 className="mt-1 text-lg font-black text-ink">Choose the offer and lock its dates</h2></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1.5 text-sm font-bold text-ink md:col-span-2">Joiner product<select required value={form.service_id} disabled={Boolean(editingDepartureId)} onChange={e => setForm({ ...form, service_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal"><option value="">Select product…</option>{products.map((product: Service) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Departure code<input required value={form.code} disabled={Boolean(editingDepartureId)} onChange={e => setForm({ ...form, code: e.target.value })} placeholder="SGD-2026-08-03" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal" /></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Capacity<input required min="1" max="100" type="number" value={form.capacity} onChange={e => setForm(current => ({ ...current, capacity: e.target.value, bus_id: '' }))} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal" /></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Departure<input required type="datetime-local" value={form.starts_at} onChange={e => setForm(current => ({ ...current, starts_at: e.target.value, bus_id: '', driver_id: '' }))} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal" /></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Return<input required type="datetime-local" value={form.ends_at} onChange={e => setForm(current => ({ ...current, ends_at: e.target.value, bus_id: '', driver_id: '' }))} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal" /></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Booking cutoff<input required type="datetime-local" value={form.booking_cutoff_at} onChange={e => setForm({ ...form, booking_cutoff_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal" /></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink">Sale status<select value={form.status} onChange={e => setForm({ ...form, status: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal"><option value="draft">Draft</option><option value="published">Published for sale</option></select></label>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">2 · Fleet & dispatch</p><h2 className="mt-1 text-lg font-black text-ink">Allocate the exact operating resources</h2></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="space-y-1.5 text-sm font-bold text-ink"><span className="flex items-center gap-2"><Bus className="h-4 w-4" /> Vehicle</span><select value={form.bus_id} onChange={e => setForm(current => ({ ...current, bus_id: e.target.value }))} disabled={!availabilityWindowValid || resourcesLoading || resourcesFailed || !resources} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal disabled:opacity-60"><option value="">{!availabilityWindowValid ? 'Set valid dates first' : resourcesLoading ? 'Checking availability…' : 'Assign later'}</option>{buses.map(bus => { const tooSmall = (bus.seating_capacity ?? 0) < requestedCapacity; return <option key={bus.id} value={bus.id} disabled={!bus.available || tooSmall}>{bus.plate_number} · {bus.model} · {bus.seating_capacity} seats{!bus.available ? ' · unavailable' : tooSmall ? ' · too small' : ''}</option>; })}</select></label>
+            <label className="space-y-1.5 text-sm font-bold text-ink"><span className="flex items-center gap-2"><UserRound className="h-4 w-4" /> Driver</span><select value={form.driver_id} onChange={e => setForm(current => ({ ...current, driver_id: e.target.value }))} disabled={!availabilityWindowValid || resourcesLoading || resourcesFailed || !resources} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 font-normal disabled:opacity-60"><option value="">{!availabilityWindowValid ? 'Set valid dates first' : resourcesLoading ? 'Checking availability…' : 'Assign later'}</option>{drivers.map(driver => <option key={driver.id} value={driver.id} disabled={!driver.available}>{driver.first_name} {driver.last_name}{!driver.available ? ' · unavailable' : ''}</option>)}</select></label>
+            <div className="rounded-xl bg-surface-alt px-4 py-3 text-xs text-muted md:col-span-2">{!availabilityWindowValid ? 'Set a valid schedule to check the centralized fleet calendar.' : resourcesLoading ? 'Checking centralized logistics availability…' : resourcesFailed ? <span className="font-bold text-red-600">Availability could not be loaded. <button type="button" onClick={() => retryResources()} className="underline">Retry</button></span> : `${suitableBuses.length} suitable vehicle(s) and ${availableDrivers.length} driver(s) are available.`}</div>
+            <label className="space-y-1.5 text-sm font-bold text-ink md:col-span-2">Pickup instructions<textarea value={form.pickup_instructions} onChange={e => setForm({ ...form, pickup_instructions: e.target.value })} placeholder="Assembly point, reporting time, landmarks, and dispatcher notes" rows={4} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 font-normal" /></label>
+          </div>
+        </section>
+      </PackageBuilderShell>
+    );
+  }
 
 
   return <div className="w-full space-y-5 pb-12">
@@ -389,13 +535,13 @@ export default function JoinerDepartures() {
     </header>
 
     <section className="rounded-3xl border border-border bg-surface p-6">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Joiner product library</p><h2 className="mt-1 text-xl font-black text-ink">Offers ready for a dated departure</h2><p className="mt-1 text-xs text-muted">Destination, rates, itinerary, inclusions, and images belong to the product. Finite seats belong to each dated departure.</p></div>
-        <span className="text-xs font-bold text-muted">{products.length} product{products.length === 1 ? '' : 's'}</span>
+        <label className="relative block w-full sm:w-80"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input value={productSearch} onChange={(event) => setProductSearch(event.target.value)} placeholder="Search destination or product" className="h-11 w-full rounded-xl border border-border bg-surface pl-10 pr-3 text-sm text-ink" /></label>
       </div>
-      {productsLoading ? <div className="mt-5 rounded-2xl bg-surface-alt p-8 text-center text-sm text-muted">Loading joiner products…</div> : products.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-border p-8 text-center"><MapPinned className="mx-auto h-8 w-8 text-muted" /><p className="mt-3 text-sm font-black text-ink">No joiner products yet</p><button onClick={openCreateProduct} className="mt-2 text-xs font-black text-brand">Create the first joiner offer</button></div> : <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {products.filter((product: any) => product?.id).map((product: Service) => <article key={product.id} className="overflow-hidden rounded-2xl border border-border bg-surface-alt">
-          <div className="relative h-36 bg-slate-100 dark:bg-slate-800">
+      {productsLoading ? <div className="mt-5 rounded-2xl bg-surface-alt p-8 text-center text-sm text-muted">Loading joiner products…</div> : filteredProducts.length === 0 ? <div className="mt-5 rounded-2xl border border-dashed border-border p-8 text-center"><MapPinned className="mx-auto h-8 w-8 text-muted" /><p className="mt-3 text-sm font-black text-ink">No matching joiner products</p><button onClick={openCreateProduct} className="mt-2 text-xs font-black text-brand">Create a joiner offer</button></div> : <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+        {filteredProducts.map((product: Service) => <article key={product.id} className="overflow-hidden rounded-3xl border border-border bg-surface-alt transition hover:-translate-y-1 hover:shadow-xl">
+          <div className="relative h-48 bg-slate-100 dark:bg-slate-800">
             <ProductSlideshow images={product.images} alt={product.name} className="h-full w-full" />
             <div className="absolute right-2 top-2 flex gap-1 rounded-xl bg-black/60 p-1 backdrop-blur-sm">
               <button type="button" onClick={() => openEditProduct(product)} title="Edit product" className="grid h-7 w-7 place-items-center rounded-lg text-white hover:bg-white/20 transition"><Pencil className="h-3.5 w-3.5" /></button>

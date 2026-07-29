@@ -20,6 +20,8 @@ import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 import CharterBookingManager from './components/CharterBookingManager';
 import { getStorageUrl } from '../../utils';
+import PackageBuilderShell from './components/PackageBuilderShell';
+import PackageCatalogCard from './components/PackageCatalogCard';
 
 
 const getTomorrowStartEnd = () => {
@@ -318,6 +320,63 @@ export default function CharterSales() {
     phone: booking.lead_contact,
   }), [booking.lead_name, booking.lead_email, booking.lead_contact]);
 
+  if (planOpen) {
+    const closePlanBuilder = () => {
+      setPlanOpen(false);
+      setEditingRatePlanId(null);
+      setPlanForm(planInitial);
+    };
+    const selectedCatalogService = services.find(service => String(service.id) === planForm.service_id);
+    return (
+      <PackageBuilderShell
+        eyebrow="Studio · Charter rate plan builder"
+        title={editingRatePlanId ? 'Refine Charter Rate Plan' : 'Build & Launch Charter Rate Plan'}
+        description="Create the route product, vehicle class, distance engine, overtime pricing, and base-rate inclusions in one full operating canvas."
+        onCancel={closePlanBuilder}
+        onSave={() => savePlan.mutate()}
+        saveLabel={editingRatePlanId ? 'Save rate plan changes' : 'Save & launch rate plan'}
+        isSaving={savePlan.isPending}
+        preview={(
+          <div className="rounded-3xl bg-gradient-to-br from-amber-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
+            <span className="rounded-md bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Charter plan preview</span>
+            <div className="mt-5 h-40 overflow-hidden rounded-2xl bg-white/5">{selectedCatalogService?.images?.[0] ? <img src={getStorageUrl(selectedCatalogService.images[0])} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><Bus className="h-10 w-10 text-slate-500" /></div>}</div>
+            <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-amber-300">{planForm.vehicle_class || 'Vehicle class pending'}</p>
+            <h2 className="mt-1 text-xl font-black">{planForm.name || 'Untitled charter rate plan'}</h2>
+            <p className="mt-2 text-xs text-slate-300">{planForm.pickup_location || 'Pickup pending'} → {planForm.drop_off_location || 'Destination pending'}</p>
+            <div className="mt-5 space-y-3 border-t border-white/10 pt-4 text-xs">
+              <div className="flex justify-between"><span className="text-slate-400">Base price</span><strong className="text-lg text-amber-300">₱{computedBasePrice.toLocaleString()}</strong></div>
+              <div className="flex justify-between"><span className="text-slate-400">Minimum distance</span><strong>{planForm.min_km_basis || 0} km</strong></div>
+              <div className="flex justify-between"><span className="text-slate-400">Included time</span><strong>{planForm.included_hours || 0} hours</strong></div>
+            </div>
+            <Button onClick={() => savePlan.mutate()} disabled={savePlan.isPending || computedBasePrice === 0} className="mt-6 w-full !bg-amber-500 !text-white">{editingRatePlanId ? 'Save rate plan changes' : 'Save & launch rate plan'}</Button>
+          </div>
+        )}
+      >
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">1 · Product & vehicle identity</p><h2 className="mt-1 text-lg font-black text-ink">What customers will browse</h2></div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-xs font-bold text-muted md:col-span-2">Catalog service<select required value={planForm.service_id} onChange={e => setPlanForm({ ...planForm, service_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="">Select transport service…</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+            <label className="text-xs font-bold text-muted">Rate plan name<input required value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} placeholder="e.g. Deluxe Bus Charter — Daily Luzon" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
+            <label className="text-xs font-bold text-muted">Vehicle type<select value={planForm.vehicle_class} onChange={e => setPlanForm({ ...planForm, vehicle_class: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="bus">Tourist Bus (49 Seater)</option><option value="coaster">Coaster (28–30 Seater)</option><option value="van">Van (10–14 Seater)</option></select></label>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">2 · Route & distance engine</p><h2 className="mt-1 text-lg font-black text-ink">Pin the operating corridor</h2></div>
+          <div className="grid gap-4 md:grid-cols-2"><label className="text-xs font-bold text-muted">Pickup location<input required value={planForm.pickup_location} onChange={e => setPlanForm({ ...planForm, pickup_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label><label className="text-xs font-bold text-muted">Drop-off / destination<input required value={planForm.drop_off_location} onChange={e => setPlanForm({ ...planForm, drop_off_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label></div>
+          <TripLocationMapPicker pickupLocation={planForm.pickup_location || 'Manila Hub'} dropOffLocation={planForm.drop_off_location || 'Tagaytay City'} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm) => setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) }))} />
+          <div className="grid gap-4 rounded-2xl border border-blue-200 bg-blue-50/50 p-4 md:grid-cols-2 dark:border-blue-900 dark:bg-blue-950/20"><label className="text-xs font-bold text-muted">Rate per KM (₱)<input required type="number" min="0" step="0.01" value={planForm.rate_per_km} onChange={e => setPlanForm({ ...planForm, rate_per_km: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" /></label><label className="text-xs font-bold text-muted">Minimum billable KM<input required type="number" min="0" value={planForm.min_km_basis} onChange={e => setPlanForm({ ...planForm, min_km_basis: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" /></label></div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">3 · Rates & inclusions</p><h2 className="mt-1 text-lg font-black text-ink">Define billing beyond the base route</h2></div>
+          <div className="grid gap-4 md:grid-cols-4">{[['included_hours', 'Included hours'], ['extra_hour_rate', 'Extra hour rate'], ['extra_kilometer_rate', 'Extra KM rate'], ['overnight_rate', 'Overnight rate']].map(([key, label]) => <label key={key} className="text-xs font-bold text-muted">{label}<input type="number" min="0" value={(planForm as any)[key]} onChange={e => setPlanForm({ ...planForm, [key]: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>)}</div>
+          <div className="grid gap-3 rounded-2xl bg-surface-alt p-4 sm:grid-cols-4">{([['includes_driver', 'Driver fee'], ['includes_fuel', 'Fuel'], ['includes_tolls', 'Toll fees'], ['includes_parking', 'Parking fees']] as [string, string][]).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-xs font-bold text-ink"><input type="checkbox" checked={Boolean((planForm as any)[key])} onChange={e => setPlanForm({ ...planForm, [key]: e.target.checked })} className="h-4 w-4 rounded" />{label}</label>)}</div>
+        </section>
+      </PackageBuilderShell>
+    );
+  }
+
   return <div className="space-y-6">
     <header className="flex flex-col gap-4 rounded-3xl bg-[#071b33] p-6 text-white lg:flex-row lg:items-center lg:justify-between">
       <div>
@@ -333,7 +392,7 @@ export default function CharterSales() {
         <Button onClick={() => setBusAllocationModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider">
           <Bus className="mr-1.5 h-4 w-4" /> Multi-Bus & Seat Selector {busAllocations.length > 0 ? `(${busAllocations.length} Bus)` : ''}
         </Button>
-        <Button onClick={() => setPlanOpen(true)} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Rate Plan</Button>
+        <Button onClick={openCreatePlan} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Rate Plan</Button>
       </div>
     </header>
 
@@ -389,8 +448,33 @@ export default function CharterSales() {
             ))}
           </div>
 
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+            {filteredPlans.map(plan => (
+              <PackageCatalogCard
+                key={plan.id}
+                image={plan.service?.images?.[0]}
+                badge="Charter"
+                eyebrow={plan.vehicle_class || 'Fleet rental'}
+                title={plan.name}
+                description={plan.service?.description || `Includes ${plan.included_hours} hours and ${plan.included_kilometers} kilometers.`}
+                selected={String(plan.id) === booking.rate_plan_id}
+                facts={[
+                  { label: 'Base rate', value: `₱${Number(plan.base_price).toLocaleString()}`, icon: <Bus className="h-4 w-4" /> },
+                  { label: 'Included', value: `${plan.included_hours}h`, icon: <CalendarClock className="h-4 w-4" /> },
+                  { label: 'Distance', value: `${plan.included_kilometers} km`, icon: <LuMapPin className="h-4 w-4" /> },
+                ]}
+                actionLabel={String(plan.id) === booking.rate_plan_id ? 'Selected — continue below' : 'Configure this charter'}
+                onAction={() => {
+                  setBooking(current => ({ ...current, rate_plan_id: String(plan.id) }));
+                  setExpandedPlanId(plan.id);
+                }}
+                controls={<button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>}
+              />
+            ))}
+          </div>
+
           {/* Height-Bounded Scrollable Rate Plans List */}
-          <div className="max-h-[380px] overflow-y-auto custom-scrollbar space-y-3 pr-1.5">
+          <div className="hidden max-h-[380px] overflow-y-auto custom-scrollbar space-y-3 pr-1.5">
             {filteredPlans.length === 0 ? (
               <div className="py-12 text-center text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                 <LuBus className="w-8 h-8 mx-auto opacity-30 mb-2" />

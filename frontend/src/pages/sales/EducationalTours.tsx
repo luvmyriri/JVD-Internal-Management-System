@@ -22,6 +22,7 @@ import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker
 import EducationalBookingManager from './components/EducationalBookingManager';
 import { getStorageUrl } from '../../utils';
 import { billingApi } from '../../api/billing';
+import PackageCatalogCard from './components/PackageCatalogCard';
 
 
 
@@ -749,8 +750,33 @@ export default function EducationalTours() {
                   ))}
                 </div>
 
+                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                  {filteredPrograms.map(program => (
+                    <PackageCatalogCard
+                      key={program.id}
+                      image={program.images?.[0]}
+                      badge="Educational tour"
+                      eyebrow="Academic exposure"
+                      title={program.name}
+                      description={program.learning_objectives}
+                      selected={String(program.id) === booking.program_id}
+                      facts={[
+                        { label: 'Student rate', value: `₱${Number(program.student_price).toLocaleString()}`, icon: <GraduationCap className="h-4 w-4" /> },
+                        { label: 'Minimum', value: `${program.minimum_students || 20} pax`, icon: <Users className="h-4 w-4" /> },
+                        { label: 'Stops', value: `${program.default_stops?.length || 0} places`, icon: <LuCalendar className="h-4 w-4" /> },
+                      ]}
+                      actionLabel={String(program.id) === booking.program_id ? 'Selected — continue below' : 'Configure school booking'}
+                      onAction={() => {
+                        handleSelectProgram(program);
+                        setExpandedProgramId(program.id);
+                      }}
+                      controls={<button type="button" onClick={() => openEditProgram(program)} title="Edit program" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>}
+                    />
+                  ))}
+                </div>
+
                 {/* Height-Bounded Scrollable Catalog Items List */}
-                <div className="max-h-[380px] overflow-y-auto custom-scrollbar space-y-3 pr-1.5">
+                <div className="hidden max-h-[380px] overflow-y-auto custom-scrollbar space-y-3 pr-1.5">
                   {filteredPrograms.length === 0 ? (
                     <div className="py-12 text-center text-gray-400 bg-white dark:bg-gray-800/40 rounded-2xl border border-dashed border-gray-200 dark:border-gray-700">
                       <LuBookOpen className="w-8 h-8 mx-auto opacity-30 mb-2" />

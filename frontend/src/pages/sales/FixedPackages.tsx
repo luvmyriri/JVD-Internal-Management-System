@@ -18,12 +18,13 @@ import {
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
-import { Button, Modal } from '../../components/ds';
+import { Button } from '../../components/ds';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
 import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
 import ItineraryBuilder from './components/ItineraryBuilder';
 import type { ItineraryDayInput } from '../../api/contracts';
+import PackageBuilderShell from './components/PackageBuilderShell';
 
 
 interface PackageForm {
@@ -211,8 +212,9 @@ export default function FixedPackages() {
         ? billingApi.updateService(editingId, payload as any)
         : billingApi.createService(payload as any);
     },
-    onSuccess: async () => {
-      const checkoutServiceId = continueAfterSave ? editingId : null;
+    onSuccess: async (response: any) => {
+      const savedId = editingId ?? response?.data?.data?.id;
+      const checkoutServiceId = continueAfterSave ? savedId : null;
       await queryClient.invalidateQueries({ queryKey: ['billing-services'] });
       toast.success(checkoutServiceId ? 'Package completed. Continue with the customer booking.' : editingId ? 'Private package updated' : 'Private package created');
       closeForm();
@@ -239,6 +241,92 @@ export default function FixedPackages() {
     { title: 'Bus & van charters', description: 'Rate plan, route, vehicle capacity, driver and availability validation.', icon: Bus, route: '/sales/charters', accent: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30' },
     { title: 'Educational tours', description: 'School program, supervision ratios and multi-vehicle allocation.', icon: GraduationCap, route: '/sales/educational-tours', accent: 'text-amber-600 bg-amber-50 dark:bg-amber-950/30' },
   ];
+
+  if (formOpen) {
+    const saveLabel = continueAfterSave ? 'Save & build customer booking' : editingId ? 'Save package changes' : 'Save & launch package';
+    const imagePicker = () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = (event: any) => Array.from(event.target.files as FileList).forEach((file) => {
+        const reader = new FileReader();
+        reader.onload = () => setForm((current) => ({ ...current, images: [...current.images, String(reader.result)] }));
+        reader.readAsDataURL(file);
+      });
+      input.click();
+    };
+
+    return (
+      <PackageBuilderShell
+        eyebrow="Studio · Private tour package builder"
+        title={editingId ? 'Refine Private Tour Package' : 'Build & Launch Private Tour Package'}
+        description="Complete the destination, traveler rules, rates, itinerary, inclusions, validity, and imagery in one operating canvas."
+        onCancel={closeForm}
+        onSave={() => savePackage.mutate()}
+        saveLabel={saveLabel}
+        isSaving={savePackage.isPending}
+        preview={(
+          <div className="rounded-3xl bg-gradient-to-br from-blue-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
+            <span className="rounded-md bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Live package preview</span>
+            <div className="mt-5 overflow-hidden rounded-2xl bg-white/5">
+              {form.images[0] ? <img src={imageUrl(form.images[0])} alt="" className="h-40 w-full object-cover" /> : <div className="grid h-40 place-items-center text-slate-500"><ImagePlus className="h-9 w-9" /></div>}
+            </div>
+            <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-blue-300">{form.destination || 'Destination pending'}</p>
+            <h2 className="mt-1 text-xl font-black">{form.name || 'Untitled private tour package'}</h2>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{form.description || 'Add a customer-facing description.'}</p>
+            <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-4 text-xs">
+              <div><span className="block text-slate-400">Duration</span><strong>{form.durationDays || 0}D / {form.durationNights || 0}N</strong></div>
+              <div><span className="block text-slate-400">Travelers</span><strong>{form.minimumPax || 0}–{form.maximumPax || 0} pax</strong></div>
+              <div><span className="block text-slate-400">Adult rate</span><strong>₱{Number(parseMoneyInput(form.adultPrice || '0')).toLocaleString()}</strong></div>
+              <div><span className="block text-slate-400">Itinerary</span><strong>{itineraryDays.length} day(s)</strong></div>
+            </div>
+            <Button onClick={() => savePackage.mutate()} disabled={savePackage.isPending} className="mt-6 w-full !bg-amber-500 !text-white">{saveLabel}</Button>
+          </div>
+        )}
+      >
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">1 · Package identity & selling rules</p>
+            <h2 className="mt-1 text-lg font-black text-ink">What the customer is choosing</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <label className="text-xs font-bold text-muted md:col-span-2">Package name<input required className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Bohol Private Family Escape" /></label>
+            <label className="text-xs font-bold text-muted">Destination<input required className={inputClass} value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Default origin / meetup<input className={inputClass} value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Duration days<input required min="1" type="number" className={inputClass} value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Duration nights<input required min="0" type="number" className={inputClass} value={form.durationNights} onChange={(e) => setForm({ ...form, durationNights: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Minimum travelers<input required min="1" type="number" className={inputClass} value={form.minimumPax} onChange={(e) => setForm({ ...form, minimumPax: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Maximum travelers<input required min="1" type="number" className={inputClass} value={form.maximumPax} onChange={(e) => setForm({ ...form, maximumPax: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Adult package rate<input required inputMode="decimal" className={inputClass} value={form.adultPrice} onChange={(e) => setForm({ ...form, adultPrice: formatMoneyInput(e.target.value) })} /></label>
+            <label className="text-xs font-bold text-muted">Child package rate<input required inputMode="decimal" className={inputClass} value={form.childPrice} onChange={(e) => setForm({ ...form, childPrice: formatMoneyInput(e.target.value) })} /></label>
+            <label className="text-xs font-bold text-muted">Valid from<input type="date" className={inputClass} value={form.validFrom} onChange={(e) => setForm({ ...form, validFrom: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Valid until<input type="date" min={form.validFrom || undefined} className={inputClass} value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted">Minimum booking lead time (days)<input min="0" type="number" className={inputClass} value={form.bookingLeadDays} onChange={(e) => setForm({ ...form, bookingLeadDays: e.target.value })} /></label>
+            <label className="text-xs font-bold text-muted md:col-span-2">Customer-facing description<textarea required rows={4} className={textareaClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">2 · Day-by-day experience</p>
+            <h2 className="mt-1 text-lg font-black text-ink">Itinerary, inclusions & exclusions</h2>
+          </div>
+          <ItineraryBuilder value={itineraryDays} onChange={setItineraryDays} />
+          <InclusionsExclusionsEditor inclusions={inclusionsList} exclusions={exclusionsList} onChange={(inc, exc) => { setInclusionsList(inc); setExclusionsList(exc); }} />
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">3 · Merchandising</p><h2 className="mt-1 text-lg font-black text-ink">Package gallery & internal costing</h2></div>
+            <Button type="button" variant="ghost" onClick={imagePicker}><ImagePlus className="h-4 w-4" /> Add images</Button>
+          </div>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{form.images.map((image, index) => <div key={`${image}-${index}`} className="relative h-28 overflow-hidden rounded-2xl border border-border"><img src={imageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => setForm((current) => ({ ...current, images: current.images.filter((_, itemIndex) => itemIndex !== index) }))} className="absolute right-2 top-2 rounded-full bg-slate-950/75 p-1.5 text-white"><X className="h-3 w-3" /></button></div>)}</div>
+          {canManage && <label className="text-xs font-bold text-muted">Internal cost breakdown<textarea rows={4} className={textareaClass} value={form.costBreakdown} onChange={(e) => setForm({ ...form, costBreakdown: e.target.value })} /></label>}
+        </section>
+      </PackageBuilderShell>
+    );
+  }
 
   return (
     <div className="w-full space-y-6 pb-12">
@@ -284,7 +372,7 @@ export default function FixedPackages() {
               <div className="p-5">
                 <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-brand">{config.destination || 'Destination not set'}</p><h3 className="mt-1 text-lg font-black text-ink">{service.name}</h3></div>{canManage && <div className="flex gap-1"><button aria-label={`Edit ${service.name}`} onClick={() => openEdit(service)} className="rounded-lg p-2 text-muted hover:bg-blue-50 hover:text-brand"><Pencil className="h-4 w-4" /></button><button aria-label={`Remove ${service.name}`} onClick={() => { if (confirm(`Remove ${service.name}?`)) removePackage.mutate(service.id); }} className="rounded-lg p-2 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>}</div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{service.description || 'No description recorded.'}</p>
-                {isConfigured ? <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-surface p-3 text-center"><div><CalendarDays className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.duration_days}D / {config.duration_nights ?? 0}N</strong></div><div><UsersRound className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.minimum_pax}-{config.maximum_pax} pax</strong></div><div><span className="block text-[9px] font-black text-brand">ADULT</span><strong className="mt-1 block text-xs text-ink">₱{Number(service.adult_price ?? service.price).toLocaleString()}</strong></div></div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Legacy package needs destination, duration, traveler limits and itinerary before it can be sold.</div>}
+                {isConfigured ? <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-surface p-3 text-center"><div><CalendarDays className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.duration_days}D / {config.duration_nights ?? 0}N</strong></div><div><UsersRound className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.minimum_pax}-{config.maximum_pax} pax</strong></div><div><span className="block text-[9px] font-black text-brand">ADULT</span><strong className="mt-1 block text-xs text-ink">₱{Number(service.adult_price ?? service.price).toLocaleString()}</strong></div></div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Complete the destination, duration, traveler limits, and itinerary before publishing this package.</div>}
                 <Button disabled={!isConfigured && !canManage} onClick={() => isConfigured ? sellPackage(service) : openEdit(service, true)} className="mt-4 w-full">{isConfigured ? 'Book for a customer' : canManage ? 'Complete package and continue' : 'Package setup required'} <ArrowRight className="h-4 w-4" /></Button>
               </div>
             </article>;
@@ -292,47 +380,6 @@ export default function FixedPackages() {
         </div>}
       </section>
 
-      <Modal isOpen={formOpen} onClose={closeForm} title={editingId ? 'Edit private tour package' : 'Create private tour package'} size="lg" footer={null}>
-        <form onSubmit={(event) => { event.preventDefault(); savePackage.mutate(); }} className="space-y-6 py-2">
-          <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 text-xs leading-5 text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">This form is only for private tour packages. It does not create joiner seats, charter allocations, school programs, or travel-assistance cases.</div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-xs font-bold text-muted md:col-span-2">Package name<input required className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Bohol Private Family Escape" /></label>
-            <label className="text-xs font-bold text-muted">Destination<input required className={inputClass} value={form.destination} onChange={(e) => setForm({ ...form, destination: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Default origin / meetup<input className={inputClass} value={form.origin} onChange={(e) => setForm({ ...form, origin: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Duration days<input required min="1" type="number" className={inputClass} value={form.durationDays} onChange={(e) => setForm({ ...form, durationDays: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Duration nights<input required min="0" type="number" className={inputClass} value={form.durationNights} onChange={(e) => setForm({ ...form, durationNights: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Minimum travelers<input required min="1" type="number" className={inputClass} value={form.minimumPax} onChange={(e) => setForm({ ...form, minimumPax: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Maximum travelers<input required min="1" type="number" className={inputClass} value={form.maximumPax} onChange={(e) => setForm({ ...form, maximumPax: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Adult package rate<input required inputMode="decimal" className={inputClass} value={form.adultPrice} onChange={(e) => setForm({ ...form, adultPrice: formatMoneyInput(e.target.value) })} /></label>
-            <label className="text-xs font-bold text-muted">Child package rate<input required inputMode="decimal" className={inputClass} value={form.childPrice} onChange={(e) => setForm({ ...form, childPrice: formatMoneyInput(e.target.value) })} /></label>
-            <label className="text-xs font-bold text-muted">Valid from<input type="date" className={inputClass} value={form.validFrom} onChange={(e) => setForm({ ...form, validFrom: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Valid until<input type="date" min={form.validFrom || undefined} className={inputClass} value={form.validUntil} onChange={(e) => setForm({ ...form, validUntil: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted">Minimum booking lead time (days)<input min="0" type="number" className={inputClass} value={form.bookingLeadDays} onChange={(e) => setForm({ ...form, bookingLeadDays: e.target.value })} /></label>
-            <label className="text-xs font-bold text-muted md:col-span-2">Customer-facing description<textarea required rows={3} className={textareaClass} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
-            <div className="md:col-span-2 space-y-4 pt-2">
-              <div className="rounded-2xl border border-border bg-surface p-4">
-                <p className="text-xs font-black uppercase text-brand mb-2">Structured Daily Itinerary</p>
-                <ItineraryBuilder value={itineraryDays} onChange={setItineraryDays} />
-              </div>
-
-              <div className="rounded-2xl border border-border bg-surface p-4">
-                <InclusionsExclusionsEditor
-                  inclusions={inclusionsList}
-                  exclusions={exclusionsList}
-                  onChange={(inc, exc) => {
-                    setInclusionsList(inc);
-                    setExclusionsList(exc);
-                  }}
-                />
-              </div>
-            </div>
-            {canManage && <label className="text-xs font-bold text-muted md:col-span-2">Internal cost breakdown<textarea rows={3} className={textareaClass} value={form.costBreakdown} onChange={(e) => setForm({ ...form, costBreakdown: e.target.value })} /></label>}
-          </div>
-
-          <div><div className="flex items-center justify-between"><p className="text-xs font-bold text-muted">Package images</p><Button type="button" variant="ghost" onClick={() => { const input = document.createElement('input'); input.type = 'file'; input.accept = 'image/*'; input.multiple = true; input.onchange = (event: any) => Array.from(event.target.files as FileList).forEach((file) => { const reader = new FileReader(); reader.onload = () => setForm((current) => ({ ...current, images: [...current.images, String(reader.result)] })); reader.readAsDataURL(file); }); input.click(); }}><ImagePlus className="h-4 w-4" /> Add images</Button></div><div className="mt-3 flex flex-wrap gap-3">{form.images.map((image, index) => <div key={`${image}-${index}`} className="relative h-20 w-24 overflow-hidden rounded-xl border border-border"><img src={imageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => setForm((current) => ({ ...current, images: current.images.filter((_, itemIndex) => itemIndex !== index) }))} className="absolute right-1 top-1 rounded-full bg-slate-950/70 p-1 text-white"><X className="h-3 w-3" /></button></div>)}</div></div>
-          <div className="flex justify-end gap-3 border-t border-border pt-5"><Button type="button" variant="ghost" onClick={closeForm}>Cancel</Button><Button type="submit" disabled={savePackage.isPending}>{savePackage.isPending ? 'Saving...' : continueAfterSave ? 'Save and build customer booking' : editingId ? 'Save package' : 'Create package'}</Button></div>
-        </form>
-      </Modal>
     </div>
   );
 }
