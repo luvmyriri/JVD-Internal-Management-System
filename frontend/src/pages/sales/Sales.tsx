@@ -64,7 +64,7 @@ export default function Sales() {
         days_until: diffDays,
         is_nearing: diffDays >= 0 && diffDays <= 7,
         needs_fleet: !d.bus || !d.driver,
-        route: `/sales/departures`,
+        route: `/sales/departures?manage_id=${d.id}`,
       });
     });
 
@@ -85,7 +85,7 @@ export default function Sales() {
         days_until: diffDays,
         is_nearing: diffDays >= 0 && diffDays <= 7,
         needs_fleet: !c.bus || !c.driver,
-        route: `/sales/charters`,
+        route: `/sales/charters?manage_id=${c.id}`,
       });
     });
 
@@ -107,9 +107,10 @@ export default function Sales() {
         days_until: diffDays,
         is_nearing: diffDays >= 0 && diffDays <= 7,
         needs_fleet: !hasVehicles,
-        route: `/sales/educational-tours`,
+        route: `/sales/educational-tours?manage_id=${e.id}`,
       });
     });
+
 
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
   }, [departures, charterBookings, educationalBookings]);

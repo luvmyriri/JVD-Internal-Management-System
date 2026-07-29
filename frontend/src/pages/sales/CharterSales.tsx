@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { ArrowLeft, Bus, CalendarClock, CheckCircle2, Plus, UsersRound, UserRound, Sparkles, Users, Pencil } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -80,12 +81,26 @@ export default function CharterSales() {
   const { data: bookings = [] } = useQuery({ queryKey: ['charter-bookings'], queryFn: charterApi.bookings });
   const { data: serviceResponse } = useQuery({ queryKey: ['billing-services'], queryFn: billingApi.getServices });
 
+  const [searchParams] = useSearchParams();
+  const manageId = searchParams.get('manage_id');
+  const [viewRatePlanModal, setViewRatePlanModal] = useState<CharterRatePlan | null>(null);
+
   // Auto-select first rate plan if none selected
   useEffect(() => {
     if (plans.length > 0 && !booking.rate_plan_id) {
       setBooking(b => ({ ...b, rate_plan_id: String(plans[0].id) }));
     }
   }, [plans, booking.rate_plan_id]);
+
+  useEffect(() => {
+    if (manageId && plans.length > 0) {
+      const match = plans.find(p => String(p.id) === manageId);
+      if (match) {
+        openEditRatePlan(match);
+      }
+    }
+  }, [manageId, plans]);
+
 
   const services = useMemo(() => {
     const items = (serviceResponse?.data?.data ?? []) as Service[];

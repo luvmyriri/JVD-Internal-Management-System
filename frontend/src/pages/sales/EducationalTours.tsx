@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import { ArrowLeft, Bus, CheckCircle2, GraduationCap, Pencil, Plus, Printer, Users } from 'lucide-react';
 
 import toast from 'react-hot-toast';
@@ -127,9 +128,23 @@ export default function EducationalTours() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
 
+  const [searchParams] = useSearchParams();
+  const manageId = searchParams.get('manage_id');
   const { data: programs = [] } = useQuery({ queryKey: ['educational-programs'], queryFn: educationalTourApi.programs });
+  const { data: bookings = [] } = useQuery({ queryKey: ['educational-bookings'], queryFn: educationalTourApi.bookings });
+
+
+  useEffect(() => {
+    if (manageId && programs.length > 0) {
+      const match = programs.find(p => String(p.id) === manageId);
+      if (match) {
+        openEditProgram(match);
+      }
+    }
+  }, [manageId, programs]);
 
   const filteredPrograms = useMemo(() => {
+
     return programs.filter(program => {
       const q = searchQuery.trim().toLowerCase();
       const matchesSearch = !q || [
@@ -234,6 +249,19 @@ export default function EducationalTours() {
       stops: (program.default_stops || []).join('\n'),
     }));
   };
+
+  const openEditProgram = (program: any) => {
+    setEditingProgramId(program.id);
+    setProgramForm({
+      name: program.name,
+      student_price: String(program.student_price),
+      additional_chaperone_price: String(program.additional_chaperone_price),
+      default_stops: (program.default_stops || []).join('\n'),
+      minimum_students: String(program.minimum_students || 20),
+    } as any);
+    setProgramOpen(true);
+  };
+
 
   // Auto-select first program if none selected
   useEffect(() => {

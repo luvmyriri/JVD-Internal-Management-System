@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Bus, CalendarPlus, ChevronLeft, ChevronRight, Clock3, Eye, ImagePlus, MapPinned, Pencil, Plus, TicketCheck, Trash2, UserRound, UsersRound, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
 import { catalogApi, type JoinerDeparture } from '../../api/catalog';
@@ -138,11 +139,26 @@ export default function JoinerDepartures() {
   const [productOpen, setProductOpen] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [productForm, setProductForm] = useState(initialProduct);
+  const [searchParams] = useSearchParams();
+  const manageId = searchParams.get('manage_id');
+  const [viewProduct, setViewProduct] = useState<Service | null>(null);
+  const [viewDeparture, setViewDeparture] = useState<JoinerDeparture | null>(null);
+
   const { data: rawDepartures, isLoading } = useQuery({ queryKey: ['joiner-departures', 'upcoming'], queryFn: catalogApi.getJoinerDepartures });
   const departures = useMemo(() => {
     const list = Array.isArray(rawDepartures) ? rawDepartures : [];
     return list.filter(d => d && typeof d === 'object' && d.id);
   }, [rawDepartures]);
+
+  useEffect(() => {
+    if (manageId && departures.length > 0) {
+      const match = departures.find(d => String(d.id) === manageId);
+      if (match) {
+        openEditDeparture(match);
+      }
+    }
+  }, [manageId, departures]);
+
 
   const { data: servicesResponse, isLoading: productsLoading } = useQuery({ queryKey: ['billing-services'], queryFn: billingApi.getServices });
   const availabilityWindowValid = Boolean(form.starts_at && form.ends_at && form.ends_at > form.starts_at);
