@@ -34,6 +34,14 @@ class CharterController extends Controller
         return response()->json(['data' => $plan->load('service:id,name,description')], 201);
     }
 
+    public function updateRatePlan(StoreCharterRatePlanRequest $request, CharterRatePlan $ratePlan)
+    {
+        $data = $request->validated();
+        $ratePlan->update($data);
+        return response()->json(['data' => $ratePlan->fresh()->load('service:id,name,description')]);
+    }
+
+
     public function bookings()
     {
         return response()->json(['data' => CharterBooking::with(['ratePlan.service', 'bus', 'driver', 'invoice:id,invoice_number,status,balance'])->orderByDesc('starts_at')->limit(100)->get()]);

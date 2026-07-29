@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
             Route::post('/joiner-reservations/{reservation}/confirm', [JoinerDepartureController::class, 'confirm'])->name('sales.joiner-reservations.confirm');
             Route::post('/charter-rate-plans', [CharterController::class, 'storeRatePlan'])->name('sales.charters.rate-plans.store');
+            Route::put('/charter-rate-plans/{ratePlan}', [CharterController::class, 'updateRatePlan'])->name('sales.charters.rate-plans.update');
+
             Route::post('/charter-bookings', [CharterController::class, 'storeBooking'])->name('sales.charters.bookings.store');
             Route::post('/educational-programs', [EducationalTourController::class, 'storeProgram'])->name('sales.educational.programs.store');
             Route::put('/educational-programs/{program}', [EducationalTourController::class, 'updateProgram'])->name('sales.educational.programs.update');

@@ -1,10 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Bus, CalendarClock, CheckCircle2, Plus, UsersRound, UserRound, Sparkles, Users } from 'lucide-react';
+import { ArrowLeft, Bus, CalendarClock, CheckCircle2, Plus, UsersRound, UserRound, Sparkles, Users, Pencil } from 'lucide-react';
+
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
-import { charterApi } from '../../api/charters';
+import { charterApi, type CharterRatePlan } from '../../api/charters';
+
 import { Button, Modal } from '../../components/ds';
 import BusLayout from '../../components/ui/BusLayout';
 import SalesCheckout, { type CartItem } from './SalesCheckout';
@@ -183,7 +185,72 @@ export default function CharterSales() {
     return Math.round(rate * minKm);
   }, [planForm.rate_per_km, planForm.min_km_basis]);
 
-  const createPlan = useMutation({ mutationFn: () => charterApi.createRatePlan({ service_id: Number(planForm.service_id), name: planForm.name, vehicle_class: planForm.vehicle_class, base_price: computedBasePrice, included_hours: Number(planForm.included_hours), included_kilometers: Number(planForm.min_km_basis), extra_hour_rate: Number(planForm.extra_hour_rate), extra_kilometer_rate: Number(planForm.extra_kilometer_rate), overnight_rate: Number(planForm.overnight_rate), includes_driver: planForm.includes_driver, includes_fuel: planForm.includes_fuel, includes_tolls: planForm.includes_tolls, includes_parking: planForm.includes_parking, rate_per_km: Number(planForm.rate_per_km) }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] }); setPlanOpen(false); setPlanForm(planInitial); toast.success('Charter rate plan created'); }, onError: (error: any) => toast.error(error?.response?.data?.message ?? 'Rate plan could not be created') });
+  const [editingRatePlanId, setEditingRatePlanId] = useState<number | null>(null);
+
+  const openCreatePlan = () => {
+    setEditingRatePlanId(null);
+    setPlanForm(planInitial);
+    setPlanOpen(true);
+  };
+
+  const openEditRatePlan = (plan: CharterRatePlan) => {
+    setEditingRatePlanId(plan.id);
+    const ratePerKm = (plan as any).rate_per_km ?? (plan.base_price && plan.included_kilometers ? Math.round(plan.base_price / plan.included_kilometers) : 100);
+    setPlanForm({
+      service_id: String(plan.service_id),
+      name: plan.name,
+      vehicle_class: plan.vehicle_class,
+      rate_per_km: String(ratePerKm),
+      min_km_basis: String(plan.included_kilometers || 50),
+      pickup_location: '',
+      drop_off_location: '',
+      included_hours: String(plan.included_hours || 10),
+      extra_hour_rate: String(plan.extra_hour_rate || 500),
+      extra_kilometer_rate: String(plan.extra_kilometer_rate || 80),
+      overnight_rate: String(plan.overnight_rate || 2500),
+      includes_driver: plan.includes_driver ?? true,
+      includes_fuel: plan.includes_fuel ?? true,
+      includes_tolls: plan.includes_tolls ?? false,
+      includes_parking: plan.includes_parking ?? false,
+    });
+    setPlanOpen(true);
+  };
+
+
+  const savePlan = useMutation({
+    mutationFn: () => {
+      const payload = {
+        service_id: Number(planForm.service_id),
+        name: planForm.name,
+        vehicle_class: planForm.vehicle_class,
+        base_price: computedBasePrice,
+        included_hours: Number(planForm.included_hours),
+        included_kilometers: Number(planForm.min_km_basis),
+        extra_hour_rate: Number(planForm.extra_hour_rate),
+        extra_kilometer_rate: Number(planForm.extra_kilometer_rate),
+        overnight_rate: Number(planForm.overnight_rate),
+        includes_driver: planForm.includes_driver,
+        includes_fuel: planForm.includes_fuel,
+        includes_tolls: planForm.includes_tolls,
+        includes_parking: planForm.includes_parking,
+        rate_per_km: Number(planForm.rate_per_km),
+      };
+
+      if (editingRatePlanId) {
+        return charterApi.updateRatePlan(editingRatePlanId, payload);
+      }
+      return charterApi.createRatePlan(payload);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] });
+      setPlanOpen(false);
+      setEditingRatePlanId(null);
+      setPlanForm(planInitial);
+      toast.success(editingRatePlanId ? 'Charter rate plan updated' : 'Charter rate plan created');
+    },
+    onError: (error: any) => toast.error(error?.response?.data?.message ?? 'Rate plan could not be saved'),
+  });
+
 
   // Uniform Cart item construction
   const cart: CartItem[] = useMemo(() => {
@@ -621,8 +688,9 @@ export default function CharterSales() {
       packageName={selectedPlan?.name || 'Bus Charter Service'}
     />
 
-    <Modal isOpen={planOpen} onClose={() => setPlanOpen(false)} title="Create Charter Rate Plan" size="lg" footer={null}>
-      <form onSubmit={e => { e.preventDefault(); createPlan.mutate(); }} className="space-y-5 py-2">
+    <Modal isOpen={planOpen} onClose={() => { setPlanOpen(false); setEditingRatePlanId(null); }} title={editingRatePlanId ? "Edit Charter Rate Plan" : "Create Charter Rate Plan"} size="lg" footer={null}>
+      <form onSubmit={e => { e.preventDefault(); savePlan.mutate(); }} className="space-y-5 py-2">
+
 
         {/* Catalog Service + Plan Name */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -759,11 +827,12 @@ export default function CharterSales() {
         </div>
 
         <div className="flex justify-end gap-3 border-t border-border pt-4">
-          <Button type="button" variant="ghost" onClick={() => setPlanOpen(false)}>Cancel</Button>
-          <Button type="submit" disabled={createPlan.isPending || computedBasePrice === 0}>
-            {createPlan.isPending ? 'Creating…' : `Create Rate Plan — ₱${computedBasePrice.toLocaleString()} base`}
+          <Button type="button" variant="ghost" onClick={() => { setPlanOpen(false); setEditingRatePlanId(null); }}>Cancel</Button>
+          <Button type="submit" disabled={savePlan.isPending || computedBasePrice === 0}>
+            {savePlan.isPending ? (editingRatePlanId ? 'Saving…' : 'Creating…') : (editingRatePlanId ? `Save Changes — ₱${computedBasePrice.toLocaleString()} base` : `Create Rate Plan — ₱${computedBasePrice.toLocaleString()} base`)}
           </Button>
         </div>
+
       </form>
     </Modal>
   </div>;
