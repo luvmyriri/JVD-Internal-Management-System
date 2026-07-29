@@ -70,8 +70,11 @@ class JoinerDepartureController extends Controller
         $serviceNameForCode = Service::find($data['service_id'])?->name;
 
         $departure = DB::transaction(function () use ($data, $seatCodes, $request, $serviceNameForCode) {
-            $code = SalesReferenceService::generate('JNR', $serviceNameForCode, $data['starts_at']);
+            $code = !empty($data['code'])
+                ? $data['code']
+                : SalesReferenceService::generate('JNR', $serviceNameForCode, $data['starts_at']);
             $departure = JoinerDeparture::create([...$data, 'code' => $code, 'timezone' => $data['timezone'] ?? 'Asia/Manila', 'status' => $data['status'] ?? 'draft', 'created_by' => $request->user()->id]);
+
             foreach ($seatCodes as $seatCode) {
                 JoinerDepartureSeat::create(['departure_id' => $departure->id, 'seat_code' => $seatCode]);
             }

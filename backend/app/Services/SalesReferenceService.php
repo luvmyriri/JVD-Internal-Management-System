@@ -116,13 +116,21 @@ class SalesReferenceService
 
         foreach (self::REF_COLUMNS as $table => $column) {
             try {
-                $max = DB::table($table)
+                $codes = DB::table($table)
                     ->where($column, 'like', $stem . '-%')
-                    ->selectRaw("MAX(CAST(SUBSTRING({$column}, ?) AS UNSIGNED)) as seq", [strlen($stem) + 2])
-                    ->value('seq');
+                    ->pluck($column);
 
-                if ($max > $maxFound) {
-                    $maxFound = (int) $max;
+                foreach ($codes as $code) {
+                    if (is_string($code)) {
+                        $parts = explode('-', $code);
+                        $lastPart = end($parts);
+                        if (is_numeric($lastPart)) {
+                            $seq = (int) $lastPart;
+                            if ($seq > $maxFound) {
+                                $maxFound = $seq;
+                            }
+                        }
+                    }
                 }
             } catch (\Throwable) {
                 // Table may not exist in test environments — skip gracefully
@@ -132,3 +140,4 @@ class SalesReferenceService
         return $maxFound + 1;
     }
 }
+
