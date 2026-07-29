@@ -78,7 +78,12 @@ class SalesLifecycleService
         }
         $available = (float) $creditNote->total_amount - (float) $creditNote->refunds()->whereNotIn('status', ['rejected', 'cancelled'])->sum('amount');
         $invoice = $creditNote->invoice;
-        $cashAvailable = max(0, ((float) $invoice->total_amount - (float) $invoice->balance) - (float) $invoice->refunded_amount);
+        $recordedPayments = (float) ($invoice->collection?->payments()->sum('amount') ?? 0);
+        $collected = min(
+            (float) $invoice->total_amount,
+            max($recordedPayments, (float) $invoice->amount_received)
+        );
+        $cashAvailable = max(0, $collected - (float) $invoice->refunded_amount);
         if ($amount <= 0 || $amount > min($available, $cashAvailable)) {
             throw ValidationException::withMessages(['amount' => 'Refund exceeds the posted credit or collected amount available.']);
         }

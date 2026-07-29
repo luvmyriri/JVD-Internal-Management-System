@@ -232,7 +232,7 @@ class Invoice extends Model
             'customer',
             'creator',
             'items.service',
-            'collection',
+            'collection.payments',
             'booking.bus',
             'booking.driver',
             'itineraries',
@@ -249,6 +249,9 @@ class Invoice extends Model
             'educationalTourBooking.vehicles.bus',
             'educationalTourBooking.vehicles.driver',
             'tripTicket',
+            'salesOrder.adjustments',
+            'salesOrder.creditNotes.refunds',
+            'salesOrder.refunds',
             'salesOrder.items.fulfillment' => function (MorphTo $morphTo): void {
                 $morphTo->morphWith([
                     PrivateTourBooking::class => ['bus', 'driver'],

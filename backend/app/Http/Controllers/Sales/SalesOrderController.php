@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
 use App\Models\CreditNote;
+use App\Models\Invoice;
 use App\Models\SalesOrder;
 use App\Models\SalesOrderAdjustment;
 use App\Models\SalesOrderItem;
@@ -86,6 +87,30 @@ class SalesOrderController extends Controller
         ]);
         $adjustment = $service->request($order,$data['type'],$data['reason'],$request->input('change_set',[]),$request->user()->id);
         return response()->json(['success'=>true,'message'=>'Lifecycle request submitted for approval.','data'=>$adjustment],201);
+    }
+
+    public function requestInvoiceCancellation(
+        Request $request,
+        Invoice $invoice,
+        SalesLifecycleService $lifecycleService,
+        SalesOrderService $orderService
+    ): JsonResponse
+    {
+        $data = $request->validate(['reason' => 'required|string|max:3000']);
+        $order = $invoice->salesOrder ?? $orderService->captureInvoice($invoice, $request->user()->id);
+        $adjustment = $lifecycleService->request(
+            $order,
+            'cancellation',
+            $data['reason'],
+            [],
+            $request->user()->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Cancellation submitted for approval. Any refundable payment requires a posted credit note.',
+            'data' => $adjustment,
+        ], 201);
     }
 
     public function approveAdjustment(Request $request, SalesOrderAdjustment $adjustment, SalesLifecycleService $service): JsonResponse

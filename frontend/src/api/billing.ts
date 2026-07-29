@@ -80,6 +80,8 @@ export interface Invoice {
   payment_method: string;
   payment_type?: string;
   balance?: number;
+  credited_amount?: number;
+  refunded_amount?: number;
   due_date?: string;
   status: string;
   notes?: string;
@@ -99,7 +101,27 @@ export interface Invoice {
   created_at: string;
   customer?: any;
   items?: InvoiceItem[];
-  collection?: any;
+  collection?: {
+    id: number;
+    invoice_id: number;
+    paid_amount?: number;
+    remaining_balance?: number;
+    collection_status?: string;
+    payments?: Array<{
+      id: number;
+      amount: number;
+      payment_method: string;
+      paymongo_payment_id?: string | null;
+    }>;
+  } | null;
+  sales_order?: {
+    id: number;
+    order_number: string;
+    status: string;
+    adjustments?: any[];
+    credit_notes?: any[];
+    refunds?: any[];
+  } | null;
 }
 
 export const billingApi = {

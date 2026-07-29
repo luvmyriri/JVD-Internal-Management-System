@@ -16,6 +16,7 @@ import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type
 import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import RefundWorkflowPanel from '../../components/accounting/RefundWorkflowPanel';
 
 const SERVICE_TYPES = [
   'Bus Rental',
@@ -67,120 +68,6 @@ function StatusBadge({ status }: { status: string }) {
       {icons[normalizedStatus] || icons.pending}
       {normalizedStatus.replace('_', ' ')}
     </span>
-  );
-}
-
-function RefundWorkflowPanel({ collection }: { collection: Collection }) {
-  const queryClient = useQueryClient();
-  const { user, hasPermission } = useAuth();
-  const order = (collection as any)?.invoice?.sales_order;
-  const adjustments = order?.adjustments ?? [];
-  const credits = order?.credit_notes ?? [];
-  const refunds = order?.refunds ?? [];
-  const cancellation = [...adjustments].reverse().find((item: any) => item.type === 'cancellation');
-  const credit = [...credits].reverse().find((item: any) => item.status === 'posted');
-  const refund = [...refunds].reverse()[0] ?? credit?.refunds?.slice?.(-1)?.[0];
-  const [refundFormOpen, setRefundFormOpen] = useState(false);
-  const [refundForm, setRefundForm] = useState({ amount: '', refund_method: 'Cash', reason: '' });
-  const [destinationReference, setDestinationReference] = useState('');
-  const canApproveRefunds = ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user?.role || '')
-    || hasPermission('sales', 'can_edit');
-  const hasPayMongoPayment = Boolean(collection.payments?.some(payment => payment.paymongo_payment_id));
-  const isPayMongo = String(refund?.refund_method || '').toLowerCase().includes('paymongo');
-
-  const action = useMutation({
-    mutationFn: async (kind: 'request-cancellation' | 'approve-cancellation' | 'request-refund' | 'approve-refund' | 'process-refund') => {
-      if (kind === 'request-cancellation') {
-        const reason = window.prompt('Reason for cancellation request:');
-        if (!reason?.trim()) throw new Error('cancelled');
-        return collectionApi.cancelAndRefund(collection.id, reason.trim());
-      }
-      if (kind === 'approve-cancellation') return collectionApi.approveAdjustment(cancellation.id);
-      if (kind === 'request-refund') {
-        const amount = Number(parseMoneyInput(refundForm.amount));
-        if (!amount || !refundForm.reason.trim()) throw new Error('Complete the refund amount and reason.');
-        if (refundForm.refund_method === 'PayMongo' && !hasPayMongoPayment) {
-          throw new Error('This collection has no settled PayMongo payment reference.');
-        }
-        return collectionApi.requestRefund(credit.id, {
-          amount,
-          refund_method: refundForm.refund_method,
-          reason: refundForm.reason.trim(),
-        });
-      }
-      if (kind === 'approve-refund') return collectionApi.approveRefund(refund.id);
-      return collectionApi.processApprovedRefund(refund.id, isPayMongo ? undefined : destinationReference.trim() || undefined);
-    },
-    onSuccess: async (response: any) => {
-      toast.success(response?.message ?? 'Refund workflow updated');
-      setRefundFormOpen(false);
-      await queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
-    onError: (error: any) => {
-      if (error?.message !== 'cancelled') toast.error(error?.response?.data?.message ?? error?.message ?? 'Refund workflow action failed');
-    },
-  });
-
-  if (!order && !(collection as any).invoice_id) return null;
-
-  return (
-    <div className="rounded-2xl border border-violet-200 bg-violet-50/60 p-4 dark:border-violet-900 dark:bg-violet-950/20">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-violet-600">Controlled cancellation & refund</p>
-          <p className="mt-1 text-xs font-bold text-gray-600 dark:text-gray-300">
-            {!cancellation && 'No cancellation request submitted.'}
-            {cancellation?.status === 'pending_approval' && 'Cancellation is waiting for approval.'}
-            {cancellation?.status === 'approved' && !credit && 'Cancellation approved; preparing credit note.'}
-            {credit && !refund && `Credit note ${credit.credit_note_number} posted. Refund may now be requested.`}
-            {refund?.status === 'pending_approval' && `Refund ${refund.refund_number} is waiting for approval.`}
-            {refund?.status === 'approved' && `Refund ${refund.refund_number} is approved and ready to process.`}
-            {refund?.status === 'processing' && `Refund ${refund.refund_number} was sent to PayMongo and is awaiting confirmation.`}
-            {refund?.status === 'provider_failed' && `PayMongo could not confirm refund ${refund.refund_number}. Verify it in PayMongo before taking another action.`}
-            {refund?.status === 'processed' && `Refund ${refund.refund_number} has been processed and posted to the ledger.`}
-          </p>
-          {refund?.provider_refund_id && <p className="mt-1 text-[11px] font-bold text-violet-700 dark:text-violet-300">PayMongo reference: {refund.provider_refund_id} · Provider status: {refund.provider_status || 'pending'}</p>}
-          {refund?.provider_error && <p className="mt-1 text-[11px] font-bold text-red-600">{refund.provider_error}</p>}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {!cancellation && (collection as any).invoice_id && <Button size="sm" onClick={() => action.mutate('request-cancellation')} isLoading={action.isPending}>Request cancellation</Button>}
-          {cancellation?.status === 'pending_approval' && canApproveRefunds && <Button size="sm" onClick={() => action.mutate('approve-cancellation')} isLoading={action.isPending}>Approve cancellation</Button>}
-          {credit && !refund && canApproveRefunds && <Button size="sm" onClick={() => {
-            setRefundForm({
-              amount: formatMoneyInput(String(credit.total_amount ?? collection.paid_amount ?? '')),
-              refund_method: hasPayMongoPayment ? 'PayMongo' : 'Cash',
-              reason: cancellation?.reason ?? 'Customer cancellation',
-            });
-            setRefundFormOpen(true);
-          }}>Request refund</Button>}
-          {refund?.status === 'pending_approval' && canApproveRefunds && <Button size="sm" onClick={() => action.mutate('approve-refund')} isLoading={action.isPending}>Approve refund</Button>}
-        </div>
-      </div>
-
-      {refundFormOpen && <div className="mt-4 grid gap-4 rounded-2xl border border-violet-200 bg-white p-4 dark:border-violet-800 dark:bg-slate-950 md:grid-cols-2">
-        <label className="text-xs font-bold text-muted">Refund amount
-          <input value={refundForm.amount} onChange={event => setRefundForm(current => ({ ...current, amount: formatMoneyInput(event.target.value) }))} inputMode="decimal" className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink" />
-        </label>
-        <label className="text-xs font-bold text-muted">Refund destination
-          <select value={refundForm.refund_method} onChange={event => setRefundForm(current => ({ ...current, refund_method: event.target.value }))} className="mt-1.5 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink">
-            <option value="Cash">Cash</option>
-            <option value="Bank Transfer">Bank transfer</option>
-            <option value="PayMongo" disabled={!hasPayMongoPayment}>PayMongo{!hasPayMongoPayment ? ' — no settled payment reference' : ''}</option>
-          </select>
-        </label>
-        <label className="text-xs font-bold text-muted md:col-span-2">Reason
-          <textarea value={refundForm.reason} onChange={event => setRefundForm(current => ({ ...current, reason: event.target.value }))} rows={3} className="mt-1.5 w-full rounded-xl border border-border bg-surface p-3 text-sm text-ink" />
-        </label>
-        <div className="flex justify-end gap-2 md:col-span-2"><Button size="sm" variant="secondary" onClick={() => setRefundFormOpen(false)}>Cancel</Button><Button size="sm" onClick={() => action.mutate('request-refund')} isLoading={action.isPending}>Submit for approval</Button></div>
-      </div>}
-
-      {refund?.status === 'approved' && canApproveRefunds && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/20">
-        <p className="text-xs font-black text-amber-900 dark:text-amber-200">Final processing</p>
-        <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">{isPayMongo ? 'This sends the approved amount to PayMongo. Accounting posts only after PayMongo confirms success.' : 'Record the cash voucher or bank transfer reference before posting the refund.'}</p>
-        {!isPayMongo && <input value={destinationReference} onChange={event => setDestinationReference(event.target.value)} placeholder="Voucher, bank, or transfer reference" className="mt-3 h-11 w-full rounded-xl border border-amber-300 bg-white px-3 text-sm text-ink dark:bg-slate-950" />}
-        <Button size="sm" onClick={() => action.mutate('process-refund')} isLoading={action.isPending} className="mt-3">{isPayMongo ? 'Send refund to PayMongo' : 'Process and post refund'}</Button>
-      </div>}
-    </div>
   );
 }
 
@@ -488,17 +375,6 @@ export default function Collections() {
     }
   });
 
-  const cancelRefundMutation = useMutation({
-    mutationFn: ({ id, reason }: { id: number; reason: string }) => collectionApi.cancelAndRefund(id, reason),
-    onSuccess: (res: any) => {
-      toast.success(res?.message || 'Cancellation submitted for approval');
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-    },
-    onError: (err: any) => {
-      toast.error(err?.response?.data?.message || 'Failed to cancel and refund');
-    }
-  });
-
   const sendSoaMutation = useMutation({
     mutationFn: (id: number) => collectionApi.sendSoa(id),
     onSuccess: (res: any) => {
@@ -514,11 +390,6 @@ export default function Collections() {
     if (window.confirm('Are you sure you want to confirm this transaction as fully paid? This will also mark the linked invoice as paid.')) {
       confirmMutation.mutate(id);
     }
-  };
-
-  const handleCancelRefund = (id: number) => {
-    const reason = window.prompt('Reason for cancellation request:');
-    if (reason?.trim()) cancelRefundMutation.mutate({ id, reason: reason.trim() });
   };
 
   const handleSendSoaEmail = (id: number) => {
@@ -666,16 +537,6 @@ export default function Collections() {
           >
             <LuEye className="w-4 h-4 mr-2" /> View Details
           </Button>
-          {coll.collection_status !== 'completed' && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
-              onClick={() => handleCancelRefund(coll.id)}
-            >
-              <LuX className="w-4 h-4 mr-1" /> Cancel / Void
-            </Button>
-          )}
         </div>
       ),
 
@@ -900,7 +761,7 @@ export default function Collections() {
               />
             </div>
 
-            <RefundWorkflowPanel collection={selectedCollection} />
+            {selectedCollection.invoice_id && <RefundWorkflowPanel invoiceId={selectedCollection.invoice_id} />}
 
             {/* Payments Table */}
             <div className="space-y-4">
@@ -943,15 +804,6 @@ export default function Collections() {
                         isLoading={confirmMutation.isPending}
                       >
                         <LuFileCheck className="w-4 h-4 mr-1" /> Confirm Transaction
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
-                        onClick={() => handleCancelRefund(selectedCollection.id)}
-                        isLoading={cancelRefundMutation.isPending}
-                      >
-                        <LuX className="w-4 h-4 mr-1" /> Request Cancellation
                       </Button>
                       <Button size="sm" onClick={() => setShowPaymentModal(true)}>
                         <LuPlus className="w-4 h-4 mr-1" /> Add Payment

@@ -42,6 +42,8 @@ class InvoiceResource extends JsonResource
             'payment_url' => $this->payment_url,
             'payment_type' => $this->payment_type,
             'balance' => $this->balance !== null ? (float) $this->balance : null,
+            'credited_amount' => (float) ($this->credited_amount ?? 0),
+            'refunded_amount' => (float) ($this->refunded_amount ?? 0),
             'due_date' => $this->due_date,
             'status' => $this->status,
             'notes' => $this->notes,
@@ -183,6 +185,26 @@ class InvoiceResource extends JsonResource
             ])),
             'custom_transaction_detail' => $this->whenLoaded('customTransactionDetail'),
             'collection' => $this->whenLoaded('collection'),
+            'sales_order' => $this->whenLoaded('salesOrder', function () use ($salesOrder) {
+                if (! $salesOrder) {
+                    return null;
+                }
+
+                return [
+                    'id' => $salesOrder->id,
+                    'order_number' => $salesOrder->order_number,
+                    'status' => $salesOrder->status,
+                    'adjustments' => $salesOrder->relationLoaded('adjustments')
+                        ? $salesOrder->adjustments->values()
+                        : [],
+                    'credit_notes' => $salesOrder->relationLoaded('creditNotes')
+                        ? $salesOrder->creditNotes->values()
+                        : [],
+                    'refunds' => $salesOrder->relationLoaded('refunds')
+                        ? $salesOrder->refunds->values()
+                        : [],
+                ];
+            }),
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'creator' => new UserResource($this->whenLoaded('creator')),
             'items' => $this->whenLoaded('items', function() {

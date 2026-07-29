@@ -12,6 +12,15 @@ import { Dropdown } from '../../components/ui';
 import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
 import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
+import RefundWorkflowPanel from '../../components/accounting/RefundWorkflowPanel';
+
+const refundableAmount = (invoice: Invoice) => Math.max(
+  0,
+  Math.max(
+    Number(invoice.amount_received ?? 0),
+    Number(invoice.collection?.paid_amount ?? 0)
+  ) - Number(invoice.refunded_amount ?? 0)
+);
 
 export default function Billing() {
   const { showPreview } = useEntityPreview();
@@ -217,6 +226,11 @@ export default function Billing() {
               </span>
             </div>
           )}
+          {Number(invoice.refunded_amount ?? 0) > 0 && (
+            <span className="mt-2 inline-flex rounded-md bg-violet-50 px-2 py-1 text-[8px] font-black uppercase tracking-widest text-violet-700 dark:bg-violet-950/30 dark:text-violet-300">
+              Refunded ₱{Number(invoice.refunded_amount).toLocaleString()}
+            </span>
+          )}
         </div>
       ),
     },
@@ -229,6 +243,9 @@ export default function Billing() {
           <Dropdown
             items={[
               { label: 'View Invoice', icon: <LuEye className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } },
+              ...(!invoice.cash_budget_request_id && refundableAmount(invoice) > 0
+                ? [{ label: 'Manage Refund', icon: <LuDollarSign className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } }]
+                : []),
               ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : []),
               ...(invoice.collection ? [{ label: 'View Collection', icon: <LuBanknote className="w-4 h-4" />, onClick: () => window.location.href = '/accounting/collections' }] : [])
             ]}
@@ -478,7 +495,7 @@ export default function Billing() {
       {/* Invoice Detail Modal */}
       {showModal && selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-950/80 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col border border-gray-100 dark:border-gray-800">
+          <div className="bg-white dark:bg-gray-900 w-full max-w-5xl rounded-[2.5rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col border border-gray-100 dark:border-gray-800">
 
             {/* Modal Header */}
             <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
@@ -492,6 +509,14 @@ export default function Billing() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {!selectedInvoice.cash_budget_request_id && refundableAmount(selectedInvoice) > 0 && (
+                  <button
+                    onClick={() => document.getElementById(`refund-workflow-${selectedInvoice.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    className="p-3 bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300 rounded-2xl hover:bg-violet-600 hover:text-white transition-all border border-violet-100 dark:border-violet-900/50 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
+                  >
+                    <LuDollarSign className="w-4 h-4" /> Manage refund
+                  </button>
+                )}
                 <button
                   onClick={() => window.print()}
                   className="p-3 bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 rounded-2xl hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white transition-all border border-blue-100 dark:border-blue-900/50 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
@@ -737,9 +762,16 @@ export default function Billing() {
                     <span>Remaining Balance</span>
                     <span>₱{Number(selectedInvoice.balance ?? (Number(selectedInvoice.total_amount) - Number(selectedInvoice.amount_received ?? 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
+                  {Number(selectedInvoice.refunded_amount ?? 0) > 0 && (
+                    <div className="flex justify-between text-[10px] font-black text-violet-600 dark:text-violet-300 uppercase tracking-widest pt-1">
+                      <span>Refunded</span>
+                      <span>₱{Number(selectedInvoice.refunded_amount ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              <RefundWorkflowPanel invoiceId={selectedInvoice.id} className="mt-10 no-print" />
 
               <div className="mt-10 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
                 <p className="text-[10px] text-gray-900 dark:text-white font-black uppercase tracking-widest mb-1">Thank you for choosing JVD Event and Travel Management Co.!</p>

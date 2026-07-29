@@ -58,6 +58,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/orders/{order}/adjustments', [SalesOrderController::class, 'requestAdjustment'])->name('sales.orders.adjustments.store');
         });
 
+        Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff|sales:create')->group(function () {
+            Route::post('/invoices/{invoice}/cancellation', [SalesOrderController::class, 'requestInvoiceCancellation'])->name('sales.invoices.cancellation');
+        });
+
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive|sales:edit')->group(function () {
             Route::post('/order-adjustments/{adjustment}/approve', [SalesOrderController::class, 'approveAdjustment'])->name('sales.adjustments.approve');
             Route::post('/order-adjustments/{adjustment}/reject', [SalesOrderController::class, 'rejectAdjustment'])->name('sales.adjustments.reject');
