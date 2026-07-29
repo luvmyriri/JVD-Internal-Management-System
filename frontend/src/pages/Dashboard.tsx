@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { DashboardErrorBoundary } from '../components/ui/DashboardErrorBoundary';
@@ -12,21 +12,6 @@ import OperationsDashboard from './dashboards/OperationsDashboard';
 import LogisticsDashboard from './dashboards/LogisticsDashboard';
 import ProcurementDashboard from './dashboards/ProcurementDashboard';
 import MaintenanceDashboard from './dashboards/MaintenanceDashboard';
-import CustomDashboard from './dashboards/CustomDashboard';
-
-// Map dashboard_preference string → component
-const DASHBOARD_MAP: Record<string, React.FC> = {
-  admin:        AdminDashboard,
-  accounting:   AccountingDashboard,
-  operations:   OperationsDashboard,
-  logistics:    LogisticsDashboard,
-  procurement:  ProcurementDashboard,
-  maintenance:  MaintenanceDashboard,
-  hr:           HRDashboard,
-  agent:        AgentDashboard,
-  driver:       DriverDashboard,
-  custom:       CustomDashboard,
-};
 
 function getDashboardForRole(role: string): React.FC {
   switch (role) {
@@ -53,7 +38,7 @@ function getDashboardForRole(role: string): React.FC {
     case 'driver':
       return DriverDashboard;
     default:
-      return () => null;
+      return AdminDashboard; // Fallback to Admin/System overview
   }
 }
 
@@ -94,19 +79,15 @@ function WelcomeFallback() {
 export default function Dashboard() {
   const { user } = useAuth();
 
+  useEffect(() => {
+    // Clear any stale custom view state so user's main dashboard is always their role dashboard
+    localStorage.removeItem('jvd_active_dashboard_view');
+  }, []);
+
   if (!user) return <LoadingScreen />;
 
-  const isCustomViewSaved = localStorage.getItem('jvd_active_dashboard_view') === 'custom';
-  const preferenceKey = user.dashboard_preference;
-  
-  const PreferredDashboard = (preferenceKey && DASHBOARD_MAP[preferenceKey])
-    ? DASHBOARD_MAP[preferenceKey]
-    : (isCustomViewSaved ? CustomDashboard : undefined);
-
-  const RoleDashboard = getDashboardForRole(user.role);
-  const DashboardComponent = PreferredDashboard ?? RoleDashboard;
-
-  const isNull = DashboardComponent === (() => null) || !DashboardComponent;
+  const DashboardComponent = getDashboardForRole(user.role);
+  const isNull = !DashboardComponent;
 
   return (
     <div className="space-y-6">
