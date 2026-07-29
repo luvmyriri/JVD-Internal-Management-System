@@ -51,6 +51,7 @@ import Payroll from './pages/hr/Payroll';
 import Users from './pages/admin/Users';
 import AuditLogs from './pages/admin/AuditLogs';
 import Settings from './pages/admin/Settings';
+import DashboardCustomizerPage from './pages/admin/DashboardCustomizerPage';
 import RolePermissions from './pages/admin/RolePermissions';
 import DriverSchedule from './pages/driver/Schedule';
 import DriverTrips from './pages/driver/Trips';
@@ -198,6 +199,8 @@ export default function App() {
                 <Route path="/admin/users" element={<AdminRoute path="/admin/users"><Users /></AdminRoute>} />
                 <Route path="/admin/audit-logs" element={<AdminRoute path="/admin/audit-logs"><AuditLogs /></AdminRoute>} />
                 <Route path="/admin/settings" element={<AdminRoute path="/admin/settings"><Settings /></AdminRoute>} />
+                <Route path="/settings/dashboard-customizer" element={<DashboardCustomizerPage />} />
+                <Route path="/dashboard/customize" element={<Navigate to="/settings/dashboard-customizer" replace />} />
                 <Route path="/admin/role-permissions" element={<AdminRoute path="/admin/role-permissions"><RolePermissions /></AdminRoute>} />
 
                 {/* Driver */}

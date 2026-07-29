@@ -1,4 +1,4 @@
-import { useState, Suspense } from 'react';
+import { Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { DashboardErrorBoundary } from '../components/ui/DashboardErrorBoundary';
@@ -13,7 +13,6 @@ import LogisticsDashboard from './dashboards/LogisticsDashboard';
 import ProcurementDashboard from './dashboards/ProcurementDashboard';
 import MaintenanceDashboard from './dashboards/MaintenanceDashboard';
 import CustomDashboard from './dashboards/CustomDashboard';
-import { LuLayoutGrid, LuSparkles } from 'react-icons/lu';
 
 // Map dashboard_preference string → component
 const DASHBOARD_MAP: Record<string, React.FC> = {
@@ -95,20 +94,15 @@ function WelcomeFallback() {
 export default function Dashboard() {
   const { user } = useAuth();
 
-  const [viewMode, setViewMode] = useState<'default' | 'custom'>(() => {
-    const saved = localStorage.getItem('jvd_active_dashboard_view');
-    return saved === 'custom' ? 'custom' : 'default';
-  });
-
-  const handleViewChange = (mode: 'default' | 'custom') => {
-    setViewMode(mode);
-    localStorage.setItem('jvd_active_dashboard_view', mode);
-  };
-
   if (!user) return <LoadingScreen />;
 
+  const isCustomViewSaved = localStorage.getItem('jvd_active_dashboard_view') === 'custom';
   const preferenceKey = user.dashboard_preference;
-  const PreferredDashboard = preferenceKey ? DASHBOARD_MAP[preferenceKey] : undefined;
+  
+  const PreferredDashboard = (preferenceKey && DASHBOARD_MAP[preferenceKey])
+    ? DASHBOARD_MAP[preferenceKey]
+    : (isCustomViewSaved ? CustomDashboard : undefined);
+
   const RoleDashboard = getDashboardForRole(user.role);
   const DashboardComponent = PreferredDashboard ?? RoleDashboard;
 
@@ -116,43 +110,9 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Top View Selector Bar */}
-      <div className="flex items-center justify-between bg-white dark:bg-gray-900 p-2.5 px-4 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm">
-        <div className="flex items-center gap-1.5 bg-gray-100 dark:bg-gray-800 p-1 rounded-xl">
-          <button
-            type="button"
-            onClick={() => handleViewChange('default')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'default'
-                ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <LuLayoutGrid size={14} /> Module View
-          </button>
-          <button
-            type="button"
-            onClick={() => handleViewChange('custom')}
-            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              viewMode === 'custom'
-                ? 'bg-white dark:bg-gray-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            <LuSparkles size={14} /> My Custom Dashboard
-          </button>
-        </div>
-
-        <span className="text-[11px] font-medium text-gray-400 hidden sm:inline-block">
-          {viewMode === 'custom' ? 'Interactive Card Workspace' : 'Role Default Dashboard'}
-        </span>
-      </div>
-
       <DashboardErrorBoundary title="Dashboard failed to load">
         <Suspense fallback={<LoadingScreen />}>
-          {viewMode === 'custom' ? (
-            <CustomDashboard />
-          ) : isNull ? (
+          {isNull ? (
             <WelcomeFallback />
           ) : (
             <DashboardComponent />

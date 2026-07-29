@@ -771,6 +771,24 @@ export default function Settings() {
         </div>
       )}
 
+      {/* Dedicated Dashboard Customizer Section */}
+      <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-100 dark:border-gray-800 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+        <div>
+          <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-tight flex items-center gap-2">
+            <LuSparkles className="w-5 h-5 text-blue-500" /> Personal Dashboard Cards Customizer
+          </h3>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            Open the dedicated workspace page to add, remove, and arrange dashboard cards across system modules.
+          </p>
+        </div>
+        <button
+          onClick={() => navigate('/settings/dashboard-customizer')}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-2xl shadow-md shadow-blue-500/20 transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+        >
+          <LuSparkles size={16} /> Open Dashboard Customizer
+        </button>
+      </div>
+
       {/* Version Footer */}
       <div className="text-center pt-4">
         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">JVD ETMC v1.2.0-stable</p>
