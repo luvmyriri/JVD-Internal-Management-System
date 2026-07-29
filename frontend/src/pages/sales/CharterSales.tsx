@@ -24,7 +24,7 @@ const getTomorrowStartEnd = () => {
 };
 
 const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: '', passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
-const planInitial = { service_id: '', name: '', vehicle_class: 'bus', base_price: '', included_hours: '12', included_kilometers: '100', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
+const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '100', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
 export default function CharterSales() {
   const navigate = useNavigate();
@@ -149,7 +149,14 @@ export default function CharterSales() {
 
   const { data: pricing } = useQuery({ queryKey: ['charter-quote', booking.rate_plan_id, booking.starts_at, booking.ends_at, booking.estimated_kilometers], queryFn: () => charterApi.quote({ rate_plan_id: Number(booking.rate_plan_id), starts_at: booking.starts_at, ends_at: booking.ends_at, estimated_kilometers: Number(booking.estimated_kilometers) }), enabled: validInterval && Boolean(booking.rate_plan_id) });
 
-  const createPlan = useMutation({ mutationFn: () => charterApi.createRatePlan({ ...planForm, service_id: Number(planForm.service_id), base_price: Number(planForm.base_price), included_hours: Number(planForm.included_hours), included_kilometers: Number(planForm.included_kilometers), extra_hour_rate: Number(planForm.extra_hour_rate), extra_kilometer_rate: Number(planForm.extra_kilometer_rate), overnight_rate: Number(planForm.overnight_rate) }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] }); setPlanOpen(false); setPlanForm(planInitial); toast.success('Charter rate plan created'); }, onError: (error: any) => toast.error(error?.response?.data?.message ?? 'Rate plan could not be created') });
+  // Compute base price from rate_per_km × min_km_basis
+  const computedBasePrice = useMemo(() => {
+    const rate = parseFloat(planForm.rate_per_km) || 0;
+    const minKm = parseFloat(planForm.min_km_basis) || 0;
+    return Math.round(rate * minKm);
+  }, [planForm.rate_per_km, planForm.min_km_basis]);
+
+  const createPlan = useMutation({ mutationFn: () => charterApi.createRatePlan({ service_id: Number(planForm.service_id), name: planForm.name, vehicle_class: planForm.vehicle_class, base_price: computedBasePrice, included_hours: Number(planForm.included_hours), included_kilometers: Number(planForm.min_km_basis), extra_hour_rate: Number(planForm.extra_hour_rate), extra_kilometer_rate: Number(planForm.extra_kilometer_rate), overnight_rate: Number(planForm.overnight_rate), includes_driver: planForm.includes_driver, includes_fuel: planForm.includes_fuel, includes_tolls: planForm.includes_tolls, includes_parking: planForm.includes_parking, rate_per_km: Number(planForm.rate_per_km) }), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] }); setPlanOpen(false); setPlanForm(planInitial); toast.success('Charter rate plan created'); }, onError: (error: any) => toast.error(error?.response?.data?.message ?? 'Rate plan could not be created') });
 
   // Uniform Cart item construction
   const cart: CartItem[] = useMemo(() => {
@@ -570,6 +577,114 @@ export default function CharterSales() {
       packageName={selectedPlan?.name || 'Bus Charter Service'}
     />
 
-    <Modal isOpen={planOpen} onClose={() => setPlanOpen(false)} title="Create charter rate plan" size="lg" footer={null}><form onSubmit={event => { event.preventDefault(); createPlan.mutate(); }} className="grid gap-4 py-2 md:grid-cols-2"><label className="text-xs font-bold text-muted md:col-span-2">Catalog service<select required value={planForm.service_id} onChange={e => setPlanForm({ ...planForm, service_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="">Select transport service…</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label><label className="text-xs font-bold text-muted">Plan name<input required value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label><label className="text-xs font-bold text-muted">Vehicle type<select value={planForm.vehicle_class} onChange={e => setPlanForm({ ...planForm, vehicle_class: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="bus">Bus</option><option value="coaster">Coaster</option><option value="van">Van</option></select></label>{[['base_price','Base price'],['included_hours','Included hours'],['included_kilometers','Included kilometers'],['extra_hour_rate','Extra hour rate'],['extra_kilometer_rate','Extra kilometer rate'],['overnight_rate','Overnight rate']].map(([key,label]) => <label key={key} className="text-xs font-bold text-muted">{label}<input required type="number" min="0" value={(planForm as any)[key]} onChange={e => setPlanForm({ ...planForm, [key]: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>)}<div className="md:col-span-2 grid grid-cols-2 gap-3 sm:grid-cols-4">{[['includes_driver','Driver'],['includes_fuel','Fuel'],['includes_tolls','Tolls'],['includes_parking','Parking']].map(([key,label]) => <label key={key} className="flex items-center gap-2 text-xs font-bold text-ink"><input type="checkbox" checked={Boolean((planForm as any)[key])} onChange={e => setPlanForm({ ...planForm, [key]: e.target.checked })} />{label}</label>)}</div><div className="flex justify-end gap-3 border-t border-border pt-5 md:col-span-2"><Button type="button" variant="ghost" onClick={() => setPlanOpen(false)}>Cancel</Button><Button type="submit" disabled={createPlan.isPending}>Create rate plan</Button></div></form></Modal>
+    <Modal isOpen={planOpen} onClose={() => setPlanOpen(false)} title="Create Charter Rate Plan" size="lg" footer={null}>
+      <form onSubmit={e => { e.preventDefault(); createPlan.mutate(); }} className="space-y-5 py-2">
+
+        {/* Catalog Service + Plan Name */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label className="md:col-span-2 text-xs font-bold text-muted">
+            Catalog Service
+            <select required value={planForm.service_id} onChange={e => setPlanForm({ ...planForm, service_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm">
+              <option value="">Select transport service…</option>
+              {services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}
+            </select>
+          </label>
+          <label className="text-xs font-bold text-muted">
+            Rate Plan Name
+            <input required value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} placeholder="e.g. Deluxe Bus Charter — Daily Luzon" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" />
+          </label>
+          <label className="text-xs font-bold text-muted">
+            Vehicle Type
+            <select value={planForm.vehicle_class} onChange={e => setPlanForm({ ...planForm, vehicle_class: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm">
+              <option value="bus">Tourist Bus (49 Seater)</option>
+              <option value="coaster">Coaster (28-30 Seater)</option>
+              <option value="van">Van (10-14 Seater)</option>
+            </select>
+          </label>
+        </div>
+
+        {/* KM-Based Rate Engine — replaces flat base price input */}
+        <div className="rounded-2xl border border-blue-200 dark:border-blue-900/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-black text-blue-700 dark:text-blue-400 uppercase tracking-widest">📍 Distance-Based Rate Engine</p>
+            <span className="text-[10px] text-blue-500 font-bold">Base Price = Rate/km × Minimum KM</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <label className="text-xs font-bold text-muted">
+              Rate per KM (₱/km)
+              <input required type="number" min="0" step="0.01" value={planForm.rate_per_km} onChange={e => setPlanForm({ ...planForm, rate_per_km: e.target.value })} placeholder="e.g. 45" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" />
+            </label>
+            <label className="text-xs font-bold text-muted">
+              Minimum Billable KM
+              <input required type="number" min="0" value={planForm.min_km_basis} onChange={e => setPlanForm({ ...planForm, min_km_basis: e.target.value })} placeholder="e.g. 100" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-bold" />
+            </label>
+          </div>
+          {/* Computed Base Price Preview */}
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800">
+            <div className="text-center">
+              <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Computed Base Price</p>
+              <p className="text-xl font-black text-blue-700 dark:text-blue-300">
+                ₱{computedBasePrice.toLocaleString()}
+              </p>
+              <p className="text-[9px] text-gray-400">
+                ₱{parseFloat(planForm.rate_per_km || '0').toLocaleString()}/km × {planForm.min_km_basis || '0'} km minimum
+              </p>
+            </div>
+            <div className="flex-1 grid grid-cols-3 gap-2 text-center border-l border-gray-100 dark:border-gray-700 pl-3">
+              <div>
+                <p className="text-[9px] font-bold text-gray-400 uppercase">Rate/km</p>
+                <p className="text-sm font-black text-gray-800 dark:text-white">₱{parseFloat(planForm.rate_per_km || '0').toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-bold text-gray-400 uppercase">Min KM</p>
+                <p className="text-sm font-black text-gray-800 dark:text-white">{planForm.min_km_basis || '0'} km</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-bold text-orange-500 uppercase">Base Total</p>
+                <p className="text-sm font-black text-orange-600">₱{computedBasePrice.toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+            💡 Extra km beyond minimum will be billed at the "Extra KM Rate" below.
+          </p>
+        </div>
+
+        {/* Per-Hour & Overtime Rates */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            ['included_hours', 'Included Hours/Day', '12'],
+            ['extra_hour_rate', 'Extra Hour Rate (₱)', '0'],
+            ['extra_kilometer_rate', 'Extra KM Rate (₱/km)', '0'],
+            ['overnight_rate', 'Overnight Rate (₱/night)', '0'],
+          ].map(([key, label, ph]) => (
+            <label key={key} className="text-xs font-bold text-muted">
+              {label}
+              <input type="number" min="0" placeholder={ph} value={(planForm as any)[key]} onChange={e => setPlanForm({ ...planForm, [key]: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" />
+            </label>
+          ))}
+        </div>
+
+        {/* Inclusions */}
+        <div className="rounded-2xl border border-gray-100 dark:border-gray-800 p-4 space-y-2">
+          <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Included in Base Rate</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {([['includes_driver', 'Driver Fee'], ['includes_fuel', 'Full Tank Fuel'], ['includes_tolls', 'Toll Fees'], ['includes_parking', 'Parking Fees']] as [string, string][]).map(([key, label]) => (
+              <label key={key} className="flex items-center gap-2 text-xs font-bold text-ink cursor-pointer">
+                <input type="checkbox" checked={Boolean((planForm as any)[key])} onChange={e => setPlanForm({ ...planForm, [key]: e.target.checked })} className="w-4 h-4 rounded" />
+                {label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 border-t border-border pt-4">
+          <Button type="button" variant="ghost" onClick={() => setPlanOpen(false)}>Cancel</Button>
+          <Button type="submit" disabled={createPlan.isPending || computedBasePrice === 0}>
+            {createPlan.isPending ? 'Creating…' : `Create Rate Plan — ₱${computedBasePrice.toLocaleString()} base`}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   </div>;
 }
