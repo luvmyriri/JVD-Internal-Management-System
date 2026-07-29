@@ -30,7 +30,17 @@ export default function JoinerCheckout() {
     queryFn: () => catalogApi.getJoinerDepartures(),
   });
 
-  const departure = useMemo(() => departures.find((d: JoinerDeparture) => d.id === departureId) ?? departures[0] ?? null, [departures, departureId]);
+  const { data: singleDeparture } = useQuery<JoinerDeparture>({
+    queryKey: ['joiner-departure-detail', departureId],
+    queryFn: () => catalogApi.getJoinerDeparture(departureId!),
+    enabled: Boolean(departureId),
+  });
+
+  const departure = useMemo(() => {
+    if (singleDeparture && singleDeparture.id === departureId) return singleDeparture;
+    return departures.find((d: JoinerDeparture) => d.id === departureId) ?? departures[0] ?? null;
+  }, [singleDeparture, departures, departureId]);
+
 
   useEffect(() => {
     if (departure && !departureId) {

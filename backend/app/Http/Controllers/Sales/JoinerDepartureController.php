@@ -23,8 +23,13 @@ class JoinerDepartureController extends Controller
 
     public function index(Request $request)
     {
-        $query = JoinerDeparture::with(['service:id,name,description,price,adult_price,child_price,images', 'bus:id,plate_number,model,seating_capacity', 'driver:id,first_name,last_name'])
-            ->withCount(['seats as available_seats_count' => fn ($q) => $q->where('status', 'available')]);
+        $query = JoinerDeparture::with([
+            'service:id,name,description,price,adult_price,child_price,images',
+            'bus:id,plate_number,model,seating_capacity',
+            'driver:id,first_name,last_name',
+            'seats' => fn ($q) => $q->orderBy('seat_code'),
+        ])->withCount(['seats as available_seats_count' => fn ($q) => $q->where('status', 'available')]);
+
         if ($request->filled('status')) $query->where('status', $request->string('status'));
         if ($request->boolean('upcoming')) $query->where('starts_at', '>=', now());
 
