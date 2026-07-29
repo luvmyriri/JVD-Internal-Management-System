@@ -498,6 +498,21 @@ export default function Billing() {
                 >
                   <LuPrinter className="w-4 h-4" /> Print
                 </button>
+                <button
+                  onClick={async () => {
+                    const targetEmail = prompt('Enter customer email to send invoice:', selectedInvoice.customer_email || '');
+                    if (!targetEmail) return;
+                    try {
+                      await billingApi.sendEmail(selectedInvoice.id, targetEmail);
+                      toast.success(`Invoice #${selectedInvoice.invoice_number} sent to ${targetEmail}`);
+                    } catch (err: any) {
+                      toast.error(err?.response?.data?.message || 'Failed to send invoice email');
+                    }
+                  }}
+                  className="p-3 bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400 rounded-2xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100 dark:border-blue-900/50 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
+                >
+                  <LuMail className="w-4 h-4" /> Send Email
+                </button>
                 {selectedInvoice.status === 'pending_payment' && (
                   <button
                     onClick={() => handleMarkAsPaid(selectedInvoice.id)}
@@ -513,6 +528,7 @@ export default function Billing() {
                   <LuX className="w-5 h-5" />
                 </button>
               </div>
+
             </div>
 
             {/* Invoice Content (Scrollable) */}
@@ -710,11 +726,20 @@ export default function Billing() {
                     <span className="text-gray-900 dark:text-white">₱{Number(selectedInvoice.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                   <div className="flex justify-between pt-3 border-t-2 border-gray-900 dark:border-gray-100 items-center">
-                    <span className="text-xs font-black text-gray-900 dark:text-white uppercase">Total</span>
+                    <span className="text-xs font-black text-gray-900 dark:text-white uppercase">Total Order</span>
                     <span className="text-xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest pt-1">
+                    <span>Initial / Paid Amount</span>
+                    <span>₱{Number(selectedInvoice.amount_received ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-[11px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest pt-1 border-t border-dashed border-gray-200 dark:border-gray-700">
+                    <span>Remaining Balance</span>
+                    <span>₱{Number(selectedInvoice.balance ?? (Number(selectedInvoice.total_amount) - Number(selectedInvoice.amount_received ?? 0))).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
                 </div>
               </div>
+
 
               <div className="mt-10 pt-6 border-t border-gray-100 dark:border-gray-800 text-center">
                 <p className="text-[10px] text-gray-900 dark:text-white font-black uppercase tracking-widest mb-1">Thank you for choosing JVD Event and Travel Management Co.!</p>

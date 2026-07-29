@@ -81,5 +81,7 @@ export const educationalTourApi = {
   resources: (startsAt: string, endsAt: string) => client.get('/sales/educational-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as EducationalResources),
   quote: (programId: number, students: number, tourGuides: number) => client.post('/sales/educational-quote', { program_id: programId, student_count: students, tour_guide_count: tourGuides, chaperone_count: tourGuides }).then(res => res.data.data as EducationalPricing),
   createProgram: (data: CreateEducationalProgramPayload) => client.post('/sales/educational-programs', data).then(res => res.data.data as EducationalProgram),
+  updateProgram: (id: number, data: CreateEducationalProgramPayload) => client.put(`/sales/educational-programs/${id}`, data).then(res => res.data.data as EducationalProgram),
   createBooking: (data: Record<string, unknown>) => client.post('/sales/educational-bookings', data).then(res => res.data.data as EducationalBooking),
 };
+

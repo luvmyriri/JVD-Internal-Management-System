@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/charter-rate-plans', [CharterController::class, 'storeRatePlan'])->name('sales.charters.rate-plans.store');
             Route::post('/charter-bookings', [CharterController::class, 'storeBooking'])->name('sales.charters.bookings.store');
             Route::post('/educational-programs', [EducationalTourController::class, 'storeProgram'])->name('sales.educational.programs.store');
+            Route::put('/educational-programs/{program}', [EducationalTourController::class, 'updateProgram'])->name('sales.educational.programs.update');
+
             Route::post('/educational-bookings', [EducationalTourController::class, 'storeBooking'])->name('sales.educational.bookings.store');
             Route::post('/orders', [SalesOrderController::class, 'store'])->name('sales.orders.store');
             Route::post('/orders/{order}/items', [SalesOrderController::class, 'addItem'])->name('sales.orders.items.store');

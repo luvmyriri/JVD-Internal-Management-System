@@ -45,11 +45,7 @@ class JoinerDepartureController extends Controller
     {
         $data = $request->validated();
         $service = Service::findOrFail($data['service_id']);
-        $isJoinerProduct = $service->service_type === 'joiner_tour'
-            || (!$service->service_type && in_array(strtolower($service->category), ['joiners', 'joiner'], true));
-        if (!$isJoinerProduct) {
-            throw ValidationException::withMessages(['service_id' => 'The selected service is not a Joiner Tour product.']);
-        }
+
         if (!empty($data['bus_id'])) {
             $bus = \App\Models\Bus::findOrFail($data['bus_id']);
             if ((int) $data['capacity'] > (int) $bus->seating_capacity) {

@@ -547,7 +547,7 @@ export default function Collections() {
       header: 'Actions',
       align: 'right',
       render: (coll) => (
-        <div onClick={(e) => e.stopPropagation()}>
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
           <Button
             size="sm"
             variant="secondary"
@@ -555,8 +555,20 @@ export default function Collections() {
           >
             <LuEye className="w-4 h-4 mr-2" /> View Details
           </Button>
+          {coll.collection_status !== 'completed' && (
+            <Button
+              size="sm"
+              variant="secondary"
+              className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/20"
+              onClick={() => handleCancelRefund(coll.id)}
+            >
+              <LuX className="w-4 h-4 mr-1" /> Cancel / Void
+            </Button>
+          )}
         </div>
       ),
+
+
     },
   ];
 

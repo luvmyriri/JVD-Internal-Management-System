@@ -82,4 +82,21 @@ class BillingController extends Controller
     {
         return $this->service->handleWebhook($request);
     }
+
+    public function sendEmail(Request $request, $id)
+    {
+        $invoice = Invoice::with(['items.service', 'payments'])->findOrFail($id);
+        $recipient = $request->input('email', $invoice->customer_email);
+
+        if (empty($recipient)) {
+            return response()->json(['message' => 'Customer email address is required.'], 422);
+        }
+
+        Mail::to($recipient)->queue(new TransactionNotificationMail($invoice, 'invoice'));
+
+        return response()->json([
+            'success' => true,
+            'message' => "Invoice #{$invoice->invoice_number} sent to {$recipient} successfully."
+        ]);
+    }
 }

@@ -201,4 +201,6 @@ export const billingApi = {
     cancellation_fee?: number;
     policy_terms?: string;
   }) => client.post(`/invoices/${invoiceId}/refund`, data),
+  sendEmail: (id: number, email?: string) => client.post(`/billing/${id}/send-email`, { email }),
 };
+

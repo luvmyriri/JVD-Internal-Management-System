@@ -7,7 +7,19 @@ use Illuminate\Foundation\Http\FormRequest;
 class StoreEducationalProgramRequest extends FormRequest
 {
     public function authorize(): bool { return true; }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('default_stops') && is_string($this->default_stops)) {
+            $stops = array_map('trim', explode("\n", str_replace(',', "\n", $this->default_stops)));
+            $this->merge([
+                'default_stops' => array_values(array_filter($stops)),
+            ]);
+        }
+    }
+
     public function rules(): array
+
     {
         return [
             'name' => ['required', 'string', 'max:150'],

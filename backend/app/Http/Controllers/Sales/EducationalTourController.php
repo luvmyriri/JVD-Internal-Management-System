@@ -39,6 +39,13 @@ class EducationalTourController extends Controller
 
         return response()->json(['data' => $this->programData($program)], 201);
     }
+
+    public function updateProgram(StoreEducationalProgramRequest $request, EducationalTourProgram $program)
+    {
+        $program->update($request->validated());
+        return response()->json(['data' => $this->programData($program)]);
+    }
+
     public function quote(Request $request)
     {
         $data = $request->validate([
