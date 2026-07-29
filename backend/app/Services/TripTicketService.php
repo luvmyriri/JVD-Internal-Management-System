@@ -38,11 +38,26 @@ class TripTicketService
 
         $fulfillment = $item->fulfillment;
         $snapshot = $item->details_snapshot ?? [];
+        $orderMetadata = $item->order->metadata ?? [];
+        $invoiceMetadata = $item->order->invoice?->metadata ?? [];
 
         $startsAt = $fulfillment?->starts_at ?? $snapshot['starts_at'] ?? $snapshot['departure_date'] ?? now()->toIso8601String();
         $endsAt = $fulfillment?->ends_at ?? $snapshot['ends_at'] ?? $snapshot['return_date'] ?? $startsAt;
-        $busId = $fulfillment?->bus_id ?? $snapshot['bus_id'] ?? null;
-        $driverId = $fulfillment?->driver_id ?? $snapshot['driver_id'] ?? null;
+        
+        $busId = $fulfillment?->bus_id 
+            ?? $snapshot['bus_id'] 
+            ?? $snapshot['assigned_bus_id'] 
+            ?? $orderMetadata['bus_id'] 
+            ?? $invoiceMetadata['bus_id'] 
+            ?? null;
+            
+        $driverId = $fulfillment?->driver_id 
+            ?? $snapshot['driver_id'] 
+            ?? $snapshot['assigned_driver_id'] 
+            ?? $orderMetadata['driver_id'] 
+            ?? $invoiceMetadata['driver_id'] 
+            ?? null;
+            
         $pickup = $fulfillment?->pickup_location ?? $snapshot['pickup_location'] ?? 'To be confirmed by Logistics';
         $destination = $fulfillment?->destination ?? $snapshot['destination'] ?? 'To be confirmed by Logistics';
         $paxCount = $fulfillment?->passenger_count ?? $snapshot['passenger_count'] ?? $item->quantity ?? 1;
@@ -52,6 +67,15 @@ class TripTicketService
                 ->lockForUpdate()
                 ->first();
             if ($existing) {
+                // If bus or driver was subsequently assigned in sales, update draft ticket
+                if (($busId && !$existing->bus_id) || ($driverId && !$existing->driver_id)) {
+                    $bus = $busId ? Bus::find($busId) : null;
+                    $existing->update([
+                        'bus_id' => $busId ?: $existing->bus_id,
+                        'plate_no' => $bus?->plate_number ?: $existing->plate_no,
+                        'driver_id' => $driverId ?: $existing->driver_id,
+                    ]);
+                }
                 return $existing->load($this->relations());
             }
 
