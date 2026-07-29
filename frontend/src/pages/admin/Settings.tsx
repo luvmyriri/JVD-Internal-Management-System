@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTheme } from '../../context/ThemeContext';
 import { useHasRole } from '../../hooks/useHasRole';
 import { settingsApi } from '../../api/settings';
+import { useNavigate } from 'react-router-dom';
 import { 
   LuSun, 
   LuMoon, 
@@ -14,7 +15,8 @@ import {
   LuSettings,
   LuLoader,
   LuFileText,
-  LuShieldCheck
+  LuShieldCheck,
+  LuSparkles
 } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 
@@ -86,6 +88,7 @@ const compressImage = (file: File, maxWidth: number, maxHeight: number, quality:
 };
 
 export default function Settings() {
+  const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const [landingPage, setLandingPage] = useState('/dashboard');
   

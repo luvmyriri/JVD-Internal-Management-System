@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { AVAILABLE_WIDGETS, WIDGET_CATEGORIES, type DashboardWidgetDefinition } from '../../config/dashboardWidgets';
+import { AVAILABLE_WIDGETS, WIDGET_CATEGORIES } from '../../config/dashboardWidgets';
 import { WidgetRenderer } from '../../components/dashboard/WidgetRenderer';
 import { LuArrowLeft, LuPlus, LuX, LuArrowUp, LuArrowDown, LuRotateCcw, LuCheck, LuSparkles, LuLayoutGrid } from 'react-icons/lu';
 import toast from 'react-hot-toast';
@@ -17,7 +17,7 @@ const DEFAULT_WIDGET_IDS = [
 
 export default function DashboardCustomizerPage() {
   const navigate = useNavigate();
-  const { user, updateProfile } = useAuth();
+  const { user } = useAuth();
 
   const [activeView, setActiveView] = useState<'default' | 'custom'>(() => {
     const saved = localStorage.getItem('jvd_active_dashboard_view');
@@ -37,7 +37,7 @@ export default function DashboardCustomizerPage() {
     return DEFAULT_WIDGET_IDS;
   });
 
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isCatalogOpen, setIsCatalogOpen] = useState<boolean>(false);
 
   const handleToggleWidget = (id: string) => {
@@ -70,26 +70,16 @@ export default function DashboardCustomizerPage() {
     toast.success('Reset layout to system default cards.');
   };
 
-  const handleSaveAndApply = async () => {
+  const handleSaveAndApply = () => {
     localStorage.setItem('jvd_custom_dashboard_layout', JSON.stringify(activeWidgetIds));
     localStorage.setItem('jvd_active_dashboard_view', activeView);
-
-    try {
-      if (user) {
-        await updateProfile({
-          dashboard_preference: activeView === 'custom' ? 'custom' : undefined,
-        });
-      }
-    } catch (e) {
-      console.warn('Backend preference update optional:', e);
-    }
 
     toast.success('Dashboard preferences saved & applied!');
     navigate('/dashboard');
   };
 
   const filteredCatalogWidgets = AVAILABLE_WIDGETS.filter(widget => {
-    if (selectedCategory === 'All') return true;
+    if (selectedCategory === 'all') return true;
     return widget.category === selectedCategory;
   });
 
@@ -100,7 +90,7 @@ export default function DashboardCustomizerPage() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition"
+            className="p-2.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 transition cursor-pointer"
             title="Back to Dashboard"
           >
             <LuArrowLeft size={18} />
@@ -120,7 +110,7 @@ export default function DashboardCustomizerPage() {
           <button
             type="button"
             onClick={handleResetDefaults}
-            className="px-4 py-2.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-200 transition flex items-center gap-2"
+            className="px-4 py-2.5 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs hover:bg-gray-200 transition flex items-center gap-2 cursor-pointer"
           >
             <LuRotateCcw size={14} /> Reset Defaults
           </button>
@@ -128,7 +118,7 @@ export default function DashboardCustomizerPage() {
           <button
             type="button"
             onClick={handleSaveAndApply}
-            className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition flex items-center gap-2"
+            className="px-5 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-lg shadow-blue-500/20 transition flex items-center gap-2 cursor-pointer"
           >
             <LuCheck size={16} /> Save & Apply to Dashboard
           </button>
@@ -201,7 +191,7 @@ export default function DashboardCustomizerPage() {
           <button
             type="button"
             onClick={() => setIsCatalogOpen(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2"
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2 cursor-pointer"
           >
             <LuPlus size={16} /> Browse Module Card Library
           </button>
@@ -221,7 +211,7 @@ export default function DashboardCustomizerPage() {
                     {widgetDef?.category || 'Module'}
                   </span>
                   <h4 className="text-xs font-bold text-gray-900 dark:text-white truncate mt-0.5">
-                    {widgetDef?.name || id}
+                    {widgetDef?.title || id}
                   </h4>
                   <p className="text-[10px] text-gray-400 truncate mt-0.5">{widgetDef?.description}</p>
                 </div>
@@ -231,7 +221,7 @@ export default function DashboardCustomizerPage() {
                     type="button"
                     onClick={() => handleMoveWidget(index, 'up')}
                     disabled={index === 0}
-                    className="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-30 hover:bg-gray-200"
+                    className="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-30 hover:bg-gray-200 cursor-pointer"
                     title="Move Up"
                   >
                     <LuArrowUp size={14} />
@@ -240,7 +230,7 @@ export default function DashboardCustomizerPage() {
                     type="button"
                     onClick={() => handleMoveWidget(index, 'down')}
                     disabled={index === activeWidgetIds.length - 1}
-                    className="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-30 hover:bg-gray-200"
+                    className="p-1.5 rounded-lg bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 disabled:opacity-30 hover:bg-gray-200 cursor-pointer"
                     title="Move Down"
                   >
                     <LuArrowDown size={14} />
@@ -248,7 +238,7 @@ export default function DashboardCustomizerPage() {
                   <button
                     type="button"
                     onClick={() => handleToggleWidget(id)}
-                    className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100"
+                    className="p-1.5 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 hover:bg-rose-100 cursor-pointer"
                     title="Remove Card"
                   >
                     <LuX size={14} />
@@ -289,7 +279,7 @@ export default function DashboardCustomizerPage() {
               </div>
               <button
                 onClick={() => setIsCatalogOpen(false)}
-                className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900"
+                className="p-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-gray-900 cursor-pointer"
               >
                 <LuX size={18} />
               </button>
@@ -297,17 +287,17 @@ export default function DashboardCustomizerPage() {
 
             {/* Category Filter Pills */}
             <div className="p-4 bg-gray-50 dark:bg-gray-800/40 border-b border-gray-100 dark:border-gray-800 flex gap-2 overflow-x-auto custom-scrollbar">
-              {['All', ...WIDGET_CATEGORIES].map(cat => (
+              {WIDGET_CATEGORIES.map(cat => (
                 <button
-                  key={cat}
-                  onClick={() => setSelectedCategory(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                    selectedCategory === cat
+                  key={cat.key}
+                  onClick={() => setSelectedCategory(cat.key)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    selectedCategory === cat.key
                       ? 'bg-blue-600 text-white shadow-xs'
                       : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                   }`}
                 >
-                  {cat}
+                  {cat.label}
                 </button>
               ))}
             </div>
@@ -330,7 +320,7 @@ export default function DashboardCustomizerPage() {
                       <span className="text-[10px] font-black uppercase text-blue-600 dark:text-blue-400 tracking-wider">
                         {widget.category}
                       </span>
-                      <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{widget.name}</h4>
+                      <h4 className="text-xs font-bold text-gray-900 dark:text-white mt-0.5">{widget.title}</h4>
                       <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-snug">
                         {widget.description}
                       </p>
@@ -353,7 +343,7 @@ export default function DashboardCustomizerPage() {
             <div className="p-4 border-t border-gray-100 dark:border-gray-800 flex justify-end">
               <button
                 onClick={() => setIsCatalogOpen(false)}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xs"
+                className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold shadow-xs cursor-pointer"
               >
                 Done
               </button>
