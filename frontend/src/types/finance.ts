@@ -5,6 +5,7 @@ export interface CollectionPayment {
   payment_method: string;
   amount: number;
   balance?: number;
+  paymongo_payment_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

@@ -29,7 +29,7 @@ class PayMongoWebhookTest extends TestCase
                 'id' => 'evt_test_001',
                 'attributes' => [
                     'type' => 'checkout_session.payment.paid',
-                    'data' => ['id' => 'pay_test_001', 'attributes' => ['checkout_session_id' => 'cs_test_001', 'amount' => 112000]],
+                    'data' => ['id' => 'pay_test_001', 'type' => 'payment', 'attributes' => ['checkout_session_id' => 'cs_test_001', 'amount' => 112000]],
                 ],
             ],
         ];
@@ -39,7 +39,11 @@ class PayMongoWebhookTest extends TestCase
         $headers = ['CONTENT_TYPE' => 'application/json', 'HTTP_PAYMONGO_SIGNATURE' => "t={$timestamp},te={$signature}"];
 
         $this->call('POST', '/api/v1/billing/webhook', [], [], [], $headers, $raw)->assertOk();
-        $this->assertDatabaseHas('collection_payments', ['idempotency_key' => 'paymongo:evt_test_001', 'amount' => 1120]);
+        $this->assertDatabaseHas('collection_payments', [
+            'idempotency_key' => 'paymongo:evt_test_001',
+            'paymongo_payment_id' => 'pay_test_001',
+            'amount' => 1120,
+        ]);
         $this->assertSame('paid', $invoice->fresh()->status);
         $this->assertSame(0.0, (float) $invoice->fresh()->balance);
 

@@ -620,12 +620,21 @@ class BillingService
             ['provider' => 'paymongo', 'external_id' => $providerEventId],
             ['event_type' => $payload['data']['attributes']['type'] ?? 'unknown', 'payload_hash' => hash('sha256', $request->getContent()), 'status' => 'received', 'received_at' => now()]
         );
+        if (! $eventReceipt->wasRecentlyCreated && $eventReceipt->status === 'processed') {
+            return response()->json(['status' => 'already_processed']);
+        }
 
         if (isset($payload['data']['attributes']['type'])) {
             $eventType = $payload['data']['attributes']['type'];
 
             if ($eventType === 'checkout_session.payment.paid') {
-                $sessionData = $payload['data']['attributes']['data']['attributes'] ?? [];
+                $providerResource = $payload['data']['attributes']['data'] ?? [];
+                $sessionData = $providerResource['attributes'] ?? [];
+                $resourceId = $providerResource['id'] ?? null;
+                $resourceType = $providerResource['type'] ?? null;
+                $providerPaymentId = ($resourceType === 'payment' || str_starts_with((string) $resourceId, 'pay_'))
+                    ? $resourceId
+                    : ($sessionData['payments'][0]['id'] ?? $sessionData['payment_id'] ?? null);
 
                 // Usually PayMongo sends the checkout session ID in the event
                 // E.g. $sessionData['checkout_session_id']
@@ -647,7 +656,7 @@ class BillingService
 
                     // PayMongo retries webhooks. The provider event id is the accounting
                     // idempotency key: only the first delivery may create a payment or post AR.
-                    $invoice = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId) {
+                    $invoice = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId, $providerPaymentId) {
                         $lockedInvoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
                         $key = $eventId ? "paymongo:{$eventId}" : "paymongo-session:{$lockedInvoice->payment_id}";
                         $existing = CollectionPayment::where('idempotency_key', $key)->first();
@@ -669,6 +678,7 @@ class BillingService
                             'amount' => $amountPaidPHP,
                             'balance' => max(0, (float) $lockedInvoice->balance - $amountPaidPHP),
                             'idempotency_key' => $key,
+                            'paymongo_payment_id' => $providerPaymentId,
                         ]);
                         $collection->recalculate();
 
@@ -700,6 +710,53 @@ class BillingService
                     }
                 } else {
                     $eventReceipt->update(['status' => 'failed', 'error' => 'No invoice matched the PayMongo checkout session.', 'processed_at' => now()]);
+                }
+            }
+
+            if (in_array($eventType, ['payment.refunded', 'payment.refund.updated'], true)) {
+                $resource = $payload['data']['attributes']['data'] ?? [];
+                $resourceAttributes = $resource['attributes'] ?? [];
+                $refundResource = $resource;
+
+                if (($resource['type'] ?? null) === 'payment' || str_starts_with((string) ($resource['id'] ?? ''), 'pay_')) {
+                    $refunds = $resourceAttributes['refunds'] ?? [];
+                    $refundResource = ! empty($refunds) ? end($refunds) : [];
+                }
+
+                $refundAttributes = $refundResource['attributes'] ?? $refundResource;
+                $providerRefundId = $refundResource['id'] ?? $refundAttributes['id'] ?? null;
+                $paymentId = $refundAttributes['payment_id']
+                    ?? ((($resource['type'] ?? null) === 'payment') ? ($resource['id'] ?? null) : null);
+                $providerStatus = $eventType === 'payment.refunded'
+                    ? 'succeeded'
+                    : (string) ($refundAttributes['status'] ?? 'pending');
+                $amount = isset($refundAttributes['amount']) ? ((float) $refundAttributes['amount'] / 100) : null;
+                $providerError = $refundAttributes['failure_reason']
+                    ?? $refundAttributes['error']
+                    ?? null;
+
+                $refund = app(SalesLifecycleService::class)->reconcilePayMongoRefund(
+                    $providerRefundId,
+                    $paymentId,
+                    $providerStatus,
+                    $amount,
+                    is_string($providerError) ? $providerError : null
+                );
+
+                if ($refund) {
+                    $eventReceipt->update([
+                        'status' => 'processed',
+                        'invoice_id' => $refund->invoice_id,
+                        'metadata' => ['sales_refund_id' => $refund->id, 'provider_status' => $providerStatus],
+                        'processed_at' => now(),
+                        'error' => null,
+                    ]);
+                } else {
+                    $eventReceipt->update([
+                        'status' => 'failed',
+                        'error' => 'No matching in-system refund was found for this PayMongo event.',
+                        'processed_at' => now(),
+                    ]);
                 }
             }
         }

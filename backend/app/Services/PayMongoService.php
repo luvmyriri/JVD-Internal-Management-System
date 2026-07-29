@@ -69,14 +69,16 @@ class PayMongoService
      */
     public function createRefund(string $paymentId, float $amount, string $reason = 'requested_by_customer'): array
     {
-        if (!$this->secretKey || str_starts_with($paymentId, 'mock_')) {
-            Log::warning('PayMongo Secret Key not configured or mock transaction. Simulating mock refund.');
-            return [
-                'success' => true,
-                'refund_id' => 'mock_ref_' . uniqid(),
-                'status' => 'succeeded',
-                'amount' => $amount,
-            ];
+        if (! $this->secretKey) {
+            Log::error('PayMongo refund blocked because the secret key is not configured.');
+
+            return ['success' => false, 'error' => 'PayMongo is not configured. Refund was not sent.'];
+        }
+
+        if (! str_starts_with($paymentId, 'pay_')) {
+            Log::error('PayMongo refund blocked because the original payment id is invalid.', ['payment_id' => $paymentId]);
+
+            return ['success' => false, 'error' => 'The original PayMongo payment reference is invalid.'];
         }
 
         try {
@@ -102,6 +104,7 @@ class PayMongoService
                     'refund_id' => $response->json()['data']['id'],
                     'status' => $attributes['status'] ?? 'succeeded',
                     'amount' => ($attributes['amount'] ?? $amountInCents) / 100,
+                    'payment_id' => $attributes['payment_id'] ?? $paymentId,
                 ];
             }
 

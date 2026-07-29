@@ -112,6 +112,11 @@ class SalesOrderController extends Controller
     public function processRefund(Request $request, SalesRefund $refund, SalesLifecycleService $service): JsonResponse
     {
         $data = $request->validate(['destination_reference'=>'nullable|string|max:255']);
-        return response()->json(['success'=>true,'message'=>'Refund processed and posted to the ledger.','data'=>$service->processRefund($refund,$data['destination_reference'] ?? null,$request->user()->id)]);
+        $processed = $service->processRefund($refund,$data['destination_reference'] ?? null,$request->user()->id);
+        $message = $processed->status === 'processed'
+            ? 'Refund processed and posted to the ledger.'
+            : 'Refund submitted to PayMongo and is awaiting provider confirmation.';
+
+        return response()->json(['success'=>true,'message'=>$message,'data'=>$processed]);
     }
 }

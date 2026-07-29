@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Account;
+use App\Models\CollectionPayment;
 use App\Models\CreditNote;
 use App\Models\Invoice;
 use App\Models\JoinerDeparture;
@@ -101,26 +102,153 @@ class SalesLifecycleService
 
     public function processRefund(SalesRefund $refund, ?string $destinationReference, int $actorId): SalesRefund
     {
-        return DB::transaction(function () use ($refund, $destinationReference, $actorId) {
-            $refund = SalesRefund::lockForUpdate()->with(['invoice', 'order'])->findOrFail($refund->id);
-            if ($refund->status !== 'approved') {
+        if (! str_contains(strtolower((string) $refund->refund_method), 'paymongo')) {
+            return $this->finalizeProcessedRefund($refund, $destinationReference, $actorId);
+        }
+
+        [$refund, $paymentId] = DB::transaction(function () use ($refund) {
+            $locked = SalesRefund::lockForUpdate()->with(['invoice.collection'])->findOrFail($refund->id);
+            if ($locked->status !== 'approved') {
                 throw ValidationException::withMessages(['refund' => 'Refund requires approval before processing.']);
             }
-            if (str_contains(strtolower((string) $refund->refund_method), 'paymongo')) {
-                $payment = $refund->invoice->payments()->whereNotNull('paymongo_payment_id')->latest()->first();
-                if (! $payment?->paymongo_payment_id) {
-                    throw ValidationException::withMessages(['refund_method' => 'No settled PayMongo payment is available for this invoice.']);
-                }
-                $result = app(PayMongoService::class)->createRefund(
-                    $payment->paymongo_payment_id,
-                    (float) $refund->amount,
-                    'requested_by_customer'
-                );
-                if (! ($result['success'] ?? false)) {
-                    throw ValidationException::withMessages(['refund' => $result['error'] ?? 'PayMongo rejected the refund.']);
-                }
-                $destinationReference = $result['refund_id'] ?? $destinationReference;
+
+            $payment = $locked->invoice->collection?->payments()
+                ->whereNotNull('paymongo_payment_id')
+                ->where('amount', '>=', $locked->amount)
+                ->latest('id')
+                ->first();
+            if (! $payment?->paymongo_payment_id) {
+                throw ValidationException::withMessages([
+                    'refund_method' => 'No single settled PayMongo payment can cover this refund amount.',
+                ]);
             }
+
+            $locked->update([
+                'status' => 'processing',
+                'provider_status' => 'submitting',
+                'provider_error' => null,
+                'processing_started_at' => now(),
+                'provider_updated_at' => now(),
+            ]);
+
+            return [$locked->fresh(), $payment->paymongo_payment_id];
+        });
+
+        $result = app(PayMongoService::class)->createRefund(
+            $paymentId,
+            (float) $refund->amount,
+            'requested_by_customer'
+        );
+
+        if (! ($result['success'] ?? false)) {
+            $refund->update([
+                'status' => 'provider_failed',
+                'provider_status' => 'failed',
+                'provider_error' => $result['error'] ?? 'PayMongo rejected the refund.',
+                'provider_updated_at' => now(),
+            ]);
+
+            throw ValidationException::withMessages([
+                'refund' => $result['error'] ?? 'PayMongo rejected the refund.',
+            ]);
+        }
+
+        $providerStatus = strtolower((string) ($result['status'] ?? 'succeeded'));
+        $refund->update([
+            'provider_refund_id' => $result['refund_id'] ?? null,
+            'destination_reference' => $result['refund_id'] ?? $destinationReference,
+            'provider_status' => $providerStatus,
+            'provider_error' => null,
+            'provider_updated_at' => now(),
+        ]);
+
+        if (in_array($providerStatus, ['succeeded', 'refunded', 'processed', 'success'], true)) {
+            return $this->finalizeProcessedRefund(
+                $refund->fresh(),
+                $result['refund_id'] ?? $destinationReference,
+                $actorId
+            );
+        }
+
+        if (in_array($providerStatus, ['failed', 'cancelled'], true)) {
+            $refund->update([
+                'status' => 'provider_failed',
+                'provider_error' => 'PayMongo did not process the refund.',
+            ]);
+
+            throw ValidationException::withMessages([
+                'refund' => 'PayMongo did not process the refund.',
+            ]);
+        }
+
+        return $refund->fresh(['creditNote', 'invoice']);
+    }
+
+    public function reconcilePayMongoRefund(
+        ?string $providerRefundId,
+        ?string $paymentId,
+        string $providerStatus,
+        ?float $amount = null,
+        ?string $providerError = null
+    ): ?SalesRefund
+    {
+        $refund = null;
+        if ($providerRefundId) {
+            $refund = SalesRefund::where('provider_refund_id', $providerRefundId)->first();
+        }
+
+        if (! $refund && $paymentId) {
+            $payment = CollectionPayment::with('collection')
+                ->where('paymongo_payment_id', $paymentId)
+                ->latest('id')
+                ->first();
+            if ($payment?->collection?->invoice_id) {
+                $refund = SalesRefund::where('invoice_id', $payment->collection->invoice_id)
+                    ->whereIn('status', ['processing', 'provider_failed'])
+                    ->latest('id')
+                    ->first();
+            }
+        }
+
+        if (! $refund || ($amount !== null && abs((float) $refund->amount - $amount) > 0.01)) {
+            return null;
+        }
+
+        $normalizedStatus = strtolower($providerStatus);
+        $refund->update([
+            'provider_refund_id' => $providerRefundId ?: $refund->provider_refund_id,
+            'destination_reference' => $providerRefundId ?: $refund->destination_reference,
+            'provider_status' => $normalizedStatus,
+            'provider_error' => $providerError,
+            'provider_updated_at' => now(),
+        ]);
+
+        if (in_array($normalizedStatus, ['succeeded', 'refunded', 'processed', 'success'], true)) {
+            $actorId = (int) ($refund->processed_by ?: $refund->approved_by ?: $refund->requested_by ?: 1);
+
+            return $this->finalizeProcessedRefund($refund->fresh(), $providerRefundId, $actorId);
+        }
+
+        if (in_array($normalizedStatus, ['failed', 'cancelled'], true)) {
+            $refund->update(['status' => 'provider_failed']);
+        } elseif ($refund->status !== 'processed') {
+            $refund->update(['status' => 'processing']);
+        }
+
+        return $refund->fresh(['creditNote', 'invoice']);
+    }
+
+    private function finalizeProcessedRefund(SalesRefund $refund, ?string $destinationReference, int $actorId): SalesRefund
+    {
+        return DB::transaction(function () use ($refund, $destinationReference, $actorId) {
+            $refund = SalesRefund::lockForUpdate()->with(['invoice', 'order'])->findOrFail($refund->id);
+            if ($refund->status === 'processed') {
+                return $refund->fresh(['creditNote', 'invoice']);
+            }
+            if (! in_array($refund->status, ['approved', 'processing', 'provider_failed'], true)) {
+                throw ValidationException::withMessages(['refund' => 'Refund is not ready to be processed.']);
+            }
+
             app(LedgerService::class)->seedDefaultAccounts();
             $payable = Account::where('code', '2500')->firstOrFail();
             $cash = Account::where('code', strcasecmp($refund->refund_method, 'Cash') === 0 ? '1100' : '1000')->firstOrFail();
@@ -129,7 +257,17 @@ class SalesLifecycleService
                 ['account_id' => $cash->id, 'debit' => 0, 'credit' => $refund->amount, 'description' => "Refund via {$refund->refund_method}"],
             ], $refund);
             $refund->invoice->increment('refunded_amount', $refund->amount);
-            $refund->update(['status' => 'processed', 'destination_reference' => $destinationReference, 'processed_by' => $actorId, 'processed_at' => now()]);
+            $refund->update([
+                'status' => 'processed',
+                'destination_reference' => $destinationReference ?: $refund->destination_reference,
+                'provider_status' => str_contains(strtolower((string) $refund->refund_method), 'paymongo')
+                    ? ($refund->provider_status ?: 'succeeded')
+                    : $refund->provider_status,
+                'provider_error' => null,
+                'processed_by' => $actorId,
+                'processed_at' => now(),
+                'provider_updated_at' => str_contains(strtolower((string) $refund->refund_method), 'paymongo') ? now() : $refund->provider_updated_at,
+            ]);
             $this->event($refund->order, 'refund_processed', $refund->order->status, $refund->order->status, ['refund_id' => $refund->id, 'amount' => $refund->amount], $actorId);
 
             return $refund->fresh(['creditNote', 'invoice']);
