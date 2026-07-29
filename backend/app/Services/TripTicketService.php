@@ -467,6 +467,19 @@ class TripTicketService
 
         if ($request->has('status') && $request->status === 'approved') {
             $ticket->update(['approved_by' => auth()->id()]);
+        }
+
+        if ($request->has('status') && $request->status === 'completed' && $ticket->bus_id) {
+            $bus = \App\Models\Bus::find($ticket->bus_id);
+            if ($bus) {
+                $distanceAdded = (float)($ticket->odometer_reading ?? 0);
+                if ($distanceAdded > 0) {
+                    $bus->increment('total_mileage', $distanceAdded);
+                }
+            }
+        }
+
+        if ($request->has('status') && $request->status === 'approved') {
 
             // Sync/Create Cash Budget Request for the Trip Ticket
             $budgetData = [

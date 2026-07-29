@@ -54,6 +54,37 @@ export function parseMoneyInput(value: string): string {
 
 
 /**
+ * Round a ISO / datetime-local string to 30-minute intervals.
+ */
+export function roundTo30Minutes(dateTimeStr: string): string {
+  if (!dateTimeStr) return dateTimeStr;
+  const date = new Date(dateTimeStr);
+  if (isNaN(date.getTime())) return dateTimeStr;
+  const minutes = date.getMinutes();
+  const roundedMinutes = minutes < 15 ? 0 : minutes < 45 ? 30 : 60;
+  date.setMinutes(roundedMinutes);
+  date.setSeconds(0);
+  if (roundedMinutes === 60) {
+    date.setHours(date.getHours() + 1);
+    date.setMinutes(0);
+  }
+  const iso = date.toISOString();
+  return iso.slice(0, 16);
+}
+
+/**
+ * Calculate target return datetime given start datetime and duration days.
+ */
+export function calculateReturnDate(startsAt: string, durationDays: number): string {
+  if (!startsAt) return startsAt;
+  const date = new Date(startsAt);
+  if (isNaN(date.getTime())) return startsAt;
+  const daysToAdd = Math.max(0, durationDays - 1);
+  date.setDate(date.getDate() + daysToAdd);
+  return date.toISOString().slice(0, 16);
+}
+
+/**
  * Truncate a string to a maximum length with ellipsis.
  */
 export function truncate(str: string, maxLength: number = 50): string {

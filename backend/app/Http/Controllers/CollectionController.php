@@ -283,6 +283,93 @@ class CollectionController extends Controller
         ]);
     }
 
+    /**
+     * Process an online (PayMongo) or offline (Cash/Bank) refund.
+     */
+    public function processRefund(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'reason' => 'required|string|max:255',
+            'refund_type' => 'required|string|in:online,offline',
+            'cancellation_fee' => 'nullable|numeric|min:0',
+            'policy_terms' => 'nullable|string',
+        ]);
+
+        $invoice = Invoice::with(['payments'])->find($id);
+        $collection = null;
+        if (!$invoice) {
+            $collection = Collection::with(['payments', 'invoice'])->find($id);
+            $invoice = $collection?->invoice;
+        }
+
+        $refundAmount = (float) $validated['amount'];
+        $cancellationFee = (float) ($validated['cancellation_fee'] ?? 0);
+        $netRefund = max(0, $refundAmount - $cancellationFee);
+
+        $paymongoId = null;
+        if ($invoice) {
+            $lastPayment = $invoice->payments()->whereNotNull('paymongo_payment_id')->latest()->first();
+            $paymongoId = $lastPayment?->paymongo_payment_id;
+        }
+
+        $refundResult = ['success' => true, 'refund_id' => 'cash_ref_' . uniqid()];
+
+        if ($validated['refund_type'] === 'online' && $paymongoId) {
+            $paymongo = new \App\Services\PayMongoService();
+            $refundResult = $paymongo->createRefund($paymongoId, $netRefund, $validated['reason']);
+            if (!$refundResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'PayMongo refund processing failed: ' . ($refundResult['error'] ?? 'Unknown error'),
+                ], 422);
+            }
+        }
+
+        if ($invoice) {
+            \App\Models\Payment::create([
+                'invoice_id' => $invoice->id,
+                'amount' => -$netRefund,
+                'payment_method' => $validated['refund_type'] === 'online' ? 'PayMongo Refund' : 'Cash/Bank Refund',
+                'payment_date' => now()->toDateString(),
+                'reference_number' => $refundResult['refund_id'] ?? ('REF-' . strtoupper(uniqid())),
+                'notes' => "Refund Processed: {$validated['reason']}. Cancellation Fee: ₱{$cancellationFee}",
+                'recorded_by' => auth()->id(),
+            ]);
+
+            $invoice->increment('balance', $netRefund);
+            if ($invoice->balance >= $invoice->total_amount) {
+                $invoice->update(['status' => 'cancelled']);
+            }
+        }
+
+        \App\Services\AuditLogService::log(
+            'process_refund',
+            'Accounting',
+            'Invoice',
+            $invoice?->id ?? (int)$id,
+            null,
+            [
+                'refund_amount' => $refundAmount,
+                'cancellation_fee' => $cancellationFee,
+                'net_refund' => $netRefund,
+                'reason' => $validated['reason'],
+                'refund_type' => $validated['refund_type'],
+                'refund_id' => $refundResult['refund_id'] ?? null,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "Refund of ₱" . number_format($netRefund, 2) . " processed successfully.",
+            'data' => [
+                'refund_id' => $refundResult['refund_id'] ?? null,
+                'net_refund' => $netRefund,
+                'cancellation_fee' => $cancellationFee,
+            ]
+        ]);
+    }
+
     public function sendSoaNotification($id)
     {
         $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);

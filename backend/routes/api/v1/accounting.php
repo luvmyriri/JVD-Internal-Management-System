@@ -42,6 +42,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/collections/{collection}/view-soa', [CollectionController::class, 'viewSoa'])->name('collections.view-soa');
         Route::get('/collections/{collection}/download-soa', [CollectionController::class, 'downloadSoa'])->name('collections.download-soa');
         Route::post('/collections/{collection}/cancel-refund', [CollectionController::class, 'cancelAndRefund'])->name('collections.cancel-refund');
+        Route::post('/invoices/{id}/refund', [CollectionController::class, 'processRefund'])->name('invoices.refund');
+        Route::post('/collections/{id}/refund', [CollectionController::class, 'processRefund'])->name('collections.refund');
         Route::apiResource('collections', CollectionController::class);
     });
 

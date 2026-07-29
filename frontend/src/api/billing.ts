@@ -194,4 +194,11 @@ export const billingApi = {
     client.get('/billing/reports/detailed', { params: { range } }),
   getServiceOccupancy: (id: number, date: string) => 
     client.get(`/billing/services/${id}/occupancy`, { params: { travel_date: date } }),
+  processRefund: (invoiceId: number, data: {
+    amount: number;
+    reason: string;
+    refund_type: 'online' | 'offline';
+    cancellation_fee?: number;
+    policy_terms?: string;
+  }) => client.post(`/invoices/${invoiceId}/refund`, data),
 };

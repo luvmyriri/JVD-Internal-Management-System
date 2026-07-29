@@ -448,6 +448,31 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
   const [isCheckingConflict, setIsCheckingConflict] = useState<boolean>(false);
   const [overrideConflict, setOverrideConflict] = useState<boolean>(false);
 
+  // Auto-estimate distance, fuel (DOE rates) & tolls based on pickup/dropoff route
+  const handleAutoEstimateRoute = () => {
+    const routeStr = `${form.pick_up} ${form.drop_off}`.toLowerCase();
+    let estKm = 120;
+    if (routeStr.includes('baguio') || routeStr.includes('ilocos') || routeStr.includes('bicol')) estKm = 320;
+    else if (routeStr.includes('subic') || routeStr.includes('clark') || routeStr.includes('batangas') || routeStr.includes('la union')) estKm = 180;
+    else if (routeStr.includes('tagaytay') || routeStr.includes('laguna') || routeStr.includes('cavite')) estKm = 90;
+
+    const fuelLiters = estKm / 5.5;
+    const doeFuelRate = 68.50;
+    const estDieselCost = Math.round(fuelLiters * doeFuelRate);
+
+    const estEasyTrip = routeStr.includes('nlex') || routeStr.includes('sctex') || routeStr.includes('subic') || routeStr.includes('baguio') ? 450 : 200;
+    const estAutosweep = routeStr.includes('slex') || routeStr.includes('skyway') || routeStr.includes('calax') || routeStr.includes('batangas') || routeStr.includes('tagaytay') ? 520 : 250;
+
+    setForm(prev => ({
+      ...prev,
+      diesel: formatMoneyInput(String(estDieselCost)),
+      easy_trip: formatMoneyInput(String(estEasyTrip)),
+      autosweep: formatMoneyInput(String(estAutosweep)),
+      odometer_reading: String(estKm),
+    }));
+    toast.success(`Estimated: ${estKm} km route (DOE Diesel: ₱${estDieselCost.toLocaleString()}, Tolls: ₱${(estEasyTrip + estAutosweep).toLocaleString()})`);
+  };
+
   useEffect(() => {
     let active = true;
     if (!form.date_of_travel) {
@@ -626,6 +651,16 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
             <span>Route & Passenger Details</span>
           </summary>
           <div className="p-4 pt-0 space-y-4">
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Route Estimate & Fuel Calculator</span>
+              <button
+                type="button"
+                onClick={handleAutoEstimateRoute}
+                className="px-3 py-1 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 font-bold text-[10px] uppercase tracking-wider rounded-lg border border-blue-200 dark:border-blue-800 hover:bg-blue-100 transition cursor-pointer"
+              >
+                ⚡ Auto-Calculate Fuel (DOE Rate) & Tolls
+              </button>
+            </div>
             {/* Interactive Location Map Pinning & Fuel Auto-Calculator */}
             <TripLocationMapPicker
               pickupLocation={form.pick_up || 'JVD Terminal, Manila'}
