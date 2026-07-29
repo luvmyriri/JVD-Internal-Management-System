@@ -14,6 +14,9 @@ export interface Service {
     minimum_pax?: number;
     maximum_pax?: number;
     booking_lead_days?: number;
+    route_distance_km?: number;
+    estimated_diesel_liters?: number;
+    estimated_diesel_cost?: number;
     valid_from?: string;
     valid_until?: string;
     default_itinerary?: string[];

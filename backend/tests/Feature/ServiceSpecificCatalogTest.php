@@ -67,6 +67,9 @@ class ServiceSpecificCatalogTest extends TestCase
             'minimum_pax' => 4,
             'maximum_pax' => 12,
             'booking_lead_days' => 7,
+            'route_distance_km' => 490,
+            'estimated_diesel_liters' => 89.1,
+            'estimated_diesel_cost' => 6103,
             'valid_from' => '2026-08-01',
             'valid_until' => '2026-12-15',
             'default_itinerary' => [
@@ -97,6 +100,9 @@ class ServiceSpecificCatalogTest extends TestCase
             ->assertJsonPath('data.package_config.duration_days', 3)
             ->assertJsonPath('data.package_config.minimum_pax', 4)
             ->assertJsonPath('data.package_config.maximum_pax', 12)
+            ->assertJsonPath('data.package_config.route_distance_km', 490)
+            ->assertJsonPath('data.package_config.estimated_diesel_liters', 89.1)
+            ->assertJsonPath('data.package_config.estimated_diesel_cost', 6103)
             ->assertJsonCount(3, 'data.package_config.default_itinerary');
 
         $service = Service::query()->where('name', 'Baguio Family Escape')->sole();

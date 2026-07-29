@@ -25,6 +25,7 @@ import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclus
 import ItineraryBuilder from './components/ItineraryBuilder';
 import type { ItineraryDayInput } from '../../api/contracts';
 import PackageBuilderShell from './components/PackageBuilderShell';
+import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 
 
 interface PackageForm {
@@ -37,6 +38,9 @@ interface PackageForm {
   minimumPax: string;
   maximumPax: string;
   bookingLeadDays: string;
+  routeDistanceKm: string;
+  estimatedDieselLiters: string;
+  estimatedDieselCost: string;
   validFrom: string;
   validUntil: string;
   adultPrice: string;
@@ -50,7 +54,7 @@ interface PackageForm {
 
 const INITIAL_FORM: PackageForm = {
   name: '', description: '', destination: '', origin: '', durationDays: '3', durationNights: '2',
-  minimumPax: '1', maximumPax: '12', bookingLeadDays: '7', validFrom: '', validUntil: '',
+  minimumPax: '1', maximumPax: '12', bookingLeadDays: '7', routeDistanceKm: '', estimatedDieselLiters: '', estimatedDieselCost: '', validFrom: '', validUntil: '',
   adultPrice: '', childPrice: '', itinerary: '', inclusions: '', exclusions: '', costBreakdown: '', images: [],
 };
 
@@ -150,6 +154,9 @@ export default function FixedPackages() {
       minimumPax: String(config.minimum_pax ?? 1),
       maximumPax: String(config.maximum_pax ?? service.max_pax ?? 1),
       bookingLeadDays: String(config.booking_lead_days ?? 0),
+      routeDistanceKm: String(config.route_distance_km ?? ''),
+      estimatedDieselLiters: String(config.estimated_diesel_liters ?? ''),
+      estimatedDieselCost: String(config.estimated_diesel_cost ?? ''),
       validFrom: config.valid_from || '',
       validUntil: config.valid_until || '',
       adultPrice: formatMoneyInput(String(service.adult_price ?? service.price ?? 0)),
@@ -197,6 +204,9 @@ export default function FixedPackages() {
           minimum_pax: minimumPax,
           maximum_pax: maximumPax,
           booking_lead_days: Number(form.bookingLeadDays || 0),
+          route_distance_km: Number(form.routeDistanceKm || 0),
+          estimated_diesel_liters: Number(form.estimatedDieselLiters || 0),
+          estimated_diesel_cost: Number(form.estimatedDieselCost || 0),
           valid_from: form.validFrom || undefined,
           valid_until: form.validUntil || undefined,
           default_itinerary: itineraryDays.map((row) => `Day ${row.day_number}: ${row.activity_description || ''}`),
@@ -309,7 +319,35 @@ export default function FixedPackages() {
 
         <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
           <div className="border-b border-border pb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">2 · Day-by-day experience</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">2 · Default route plan</p>
+            <h2 className="mt-1 text-lg font-black text-ink">Pin the package origin and destination</h2>
+            <p className="mt-1 text-xs text-muted">The Leaflet route becomes the package default and carries its distance and fuel estimate into planning.</p>
+          </div>
+          <TripLocationMapPicker
+            pickupLocation={form.origin || 'Manila Hub (Pasay Terminal)'}
+            dropOffLocation={form.destination || 'Tagaytay City'}
+            vehicleType="Bus"
+            onLocationSelect={(pickup, dropoff, distanceKm, dieselLiters, dieselCost) => {
+              setForm(current => ({
+                ...current,
+                origin: pickup,
+                destination: dropoff,
+                routeDistanceKm: String(distanceKm),
+                estimatedDieselLiters: String(dieselLiters),
+                estimatedDieselCost: String(dieselCost),
+              }));
+            }}
+          />
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-2xl bg-surface-alt p-4"><span className="text-[9px] font-black uppercase tracking-widest text-muted">Planned distance</span><strong className="mt-1 block text-sm text-ink">{form.routeDistanceKm || '0'} km</strong></div>
+            <div className="rounded-2xl bg-surface-alt p-4"><span className="text-[9px] font-black uppercase tracking-widest text-muted">Estimated diesel</span><strong className="mt-1 block text-sm text-ink">{form.estimatedDieselLiters || '0'} L</strong></div>
+            <div className="rounded-2xl bg-surface-alt p-4"><span className="text-[9px] font-black uppercase tracking-widest text-muted">Estimated fuel cost</span><strong className="mt-1 block text-sm text-ink">₱{Number(form.estimatedDieselCost || 0).toLocaleString()}</strong></div>
+          </div>
+        </section>
+
+        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
+          <div className="border-b border-border pb-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">3 · Day-by-day experience</p>
             <h2 className="mt-1 text-lg font-black text-ink">Itinerary, inclusions & exclusions</h2>
           </div>
           <ItineraryBuilder value={itineraryDays} onChange={setItineraryDays} />
@@ -318,7 +356,7 @@ export default function FixedPackages() {
 
         <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">3 · Merchandising</p><h2 className="mt-1 text-lg font-black text-ink">Package gallery & internal costing</h2></div>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">4 · Merchandising</p><h2 className="mt-1 text-lg font-black text-ink">Package gallery & internal costing</h2></div>
             <Button type="button" variant="ghost" onClick={imagePicker}><ImagePlus className="h-4 w-4" /> Add images</Button>
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">{form.images.map((image, index) => <div key={`${image}-${index}`} className="relative h-28 overflow-hidden rounded-2xl border border-border"><img src={imageUrl(image)} alt="" className="h-full w-full object-cover" /><button type="button" onClick={() => setForm((current) => ({ ...current, images: current.images.filter((_, itemIndex) => itemIndex !== index) }))} className="absolute right-2 top-2 rounded-full bg-slate-950/75 p-1.5 text-white"><X className="h-3 w-3" /></button></div>)}</div>

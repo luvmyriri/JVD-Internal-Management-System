@@ -22,6 +22,7 @@ import CharterBookingManager from './components/CharterBookingManager';
 import { getStorageUrl } from '../../utils';
 import PackageBuilderShell from './components/PackageBuilderShell';
 import PackageCatalogCard from './components/PackageCatalogCard';
+import BookingWorkspaceHeader from './components/BookingWorkspaceHeader';
 
 
 const getTomorrowStartEnd = () => {
@@ -377,31 +378,75 @@ export default function CharterSales() {
     );
   }
 
+  if (!selectedPlan) {
+    return <div className="space-y-6 pb-12">
+      <header className="flex flex-col gap-5 rounded-3xl bg-[#071b33] p-7 text-white lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <button onClick={() => navigate('/sales')} className="mb-4 inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to Sales</button>
+          <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Charter product catalog</p>
+          <h1 className="mt-1 text-3xl font-black">Choose a bus rental package</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Start with the vehicle and rate plan. Trip dates, route, fleet allocation, passenger details, and payment open only after you choose.</p>
+        </div>
+        <Button onClick={openCreatePlan} className="!bg-amber-500 !text-white hover:!bg-amber-600"><Plus className="h-4 w-4" /> Create new rate plan</Button>
+      </header>
+
+      <section className="rounded-3xl border border-border bg-surface">
+        <div className="flex flex-col gap-4 border-b border-border p-6 md:flex-row md:items-end md:justify-between">
+          <div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Bus & van charters</p><h2 className="mt-1 text-xl font-black text-ink">Rate plan library</h2><p className="mt-1 text-xs text-muted">{filteredPlans.length} option{filteredPlans.length === 1 ? '' : 's'} ready to configure</p></div>
+          <label className="relative block w-full md:w-80"><LuSearch className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search rate plan or vehicle" className="h-11 w-full rounded-xl border border-border bg-surface pl-10 pr-3 text-sm text-ink" /></label>
+        </div>
+        <div className="flex gap-2 overflow-x-auto px-6 pt-5">
+          {['All', 'Tourist Bus', 'Coaster', 'Van'].map((vehicleClass) => <button key={vehicleClass} type="button" onClick={() => setSelectedClass(vehicleClass)} className={`shrink-0 rounded-xl px-4 py-2 text-xs font-black ${selectedClass === vehicleClass ? 'bg-blue-600 text-white' : 'border border-border bg-surface-alt text-muted'}`}>{vehicleClass}</button>)}
+        </div>
+        {filteredPlans.length === 0 ? <div className="p-12 text-center"><Bus className="mx-auto h-10 w-10 text-muted" /><h3 className="mt-3 font-black text-ink">No matching rate plans</h3><p className="mt-1 text-sm text-muted">Adjust the filters or create a new rate plan.</p></div> : <div className="grid gap-5 p-6 md:grid-cols-2 xl:grid-cols-3">
+          {filteredPlans.map(plan => <PackageCatalogCard
+            key={plan.id}
+            image={plan.service?.images?.[0]}
+            badge="Charter"
+            eyebrow={plan.vehicle_class || 'Fleet rental'}
+            title={plan.name}
+            description={plan.service?.description || `Includes ${plan.included_hours} hours and ${plan.included_kilometers} kilometers.`}
+            facts={[
+              { label: 'Base rate', value: `₱${Number(plan.base_price).toLocaleString()}`, icon: <Bus className="h-4 w-4" /> },
+              { label: 'Included', value: `${plan.included_hours}h`, icon: <CalendarClock className="h-4 w-4" /> },
+              { label: 'Distance', value: `${plan.included_kilometers} km`, icon: <LuMapPin className="h-4 w-4" /> },
+            ]}
+            actionLabel="Select package & continue"
+            onAction={() => setBooking(current => ({ ...current, rate_plan_id: String(plan.id) }))}
+            controls={<button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>}
+          />)}
+        </div>}
+      </section>
+      <CharterBookingManager bookings={bookings} targetId={manageId} />
+    </div>;
+  }
+
   return <div className="space-y-6">
-    <header className="flex flex-col gap-4 rounded-3xl bg-[#071b33] p-6 text-white lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <button onClick={() => navigate('/sales')} className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Back to Sales</button>
-        <p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-300">Sales module · Fleet rental</p>
-        <h1 className="mt-1 text-2xl font-black">Charter & Bus Rental Checkout</h1>
-        <p className="mt-1 text-sm text-slate-300">Configure vehicle charters, seat assignments, driver allocations, and inclusions for private group trips.</p>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <Button onClick={() => setManifestModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white font-black text-xs uppercase tracking-wider">
-          <Users className="mr-1.5 h-4 w-4" /> Passenger Manifest ({manifestPassengers.length})
-        </Button>
-        <Button onClick={() => setBusAllocationModalOpen(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-black text-xs uppercase tracking-wider">
-          <Bus className="mr-1.5 h-4 w-4" /> Multi-Bus & Seat Selector {busAllocations.length > 0 ? `(${busAllocations.length} Bus)` : ''}
-        </Button>
-        <Button onClick={openCreatePlan} variant="secondary" className="border-white/20 bg-white/10 text-white hover:bg-white/20"><Plus className="mr-1.5 h-4 w-4" /> New Rate Plan</Button>
-      </div>
-    </header>
+    <BookingWorkspaceHeader
+      eyebrow="Charter booking workspace"
+      badge={selectedPlan.vehicle_class || 'Charter'}
+      image={selectedPlan.service?.images?.[0]}
+      title={selectedPlan.name}
+      description={selectedPlan.service?.description || 'Complete the route, schedule, passenger manifest, fleet allocation, and checkout for this charter.'}
+      onBack={() => {
+        setBooking(current => ({ ...current, rate_plan_id: '', bus_id: '', driver_id: '' }));
+        setBusAssignments([{ bus_id: '', driver_id: '' }]);
+        setSelectedSeats([]);
+      }}
+      facts={[
+        { label: 'Base rate', value: `₱${Number(selectedPlan.base_price).toLocaleString()}` },
+        { label: 'Included operating time', value: `${selectedPlan.included_hours} hours` },
+        { label: 'Included distance', value: `${selectedPlan.included_kilometers} km` },
+      ]}
+      actions={<><Button onClick={() => setManifestModalOpen(true)} className="!bg-blue-600 !text-white"><Users className="h-4 w-4" /> Manifest ({manifestPassengers.length})</Button><Button onClick={() => setBusAllocationModalOpen(true)} className="!bg-amber-500 !text-white"><Bus className="h-4 w-4" /> Fleet & seats</Button></>}
+    />
 
     <CharterBookingManager bookings={bookings} targetId={manageId} />
 
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
       <div className="space-y-6">
         {/* 1. Distinct Elevated Rate Plans Catalog Selection Container Card */}
-        <section className="rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-b from-blue-50/50 via-slate-50 to-white dark:from-slate-900/80 dark:via-gray-900/60 dark:to-gray-900 p-6 shadow-md space-y-5">
+        <section className="hidden rounded-3xl border border-blue-200 dark:border-blue-900/60 bg-gradient-to-b from-blue-50/50 via-slate-50 to-white dark:from-slate-900/80 dark:via-gray-900/60 dark:to-gray-900 p-6 shadow-md space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-blue-100 dark:border-gray-800 pb-4">
             <div>
               <div className="flex items-center gap-2">
