@@ -236,7 +236,7 @@ class DashboardService
             ->with(['preparedBy', 'approvedBy', 'tripTicket', 'purchaseOrder', 'workOrder'])
             ->latest()
             ->get()
-            ->map(fn ($cb) => [
+            ->map(fn (CashBudgetRequest $cb) => [
                 'id'               => $cb->id,
                 'type'             => 'cash_budget',
                 'reference_number' => $cb->tripTicket?->control_no ?? ('CB-' . $cb->id),
@@ -252,7 +252,7 @@ class DashboardService
             ->with(['supplier', 'creator', 'verifiedBy'])
             ->latest()
             ->get()
-            ->map(fn ($po) => [
+            ->map(fn (PurchaseOrder $po) => [
                 'id'               => $po->id,
                 'type'             => 'purchase_order',
                 'reference_number' => $po->po_number,
@@ -268,7 +268,7 @@ class DashboardService
             ->with(['bus', 'creator', 'assignee'])
             ->latest()
             ->get()
-            ->map(fn ($wo) => [
+            ->map(fn (WorkOrder $wo) => [
                 'id'               => $wo->id,
                 'type'             => 'work_order',
                 'reference_number' => $wo->wo_number,

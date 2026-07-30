@@ -93,7 +93,7 @@ class JoinerReservationService
 
     public function confirm(JoinerReservation $reservation, array $passengers, array $checkout): JoinerReservation
     {
-        $confirmed = DB::transaction(function () use ($reservation, $passengers, $checkout) {
+        $confirmed = DB::transaction(function (): JoinerReservation use ($reservation, $passengers, $checkout) {
             $locked = JoinerReservation::lockForUpdate()->findOrFail($reservation->id);
             $departure = JoinerDeparture::lockForUpdate()->findOrFail($locked->departure_id);
             $seats = JoinerDepartureSeat::where('reservation_id', $locked->id)->lockForUpdate()->get()->keyBy('seat_code');
