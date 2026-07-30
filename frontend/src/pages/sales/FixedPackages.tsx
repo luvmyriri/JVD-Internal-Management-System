@@ -346,8 +346,8 @@ export default function FixedPackages() {
             onLocationSelect={(pickup, dropoff, distanceKm, dieselLiters, dieselCost, pCoords, dCoords) => {
               setForm(current => ({
                 ...current,
-                origin: current.origin || pickup,
-                destination: current.destination || dropoff,
+                origin: pickup,
+                destination: dropoff,
                 pickupCoords: pCoords || current.pickupCoords,
                 dropoffCoords: dCoords || current.dropoffCoords,
                 routeDistanceKm: String(distanceKm),

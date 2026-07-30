@@ -132,17 +132,72 @@ export default function TripLocationMapPicker({
     }
   }, [initialDropoffCoords]);
 
-  useEffect(() => {
-    if (pickupLocation !== undefined && pickupLocation !== pickupName) {
-      setPickupName(pickupLocation);
+  const geocodeLocation = async (query: string): Promise<[number, number] | null> => {
+    const q = query.trim().toLowerCase();
+    if (!q) return null;
+
+    const match = PH_LOCATIONS_DATABASE.find((loc) =>
+      loc.display_name.toLowerCase().includes(q) ||
+      q.includes(loc.display_name.split(' ')[0].toLowerCase())
+    );
+    if (match) {
+      return [parseFloat(match.lat), parseFloat(match.lon)];
     }
-  }, [pickupLocation]);
+
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ', Philippines')}&limit=1`);
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+      }
+    } catch {
+      // ignore network errors
+    }
+    return null;
+  };
 
   useEffect(() => {
-    if (dropOffLocation !== undefined && dropOffLocation !== dropoffName) {
-      setDropoffName(dropOffLocation);
-    }
-  }, [dropOffLocation]);
+    const timer = setTimeout(async () => {
+      let pCoord = pickupCoord;
+      let dCoord = dropoffCoord;
+      let pChanged = false;
+      let dChanged = false;
+
+      if (pickupLocation && pickupLocation.trim()) {
+        const found = await geocodeLocation(pickupLocation);
+        if (found && (Math.abs(found[0] - pickupCoord[0]) > 0.001 || Math.abs(found[1] - pickupCoord[1]) > 0.001)) {
+          pCoord = found;
+          pChanged = true;
+        }
+      }
+
+      if (dropOffLocation && dropOffLocation.trim()) {
+        const found = await geocodeLocation(dropOffLocation);
+        if (found && (Math.abs(found[0] - dropoffCoord[0]) > 0.001 || Math.abs(found[1] - dropoffCoord[1]) > 0.001)) {
+          dCoord = found;
+          dChanged = true;
+        }
+      }
+
+      if (pChanged || dChanged) {
+        setPickupName(pickupLocation);
+        setDropoffName(dropOffLocation);
+        setPickupCoord(pCoord);
+        setDropoffCoord(dCoord);
+
+        if (markersRef.current[0] && pChanged) {
+          markersRef.current[0].setLatLng(pCoord);
+        }
+        if (markersRef.current[1] && dChanged) {
+          markersRef.current[1].setLatLng(dCoord);
+        }
+
+        fetchOSRMRoute(pCoord[0], pCoord[1], dCoord[0], dCoord[1], pickupLocation, dropOffLocation);
+      }
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [pickupLocation, dropOffLocation]);
   
   // Base 1-way distance from OSRM
   const [oneWayKm, setOneWayKm] = useState<number>(65);
