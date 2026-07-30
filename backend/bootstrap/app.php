@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Sentry\Laravel\Integration;
 
 $tempDir = __DIR__ . '/../storage/app/temp';
 if (!is_dir($tempDir)) {
@@ -55,5 +56,5 @@ return Application::configure(basePath: dirname(__DIR__))
         // Apply audit logging to all API routes
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        Integration::handles($exceptions);
     })->create();
