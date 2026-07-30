@@ -96,8 +96,8 @@ const PRESET_ROUTES: Array<{
 ];
 
 export default function TripLocationMapPicker({
-  pickupLocation = 'Manila Hub (Pasay Terminal)',
-  dropOffLocation = 'Tagaytay City',
+  pickupLocation = '',
+  dropOffLocation = '',
   initialPickupCoords,
   initialDropoffCoords,
   vehicleType = 'Bus',
@@ -133,40 +133,14 @@ export default function TripLocationMapPicker({
   }, [initialDropoffCoords]);
 
   useEffect(() => {
-    if (pickupLocation && pickupLocation !== pickupName) {
+    if (pickupLocation !== undefined && pickupLocation !== pickupName) {
       setPickupName(pickupLocation);
-      const match = PH_LOCATIONS_DATABASE.find((loc) =>
-        loc.display_name.toLowerCase().includes(pickupLocation.toLowerCase()) ||
-        pickupLocation.toLowerCase().includes(loc.display_name.split(' ')[0].toLowerCase())
-      );
-      if (match) {
-        const newCoords: [number, number] = [parseFloat(match.lat), parseFloat(match.lon)];
-        setPickupCoord(newCoords);
-        if (markersRef.current[0]) {
-          markersRef.current[0].setLatLng(newCoords);
-          markersRef.current[0].bindPopup(`<b>Pickup Point</b><br/>${pickupLocation}`);
-        }
-        fetchOSRMRoute(newCoords[0], newCoords[1], dropoffCoord[0], dropoffCoord[1], pickupLocation, dropoffName);
-      }
     }
   }, [pickupLocation]);
 
   useEffect(() => {
-    if (dropOffLocation && dropOffLocation !== dropoffName) {
+    if (dropOffLocation !== undefined && dropOffLocation !== dropoffName) {
       setDropoffName(dropOffLocation);
-      const match = PH_LOCATIONS_DATABASE.find((loc) =>
-        loc.display_name.toLowerCase().includes(dropOffLocation.toLowerCase()) ||
-        dropOffLocation.toLowerCase().includes(loc.display_name.split(' ')[0].toLowerCase())
-      );
-      if (match) {
-        const newCoords: [number, number] = [parseFloat(match.lat), parseFloat(match.lon)];
-        setDropoffCoord(newCoords);
-        if (markersRef.current[1]) {
-          markersRef.current[1].setLatLng(newCoords);
-          markersRef.current[1].bindPopup(`<b>Destination</b><br/>${dropOffLocation}`);
-        }
-        fetchOSRMRoute(pickupCoord[0], pickupCoord[1], newCoords[0], newCoords[1], pickupName, dropOffLocation);
-      }
     }
   }, [dropOffLocation]);
   

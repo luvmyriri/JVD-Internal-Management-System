@@ -338,16 +338,16 @@ export default function FixedPackages() {
             <p className="mt-1 text-xs text-muted">The Leaflet route becomes the package default and carries its distance and fuel estimate into planning.</p>
           </div>
           <TripLocationMapPicker
-            pickupLocation={form.origin || 'Manila Hub (Pasay Terminal)'}
-            dropOffLocation={form.destination || 'Tagaytay City'}
+            pickupLocation={form.origin}
+            dropOffLocation={form.destination}
             initialPickupCoords={form.pickupCoords}
             initialDropoffCoords={form.dropoffCoords}
             vehicleType="Bus"
             onLocationSelect={(pickup, dropoff, distanceKm, dieselLiters, dieselCost, pCoords, dCoords) => {
               setForm(current => ({
                 ...current,
-                origin: pickup,
-                destination: dropoff,
+                origin: current.origin || pickup,
+                destination: current.destination || dropoff,
                 pickupCoords: pCoords || current.pickupCoords,
                 dropoffCoords: dCoords || current.dropoffCoords,
                 routeDistanceKm: String(distanceKm),
