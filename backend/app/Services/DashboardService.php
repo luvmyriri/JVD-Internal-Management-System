@@ -409,7 +409,7 @@ class DashboardService
                 ->map(fn ($t) => [
                     'id'       => $t->id,
                     'title'    => 'Trip: ' . ($t->drop_off ?? $t->destination ?? 'Destination TBD'),
-                    'subtitle' => ($t->date_of_travel ? \Carbon\Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
+                    'subtitle' => ($t->date_of_travel ? Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
                         . ' · ' . ($t->control_no ?? "TT-{$t->id}"),
                     'status'   => $t->status,
                     'type'     => 'trip',
@@ -456,7 +456,7 @@ class DashboardService
                 ->map(fn ($t) => [
                     'id'       => $t->id,
                     'title'    => 'Trip Ticket ' . ($t->control_no ?? "TT-{$t->id}"),
-                    'subtitle' => ($t->date_of_travel ? \Carbon\Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
+                    'subtitle' => ($t->date_of_travel ? Carbon::parse($t->date_of_travel)->format('D, M j') : 'TBD')
                         . ' → ' . ($t->drop_off ?? 'Destination TBD'),
                     'status'   => $t->status,
                     'type'     => 'trip',
@@ -492,7 +492,7 @@ class DashboardService
                 ->map(fn ($jo) => [
                     'id'       => $jo->id,
                     'title'    => $jo->jo_number . ': ' . \Illuminate\Support\Str::limit($jo->destination ?? 'Booking', 40),
-                    'subtitle' => 'Service Date: ' . ($jo->service_date ? \Carbon\Carbon::parse($jo->service_date)->format('M j, Y') : 'TBD'),
+                    'subtitle' => 'Service Date: ' . ($jo->service_date ? Carbon::parse($jo->service_date)->format('M j, Y') : 'TBD'),
                     'status'   => $jo->status === 'created' ? 'pending' : $jo->status,
                     'type'     => 'job_order',
                     'url'      => '/procurement/job-orders',

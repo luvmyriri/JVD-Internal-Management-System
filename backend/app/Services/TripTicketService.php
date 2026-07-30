@@ -170,7 +170,7 @@ class TripTicketService
         $validated['requested_by'] = auth()->id();
         $validated['trip_type'] = $validated['trip_type'] ?? 'domestic';
 
-        $result = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $override, $canOverride, $user) {
+        $result = DB::transaction(function () use ($validated, $override, $canOverride, $user) {
             if (!$override || !$canOverride) {
                 $conflictResponse = $this->detectScheduleConflict(
                     $validated['driver_id'] ?? null,
@@ -499,7 +499,7 @@ class TripTicketService
         }
 
         if ($request->has('status') && $request->status === 'completed' && $ticket->bus_id) {
-            $bus = \App\Models\Bus::find($ticket->bus_id);
+            $bus = Bus::find($ticket->bus_id);
             if ($bus) {
                 $distanceAdded = (float)($ticket->odometer_reading ?? 0);
                 if ($distanceAdded > 0) {
@@ -578,7 +578,7 @@ class TripTicketService
 
     private function getTripDateRange($dateOfTravel, $duration)
     {
-        $startDate = \Carbon\Carbon::parse($dateOfTravel)->startOfDay();
+        $startDate = Carbon::parse($dateOfTravel)->startOfDay();
         
         $days = 1;
         if ($duration && preg_match('/(\d+)\s*day/i', $duration, $matches)) {
@@ -620,7 +620,7 @@ class TripTicketService
 
         $excludeInvoiceId = null;
         if ($excludeId) {
-            $tt = \App\Models\TripTicket::find($excludeId);
+            $tt = TripTicket::find($excludeId);
             if ($tt && $tt->invoice_id) {
                 $excludeInvoiceId = $tt->invoice_id;
             }
@@ -755,7 +755,7 @@ class TripTicketService
 
         $excludeInvoiceId = null;
         if ($excludeTicketId) {
-            $tt = \App\Models\TripTicket::find($excludeTicketId);
+            $tt = TripTicket::find($excludeTicketId);
             if ($tt && $tt->invoice_id) {
                 $excludeInvoiceId = $tt->invoice_id;
             }
@@ -800,7 +800,7 @@ class TripTicketService
                         'message' => "Schedule conflict: The selected driver is already reserved for booking/invoice {$invNo} ({$custName}) on {$tDate}."
                     ], 422);
                 } else {
-                    $tt = \App\Models\TripTicket::find($travel->reference_id);
+                    $tt = TripTicket::find($travel->reference_id);
                     $ctrlNo = $tt ? $tt->control_no : '';
                     $pu = $tt ? $tt->pick_up : '';
                     $do = $tt ? $tt->drop_off : '';
@@ -849,7 +849,7 @@ class TripTicketService
                         'message' => "Schedule conflict: The selected vehicle is already reserved for booking/invoice {$invNo} ({$custName}) on {$tDate}."
                     ], 422);
                 } else {
-                    $tt = \App\Models\TripTicket::find($travel->reference_id);
+                    $tt = TripTicket::find($travel->reference_id);
                     $ctrlNo = $tt ? $tt->control_no : '';
                     $pu = $tt ? $tt->pick_up : '';
                     $do = $tt ? $tt->drop_off : '';

@@ -456,7 +456,7 @@ class InvoiceFinalizationService
                         ->first();
 
                     // Check active trip tickets (excluding cancelled ones)
-                    $ttConflict = \App\Models\TripTicket::where('bus_id', $booking->bus_id)
+                    $ttConflict = TripTicket::where('bus_id', $booking->bus_id)
                         ->where('date_of_travel', $dateStr)
                         ->where('status', '!=', 'cancelled')
                         ->where(function ($q) use ($invoice) {
@@ -496,7 +496,7 @@ class InvoiceFinalizationService
                     ->first();
 
                 // Check active trip tickets for driver (excluding cancelled ones)
-                $driverTtConflict = \App\Models\TripTicket::where('driver_id', $booking->driver_id)
+                $driverTtConflict = TripTicket::where('driver_id', $booking->driver_id)
                     ->where('date_of_travel', $dateStr)
                     ->where('status', '!=', 'cancelled')
                     ->where(function ($q) use ($invoice) {
