@@ -224,6 +224,7 @@ class SalesOrderService
                     'details_snapshot'=>$details,
                 ];
 
+                /** @var SalesOrderItem|null $orderItem */
                 $orderItem = $order->items()->where('line_number', $index + 1)->lockForUpdate()->first();
                 if ($orderItem) {
                     $orderItem->update($attributes);

@@ -91,8 +91,8 @@ class CharterController extends Controller
         $central = app(ResourceAllocationService::class)->conflicts($data['starts_at'], $data['ends_at']);
         $busIds = $busIds->merge($central['bus_ids'])->filter()->unique();
         $driverIds = $driverIds->merge($central['driver_ids'])->filter()->unique();
-        $buses = Bus::orderBy('plate_number')->get(['id', 'plate_number', 'model', 'vehicle_type', 'bus_category', 'seating_capacity', 'status'])->map(fn ($bus) => [...$bus->toArray(), 'available' => $bus->status === 'available' && ! $busIds->contains($bus->id)]);
-        $drivers = User::where('role', 'driver')->where('is_active', true)->orderBy('first_name')->get(['id', 'first_name', 'last_name'])->map(fn ($driver) => [...$driver->toArray(), 'available' => ! $driverIds->contains($driver->id)]);
+        $buses = Bus::orderBy('plate_number')->get(['id', 'plate_number', 'model', 'vehicle_type', 'bus_category', 'seating_capacity', 'status'])->map(fn (Bus $bus) => [...$bus->toArray(), 'available' => $bus->status === 'available' && ! $busIds->contains($bus->id)]);
+        $drivers = User::where('role', 'driver')->where('is_active', true)->orderBy('first_name')->get(['id', 'first_name', 'last_name'])->map(fn (User $driver) => [...$driver->toArray(), 'available' => ! $driverIds->contains($driver->id)]);
 
         return response()->json(['data' => ['buses' => $buses, 'drivers' => $drivers]]);
     }

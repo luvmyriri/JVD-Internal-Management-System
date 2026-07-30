@@ -291,7 +291,7 @@ class BillingService
         return response()->json([
             'success' => true,
             'path' => $path,
-            'url' => Storage::disk('public')->url($path),
+            'url' => Storage::url($path),
         ]);
     }
 

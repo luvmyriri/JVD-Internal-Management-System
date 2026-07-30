@@ -64,7 +64,7 @@ class NotifyExpiringDocuments extends Command
             foreach ($admins as $admin) {
                 $admin->notify(new \App\Notifications\SystemAlert(
                     'Document Expiring Soon',
-                    "The document '{$doc->title}' ({$doc->doc_number}) is expiring on {$doc->expiry_date->format('Y-m-d')}.",
+                    "The document '{$doc->title}' ({$doc->doc_number}) is expiring on " . \Carbon\Carbon::parse($doc->expiry_date)->format('Y-m-d') . ".",
                     'warning',
                     '/documents/' . $doc->id
                 ));

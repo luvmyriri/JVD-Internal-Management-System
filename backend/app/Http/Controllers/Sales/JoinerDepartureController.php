@@ -133,9 +133,9 @@ class JoinerDepartureController extends Controller
         $conflictingDriverIds = $conflictingDriverIds->merge($central['driver_ids'])->unique();
 
         $buses = \App\Models\Bus::orderBy('plate_number')->get(['id', 'plate_number', 'model', 'seating_capacity', 'status'])
-            ->map(fn ($bus) => [...$bus->toArray(), 'available' => $bus->status === 'available' && !$conflictingBusIds->contains($bus->id)]);
+            ->map(fn (\App\Models\Bus $bus) => [...$bus->toArray(), 'available' => $bus->status === 'available' && !$conflictingBusIds->contains($bus->id)]);
         $drivers = \App\Models\User::where('role', 'driver')->where('is_active', true)->orderBy('first_name')->get(['id', 'first_name', 'last_name'])
-            ->map(fn ($driver) => [...$driver->toArray(), 'available' => !$conflictingDriverIds->contains($driver->id)]);
+            ->map(fn (\App\Models\User $driver) => [...$driver->toArray(), 'available' => !$conflictingDriverIds->contains($driver->id)]);
 
         return response()->json(['data' => ['buses' => $buses, 'drivers' => $drivers]]);
     }
