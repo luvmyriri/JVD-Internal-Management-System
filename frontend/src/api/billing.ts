@@ -9,6 +9,8 @@ export interface Service {
   package_config?: {
     destination?: string;
     origin?: string;
+    pickup_coords?: [number, number];
+    dropoff_coords?: [number, number];
     duration_days?: number;
     duration_nights?: number;
     minimum_pax?: number;
@@ -20,6 +22,7 @@ export interface Service {
     valid_from?: string;
     valid_until?: string;
     default_itinerary?: string[];
+    days?: any[];
   } | null;
   is_sales_catalog?: boolean;
   price: number;

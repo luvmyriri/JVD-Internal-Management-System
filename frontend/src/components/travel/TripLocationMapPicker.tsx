@@ -20,10 +20,20 @@ export interface RoutePinLocation {
 interface TripLocationMapPickerProps {
   pickupLocation?: string;
   dropOffLocation?: string;
+  initialPickupCoords?: [number, number];
+  initialDropoffCoords?: [number, number];
   vehicleType?: 'Bus' | 'Coaster' | 'Van';
   fuelPricePerLiter?: number;
   readOnly?: boolean;
-  onLocationSelect?: (pickup: string, dropoff: string, distanceKm: number, dieselLiters: number, dieselCost: number) => void;
+  onLocationSelect?: (
+    pickup: string,
+    dropoff: string,
+    distanceKm: number,
+    dieselLiters: number,
+    dieselCost: number,
+    pickupCoords?: [number, number],
+    dropoffCoords?: [number, number]
+  ) => void;
 }
 
 const PH_LOCATIONS_DATABASE: Array<{ display_name: string; lat: string; lon: string }> = [
@@ -88,6 +98,8 @@ const PRESET_ROUTES: Array<{
 export default function TripLocationMapPicker({
   pickupLocation = 'Manila Hub (Pasay Terminal)',
   dropOffLocation = 'Tagaytay City',
+  initialPickupCoords,
+  initialDropoffCoords,
   vehicleType = 'Bus',
   fuelPricePerLiter = 68.5,
   readOnly = false,
@@ -95,18 +107,66 @@ export default function TripLocationMapPicker({
 }: TripLocationMapPickerProps) {
   const [pickupName, setPickupName] = useState(pickupLocation);
   const [dropoffName, setDropoffName] = useState(dropOffLocation);
-  const [pickupCoord, setPickupCoord] = useState<[number, number]>([14.5378, 120.9992]);
-  const [dropoffCoord, setDropoffCoord] = useState<[number, number]>([14.1153, 120.9621]);
+  const [pickupCoord, setPickupCoord] = useState<[number, number]>(
+    initialPickupCoords || [14.5378, 120.9992]
+  );
+  const [dropoffCoord, setDropoffCoord] = useState<[number, number]>(
+    initialDropoffCoords || [14.1153, 120.9621]
+  );
+
+  useEffect(() => {
+    if (initialPickupCoords && (initialPickupCoords[0] !== pickupCoord[0] || initialPickupCoords[1] !== pickupCoord[1])) {
+      setPickupCoord(initialPickupCoords);
+      if (markersRef.current[0]) {
+        markersRef.current[0].setLatLng(initialPickupCoords);
+      }
+    }
+  }, [initialPickupCoords]);
+
+  useEffect(() => {
+    if (initialDropoffCoords && (initialDropoffCoords[0] !== dropoffCoord[0] || initialDropoffCoords[1] !== dropoffCoord[1])) {
+      setDropoffCoord(initialDropoffCoords);
+      if (markersRef.current[1]) {
+        markersRef.current[1].setLatLng(initialDropoffCoords);
+      }
+    }
+  }, [initialDropoffCoords]);
 
   useEffect(() => {
     if (pickupLocation && pickupLocation !== pickupName) {
       setPickupName(pickupLocation);
+      const match = PH_LOCATIONS_DATABASE.find((loc) =>
+        loc.display_name.toLowerCase().includes(pickupLocation.toLowerCase()) ||
+        pickupLocation.toLowerCase().includes(loc.display_name.split(' ')[0].toLowerCase())
+      );
+      if (match) {
+        const newCoords: [number, number] = [parseFloat(match.lat), parseFloat(match.lon)];
+        setPickupCoord(newCoords);
+        if (markersRef.current[0]) {
+          markersRef.current[0].setLatLng(newCoords);
+          markersRef.current[0].bindPopup(`<b>Pickup Point</b><br/>${pickupLocation}`);
+        }
+        fetchOSRMRoute(newCoords[0], newCoords[1], dropoffCoord[0], dropoffCoord[1], pickupLocation, dropoffName);
+      }
     }
   }, [pickupLocation]);
 
   useEffect(() => {
     if (dropOffLocation && dropOffLocation !== dropoffName) {
       setDropoffName(dropOffLocation);
+      const match = PH_LOCATIONS_DATABASE.find((loc) =>
+        loc.display_name.toLowerCase().includes(dropOffLocation.toLowerCase()) ||
+        dropOffLocation.toLowerCase().includes(loc.display_name.split(' ')[0].toLowerCase())
+      );
+      if (match) {
+        const newCoords: [number, number] = [parseFloat(match.lat), parseFloat(match.lon)];
+        setDropoffCoord(newCoords);
+        if (markersRef.current[1]) {
+          markersRef.current[1].setLatLng(newCoords);
+          markersRef.current[1].bindPopup(`<b>Destination</b><br/>${dropOffLocation}`);
+        }
+        fetchOSRMRoute(pickupCoord[0], pickupCoord[1], newCoords[0], newCoords[1], pickupName, dropOffLocation);
+      }
     }
   }, [dropOffLocation]);
   
@@ -143,7 +203,14 @@ export default function TripLocationMapPicker({
   }, [tripMode]);
 
   // Recalculate values whenever oneWayKm or multiplier changes
-  const applyAutoCalculations = (baseKm: number, currentMultiplier: number) => {
+  const applyAutoCalculations = (
+    baseKm: number,
+    currentMultiplier: number,
+    pName = pickupName,
+    dName = dropoffName,
+    pCoord = pickupCoord,
+    dCoord = dropoffCoord
+  ) => {
     const totalKm = Math.round(baseKm * currentMultiplier);
     const kmPerL = vehicleType === 'Van' ? 9.0 : vehicleType === 'Coaster' ? 6.5 : 5.5;
     const liters = Math.round((totalKm / kmPerL) * 10) / 10;
@@ -154,12 +221,19 @@ export default function TripLocationMapPicker({
     setEditableCost(String(cost));
 
     if (onLocationSelect) {
-      onLocationSelect(pickupName, dropoffName, totalKm, liters, cost);
+      onLocationSelect(pName, dName, totalKm, liters, cost, pCoord, dCoord);
     }
   };
 
   // Fetch real-time road driving route from OSRM Routing API
-  const fetchOSRMRoute = async (pLat: number, pLng: number, dLat: number, dLng: number) => {
+  const fetchOSRMRoute = async (
+    pLat: number,
+    pLng: number,
+    dLat: number,
+    dLng: number,
+    pName = pickupName,
+    dName = dropoffName
+  ) => {
     setIsRouting(true);
     try {
       const url = `https://router.project-osrm.org/route/v1/driving/${pLng},${pLat};${dLng},${dLat}?overview=full&geometries=geojson`;
@@ -170,7 +244,7 @@ export default function TripLocationMapPicker({
         const route = data.routes[0];
         const routeDistanceKm = Math.round((route.distance / 1000) * 10) / 10;
         setOneWayKm(routeDistanceKm);
-        applyAutoCalculations(routeDistanceKm, multiplier);
+        applyAutoCalculations(routeDistanceKm, multiplier, pName, dName, [pLat, pLng], [dLat, dLng]);
 
         if (mapInstanceRef.current && route.geometry?.coordinates) {
           if (routeLayerRef.current) {
@@ -226,19 +300,21 @@ export default function TripLocationMapPicker({
     if (!readOnly) {
       markerA.on('dragend', (e) => {
         const pos = (e.target as L.Marker).getLatLng();
-        setPickupCoord([pos.lat, pos.lng]);
-        fetchOSRMRoute(pos.lat, pos.lng, dropoffCoord[0], dropoffCoord[1]);
+        const newPickup: [number, number] = [pos.lat, pos.lng];
+        setPickupCoord(newPickup);
+        fetchOSRMRoute(pos.lat, pos.lng, dropoffCoord[0], dropoffCoord[1], pickupName, dropoffName);
       });
 
       markerB.on('dragend', (e) => {
         const pos = (e.target as L.Marker).getLatLng();
-        setDropoffCoord([pos.lat, pos.lng]);
-        fetchOSRMRoute(pickupCoord[0], pickupCoord[1], pos.lat, pos.lng);
+        const newDropoff: [number, number] = [pos.lat, pos.lng];
+        setDropoffCoord(newDropoff);
+        fetchOSRMRoute(pickupCoord[0], pickupCoord[1], pos.lat, pos.lng, pickupName, dropoffName);
       });
     }
 
     markersRef.current = [markerA, markerB];
-    fetchOSRMRoute(pickupCoord[0], pickupCoord[1], dropoffCoord[0], dropoffCoord[1]);
+    fetchOSRMRoute(pickupCoord[0], pickupCoord[1], dropoffCoord[0], dropoffCoord[1], pickupName, dropoffName);
 
     return () => {
       map.remove();
@@ -249,14 +325,16 @@ export default function TripLocationMapPicker({
   const handleSelectPreset = (route: (typeof PRESET_ROUTES)[number]) => {
     setPickupName(route.pickup.name);
     setDropoffName(route.destination.name);
-    setPickupCoord([route.pickup.lat, route.pickup.lng]);
-    setDropoffCoord([route.destination.lat, route.destination.lng]);
+    const pCoords: [number, number] = [route.pickup.lat, route.pickup.lng];
+    const dCoords: [number, number] = [route.destination.lat, route.destination.lng];
+    setPickupCoord(pCoords);
+    setDropoffCoord(dCoords);
     setOneWayKm(route.distanceKm);
 
     if (mapInstanceRef.current && markersRef.current.length === 2) {
-      markersRef.current[0].setLatLng([route.pickup.lat, route.pickup.lng]);
-      markersRef.current[1].setLatLng([route.destination.lat, route.destination.lng]);
-      fetchOSRMRoute(route.pickup.lat, route.pickup.lng, route.destination.lat, route.destination.lng);
+      markersRef.current[0].setLatLng(pCoords);
+      markersRef.current[1].setLatLng(dCoords);
+      fetchOSRMRoute(pCoords[0], pCoords[1], dCoords[0], dCoords[1], route.pickup.name, route.destination.name);
     }
   };
 

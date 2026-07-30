@@ -33,6 +33,8 @@ interface PackageForm {
   description: string;
   destination: string;
   origin: string;
+  pickupCoords?: [number, number];
+  dropoffCoords?: [number, number];
   durationDays: string;
   durationNights: string;
   minimumPax: string;
@@ -53,7 +55,9 @@ interface PackageForm {
 }
 
 const INITIAL_FORM: PackageForm = {
-  name: '', description: '', destination: '', origin: '', durationDays: '3', durationNights: '2',
+  name: '', description: '', destination: '', origin: '',
+  pickupCoords: undefined, dropoffCoords: undefined,
+  durationDays: '3', durationNights: '2',
   minimumPax: '1', maximumPax: '12', bookingLeadDays: '7', routeDistanceKm: '', estimatedDieselLiters: '', estimatedDieselCost: '', validFrom: '', validUntil: '',
   adultPrice: '', childPrice: '', itinerary: '', inclusions: '', exclusions: '', costBreakdown: '', images: [],
 };
@@ -149,6 +153,8 @@ export default function FixedPackages() {
       description: service.description || '',
       destination: config.destination || '',
       origin: config.origin || '',
+      pickupCoords: config.pickup_coords,
+      dropoffCoords: config.dropoff_coords,
       durationDays: String(config.duration_days ?? 1),
       durationNights: String(config.duration_nights ?? 0),
       minimumPax: String(config.minimum_pax ?? 1),
@@ -199,6 +205,8 @@ export default function FixedPackages() {
         package_config: {
           destination: form.destination.trim(),
           origin: form.origin.trim() || undefined,
+          pickup_coords: form.pickupCoords,
+          dropoff_coords: form.dropoffCoords,
           duration_days: Number(form.durationDays),
           duration_nights: Number(form.durationNights || 0),
           minimum_pax: minimumPax,
@@ -296,9 +304,15 @@ export default function FixedPackages() {
         )}
       >
         <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="border-b border-border pb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">1 · Package identity & selling rules</p>
-            <h2 className="mt-1 text-lg font-black text-ink">What the customer is choosing</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-600">1 · Package identity & selling rules</p>
+              <h2 className="mt-1 text-lg font-black text-ink">What the customer is choosing</h2>
+            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Synced with Leaflet route plan
+            </span>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="text-xs font-bold text-muted md:col-span-2">Package name<input required className={inputClass} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Bohol Private Family Escape" /></label>
@@ -326,12 +340,16 @@ export default function FixedPackages() {
           <TripLocationMapPicker
             pickupLocation={form.origin || 'Manila Hub (Pasay Terminal)'}
             dropOffLocation={form.destination || 'Tagaytay City'}
+            initialPickupCoords={form.pickupCoords}
+            initialDropoffCoords={form.dropoffCoords}
             vehicleType="Bus"
-            onLocationSelect={(pickup, dropoff, distanceKm, dieselLiters, dieselCost) => {
+            onLocationSelect={(pickup, dropoff, distanceKm, dieselLiters, dieselCost, pCoords, dCoords) => {
               setForm(current => ({
                 ...current,
                 origin: pickup,
                 destination: dropoff,
+                pickupCoords: pCoords || current.pickupCoords,
+                dropoffCoords: dCoords || current.dropoffCoords,
                 routeDistanceKm: String(distanceKm),
                 estimatedDieselLiters: String(dieselLiters),
                 estimatedDieselCost: String(dieselCost),
