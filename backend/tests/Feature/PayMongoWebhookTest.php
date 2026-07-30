@@ -50,4 +50,22 @@ class PayMongoWebhookTest extends TestCase
         $this->call('POST', '/api/v1/billing/webhook', [], [], [], $headers, $raw)->assertOk();
         $this->assertSame(1, CollectionPayment::where('idempotency_key', 'paymongo:evt_test_001')->count());
     }
+
+    public function test_paymongo_webhook_alias_accepts_the_dashboard_path(): void
+    {
+        config(['services.paymongo.webhook_secret' => 'test-webhook-secret']);
+        $raw = json_encode([
+            'data' => [
+                'id' => 'evt_alias_path_001',
+                'attributes' => ['type' => 'unknown'],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $timestamp = (string) time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$raw, 'test-webhook-secret');
+
+        $this->call('POST', '/api/v1/paymongo/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_PAYMONGO_SIGNATURE' => "t={$timestamp},te={$signature}",
+        ], $raw)->assertOk();
+    }
 }

@@ -53,6 +53,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     
     // Webhook for PayMongo (no auth required)
     Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
+    // Canonical PayMongo provider path; retain /billing/webhook for existing integrations.
+    Route::post('/paymongo/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('paymongo.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
 
     Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,accounting:view')->group(function () {
         // Billing / Reports / Sales
