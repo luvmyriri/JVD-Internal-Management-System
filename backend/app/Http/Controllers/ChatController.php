@@ -8,6 +8,7 @@ use App\Models\ChatMessage;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ChatController extends Controller
 {
@@ -17,17 +18,9 @@ class ChatController extends Controller
     private function broadcastToWs(array $payload): void
     {
         try {
-            $ch = curl_init('http://localhost:6001/broadcast');
-            curl_setopt_array($ch, [
-                CURLOPT_POST           => true,
-                CURLOPT_POSTFIELDS     => json_encode($payload),
-                CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT_MS     => 200, // Non-blocking 200ms timeout
-                CURLOPT_CONNECTTIMEOUT_MS => 100,
-            ]);
-            curl_exec($ch);
-            curl_close($ch);
+            Http::timeout(0.2)
+                ->connectTimeout(0.1)
+                ->post('http://localhost:6001/broadcast', $payload);
         } catch (\Throwable $e) {
             // WS server may not be running — fail silently
         }
