@@ -413,20 +413,24 @@ export default function TripLocationMapPicker({
 
     let newPickupCoord = pickupCoord;
     let newDropoffCoord = dropoffCoord;
+    let newPickupName = pickupName;
+    let newDropoffName = dropoffName;
 
     if (type === 'pickup') {
       newPickupCoord = [lat, lng];
+      newPickupName = shortName;
       setPickupName(shortName);
       setPickupCoord([lat, lng]);
       if (markersRef.current[0]) markersRef.current[0].setLatLng([lat, lng]);
     } else {
       newDropoffCoord = [lat, lng];
+      newDropoffName = shortName;
       setDropoffName(shortName);
       setDropoffCoord([lat, lng]);
       if (markersRef.current[1]) markersRef.current[1].setLatLng([lat, lng]);
     }
 
-    fetchOSRMRoute(newPickupCoord[0], newPickupCoord[1], newDropoffCoord[0], newDropoffCoord[1]);
+    fetchOSRMRoute(newPickupCoord[0], newPickupCoord[1], newDropoffCoord[0], newDropoffCoord[1], newPickupName, newDropoffName);
     setSearchResults([]);
     setSearchQuery('');
   };
