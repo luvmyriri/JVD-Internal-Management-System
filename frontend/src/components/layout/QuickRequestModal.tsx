@@ -182,9 +182,9 @@ export default function QuickRequestModal() {
         onClick={closeQuickRequest}
       />
 
-      {/* Left Slide-Over Modal Container */}
-      <div className="fixed inset-y-0 left-0 max-w-full flex">
-        <div className="w-screen max-w-md bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col z-50 transform transition-transform duration-300 ease-in-out">
+      {/* Right Slide-Over Modal Container */}
+      <div className="fixed inset-y-0 right-0 max-w-full flex">
+        <div className="w-screen max-w-md bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 shadow-2xl flex flex-col z-50 transform transition-transform duration-300 ease-in-out">
           
           {/* Modal Header */}
           <div className="p-5 border-b border-gray-100 dark:border-gray-800 bg-gray-50/70 dark:bg-gray-800/40 flex items-center justify-between">
