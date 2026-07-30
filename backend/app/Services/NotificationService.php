@@ -43,16 +43,16 @@ class NotificationService
         $details = [
             'P.O. Number' => $po->po_number,
             'Supplier'    => $po->supplier->name ?? 'N/A',
-            'Grand Total' => '₱' . number_format($po->total_amount, 2),
+            'Grand Total' => '₱' . number_format((float) $po->total_amount, 2),
             'Created By'  => $creatorName,
             'Item Count'  => $po->lineItems->count() . ' items',
-            'Line Items'  => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format($item->unit_price, 2) . ')')->join("\n"),
+            'Line Items'  => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format((float) $item->unit_price, 2) . ')')->join("\n"),
         ];
 
         foreach ($recipients as $recipient) {
             $recipient->notify(new ActionableApprovalNotification(
                 "PO Submitted: " . $po->po_number,
-                "$creatorName has submitted a new Purchase Order of amount ₱" . number_format($po->total_amount, 2) . " for your verification and approval.",
+                "$creatorName has submitted a new Purchase Order of amount ₱" . number_format((float) $po->total_amount, 2) . " for your verification and approval.",
                 'purchase_order',
                 $po->id,
                 $details
@@ -71,16 +71,16 @@ class NotificationService
             $details = [
                 'P.O. Number'  => $po->po_number,
                 'Supplier'     => $po->supplier->name ?? 'N/A',
-                'Grand Total'  => '₱' . number_format($po->total_amount, 2),
+                'Grand Total'  => '₱' . number_format((float) $po->total_amount, 2),
                 'Verified By'  => $po->verifier ? ($po->verifier->first_name . ' ' . $po->verifier->last_name) : 'Accounting',
                 'Item Count'   => $po->lineItems->count() . ' items',
-                'Line Items'   => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format($item->unit_price, 2) . ')')->join("\n"),
+                'Line Items'   => $po->lineItems->map(fn($item) => $item->item_name . ' (' . $item->quantity . ' ' . ($item->unit_of_measure ?? 'pcs') . ' @ ₱' . number_format((float) $item->unit_price, 2) . ')')->join("\n"),
             ];
 
             foreach ($ceos as $ceo) {
                 $ceo->notify(new ActionableApprovalNotification(
                     "PO Pending CEO Approval: " . $po->po_number,
-                    "A Purchase Order of amount ₱" . number_format($po->total_amount, 2) . " has been verified by Accounting and is pending your final approval.",
+                    "A Purchase Order of amount ₱" . number_format((float) $po->total_amount, 2) . " has been verified by Accounting and is pending your final approval.",
                     'purchase_order',
                     $po->id,
                     $details
@@ -191,7 +191,7 @@ class NotificationService
     {
         $accountingStaff = User::getApprovers('process:approve_budget', ['accounting_executive', 'operations_manager', 'finance_manager']);
         
-        $message = "A new Cash Budget Request of amount ₱" . number_format($budget->total_amount, 2) . " has been auto-generated for destination: " . ($budget->destination ?? 'N/A') . ". Ready for review.";
+        $message = "A new Cash Budget Request of amount ₱" . number_format((float) $budget->total_amount, 2) . " has been auto-generated for destination: " . ($budget->destination ?? 'N/A') . ". Ready for review.";
 
         foreach ($accountingStaff as $staff) {
             $staff->notify(new SystemAlert(

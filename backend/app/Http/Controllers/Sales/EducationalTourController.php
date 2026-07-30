@@ -139,7 +139,7 @@ class EducationalTourController extends Controller
         $booking->load(['program.service', 'vehicles.bus', 'vehicles.driver', 'invoice']);
 
         return $documents->render('pdf.educational-tour-manifest', ['booking' => $booking])
-            ->stream("Educational_Tour_Manifest_{$booking->reference}.pdf", ['Attachment' => false]);
+            ->stream("Educational_Tour_Manifest_{$booking->reference}.pdf");
     }
 
     private function programData(EducationalTourProgram $program): array

@@ -320,7 +320,7 @@ class AccreditationController extends Controller
         return $this->uploadDocument($request, $accreditation, $type);
     }
 
-    public function uploadDocument(\App\Http\Requests\UploadAccreditationDocumentRequest $request, Accreditation $accreditation, $type)
+    public function uploadDocument(Request $request, Accreditation $accreditation, $type)
     {
 
         $customDocs = $accreditation->custom_documents ?? [];

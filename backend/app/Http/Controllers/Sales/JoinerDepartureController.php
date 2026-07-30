@@ -148,7 +148,7 @@ class JoinerDepartureController extends Controller
         ]);
 
         $pdf = app(\App\Services\DocumentPdfService::class)->render('pdf.joiner-manifest', ['departure' => $departure]);
-        return $pdf->stream("Joiner_Manifest_{$departure->code}.pdf", ['Attachment' => false]);
+        return $pdf->stream("Joiner_Manifest_{$departure->code}.pdf");
     }
 
     private function assertResourcesAvailable(array $data): void

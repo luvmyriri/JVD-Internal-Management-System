@@ -135,7 +135,7 @@ class CharterController extends Controller
         $booking->load(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
 
         return $documents->render('pdf.charter-confirmation', ['booking' => $booking])
-            ->stream("Charter_Confirmation_{$booking->reference}.pdf", ['Attachment' => false]);
+            ->stream("Charter_Confirmation_{$booking->reference}.pdf");
     }
 
     public function dispatchSheet(CharterBooking $booking, DocumentPdfService $documents)
@@ -143,6 +143,6 @@ class CharterController extends Controller
         $booking->load(['ratePlan.service', 'bus', 'driver', 'invoice']);
 
         return $documents->render('pdf.charter-dispatch-sheet', ['booking' => $booking])
-            ->stream("Charter_Dispatch_{$booking->reference}.pdf", ['Attachment' => false]);
+            ->stream("Charter_Dispatch_{$booking->reference}.pdf");
     }
 }

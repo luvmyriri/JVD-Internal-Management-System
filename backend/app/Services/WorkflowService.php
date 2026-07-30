@@ -45,7 +45,7 @@ class WorkflowService
     /**
      * Approve the current step.
      */
-    public function approve(WorkflowInstance $instance, User $user, string $comment = null): WorkflowInstance
+    public function approve(WorkflowInstance $instance, User $user, ?string $comment = null): WorkflowInstance
     {
         return DB::transaction(function () use ($instance, $user, $comment) {
             if ($instance->status !== 'pending') {
@@ -127,7 +127,7 @@ class WorkflowService
     /**
      * Determine if user can act on a specific step
      */
-    protected function canAct(WorkflowStep $step, User $user, Model $subject = null): bool
+    protected function canAct(WorkflowStep $step, User $user, ?Model $subject = null): bool
     {
         if ($user->role === 'super_admin') {
             return true;

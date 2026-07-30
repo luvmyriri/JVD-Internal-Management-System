@@ -421,7 +421,7 @@ class CollectionController extends Controller
         $pdf = Pdf::loadView('pdf.statement_of_account', $pdfData)
             ->setPaper('A4', 'portrait');
 
-        return $pdf->stream($fileName, ['Attachment' => false]);
+        return $pdf->stream($fileName);
     }
 
     /**

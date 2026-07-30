@@ -92,7 +92,7 @@ class BillingController extends Controller
             return response()->json(['message' => 'Customer email address is required.'], 422);
         }
 
-        Mail::to($recipient)->queue(new TransactionNotificationMail($invoice, 'invoice'));
+        Mail::to($recipient)->queue(new TransactionNotificationMail($invoice));
 
         return response()->json([
             'success' => true,
