@@ -1,5 +1,6 @@
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useQuickRequest } from '../../context/QuickRequestContext';
 import { confirm, promptText, notify } from '../ds';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { getInitials, getAvatarUrl } from '../../utils';
@@ -30,7 +31,8 @@ import {
   LuFileText,
   LuDownload,
   LuMenu,
-  LuSignature
+  LuSignature,
+  LuWallet
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 import { CreateCommissionForm } from '../../pages/operations/Commissions';
@@ -137,6 +139,7 @@ interface HeaderProps {
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { theme } = useTheme();
+  const { openQuickRequest } = useQuickRequest();
   const navigate = useNavigate();
   const location = useLocation();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -1022,17 +1025,31 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </div>
       </div>
 
-      {/* Right: Notifications + User */}
-      <div className="flex items-center gap-3">
-        {/* Quick Action: Request Commission (For General Employees only, hidden on the commissions page itself) */}
-        {!hasGeneralAccess && location.pathname !== '/accounting/commissions' && (
-          <button
-            onClick={() => setShowRequestCommission(true)}
-            className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-md shadow-blue-500/20 active:scale-95 cursor-pointer shrink-0"
-          >
-            <LuSignature className="w-3.5 h-3.5" /> Request Commission
-          </button>
-        )}
+      {/* Right: Notifications + Quick Actions + User */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Quick Action: Request Cash Budget */}
+        <button
+          type="button"
+          onClick={() => openQuickRequest('cash_budget')}
+          className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm shadow-orange-500/20 active:scale-95 cursor-pointer shrink-0"
+          title="Open left drawer request form for Cash Budget"
+        >
+          <LuWallet className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Request Cash Budget</span>
+          <span className="sm:hidden">Budget</span>
+        </button>
+
+        {/* Quick Action: Request Commission */}
+        <button
+          type="button"
+          onClick={() => openQuickRequest('commission')}
+          className="px-2.5 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm shadow-blue-500/20 active:scale-95 cursor-pointer shrink-0"
+          title="Open left drawer request form for Commission"
+        >
+          <LuSignature className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">Request Commission</span>
+          <span className="sm:hidden">Commission</span>
+        </button>
         {/* Widgets menu (dashboard only) */}
         {location.pathname === '/dashboard' && <HeaderWidgetsMenu />}
         {/* Messages Dropdown */}

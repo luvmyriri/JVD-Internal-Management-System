@@ -25,7 +25,7 @@ class CommissionController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'commissioner_name' => 'required|string|max:255',
+            'commissioner_name' => 'nullable|string|max:255',
             'employee_id' => 'nullable|exists:users,id',
             'serial_no' => 'nullable|string|unique:commissions,serial_no',
             'date' => 'required|date',
@@ -59,8 +59,13 @@ class CommissionController extends Controller
                 $serialNo = sprintf('COM-%d-%04d', $year, $sequence);
             }
 
+            $commissionerName = $validated['commissioner_name'] ?? $request->input('commissioner_name');
+            if (!$commissionerName && auth()->check()) {
+                $commissionerName = trim(auth()->user()->first_name . ' ' . auth()->user()->last_name);
+            }
+
             $commission = Commission::create([
-                'commissioner_name' => $validated['commissioner_name'],
+                'commissioner_name' => $commissionerName ?: 'Staff Member',
                 'employee_id' => $validated['employee_id'] ?? $request->input('employee_id') ?? auth()->id(),
                 'serial_no' => $serialNo,
                 'date' => $validated['date'],

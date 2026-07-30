@@ -1,8 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { QuickRequestProvider } from './context/QuickRequestContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { EntityPreviewProvider } from './context/EntityPreviewContext';
+import QuickRequestModal from './components/layout/QuickRequestModal';
 import { AuthGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
@@ -107,119 +109,122 @@ export default function App() {
         <BrowserRouter>
           <EntityPreviewProvider>
             <AuthProvider>
-              <Routes>
-                {/* Public */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/set-password" element={<SetPassword />} />
-              <Route path="/kyc-submission" element={<KycSubmission />} />
-              <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
-              <Route path="/portal/:token" element={<CustomerPortal />} />
+              <QuickRequestProvider>
+                <Routes>
+                  {/* Public */}
+                  <Route path="/login" element={<Login />} />
+                  <Route path="/set-password" element={<SetPassword />} />
+                  <Route path="/kyc-submission" element={<KycSubmission />} />
+                  <Route path="/public/visa-upload/:token" element={<VisaUploadPublic />} />
+                  <Route path="/portal/:token" element={<CustomerPortal />} />
 
-              {/* Authenticated */}
-              <Route
-                element={
-                  <AuthGuard>
-                    <PageWrapper />
-                  </AuthGuard>
-                }
-              >
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/profile" element={<Profile />} />
+                  {/* Authenticated */}
+                  <Route
+                    element={
+                      <AuthGuard>
+                        <PageWrapper />
+                      </AuthGuard>
+                    }
+                  >
+                    <Route path="/dashboard" element={<Dashboard />} />
+                    <Route path="/profile" element={<Profile />} />
 
-                {/* Accounting */}
-                <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
-                <Route path="/accounting/billing" element={<Billing />} />
-                <Route path="/accounting/reports" element={<Reports />} />
-                <Route path="/accounting/journal-entries" element={<JournalEntries />} />
-                <Route path="/accounting/collections" element={<Collections />} />
-                <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
-                <Route path="/accounting/commissions" element={<Commissions />} />
-                <Route path="/accounting/liquidations" element={<Liquidations />} />
-                <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
+                    {/* Accounting */}
+                    <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
+                    <Route path="/accounting/billing" element={<Billing />} />
+                    <Route path="/accounting/reports" element={<Reports />} />
+                    <Route path="/accounting/journal-entries" element={<JournalEntries />} />
+                    <Route path="/accounting/collections" element={<Collections />} />
+                    <Route path="/accounting/cash-budgets" element={<CashBudgets />} />
+                    <Route path="/accounting/commissions" element={<Commissions />} />
+                    <Route path="/accounting/liquidations" element={<Liquidations />} />
+                    <Route path="/accounting/pos" element={<Navigate to="/sales/fixed-packages" replace />} />
 
-                {/* Operations */}
-                <Route path="/operations" element={<Navigate to="/operations/customers" replace />} />
-                <Route path="/operations/customers" element={<Customers />} />
-                <Route path="/operations/customers/:id" element={<CustomerProfile />} />
-                <Route path="/operations/accreditations" element={<Accreditations />} />
-                <Route path="/operations/documents" element={<CompanyDocuments />} />
-                <Route path="/operations/commissions" element={<Navigate to="/accounting/commissions" replace />} />
-                <Route path="/operations/cash-budgets" element={<Navigate to="/accounting/cash-budgets" replace />} />
+                    {/* Operations */}
+                    <Route path="/operations" element={<Navigate to="/operations/customers" replace />} />
+                    <Route path="/operations/customers" element={<Customers />} />
+                    <Route path="/operations/customers/:id" element={<CustomerProfile />} />
+                    <Route path="/operations/accreditations" element={<Accreditations />} />
+                    <Route path="/operations/documents" element={<CompanyDocuments />} />
+                    <Route path="/operations/commissions" element={<Navigate to="/accounting/commissions" replace />} />
+                    <Route path="/operations/cash-budgets" element={<Navigate to="/accounting/cash-budgets" replace />} />
 
-                {/* Logistics */}
-                <Route path="/logistics" element={<LogisticsOverview />} />
-                <Route path="/logistics/trip-tickets" element={<TripTickets />} />
-                <Route path="/logistics/fleet" element={<Fleet />} />
-                <Route path="/logistics/pms" element={<PMS />} />
+                    {/* Logistics */}
+                    <Route path="/logistics" element={<LogisticsOverview />} />
+                    <Route path="/logistics/trip-tickets" element={<TripTickets />} />
+                    <Route path="/logistics/fleet" element={<Fleet />} />
+                    <Route path="/logistics/pms" element={<PMS />} />
 
-                {/* Procurement */}
-                <Route path="/procurement" element={<Navigate to="/procurement/work-orders" replace />} />
-                <Route path="/procurement/overview" element={<Navigate to="/logistics" replace />} />
-                <Route path="/procurement/purchase-orders" element={<PurchaseOrders />} />
-                <Route path="/procurement/job-orders" element={<JobOrders />} />
-                <Route path="/procurement/work-orders" element={<WorkOrders />} />
-                <Route path="/procurement/suppliers" element={<Suppliers />} />
-                <Route path="/procurement/accreditations" element={<Navigate to="/operations/accreditations" replace />} />
-                <Route path="/procurement/documents" element={<Navigate to="/operations/documents" replace />} />
+                    {/* Procurement */}
+                    <Route path="/procurement" element={<Navigate to="/procurement/work-orders" replace />} />
+                    <Route path="/procurement/overview" element={<Navigate to="/logistics" replace />} />
+                    <Route path="/procurement/purchase-orders" element={<PurchaseOrders />} />
+                    <Route path="/procurement/job-orders" element={<JobOrders />} />
+                    <Route path="/procurement/work-orders" element={<WorkOrders />} />
+                    <Route path="/procurement/suppliers" element={<Suppliers />} />
+                    <Route path="/procurement/accreditations" element={<Navigate to="/operations/accreditations" replace />} />
+                    <Route path="/procurement/documents" element={<Navigate to="/operations/documents" replace />} />
 
-                {/* Inventory */}
-                <Route path="/inventory" element={<Navigate to="/inventory/supplies" replace />} />
-                <Route path="/inventory/supplies" element={<Supplies />} />
-                <Route path="/inventory/fleet" element={<Navigate to="/logistics/fleet" replace />} />
-                <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
+                    {/* Inventory */}
+                    <Route path="/inventory" element={<Navigate to="/inventory/supplies" replace />} />
+                    <Route path="/inventory/supplies" element={<Supplies />} />
+                    <Route path="/inventory/fleet" element={<Navigate to="/logistics/fleet" replace />} />
+                    <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
 
-                {/* Sales */}
-                <Route path="/sales" element={<Sales />} />
-                <Route path="/sales/departures" element={<JoinerDepartures />} />
-                <Route path="/sales/departures/:departureId" element={<JoinerDepartureDetail />} />
-                <Route path="/sales/joiners/checkout" element={<JoinerCheckout />} />
-                <Route path="/sales/charters" element={<CharterSales />} />
-                <Route path="/sales/educational-tours" element={<EducationalTours />} />
-                <Route path="/sales/fixed-packages" element={<FixedPackages />} />
-                <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
-                <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
-                <Route path="/sales/orders" element={<Navigate to="/sales/custom-transactions" replace />} />
+                    {/* Sales */}
+                    <Route path="/sales" element={<Sales />} />
+                    <Route path="/sales/departures" element={<JoinerDepartures />} />
+                    <Route path="/sales/departures/:departureId" element={<JoinerDepartureDetail />} />
+                    <Route path="/sales/joiners/checkout" element={<JoinerCheckout />} />
+                    <Route path="/sales/charters" element={<CharterSales />} />
+                    <Route path="/sales/educational-tours" element={<EducationalTours />} />
+                    <Route path="/sales/fixed-packages" element={<FixedPackages />} />
+                    <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
+                    <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
+                    <Route path="/sales/orders" element={<Navigate to="/sales/custom-transactions" replace />} />
 
-                {/* Travel Assistance */}
-                <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />
-                <Route path="/travel/passporting" element={<Passporting />} />
-                <Route path="/travel/visa-processing" element={<VisaProcessing />} />
-                <Route path="/travel/customers" element={<Navigate to="/operations/customers" replace />} />
-                <Route path="/travel/customers/:id" element={<Navigate to="/operations/customers/:id" replace />} />
-                <Route path="/travel/documents" element={<Navigate to="/operations/documents" replace />} />
+                    {/* Travel Assistance */}
+                    <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />
+                    <Route path="/travel/passporting" element={<Passporting />} />
+                    <Route path="/travel/visa-processing" element={<VisaProcessing />} />
+                    <Route path="/travel/customers" element={<Navigate to="/operations/customers" replace />} />
+                    <Route path="/travel/customers/:id" element={<Navigate to="/operations/customers/:id" replace />} />
+                    <Route path="/travel/documents" element={<Navigate to="/operations/documents" replace />} />
 
-                {/* HR */}
-                <Route path="/hr" element={<Navigate to="/hr/employees" replace />} />
-                <Route path="/hr/employees" element={<Employees />} />
-                <Route path="/hr/applications" element={<Applications />} />
-                <Route path="/hr/internships" element={<Internships />} />
-                <Route path="/hr/payroll" element={<Payroll />} />
+                    {/* HR */}
+                    <Route path="/hr" element={<Navigate to="/hr/employees" replace />} />
+                    <Route path="/hr/employees" element={<Employees />} />
+                    <Route path="/hr/applications" element={<Applications />} />
+                    <Route path="/hr/internships" element={<Internships />} />
+                    <Route path="/hr/payroll" element={<Payroll />} />
 
-                {/* Admin */}
-                <Route path="/admin/users" element={<AdminRoute path="/admin/users"><Users /></AdminRoute>} />
-                <Route path="/admin/audit-logs" element={<AdminRoute path="/admin/audit-logs"><AuditLogs /></AdminRoute>} />
-                <Route path="/admin/settings" element={<AdminRoute path="/admin/settings"><Settings /></AdminRoute>} />
-                <Route path="/settings/dashboard-customizer" element={<DashboardCustomizerPage />} />
-                <Route path="/dashboard/customize" element={<Navigate to="/settings/dashboard-customizer" replace />} />
-                <Route path="/admin/role-permissions" element={<AdminRoute path="/admin/role-permissions"><RolePermissions /></AdminRoute>} />
+                    {/* Admin */}
+                    <Route path="/admin/users" element={<AdminRoute path="/admin/users"><Users /></AdminRoute>} />
+                    <Route path="/admin/audit-logs" element={<AdminRoute path="/admin/audit-logs"><AuditLogs /></AdminRoute>} />
+                    <Route path="/admin/settings" element={<AdminRoute path="/admin/settings"><Settings /></AdminRoute>} />
+                    <Route path="/settings/dashboard-customizer" element={<DashboardCustomizerPage />} />
+                    <Route path="/dashboard/customize" element={<Navigate to="/settings/dashboard-customizer" replace />} />
+                    <Route path="/admin/role-permissions" element={<AdminRoute path="/admin/role-permissions"><RolePermissions /></AdminRoute>} />
 
-                {/* Driver */}
-                <Route path="/driver/overview" element={<DriverTrips />} />
-                <Route path="/driver/scheduled-trips" element={<DriverSchedule />} />
-                <Route path="/driver/my-fleet" element={<DriverBus />} />
-                <Route path="/driver/commissions" element={<Commissions />} />
-                <Route path="/driver/schedule" element={<Navigate to="/driver/scheduled-trips" replace />} />
-                <Route path="/driver/trips" element={<Navigate to="/driver/overview" replace />} />
-                <Route path="/driver/bus" element={<Navigate to="/driver/my-fleet" replace />} />
-              </Route>
+                    {/* Driver */}
+                    <Route path="/driver/overview" element={<DriverTrips />} />
+                    <Route path="/driver/scheduled-trips" element={<DriverSchedule />} />
+                    <Route path="/driver/my-fleet" element={<DriverBus />} />
+                    <Route path="/driver/commissions" element={<Commissions />} />
+                    <Route path="/driver/schedule" element={<Navigate to="/driver/scheduled-trips" replace />} />
+                    <Route path="/driver/trips" element={<Navigate to="/driver/overview" replace />} />
+                    <Route path="/driver/bus" element={<Navigate to="/driver/my-fleet" replace />} />
+                  </Route>
 
-              <Route path="*" element={<DefaultRedirect />} />
-            </Routes>
-            <Toaster position="top-right" />
-            <ForceChangePasswordModal />
-            <EntityPreviewPanel />
-            <FloatingCrossChecker />
-          </AuthProvider>
+                  <Route path="*" element={<DefaultRedirect />} />
+                </Routes>
+                <Toaster position="top-right" />
+                <ForceChangePasswordModal />
+                <EntityPreviewPanel />
+                <FloatingCrossChecker />
+                <QuickRequestModal />
+              </QuickRequestProvider>
+            </AuthProvider>
         </EntityPreviewProvider>
       </BrowserRouter>
       </ThemeProvider>

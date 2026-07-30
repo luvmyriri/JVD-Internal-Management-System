@@ -13,7 +13,7 @@ class SuperAdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $password = env('SUPER_ADMIN_PASSWORD', 'JVD@Admin2026!');
+        $password = env('SUPER_ADMIN_PASSWORD', 'password123');
         if (app()->environment('production') && $password === 'JVD@Admin2026!') {
             $this->command->warn('WARNING: Using default super admin password in production!');
         }

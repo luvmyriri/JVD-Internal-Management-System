@@ -53,7 +53,7 @@ export const navigation: NavSection[] = [
   {
     title: 'Management Overview',
     items: [
-      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary'], module: 'dashboard', pageKey: 'dashboard' },
+      { label: 'Dashboard', path: '/dashboard', icon: <LuLayoutDashboard />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'reservation_officer', 'office_staff', 'accounting_executive', 'corporate_secretary', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'service_adviser', 'head_mechanic', 'driver'], module: 'dashboard', pageKey: 'dashboard' },
     ],
   },
   {
@@ -90,10 +90,10 @@ export const navigation: NavSection[] = [
   {
     title: 'Logistics',
     items: [
-      { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.overview' },
-      { label: 'Trip Ticket', path: '/logistics/trip-tickets', icon: <LuMap />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher'], module: 'logistics', pageKey: 'logistics.trip_tickets' },
-      { label: 'Fleet', path: '/logistics/fleet', icon: <LuBus />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.fleet' },
-      { label: 'PMS', path: '/logistics/pms', icon: <LuActivity />, roles: ['super_admin', 'executive_vice_president', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic'], module: 'logistics', pageKey: 'logistics.pms' },
+      { label: 'Overview', path: '/logistics', icon: <LuTruck />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.overview' },
+      { label: 'Trip Ticket', path: '/logistics/trip-tickets', icon: <LuMap />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.trip_tickets' },
+      { label: 'Fleet', path: '/logistics/fleet', icon: <LuBus />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.fleet' },
+      { label: 'PMS', path: '/logistics/pms', icon: <LuActivity />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'corporate_secretary', 'logistics_in_charge', 'dispatcher', 'purchasing_manager', 'head_mechanic', 'service_adviser'], module: 'logistics', pageKey: 'logistics.pms' },
     ],
   },
   {

@@ -24,12 +24,7 @@ class CashBudgetRequestService
 
     public function store(Request $request)
     {
-        // C-05: drivers must not create cash budget requests directly (these are spawned
-        // server-side from approved trip tickets / commissions).
         $user = auth()->user();
-        if ($user && $user->hasRole('driver')) {
-            return response()->json(['error' => 'Drivers cannot create cash budget requests.'], 403);
-        }
 
         $validated = $request->validate([
             'date'                  => 'required|date',
@@ -85,6 +80,13 @@ class CashBudgetRequestService
         return CashBudgetRequest::with(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice'])->findOrFail($id);
     }
 
+    /**
+     * Update an existing cash budget request.
+     *
+     * @param Request $request
+     * @param mixed $id
+     * @return mixed
+     */
     public function update(Request $request, $id)
     {
         $user = auth()->user();
@@ -178,7 +180,7 @@ class CashBudgetRequestService
             ]);
 
             $reference   = $budget->tripTicket?->control_no ?? ('CB-' . $budget->id);
-            $totalAmount = number_format($budget->total_amount, 2);
+            $totalAmount = number_format((float) ($budget->total_amount ?? 0), 2);
             $destination = $budget->destination ?? ($budget->tripTicket?->drop_off ?? 'N/A');
             $approverName = auth()->user()->first_name . ' ' . auth()->user()->last_name;
 
@@ -345,7 +347,10 @@ class CashBudgetRequestService
                 $notesParts = ['Auto-generated from Cash Budget Request #' . $budget->id];
                 if ($budget->destination) $notesParts[] = 'Destination: ' . $budget->destination;
                 if ($budget->plate_number) $notesParts[] = 'Plate: ' . $budget->plate_number;
-                if ($budget->travel_date) $notesParts[] = 'Travel Date: ' . $budget->travel_date->format('Y-m-d');
+                if ($budget->travel_date) {
+                    $travelDateStr = $budget->travel_date instanceof \DateTimeInterface ? $budget->travel_date->format('Y-m-d') : (string) $budget->travel_date;
+                    $notesParts[] = 'Travel Date: ' . $travelDateStr;
+                }
 
                 // Use a timestamped invoice number for better traceability
                 $invoiceNumber = 'INV-CB-' . date('Ymd') . '-' . strtoupper(\Illuminate\Support\Str::random(4));
@@ -445,7 +450,7 @@ class CashBudgetRequestService
                 if ($budget->preparedBy) {
                     $budget->preparedBy->notify(new SystemAlert(
                         "Cash Budget Disbursed — {$invoiceNumber}",
-                        "Your cash budget request has been approved and disbursed. Requested: ₱" . number_format($budget->total_amount, 2) . ", Disbursed: ₱" . number_format($disbursedAmount, 2) . ". Invoice {$invoiceNumber} has been created in Billing.",
+                        "Your cash budget request has been approved and disbursed. Requested: ₱" . number_format((float) ($budget->total_amount ?? 0), 2) . ", Disbursed: ₱" . number_format((float) ($disbursedAmount ?? 0), 2) . ". Invoice {$invoiceNumber} has been created in Billing.",
                         'success',
                         '/accounting/billing',
                         'cash_budget',

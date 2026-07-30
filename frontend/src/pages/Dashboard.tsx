@@ -22,12 +22,9 @@ function getDashboardForRole(role: string): React.FC {
       return OperationsDashboard;
     case 'logistics_in_charge':
     case 'dispatcher':
-      return LogisticsDashboard;
-    case 'purchasing_manager':
-      return ProcurementDashboard;
     case 'service_adviser':
     case 'head_mechanic':
-      return MaintenanceDashboard;
+      return LogisticsDashboard;
     case 'corporate_secretary':
       return HRDashboard;
     case 'accounting_executive':
