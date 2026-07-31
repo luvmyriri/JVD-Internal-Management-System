@@ -13,7 +13,7 @@ class ResetAllPasswords extends Command
      *
      * @var string
      */
-    protected $signature = 'user:reset-all-passwords {--password=password123 : The password to set for all accounts}';
+    protected $signature = 'user:reset-all-passwords {--password=password123 : The password to set for all accounts} {--force-change : Require users to change password on first login}';
 
     /**
      * The console command description.
@@ -28,14 +28,16 @@ class ResetAllPasswords extends Command
     public function handle(): int
     {
         $newPassword = $this->option('password');
+        $forceChange = (bool) $this->option('force-change');
         $hashed = Hash::make($newPassword);
 
         $count = User::query()->update([
             'password' => $hashed,
-            'must_change_password' => false,
+            'must_change_password' => $forceChange,
         ]);
 
-        $this->info("✓ Successfully reset passwords for all {$count} user account(s) to '{$newPassword}'.");
+        $statusMsg = $forceChange ? ' (with mandatory password change on next login)' : '';
+        $this->info("✓ Successfully reset passwords for all {$count} user account(s) to '{$newPassword}'{$statusMsg}.");
 
         return Command::SUCCESS;
     }
