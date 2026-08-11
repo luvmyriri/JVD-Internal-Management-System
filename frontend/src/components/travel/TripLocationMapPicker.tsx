@@ -15,6 +15,7 @@ interface TripLocationMapPickerProps {
   fuelPricePerLiter?: number;
   readOnly?: boolean;
   garageLocation?: string;
+  garageCoordinates?: [number, number];
   includeGarageLeg?: boolean;
   onIncludeGarageLegChange?: (included: boolean) => void;
   onLocationSelect?: (
@@ -31,6 +32,8 @@ interface TripLocationMapPickerProps {
 
 type MappedLocation = LocationSuggestion & { latitude: number; longitude: number };
 type PinMode = 'pickup' | 'dropoff' | null;
+
+const DEFAULT_GARAGE_COORDINATES: [number, number] = [14.756338137188132, 121.04179034232897];
 
 const hasCoordinates = (suggestion: LocationSuggestion): suggestion is MappedLocation =>
   suggestion.latitude != null && suggestion.longitude != null;
@@ -91,7 +94,8 @@ function SearchField({ label, value, onChange, onSelect, disabled }: {
 export default function TripLocationMapPicker({
   pickupLocation = '', dropOffLocation = '', initialPickupCoords, initialDropoffCoords,
   vehicleType = 'Bus', fuelPricePerLiter = 60, readOnly = false,
-  garageLocation = 'Q24R+FP Caloocan, Metro Manila', includeGarageLeg = false,
+  garageLocation = 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila',
+  garageCoordinates = DEFAULT_GARAGE_COORDINATES, includeGarageLeg = false,
   onIncludeGarageLegChange, onLocationSelect,
 }: TripLocationMapPickerProps) {
   const mapNode = useRef<HTMLDivElement>(null);
@@ -183,6 +187,7 @@ export default function TripLocationMapPicker({
       pickup_coordinates: { latitude: pickupCoords.latitude, longitude: pickupCoords.longitude },
       destination_coordinates: { latitude: dropoffCoords.latitude, longitude: dropoffCoords.longitude },
       garage_location: garageLocation,
+      garage_coordinates: { latitude: garageCoordinates[0], longitude: garageCoordinates[1] },
       include_garage: includeGarageLeg,
       vehicle_class: vehicleType === 'Bus' ? 'bus' : vehicleType === 'Coaster' ? 'coaster' : 'van',
     }).then(result => {
@@ -206,7 +211,7 @@ export default function TripLocationMapPicker({
       if (active) setError(errorResponse?.response?.data?.message ?? 'No drivable route was found. Adjust a pin or select another address, then try again.');
     }).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [dropoffCoords, fuelPricePerLiter, garageLocation, includeGarageLeg, pickupCoords, vehicleType]);
+  }, [dropoffCoords, fuelPricePerLiter, garageCoordinates, garageLocation, includeGarageLeg, pickupCoords, vehicleType]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

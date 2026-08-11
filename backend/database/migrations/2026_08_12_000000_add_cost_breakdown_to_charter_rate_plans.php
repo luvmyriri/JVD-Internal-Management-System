@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('charter_rate_plans', function (Blueprint $table) {
-            $table->string('garage_location')->default('Q24R+FP Caloocan, Metro Manila');
+            $table->string('garage_location')->default('Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila');
             $table->string('pickup_location')->nullable();
             $table->string('destination')->nullable();
             $table->decimal('garage_distance_km', 10, 2)->default(0);

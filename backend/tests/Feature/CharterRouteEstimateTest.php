@@ -38,6 +38,9 @@ class CharterRouteEstimateTest extends TestCase
         ]);
 
         $response->assertOk()
+            ->assertJsonPath('data.garage_location', 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila')
+            ->assertJsonPath('data.garage_coordinates.latitude', 14.756338137188132)
+            ->assertJsonPath('data.garage_coordinates.longitude', 121.04179034232897)
             ->assertJsonPath('data.garage_distance_km', 12)
             ->assertJsonPath('data.route_distance_km', 245)
             ->assertJsonPath('data.total_distance_km', 257)

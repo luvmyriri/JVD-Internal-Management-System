@@ -46,9 +46,9 @@ return [
         'geocoder_url' => env('LOCATION_GEOCODER_URL', 'https://nominatim.openstreetmap.org'),
         'router_url' => env('ROUTING_API_URL', 'https://router.project-osrm.org'),
         'user_agent' => env('LOCATION_API_USER_AGENT', 'JVD-Internal-Management-System/1.0'),
-        'garage_location' => env('JVD_GARAGE_LOCATION', 'Q24R+FP Caloocan, Metro Manila'),
-        'garage_latitude' => env('JVD_GARAGE_LATITUDE', 14.7561875),
-        'garage_longitude' => env('JVD_GARAGE_LONGITUDE', 120.0418125),
+        'garage_location' => env('JVD_GARAGE_LOCATION', 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila'),
+        'garage_latitude' => env('JVD_GARAGE_LATITUDE', 14.756338137188132),
+        'garage_longitude' => env('JVD_GARAGE_LONGITUDE', 121.04179034232897),
     ],
 
     'toll_regulatory_board' => [
