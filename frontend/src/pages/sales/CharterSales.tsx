@@ -34,7 +34,7 @@ const getTomorrowStartEnd = () => {
   return { starts_at: `${dateStr}T08:00`, ends_at: `${dateStr}T20:00` };
 };
 
-const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: '', passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
+const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: [] as string[], passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
 const GARAGE_LOCATION = 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila';
 const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '0', pickup_location: '', drop_off_location: '', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
@@ -82,6 +82,9 @@ export default function CharterSales() {
   const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
   const [matrixTollResult, setMatrixTollResult] = useState<TollMatrixCalculation | null>(null);
   const [includeGarageTravel, setIncludeGarageTravel] = useState(true);
+  const [tripTypePreference, setTripTypePreference] = useState<'one_way' | 'round_trip'>('round_trip');
+  const [savedOutboundStops, setSavedOutboundStops] = useState<NonNullable<CharterRatePlan['pricing_metadata']>['outbound_stops']>([]);
+  const [savedReturnStops, setSavedReturnStops] = useState<NonNullable<CharterRatePlan['pricing_metadata']>['return_stops']>([]);
   const [tollPricingMode, setTollPricingMode] = useState<'route' | 'matrix' | 'manual'>('route');
 
   const { data: plans = [] } = useQuery({ queryKey: ['charter-rate-plans'], queryFn: charterApi.ratePlans });
@@ -219,6 +222,7 @@ export default function CharterSales() {
     setCustomBaseRate('35000');
     setEstimatedLiters('0'); setDieselCost('0'); setRouteEstimate(null); setMatrixTollResult(null);
     setIncludeGarageTravel(true); setTollPricingMode('route');
+    setTripTypePreference('round_trip'); setSavedOutboundStops([]); setSavedReturnStops([]);
     setTollFeeEst('0'); setEasytripEst('0'); setAutosweepEst('0');
     setMealAllowanceEst('1500'); setAgentCommissionEst('3000'); setDesiredProfit('12000'); setAutoAdjustRate(true);
     setPlanOpen(true);
@@ -258,6 +262,9 @@ export default function CharterSales() {
     setRouteEstimate(null);
     setMatrixTollResult(null);
     setIncludeGarageTravel(plan.pricing_metadata?.include_garage_travel ?? Number(plan.garage_distance_km ?? 0) > 0);
+    setTripTypePreference(plan.pricing_metadata?.trip_type ?? 'round_trip');
+    setSavedOutboundStops(plan.pricing_metadata?.outbound_stops ?? []);
+    setSavedReturnStops(plan.pricing_metadata?.return_stops ?? []);
     setTollPricingMode(plan.pricing_metadata?.toll_pricing_mode ?? 'manual');
     setPlanOpen(true);
   };
@@ -303,6 +310,9 @@ export default function CharterSales() {
           route_toll_mode: routeEstimate?.toll_estimate.mode,
           toll_pricing_mode: tollPricingMode,
           include_garage_travel: includeGarageTravel,
+          trip_type: routeEstimate?.trip_type ?? tripTypePreference,
+          outbound_stops: routeEstimate?.outbound_stops ?? savedOutboundStops,
+          return_stops: routeEstimate?.return_stops ?? savedReturnStops,
           toll_matrix_synced_at: matrixTollResult?.synced_at,
           toll_segments: matrixTollResult?.segments,
         },
@@ -431,8 +441,8 @@ export default function CharterSales() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <div className="mb-4 flex items-start justify-between gap-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white"><Route className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Route</h2><p className="text-xs text-slate-500">Search an exact address or place pins. Include the garage leg only when needed.</p></div></div>{routeEstimate && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{routeEstimate.total_distance_km.toLocaleString()} km total</span>}</div>
-              <TripLocationMapPicker pickupLocation={planForm.pickup_location} dropOffLocation={planForm.drop_off_location} garageLocation={GARAGE_LOCATION} includeGarageLeg={includeGarageTravel} onIncludeGarageLegChange={setIncludeGarageTravel} fuelPricePerLiter={Number(dieselPricePerL) || 0} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm, liters, cost, _pickupCoords, _dropoffCoords, details) => { setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) })); setEstimatedLiters(liters.toFixed(2)); setDieselCost(cost.toFixed(2)); setRouteEstimate(details ?? null); if (tollPricingMode === 'route' && details && details.toll_estimate.mode !== 'manual_reference') { setTollFeeEst(String(details.toll_estimate.toll_gate_fees)); setEasytripEst(String(details.toll_estimate.easytrip)); setAutosweepEst(String(details.toll_estimate.autosweep)); } }} />
+              <div className="mb-4 flex items-start justify-between gap-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white"><Route className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Complete operating route</h2><p className="text-xs text-slate-500">Add ordered stops and choose one-way or round-trip travel. Return and garage travel are included in the total.</p></div></div>{routeEstimate && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{routeEstimate.total_distance_km.toLocaleString()} km total</span>}</div>
+              <TripLocationMapPicker pickupLocation={planForm.pickup_location} dropOffLocation={planForm.drop_off_location} garageLocation={GARAGE_LOCATION} includeGarageLeg={includeGarageTravel} onIncludeGarageLegChange={setIncludeGarageTravel} initialTripType={tripTypePreference} initialOutboundStops={savedOutboundStops} initialReturnStops={savedReturnStops} fuelPricePerLiter={Number(dieselPricePerL) || 0} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm, liters, cost, _pickupCoords, _dropoffCoords, details) => { setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) })); setEstimatedLiters(liters.toFixed(2)); setDieselCost(cost.toFixed(2)); setRouteEstimate(details ?? null); if (details) { setTripTypePreference(details.trip_type); setSavedOutboundStops(details.outbound_stops); setSavedReturnStops(details.return_stops); } if (tollPricingMode === 'route' && details && details.toll_estimate.mode !== 'manual_reference') { setTollFeeEst(String(details.toll_estimate.toll_gate_fees)); setEasytripEst(String(details.toll_estimate.easytrip)); setAutosweepEst(String(details.toll_estimate.autosweep)); } }} />
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -776,12 +786,13 @@ export default function CharterSales() {
               pickupLocation={booking.pickup_location || 'Manila Office'}
               dropOffLocation={booking.destination || 'Tagaytay City'}
               vehicleType={selectedPlan?.vehicle_class === 'van' ? 'Van' : selectedPlan?.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'}
-              onLocationSelect={(pickup, dropoff, distanceKm) => {
+              onLocationSelect={(pickup, dropoff, distanceKm, _liters, _cost, _pickupCoords, _dropoffCoords, details) => {
                 setBooking(b => ({
                   ...b,
                   pickup_location: pickup,
                   destination: dropoff,
                   estimated_kilometers: String(distanceKm),
+                  stops: details?.outbound_stops.map(stop => stop.label) ?? [],
                 }));
               }}
             />

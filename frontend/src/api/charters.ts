@@ -37,6 +37,9 @@ export interface CharterRatePlan {
   pricing_metadata?: {
     toll_pricing_mode?: 'route' | 'matrix' | 'manual';
     include_garage_travel?: boolean;
+    trip_type?: CharterTripType;
+    outbound_stops?: RouteWaypoint[];
+    return_stops?: RouteWaypoint[];
   };
   service: { id: number; name: string; description?: string; images?: string[] };
 }
@@ -49,6 +52,15 @@ export interface LocationSuggestion {
   psgc_code?: string | null;
   geographic_level?: string | null;
   version?: string;
+}
+
+export type CharterTripType = 'one_way' | 'round_trip';
+
+export interface RouteWaypoint {
+  label: string;
+  latitude?: number;
+  longitude?: number;
+  provider?: string;
 }
 
 export interface TollEstimate {
@@ -108,12 +120,22 @@ export interface RouteEstimate {
   garage_location: string;
   pickup_location: string;
   destination: string;
+  trip_type: CharterTripType;
+  outbound_stops: Array<RouteWaypoint & { latitude: number; longitude: number }>;
+  return_stops: Array<RouteWaypoint & { latitude: number; longitude: number }>;
+  effective_return_stops: Array<RouteWaypoint & { latitude: number; longitude: number }>;
+  returns_to_garage: boolean;
+  garage_outbound_distance_km: number;
+  outbound_distance_km: number;
+  return_distance_km: number;
+  garage_return_distance_km: number;
   garage_distance_km: number;
   route_distance_km: number;
   total_distance_km: number;
   garage_coordinates?: LocationSuggestion & { latitude: number; longitude: number };
   pickup_coordinates: LocationSuggestion & { latitude: number; longitude: number };
   destination_coordinates: LocationSuggestion & { latitude: number; longitude: number };
+  route_legs: Array<{ from: string; to: string; distance_km: number }>;
   geometry: [number, number][];
   routing_provider: string;
   geocoding_provider: string;

@@ -78,6 +78,92 @@ class CharterRouteEstimateTest extends TestCase
             ->assertJsonPath('data.garage_coordinates', null);
     }
 
+    public function test_round_trip_routes_ordered_stops_and_both_garage_legs(): void
+    {
+        Http::fake([
+            '*router.project-osrm.org/route/v1/driving/*' => Http::response([
+                'code' => 'Ok',
+                'routes' => [[
+                    'distance' => 160000,
+                    'legs' => collect([10000, 20000, 30000, 40000, 50000, 10000])->map(fn (int $distance) => [
+                        'distance' => $distance,
+                        'steps' => [],
+                    ])->all(),
+                    'geometry' => ['coordinates' => [[121.04179, 14.75633], [121.0, 14.55], [120.9, 15.0], [120.59, 16.4]]],
+                ]],
+            ]),
+        ]);
+
+        $response = $this->actingAs(User::factory()->superAdmin()->create())->postJson('/api/v1/sales/charter-route-estimate', [
+            'pickup_location' => 'Passenger pickup',
+            'destination' => 'Main destination',
+            'pickup_coordinates' => ['latitude' => 14.55, 'longitude' => 121.0],
+            'destination_coordinates' => ['latitude' => 16.4, 'longitude' => 120.59],
+            'include_garage' => true,
+            'trip_type' => 'round_trip',
+            'outbound_stops' => [[
+                'label' => 'Outbound meal stop', 'latitude' => 15.0, 'longitude' => 120.9,
+            ]],
+            'return_stops' => [[
+                'label' => 'Different return stop', 'latitude' => 15.2, 'longitude' => 120.8,
+            ]],
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.trip_type', 'round_trip')
+            ->assertJsonPath('data.returns_to_garage', true)
+            ->assertJsonPath('data.garage_outbound_distance_km', 10)
+            ->assertJsonPath('data.outbound_distance_km', 50)
+            ->assertJsonPath('data.return_distance_km', 90)
+            ->assertJsonPath('data.garage_return_distance_km', 10)
+            ->assertJsonPath('data.garage_distance_km', 20)
+            ->assertJsonPath('data.route_distance_km', 140)
+            ->assertJsonPath('data.total_distance_km', 160)
+            ->assertJsonPath('data.outbound_stops.0.label', 'Outbound meal stop')
+            ->assertJsonPath('data.return_stops.0.label', 'Different return stop')
+            ->assertJsonPath('data.route_legs.5.to', 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila');
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/search'));
+    }
+
+    public function test_round_trip_prices_outbound_and_return_toll_passages(): void
+    {
+        $balintawak = [121.00044, 14.6793];
+        $bocaue = [120.9395155, 14.8071119];
+        Http::fake([
+            '*router.project-osrm.org/route/v1/driving/*' => Http::response([
+                'code' => 'Ok',
+                'routes' => [[
+                    'distance' => 72000,
+                    'legs' => [
+                        ['distance' => 36000, 'steps' => [['geometry' => ['coordinates' => [$balintawak, $bocaue]]]]],
+                        ['distance' => 36000, 'steps' => [['geometry' => ['coordinates' => [$bocaue, $balintawak]]]]],
+                    ],
+                    'geometry' => ['coordinates' => [$balintawak, $bocaue, $balintawak]],
+                ]],
+            ]),
+        ]);
+
+        $response = $this->actingAs(User::factory()->superAdmin()->create())->postJson('/api/v1/sales/charter-route-estimate', [
+            'pickup_location' => 'Balintawak',
+            'destination' => 'Bocaue',
+            'pickup_coordinates' => ['latitude' => $balintawak[1], 'longitude' => $balintawak[0]],
+            'destination_coordinates' => ['latitude' => $bocaue[1], 'longitude' => $bocaue[0]],
+            'include_garage' => false,
+            'trip_type' => 'round_trip',
+            'vehicle_class' => 'bus',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.outbound_distance_km', 36)
+            ->assertJsonPath('data.return_distance_km', 36)
+            ->assertJsonPath('data.total_distance_km', 72)
+            ->assertJsonPath('data.toll_estimate.mode', 'automatic_matrix')
+            ->assertJsonPath('data.toll_estimate.easytrip', 526)
+            ->assertJsonPath('data.toll_estimate.total', 526)
+            ->assertJsonCount(2, 'data.toll_estimate.segments');
+    }
+
     public function test_route_estimate_uses_the_local_matrix_when_toll_nodes_match(): void
     {
         Http::fake([

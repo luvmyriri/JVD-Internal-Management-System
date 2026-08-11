@@ -107,6 +107,7 @@ class CharterController extends Controller
             'destination' => ['required', 'string', 'max:255'],
             'garage_location' => ['nullable', 'string', 'max:255'],
             'include_garage' => ['nullable', 'boolean'],
+            'trip_type' => ['nullable', 'in:one_way,round_trip'],
             'vehicle_class' => ['nullable', 'in:bus,coaster,van'],
             'pickup_coordinates' => ['nullable', 'array'],
             'pickup_coordinates.latitude' => ['required_with:pickup_coordinates', 'numeric', 'between:-90,90'],
@@ -117,6 +118,14 @@ class CharterController extends Controller
             'garage_coordinates' => ['nullable', 'array'],
             'garage_coordinates.latitude' => ['required_with:garage_coordinates', 'numeric', 'between:-90,90'],
             'garage_coordinates.longitude' => ['required_with:garage_coordinates', 'numeric', 'between:-180,180'],
+            'outbound_stops' => ['nullable', 'array', 'max:10'],
+            'outbound_stops.*.label' => ['required', 'string', 'max:255'],
+            'outbound_stops.*.latitude' => ['nullable', 'required_with:outbound_stops.*.longitude', 'numeric', 'between:-90,90'],
+            'outbound_stops.*.longitude' => ['nullable', 'required_with:outbound_stops.*.latitude', 'numeric', 'between:-180,180'],
+            'return_stops' => ['nullable', 'array', 'max:10'],
+            'return_stops.*.label' => ['required', 'string', 'max:255'],
+            'return_stops.*.latitude' => ['nullable', 'required_with:return_stops.*.longitude', 'numeric', 'between:-90,90'],
+            'return_stops.*.longitude' => ['nullable', 'required_with:return_stops.*.latitude', 'numeric', 'between:-180,180'],
         ]);
 
         return response()->json(['data' => $this->routes->estimate($data)]);
