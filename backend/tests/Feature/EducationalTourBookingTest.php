@@ -7,6 +7,7 @@ use App\Models\Contract;
 use App\Models\EducationalTourBooking;
 use App\Models\EducationalTourProgram;
 use App\Models\Service;
+use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\EducationalTourBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -142,6 +143,14 @@ class EducationalTourBookingTest extends TestCase
             'chaperone_count' => 3,
             'pickup_location' => 'School Main Gate',
         ]);
+        $tickets = TripTicket::where('invoice_id', $invoiceId)->orderBy('assignment_index')->get();
+        $this->assertCount(2, $tickets);
+        $this->assertSame([$this->busOne->id, $this->busTwo->id], $tickets->pluck('bus_id')->all());
+        $this->assertSame([$this->driverOne->id, $this->driverTwo->id], $tickets->pluck('driver_id')->all());
+        $this->assertSame([49, 14], $tickets->pluck('no_of_passengers')->all());
+        $this->assertSame(['School Main Gate', 'School Main Gate'], $tickets->pluck('pick_up')->all());
+        $this->assertSame(['Planetarium', 'Planetarium'], $tickets->pluck('drop_off')->all());
+        $this->assertDatabaseCount('work_orders', 2);
     }
 
     public function test_contract_draft_preserves_the_bespoke_educational_checkout_line(): void

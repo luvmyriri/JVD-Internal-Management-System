@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Models\PrivateTourBooking;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -17,9 +18,9 @@ class InvoiceResource extends JsonResource
         $privateTourItem = $salesOrder && $salesOrder->relationLoaded('items')
             ? $salesOrder->items->first(fn ($item) => $item->service_type === 'private_tour'
                 && $item->relationLoaded('fulfillment')
-                && $item->fulfillment instanceof \App\Models\PrivateTourBooking)
+                && $item->fulfillment instanceof PrivateTourBooking)
             : null;
-        /** @var \App\Models\PrivateTourBooking|null $privateTour */
+        /** @var PrivateTourBooking|null $privateTour */
         $privateTour = $privateTourItem?->fulfillment;
         $bus = $this->operationalBus();
         $driver = $this->operationalDriver();
@@ -99,9 +100,34 @@ class InvoiceResource extends JsonResource
                 'trip_ticket_id' => $this->relationLoaded('tripTicket') ? $this->tripTicket?->id : null,
                 'trip_ticket_number' => $this->relationLoaded('tripTicket') ? $this->tripTicket?->control_no : null,
             ] : null,
+            'trip_tickets' => $this->whenLoaded('tripTickets', fn () => $this->tripTickets->map(fn ($ticket) => [
+                'id' => $ticket->id,
+                'control_no' => $ticket->control_no,
+                'assignment_index' => (int) ($ticket->assignment_index ?? 0),
+                'status' => $ticket->status,
+                'date_of_travel' => $ticket->date_of_travel,
+                'duration' => $ticket->duration,
+                'pick_up' => $ticket->pick_up,
+                'drop_off' => $ticket->drop_off,
+                'no_of_passengers' => (int) $ticket->no_of_passengers,
+                'vehicle' => $ticket->bus ? [
+                    'id' => $ticket->bus->id,
+                    'plate_number' => $ticket->bus->plate_number,
+                    'model' => $ticket->bus->model,
+                ] : null,
+                'driver' => $ticket->driver ? [
+                    'id' => $ticket->driver->id,
+                    'name' => trim($ticket->driver->first_name.' '.$ticket->driver->last_name),
+                    'phone' => $ticket->driver->phone,
+                    'email' => $ticket->driver->email,
+                ] : null,
+            ])->values()),
             'joiner_reservation' => $this->whenLoaded('joinerReservation', function () {
                 $reservation = $this->joinerReservation;
-                if (!$reservation) return null;
+                if (! $reservation) {
+                    return null;
+                }
+
                 return [
                     'id' => $reservation->id,
                     'reference' => $reservation->reference,
@@ -138,7 +164,10 @@ class InvoiceResource extends JsonResource
             }),
             'charter_booking' => $this->whenLoaded('charterBooking', function () {
                 $charter = $this->charterBooking;
-                if (!$charter) return null;
+                if (! $charter) {
+                    return null;
+                }
+
                 return [
                     'id' => $charter->id, 'reference' => $charter->reference, 'status' => $charter->status,
                     'starts_at' => $charter->starts_at?->toISOString(), 'ends_at' => $charter->ends_at?->toISOString(),
@@ -149,7 +178,10 @@ class InvoiceResource extends JsonResource
             }),
             'educational_tour_booking' => $this->whenLoaded('educationalTourBooking', function () {
                 $education = $this->educationalTourBooking;
-                if (!$education) return null;
+                if (! $education) {
+                    return null;
+                }
+
                 return [
                     'id' => $education->id, 'reference' => $education->reference, 'school_name' => $education->school_name,
                     'grade_level' => $education->grade_level, 'starts_at' => $education->starts_at?->toISOString(),
@@ -162,8 +194,8 @@ class InvoiceResource extends JsonResource
                     ]),
                 ];
             }),
-            'itineraries' => $this->whenLoaded('itineraries', function() {
-                return $this->itineraries->map(fn($it) => [
+            'itineraries' => $this->whenLoaded('itineraries', function () {
+                return $this->itineraries->map(fn ($it) => [
                     'id' => $it->id,
                     'day_number' => $it->day_number,
                     'date' => $it->date?->toISOString(),
@@ -208,8 +240,8 @@ class InvoiceResource extends JsonResource
             }),
             'customer' => new CustomerResource($this->whenLoaded('customer')),
             'creator' => new UserResource($this->whenLoaded('creator')),
-            'items' => $this->whenLoaded('items', function() {
-                return $this->items->map(function($item) {
+            'items' => $this->whenLoaded('items', function () {
+                return $this->items->map(function ($item) {
                     return [
                         'id' => $item->id,
                         'service_id' => $item->service_id,
@@ -230,7 +262,7 @@ class InvoiceResource extends JsonResource
                             'name' => $item->item_name ?? $item->service?->name ?? 'N/A',
                             'category' => $item->service?->category ?? $item->service_type ?? 'Custom',
                             'description' => $item->item_description ?? $item->service?->description ?? '',
-                        ]
+                        ],
                     ];
                 });
             }),

@@ -54,6 +54,8 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
 
   const buses = busesData?.data || [];
   const drivers = driversData?.data || [];
+  const isSalesSynchronized = Boolean(ticket?.sales_order_item);
+  const canReassignFromDtt = ['private_tour', 'transfer_service'].includes(ticket?.sales_order_item?.service_type || '');
 
   const [form, setForm] = useState({
     control_no: ticket?.control_no || '',
@@ -82,6 +84,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
 
   // Automated background calculation of distance, fuel (DOE rates) & tolls based on pickup/dropoff route
   useEffect(() => {
+    if (isSalesSynchronized) return;
     if (!form.pick_up && !form.drop_off) return;
     const routeStr = `${form.pick_up} ${form.drop_off}`.toLowerCase();
     let estKm = 120;
@@ -103,7 +106,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
       autosweep: prev.autosweep === '0' || !prev.autosweep ? formatMoneyInput(String(estAutosweep)) : prev.autosweep,
       odometer_reading: prev.odometer_reading === '0' || !prev.odometer_reading ? String(estKm) : prev.odometer_reading,
     }));
-  }, [form.pick_up, form.drop_off]);
+  }, [form.pick_up, form.drop_off, isSalesSynchronized]);
 
   useEffect(() => {
     let active = true;
@@ -209,7 +212,8 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
           <div className="rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-100">
             <p className="font-black">Sales-synchronized trip</p>
             <p className="mt-1 text-xs leading-5 opacity-80">
-              Passenger count and travel dates come from {ticket.sales_order_item.title}. Reassigning the vehicle or driver here updates the typed private-tour fulfillment and centralized allocation together.
+              Schedule, route, passengers, and original dispatch assignments came from {ticket.sales_order_item.title}. Update booking facts in Sales; continue here with allowances, pre-trip approval, and completion.
+              {canReassignFromDtt ? ' Vehicle and driver reassignment remains available for this service.' : ''}
             </p>
           </div>
         )}
@@ -246,6 +250,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <input
                   type="date"
                   required
+                  disabled={isSalesSynchronized}
                   value={form.date_of_travel}
                   onChange={e => setForm(p => ({ ...p, date_of_travel: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -260,6 +265,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                   <button
                     key={t}
                     type="button"
+                    disabled={isSalesSynchronized}
                     onClick={() => setForm(p => ({ ...p, trip_type: t }))}
                     className={`flex-1 py-3 rounded-2xl text-xs font-bold uppercase tracking-widest border-2 transition-all ${
                       form.trip_type === t
@@ -284,20 +290,22 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
           </summary>
           <div className="p-4 pt-0 space-y-4">
             {/* Interactive Location Map Pinning & Fuel Auto-Calculator */}
-            <TripLocationMapPicker
-              pickupLocation={form.pick_up || 'JVD Terminal, Manila'}
-              dropOffLocation={form.drop_off || 'Tagaytay City'}
-              vehicleType={(buses.find(b => String(b.id) === String(form.bus_id)) as any)?.vehicle_type || 'Bus'}
-              onLocationSelect={(pickup, dropoff, _distance, _liters, cost) => {
-                setForm(p => ({
-                  ...p,
-                  pick_up: pickup,
-                  drop_off: dropoff,
-                  diesel: formatMoneyInput(String(cost)),
-                }));
-                toast.success('Route pinned and diesel cost auto-calculated!');
-              }}
-            />
+            {!isSalesSynchronized && (
+              <TripLocationMapPicker
+                pickupLocation={form.pick_up || 'JVD Terminal, Manila'}
+                dropOffLocation={form.drop_off || 'Tagaytay City'}
+                vehicleType={(buses.find(b => String(b.id) === String(form.bus_id)) as any)?.vehicle_type || 'Bus'}
+                onLocationSelect={(pickup, dropoff, _distance, _liters, cost) => {
+                  setForm(p => ({
+                    ...p,
+                    pick_up: pickup,
+                    drop_off: dropoff,
+                    diesel: formatMoneyInput(String(cost)),
+                  }));
+                  toast.success('Route pinned and diesel cost auto-calculated!');
+                }}
+              />
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -305,6 +313,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <input
                   type="text"
                   required
+                  readOnly={isSalesSynchronized}
                   value={form.pick_up}
                   onChange={e => setForm(p => ({ ...p, pick_up: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -316,6 +325,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <input
                   type="text"
                   required
+                  readOnly={isSalesSynchronized}
                   value={form.drop_off}
                   onChange={e => setForm(p => ({ ...p, drop_off: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -331,6 +341,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                   type="text"
                   inputMode="numeric"
                   required
+                  readOnly={isSalesSynchronized}
                   value={form.no_of_passengers}
                   onChange={e => {
                     const val = e.target.value.replace(/\D/g, '');
@@ -343,6 +354,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Passenger / Group Name</label>
                 <input
                   type="text"
+                  readOnly={isSalesSynchronized}
                   value={form.passenger_name}
                   onChange={e => setForm(p => ({ ...p, passenger_name: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -353,6 +365,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Duration / Notes</label>
                 <input
                   type="text"
+                  readOnly={isSalesSynchronized}
                   value={form.duration}
                   onChange={e => setForm(p => ({ ...p, duration: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -373,6 +386,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Driver</label>
                 <select
+                  disabled={isSalesSynchronized && !canReassignFromDtt}
                   value={form.driver_id}
                   onChange={e => setForm(p => ({ ...p, driver_id: e.target.value }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-transparent"
@@ -388,6 +402,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Select Vehicle (Fleet)</label>
                 <select
+                  disabled={isSalesSynchronized && !canReassignFromDtt}
                   value={form.bus_id}
                   onChange={e => setForm(p => ({ ...p, bus_id: e.target.value, plate_no: '' }))}
                   className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-transparent"
@@ -404,7 +419,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Plate Number (Manual Override)</label>
                 <input
                   type="text"
-                  disabled={!!form.bus_id}
+                  disabled={!!form.bus_id || (isSalesSynchronized && !canReassignFromDtt)}
                   value={form.bus_id ? buses.find((b: any) => b.id === Number(form.bus_id))?.plate_number || '' : form.plate_no}
                   onChange={e => setForm(p => ({ ...p, plate_no: e.target.value }))}
                   placeholder={form.bus_id ? "Auto-synced with fleet" : "e.g. NDG-5818"}

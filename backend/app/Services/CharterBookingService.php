@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\PmsSchedule;
+use App\Models\SalesOrderItem;
 use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
@@ -116,7 +117,7 @@ class CharterBookingService
                 ]],
                 'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
                 'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
-                'subtotal' => $pricing['subtotal'], 'pricing_snapshot' => [...$pricing, 'rate_plan' => $plan->only(['id', 'name', 'vehicle_class', 'included_hours', 'included_kilometers', 'extra_hour_rate', 'extra_kilometer_rate', 'overnight_rate'])],
+                'subtotal' => $pricing['subtotal'], 'pricing_snapshot' => [...$pricing, 'rate_plan' => $this->ratePlanSnapshot($plan)],
                 'status' => 'confirmed', 'operations_notes' => $data['operations_notes'] ?? null, 'created_by' => $actorId,
             ]);
             app(ResourceAllocationService::class)->reserve($booking, $bus->id, $driver?->id, $booking->starts_at, $booking->ends_at, $booking->reference);
@@ -133,7 +134,7 @@ class CharterBookingService
 
     public function update(CharterBooking $booking, array $data): CharterBooking
     {
-        return DB::transaction(function () use ($booking, $data) {
+        $updated = DB::transaction(function () use ($booking, $data) {
             $booking = CharterBooking::lockForUpdate()->with('ratePlan')->findOrFail($booking->id);
             if (! in_array($booking->status, ['confirmed', 'awaiting_payment', 'in_progress'], true)) {
                 throw ValidationException::withMessages(['booking' => 'Only active charter bookings can be edited.']);
@@ -181,6 +182,15 @@ class CharterBookingService
 
             return $booking->fresh(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
         });
+
+        $orderItem = SalesOrderItem::where('fulfillment_type', $updated->getMorphClass())
+            ->where('fulfillment_id', $updated->id)
+            ->first();
+        if ($orderItem) {
+            app(TripTicketService::class)->synchronizeForSalesItem($orderItem, $updated->created_by);
+        }
+
+        return $updated->fresh(['ratePlan.service', 'bus', 'driver', 'invoice.items']);
     }
 
     public function createFromInvoice(Invoice $invoice, array $data, int $actorId): CharterBooking
@@ -214,7 +224,7 @@ class CharterBookingService
             ])->all(),
             'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
             'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
-            'subtotal' => $invoice->subtotal, 'pricing_snapshot' => [...$pricing, 'invoice_subtotal' => (float) $invoice->subtotal, 'requested_units' => (int) ($data['requested_units'] ?? count($assignments))],
+            'subtotal' => $invoice->subtotal, 'pricing_snapshot' => [...$pricing, 'rate_plan' => $this->ratePlanSnapshot($plan), 'invoice_subtotal' => (float) $invoice->subtotal, 'requested_units' => (int) ($data['requested_units'] ?? count($assignments))],
             'status' => 'confirmed', 'operations_notes' => $data['operations_notes'] ?? null, 'created_by' => $actorId,
         ]);
         foreach ($assignments as [$assignedBus, $assignedDriver]) {
@@ -262,6 +272,17 @@ class CharterBookingService
         }
 
         return $assignments;
+    }
+
+    private function ratePlanSnapshot(CharterRatePlan $plan): array
+    {
+        return $plan->only([
+            'id', 'name', 'vehicle_class', 'included_hours', 'included_kilometers',
+            'extra_hour_rate', 'extra_kilometer_rate', 'overnight_rate',
+            'estimated_liters', 'diesel_price_per_liter', 'diesel_cost', 'driver_meals',
+            'toll_gate_fees', 'easytrip', 'autosweep', 'commission', 'desired_profit',
+            'total_expenses', 'projected_profit',
+        ]);
     }
 
     public function assertAvailable(int $busId, ?int $driverId, string $startsAt, string $endsAt): void

@@ -6,6 +6,7 @@ use App\Models\Bus;
 use App\Models\CharterBooking;
 use App\Models\CharterRatePlan;
 use App\Models\Service;
+use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\CharterBookingService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -35,6 +36,7 @@ class CharterBookingTest extends TestCase
             'base_price' => 10000, 'included_hours' => 12, 'included_kilometers' => 100,
             'extra_hour_rate' => 500, 'extra_kilometer_rate' => 10, 'overnight_rate' => 1000,
             'includes_driver' => true, 'includes_fuel' => true, 'includes_tolls' => false, 'includes_parking' => false,
+            'diesel_cost' => 4200, 'driver_meals' => 1500, 'easytrip' => 450, 'autosweep' => 250,
             'created_by' => $this->user->id,
         ]);
     }
@@ -59,6 +61,13 @@ class CharterBookingTest extends TestCase
         $bookingId = $response->json('data.id');
         $this->assertDatabaseHas('charter_bookings', ['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id, 'pickup_location' => 'JVD Office']);
         $this->assertDatabaseHas('invoices', ['customer_name' => 'Corporate Client', 'total_amount' => 19600]);
+        $this->assertDatabaseHas('trip_tickets', [
+            'invoice_id' => $response->json('data.invoice.id'),
+            'bus_id' => $this->bus->id,
+            'driver_id' => $this->driver->id,
+            'pick_up' => 'JVD Office',
+            'drop_off' => 'Baguio City',
+        ]);
         $this->actingAs($this->user)->get("/api/v1/sales/charter-bookings/{$bookingId}/confirmation")
             ->assertOk()->assertHeader('content-type', 'application/pdf');
         $this->actingAs($this->user)->get("/api/v1/sales/charter-bookings/{$bookingId}/dispatch-sheet")
@@ -163,6 +172,18 @@ class CharterBookingTest extends TestCase
             'fulfillment_type' => $booking->getMorphClass(),
             'fulfillment_id' => $booking->id,
         ]);
+        $ticket = TripTicket::where('invoice_id', $invoiceId)->sole();
+        $this->assertSame('JVD Office', $ticket->pick_up);
+        $this->assertSame('Baguio City', $ticket->drop_off);
+        $this->assertSame(40, $ticket->no_of_passengers);
+        $this->assertSame($this->bus->id, $ticket->bus_id);
+        $this->assertSame($this->driver->id, $ticket->driver_id);
+        $this->assertEquals(4200, $ticket->diesel);
+        $this->assertEquals(1500, $ticket->meal_allowance);
+        $this->actingAs($this->user)->getJson("/api/v1/billing/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('data.trip_tickets.0.id', $ticket->id)
+            ->assertJsonPath('data.trip_tickets.0.driver.id', $this->driver->id);
     }
 
     public function test_shared_checkout_invoices_and_stores_explicit_extra_bus_units(): void
@@ -230,6 +251,13 @@ class CharterBookingTest extends TestCase
         $this->assertSame(2, $booking->pricing_snapshot['requested_units']);
         $this->assertSame('Cubao Pickup Point', $booking->pickup_location);
         $this->assertSame(40, $booking->passenger_count);
+        $tickets = TripTicket::where('invoice_id', $invoiceId)->orderBy('assignment_index')->get();
+        $this->assertCount(2, $tickets);
+        $this->assertSame([0, 1], $tickets->pluck('assignment_index')->all());
+        $this->assertSame([$this->bus->id, $secondBus->id], $tickets->pluck('bus_id')->all());
+        $this->assertSame([$this->driver->id, $secondDriver->id], $tickets->pluck('driver_id')->all());
+        $this->assertSame([20, 20], $tickets->pluck('no_of_passengers')->all());
+        $this->assertDatabaseCount('work_orders', 2);
     }
 
     public function test_active_charter_booking_can_update_operations_and_manifest(): void
@@ -241,6 +269,8 @@ class CharterBookingTest extends TestCase
         $payload = $this->payload();
         unset($payload['rate_plan_id'], $payload['estimated_kilometers'], $payload['payment_method'], $payload['payment_type'], $payload['amount_received']);
         $payload['lead_name'] = 'Updated Corporate Client';
+        $payload['pickup_location'] = 'Updated Cubao Pickup';
+        $payload['destination'] = 'Updated Baguio Drop-off';
         $payload['assignments'] = [['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id]];
         $payload['booking_mode'] = 'selected_seats';
         $payload['selected_seats'] = ['2A'];
@@ -251,6 +281,14 @@ class CharterBookingTest extends TestCase
             ->assertJsonPath('data.lead_name', 'Updated Corporate Client')
             ->assertJsonPath('data.selected_seats.0', '2A')
             ->assertJsonPath('data.passengers.0.first_name', 'Jose');
+
+        $this->assertDatabaseHas('trip_tickets', [
+            'pick_up' => 'Updated Cubao Pickup',
+            'drop_off' => 'Updated Baguio Drop-off',
+            'no_of_passengers' => $payload['passenger_count'],
+            'bus_id' => $this->bus->id,
+            'driver_id' => $this->driver->id,
+        ]);
     }
 
     public function test_removing_a_rate_plan_deactivates_it_without_deleting_its_service(): void

@@ -100,6 +100,19 @@ export interface Invoice {
   departure_datetime?: string | null;
   bus?: { id: number; plate_number: string; model: string; seating_capacity?: number } | null;
   driver?: { id: number; first_name: string; last_name: string } | null;
+  trip_tickets?: Array<{
+    id: number;
+    control_no: string;
+    assignment_index: number;
+    status: string;
+    date_of_travel: string;
+    duration?: string | null;
+    pick_up: string;
+    drop_off: string;
+    no_of_passengers: number;
+    vehicle?: { id: number; plate_number: string; model: string } | null;
+    driver?: { id: number; name: string; phone?: string | null; email?: string | null } | null;
+  }>;
   itineraries?: { id: number; day_number: number; date?: string; location?: string; activity_description?: string }[];
   created_at: string;
   customer?: any;

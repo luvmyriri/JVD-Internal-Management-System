@@ -5,14 +5,17 @@ namespace App\Services;
 use App\Exceptions\MaxPaxExceededException;
 use App\Mail\BookingConfirmationMail;
 use App\Mail\TransactionNotificationMail;
+use App\Models\Account;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\CustomTransactionDetail;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\JoinerDeparture;
+use App\Models\JoinerDepartureSeat;
 use App\Models\PassportCase;
 use App\Models\Service;
-use App\Models\TripTicket;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Notifications\SystemAlert;
 use Illuminate\Support\Facades\DB;
@@ -43,15 +46,15 @@ class InvoiceFinalizationService
     public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount, ?float $customTaxRate = null): array
     {
         $subtotal = 0;
-        $taxRate = $customTaxRate !== null ? $customTaxRate : (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
+        $taxRate = $customTaxRate !== null ? $customTaxRate : (float) SystemSetting::getValue('vat_rate', 0.12);
         $processedItems = [];
 
         foreach ($items as $item) {
-            $service = !empty($item['service_id']) ? Service::lockForUpdate()->find($item['service_id']) : null;
-            if (!empty($item['service_id']) && !$service) {
+            $service = ! empty($item['service_id']) ? Service::lockForUpdate()->find($item['service_id']) : null;
+            if (! empty($item['service_id']) && ! $service) {
                 throw ValidationException::withMessages(['items' => ['The selected catalog service no longer exists.']]);
             }
-            if (!$service && empty($item['item_name'])) {
+            if (! $service && empty($item['item_name'])) {
                 throw ValidationException::withMessages(['items' => ['A bespoke line must include its item name.']]);
             }
 
@@ -84,13 +87,13 @@ class InvoiceFinalizationService
 
             $adults = $item['adults'] ?? null;
             $children = $item['children'] ?? null;
-            $unitPrice = isset($item['unit_price']) ? (double) $item['unit_price'] : (double) ($service?->price ?? 0);
+            $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) ($service?->price ?? 0);
 
             if ($adults !== null || $children !== null) {
                 $adultCount = (int) ($adults ?? 0);
                 $childCount = (int) ($children ?? 0);
-                $adultUnit = (double) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice);
-                $childUnit = (double) ($item['child_price'] ?? $service?->child_price ?? $unitPrice);
+                $adultUnit = (float) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice);
+                $childUnit = (float) ($item['child_price'] ?? $service?->child_price ?? $unitPrice);
                 $itemTotal = ($adultCount * $adultUnit) + ($childCount * $childUnit);
                 $effectiveQty = $adultCount + $childCount;
                 if ($effectiveQty > 0) {
@@ -115,8 +118,8 @@ class InvoiceFinalizationService
                 'total_price' => $itemTotal,
                 'adults' => $adults,
                 'children' => $children,
-                'adult_price' => isset($item['adults']) || isset($item['children']) ? (double) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice) : null,
-                'child_price' => isset($item['adults']) || isset($item['children']) ? (double) ($item['child_price'] ?? $service?->child_price ?? $unitPrice) : null,
+                'adult_price' => isset($item['adults']) || isset($item['children']) ? (float) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice) : null,
+                'child_price' => isset($item['adults']) || isset($item['children']) ? (float) ($item['child_price'] ?? $service?->child_price ?? $unitPrice) : null,
                 'service_date' => $item['service_date'] ?? null,
                 'destination' => $item['destination'] ?? null,
             ];
@@ -184,6 +187,7 @@ class InvoiceFinalizationService
             if ($paymentType === 'downpayment') {
                 return ['status' => 'partial', 'balance' => max(0, $totalAmount - $amountReceived)];
             }
+
             return ['status' => 'paid', 'balance' => 0];
         }
 
@@ -213,7 +217,7 @@ class InvoiceFinalizationService
                 continue;
             }
 
-            $service = !empty($item['service_id']) ? Service::find($item['service_id']) : null;
+            $service = ! empty($item['service_id']) ? Service::find($item['service_id']) : null;
             $displayName = $item['item_name'] ?? $service?->name ?? 'Travel service';
             $quantity = (int) ($item['quantity'] ?? 1);
 
@@ -272,15 +276,15 @@ class InvoiceFinalizationService
     public function resolveCustomerId(?int $customerId, ?string $name, ?string $email, ?string $contact, ?string $address): ?int
     {
         $existingCustomer = null;
-        
+
         if ($customerId) {
             $existingCustomer = Customer::find($customerId);
         }
 
-        if (!$existingCustomer && $email) {
+        if (! $existingCustomer && $email) {
             $existingCustomer = Customer::where('email', $email)->first();
         }
-        if (!$existingCustomer && $contact) {
+        if (! $existingCustomer && $contact) {
             $existingCustomer = Customer::where('phone', $contact)->first();
         }
 
@@ -304,20 +308,21 @@ class InvoiceFinalizationService
                     $firstName = $name;
                     $lastName = '';
                 }
-                
+
                 if ($existingCustomer->first_name !== $firstName || $existingCustomer->last_name !== $lastName) {
                     $updatedData['first_name'] = $firstName;
                     $updatedData['last_name'] = $lastName;
                 }
             }
 
-            if (!empty($updatedData)) {
+            if (! empty($updatedData)) {
                 $existingCustomer->update($updatedData);
             }
+
             return $existingCustomer->id;
         }
 
-        if (!$name) {
+        if (! $name) {
             return null;
         }
 
@@ -349,7 +354,7 @@ class InvoiceFinalizationService
      * Case rows are locked in a stable order so concurrent checkouts cannot bill the same
      * case. Passing the current invoice id permits revalidation when a draft is signed.
      *
-     * @param array<int, int|string|null> $itemPassportCaseIds
+     * @param  array<int, int|string|null>  $itemPassportCaseIds
      */
     public function assertPassportCasesCanBeBilled(
         array $itemPassportCaseIds,
@@ -391,13 +396,13 @@ class InvoiceFinalizationService
                 ? 'items'
                 : 'custom_transaction_detail.passport_case_id';
 
-            if (!$passportCase) {
+            if (! $passportCase) {
                 throw ValidationException::withMessages([
                     $errorKey => ['The selected passport or visa case no longer exists.'],
                 ]);
             }
 
-            if (!$customerId || (int) $passportCase->customer_id !== (int) $customerId) {
+            if (! $customerId || (int) $passportCase->customer_id !== (int) $customerId) {
                 throw ValidationException::withMessages([
                     $errorKey => ['The selected passport or visa case belongs to a different customer.'],
                 ]);
@@ -435,7 +440,7 @@ class InvoiceFinalizationService
         // Conflict Check: Prevent double-booking driver or bus on overlapping date range
         if ($booking && $booking->travel_date) {
             $dateStr = is_string($booking->travel_date) ? explode('T', $booking->travel_date)[0] : $booking->travel_date->toDateString();
-            
+
             if ($booking->bus_id) {
                 // Check travels (only if not a seat-based/joiner booking where multiple customers share the bus)
                 $isSeatMapBooking = is_array($booking->seat_map) && count($booking->seat_map) > 0;
@@ -443,14 +448,14 @@ class InvoiceFinalizationService
                 $travelConflict = null;
                 $ttConflict = null;
 
-                if (!$isSeatMapBooking) {
+                if (! $isSeatMapBooking) {
                     $travelConflict = \DB::table('travels')
                         ->where('bus_id', $booking->bus_id)
                         ->where('travel_date', $dateStr)
                         ->where('status', '!=', 'cancelled')
                         ->where(function ($q) use ($booking) {
                             $q->where('reference_type', '!=', 'booking')
-                              ->orWhere('reference_id', '!=', $booking->id);
+                                ->orWhere('reference_id', '!=', $booking->id);
                         })
                         ->lockForUpdate()
                         ->first();
@@ -461,14 +466,14 @@ class InvoiceFinalizationService
                         ->where('status', '!=', 'cancelled')
                         ->where(function ($q) use ($invoice) {
                             $q->whereNull('invoice_id')
-                              ->orWhere('invoice_id', '!=', $invoice->id);
+                                ->orWhere('invoice_id', '!=', $invoice->id);
                         })
                         ->lockForUpdate()
                         ->first();
                 }
 
                 if ($travelConflict || $ttConflict) {
-                    throw new \InvalidArgumentException("Vehicle (Bus #{$booking->bus_id}) is already reserved/booked for travel on " . $dateStr . ".");
+                    throw new \InvalidArgumentException("Vehicle (Bus #{$booking->bus_id}) is already reserved/booked for travel on ".$dateStr.'.');
                 }
 
                 // Check PMS
@@ -478,11 +483,11 @@ class InvoiceFinalizationService
                     ->lockForUpdate()
                     ->first();
                 if ($pmsConflict) {
-                    throw new \InvalidArgumentException("Vehicle is under maintenance (PMS) on " . $dateStr . ".");
+                    throw new \InvalidArgumentException('Vehicle is under maintenance (PMS) on '.$dateStr.'.');
                 }
             }
 
-            if ($booking->driver_id && !$isSeatMapBooking) {
+            if ($booking->driver_id && ! $isSeatMapBooking) {
                 // Check travels
                 $driverTravelConflict = \DB::table('travels')
                     ->where('driver_id', $booking->driver_id)
@@ -490,7 +495,7 @@ class InvoiceFinalizationService
                     ->where('status', '!=', 'cancelled')
                     ->where(function ($q) use ($booking) {
                         $q->where('reference_type', '!=', 'booking')
-                          ->orWhere('reference_id', '!=', $booking->id);
+                            ->orWhere('reference_id', '!=', $booking->id);
                     })
                     ->lockForUpdate()
                     ->first();
@@ -501,13 +506,13 @@ class InvoiceFinalizationService
                     ->where('status', '!=', 'cancelled')
                     ->where(function ($q) use ($invoice) {
                         $q->whereNull('invoice_id')
-                          ->orWhere('invoice_id', '!=', $invoice->id);
+                            ->orWhere('invoice_id', '!=', $invoice->id);
                     })
                     ->lockForUpdate()
                     ->first();
 
                 if ($driverTravelConflict || $driverTtConflict) {
-                    throw new \InvalidArgumentException("Driver is already assigned/reserved for travel on " . $dateStr . ".");
+                    throw new \InvalidArgumentException('Driver is already assigned/reserved for travel on '.$dateStr.'.');
                 }
             }
         }
@@ -520,8 +525,8 @@ class InvoiceFinalizationService
         );
         $invoice->update($statusResult);
 
-        if (in_array($invoice->payment_method, ['GCash', 'Card']) && !$invoice->payment_id && (float) $invoice->total_amount > 0) {
-            $paymongo = new \App\Services\PayMongoService();
+        if (in_array($invoice->payment_method, ['GCash', 'Card']) && ! $invoice->payment_id && (float) $invoice->total_amount > 0) {
+            $paymongo = new PayMongoService;
             $payData = [
                 'line_items' => $this->buildPayMongoLineItems($invoice, $processedItems),
                 'description' => "JVD Order #{$invoice->invoice_number}",
@@ -542,102 +547,14 @@ class InvoiceFinalizationService
             ]);
         }
 
-        $hasBusService = false;
-        $busServiceDescription = '';
-        $busServiceDate = null;
-        $busDestination = null;
-
-        foreach ($processedItems as $pItem) {
-            $service = !empty($pItem['service_id']) ? Service::find($pItem['service_id']) : null;
-            if ($service) {
-                $cat = strtolower($service->category);
-                $name = strtolower($service->name);
-                if (in_array($cat, ['transport', 'package', 'bus rental', 'educational tour', 'tour package', 'joiners'])
-                    || str_contains($cat, 'bus')
-                    || str_contains($cat, 'tour')
-                    || str_contains($name, 'bus')
-                    || str_contains($name, 'tour')
-                ) {
-                    $hasBusService = true;
-                    $busServiceDescription .= "- {$service->name} (Qty: {$pItem['quantity']})\n";
-                    if (!empty($pItem['service_date'])) $busServiceDate = $pItem['service_date'];
-                    if (!empty($pItem['destination'])) $busDestination = $pItem['destination'];
-                }
-            } elseif (in_array($pItem['service_type'] ?? null, ['bus_rental', 'transfer_service', 'educational_tour'], true)) {
-                $hasBusService = true;
-                $busServiceDescription .= '- '.($pItem['item_name'] ?? 'Transport service')." (Qty: {$pItem['quantity']})\n";
-                if (!empty($pItem['service_date'])) $busServiceDate = $pItem['service_date'];
-                if (!empty($pItem['destination'])) $busDestination = $pItem['destination'];
-            }
-        }
-
-        if ($hasBusService && $booking && $booking->bus_id) {
-            DB::transaction(function () use ($invoice, $booking, $busServiceDate, $busDestination) {
-                $year = now()->year;
-                $latest = TripTicket::where('control_no', 'like', "DTT-{$year}-%")
-                    ->orderByDesc('id')
-                    ->lockForUpdate()
-                    ->first();
-                $sequence = 1;
-                if ($latest) {
-                    $parts = explode('-', $latest->control_no);
-                    $sequence = (int) end($parts) + 1;
-                }
-                $controlNo = sprintf('DTT-%d-%04d', $year, $sequence);
-
-                $dateOfTravel = $busServiceDate ?? $booking->travel_date ?? now()->addDay()->toDateString();
-                if (is_string($dateOfTravel)) {
-                    $dateOfTravel = explode('T', $dateOfTravel)[0];
-                }
-
-                $existingTt = TripTicket::where('invoice_id', $invoice->id)
-                    ->orWhere(function ($q) use ($booking, $dateOfTravel) {
-                        $q->where('bus_id', $booking->bus_id)
-                          ->where('driver_id', $booking->driver_id)
-                          ->where('date_of_travel', $dateOfTravel)
-                          ->where('status', '!=', 'cancelled');
-                    })
-                    ->first();
-
-                if ($existingTt) {
-                    $existingTt->update([
-                        'invoice_id'       => $invoice->id,
-                        'issue_date'       => now()->toDateString(),
-                        'date_of_travel'   => $dateOfTravel,
-                        'pick_up'          => $booking->pickup_location ?? 'TBD',
-                        'destination'      => $booking->tour_code ?? 'TBD',
-                        'drop_off'         => $busDestination ?? 'TBD',
-                        'no_of_passengers' => $booking->pax_count ?? 1,
-                        'bus_id'           => $booking->bus_id,
-                        'driver_id'        => $booking->driver_id,
-                    ]);
-                } else {
-                    TripTicket::create([
-                        'control_no'       => $controlNo,
-                        'issue_date'       => now()->toDateString(),
-                        'date_of_travel'   => $dateOfTravel,
-                        'pick_up'          => $booking->pickup_location ?? 'TBD',
-                        'destination'      => $booking->tour_code ?? 'TBD',
-                        'drop_off'         => $busDestination ?? 'TBD',
-                        'no_of_passengers' => $booking->pax_count ?? 1,
-                        'bus_id'           => $booking->bus_id,
-                        'driver_id'        => $booking->driver_id,
-                        'status'           => 'draft',
-                        'requested_by'     => $invoice->created_by,
-                        'invoice_id'       => $invoice->id,
-                    ]);
-                }
-            });
-        }
-
         // Ledger Posting: Recognize AR and Revenue
         if ($invoice->total_amount > 0) {
-            $ledger = app(\App\Services\LedgerService::class);
+            $ledger = app(LedgerService::class);
             $ledger->seedDefaultAccounts(); // Ensure accounts exist
-            
-            $arAccount = \App\Models\Account::where('code', '1300')->first();
-            $revAccount = \App\Models\Account::where('code', '4000')->first();
-            $vatAccount = \App\Models\Account::where('code', '2400')->first();
+
+            $arAccount = Account::where('code', '1300')->first();
+            $revAccount = Account::where('code', '4000')->first();
+            $vatAccount = Account::where('code', '2400')->first();
 
             if ($arAccount && $revAccount && $vatAccount) {
                 $ledger->recordEntry(
@@ -648,20 +565,20 @@ class InvoiceFinalizationService
                             'account_id' => $arAccount->id,
                             'debit' => $invoice->total_amount,
                             'credit' => 0,
-                            'description' => "AR for Invoice {$invoice->invoice_number}"
+                            'description' => "AR for Invoice {$invoice->invoice_number}",
                         ],
                         [
                             'account_id' => $revAccount->id,
                             'debit' => 0,
                             'credit' => $invoice->subtotal,
-                            'description' => "Net service revenue for Invoice {$invoice->invoice_number}"
+                            'description' => "Net service revenue for Invoice {$invoice->invoice_number}",
                         ],
                         [
                             'account_id' => $vatAccount->id,
                             'debit' => 0,
                             'credit' => $invoice->tax_amount,
-                            'description' => "Output VAT for Invoice {$invoice->invoice_number}"
-                        ]
+                            'description' => "Output VAT for Invoice {$invoice->invoice_number}",
+                        ],
                     ],
                     $invoice
                 );
@@ -688,39 +605,39 @@ class InvoiceFinalizationService
         $tourCode = $booking?->tour_code;
         $travelDate = $booking?->travel_date;
 
-        if (!$seatMap || !is_array($seatMap) || count($seatMap) === 0) {
+        if (! $seatMap || ! is_array($seatMap) || count($seatMap) === 0) {
             foreach ($invoice->items as $item) {
-                if (is_array($item->item_metadata) && !empty($item->item_metadata['selected_seats'])) {
+                if (is_array($item->item_metadata) && ! empty($item->item_metadata['selected_seats'])) {
                     $seatMap = (array) $item->item_metadata['selected_seats'];
                     break;
                 }
-                if (is_array($item->item_metadata) && !empty($item->item_metadata['seat_map'])) {
+                if (is_array($item->item_metadata) && ! empty($item->item_metadata['seat_map'])) {
                     $seatMap = (array) $item->item_metadata['seat_map'];
                     break;
                 }
             }
         }
 
-        if (!$seatMap || !is_array($seatMap) || count($seatMap) === 0) {
+        if (! $seatMap || ! is_array($seatMap) || count($seatMap) === 0) {
             return;
         }
 
         $departure = null;
         if ($tourCode) {
-            $departure = \App\Models\JoinerDeparture::where('code', $tourCode)->first();
+            $departure = JoinerDeparture::where('code', $tourCode)->first();
         }
 
-        if (!$departure && $travelDate) {
+        if (! $departure && $travelDate) {
             $dateStr = is_string($travelDate) ? explode('T', $travelDate)[0] : $travelDate->toDateString();
             $invoiceItem = $invoice->items->first();
             if ($invoiceItem && $invoiceItem->service_id) {
-                $departure = \App\Models\JoinerDeparture::where('service_id', $invoiceItem->service_id)
+                $departure = JoinerDeparture::where('service_id', $invoiceItem->service_id)
                     ->whereDate('starts_at', $dateStr)
                     ->first();
             }
         }
 
-        if (!$departure) {
+        if (! $departure) {
             return;
         }
 
@@ -729,7 +646,7 @@ class InvoiceFinalizationService
         }, $seatMap);
 
         if ($invoice->status === 'cancelled') {
-            \App\Models\JoinerDepartureSeat::where('departure_id', $departure->id)
+            JoinerDepartureSeat::where('departure_id', $departure->id)
                 ->whereIn('seat_code', $cleanSeats)
                 ->update([
                     'status' => 'available',
@@ -737,7 +654,7 @@ class InvoiceFinalizationService
                     'held_until' => null,
                 ]);
         } else {
-            \App\Models\JoinerDepartureSeat::where('departure_id', $departure->id)
+            JoinerDepartureSeat::where('departure_id', $departure->id)
                 ->whereIn('seat_code', $cleanSeats)
                 ->update([
                     'status' => 'confirmed',
@@ -745,10 +662,10 @@ class InvoiceFinalizationService
                 ]);
         }
 
-        $confirmedCount = \App\Models\JoinerDepartureSeat::where('departure_id', $departure->id)
+        $confirmedCount = JoinerDepartureSeat::where('departure_id', $departure->id)
             ->whereIn('status', ['confirmed', 'occupied'])
             ->count();
-        $heldCount = \App\Models\JoinerDepartureSeat::where('departure_id', $departure->id)
+        $heldCount = JoinerDepartureSeat::where('departure_id', $departure->id)
             ->where('status', 'held')
             ->count();
 
@@ -765,48 +682,48 @@ class InvoiceFinalizationService
      */
     public function captureSnapshot(Invoice $invoice): void
     {
-        if (!empty($invoice->finalized_snapshot)) {
+        if (! empty($invoice->finalized_snapshot)) {
             return; // already frozen — immutable
         }
 
         $invoice->loadMissing('items');
 
         $items = $invoice->items->map(fn ($item) => [
-            'service_id'   => $item->service_id,
+            'service_id' => $item->service_id,
             'passport_case_id' => $item->passport_case_id,
             'service_name' => $item->item_name ?? optional(Service::find($item->service_id))->name,
             'service_type' => $item->service_type,
-            'description'  => $item->item_description,
-            'metadata'     => $item->item_metadata,
-            'quantity'     => $item->quantity,
-            'unit_price'   => $item->unit_price,
-            'total_price'  => $item->total_price,
-            'adults'       => $item->adults,
-            'children'     => $item->children,
-            'adult_price'  => $item->adult_price,
-            'child_price'  => $item->child_price,
+            'description' => $item->item_description,
+            'metadata' => $item->item_metadata,
+            'quantity' => $item->quantity,
+            'unit_price' => $item->unit_price,
+            'total_price' => $item->total_price,
+            'adults' => $item->adults,
+            'children' => $item->children,
+            'adult_price' => $item->adult_price,
+            'child_price' => $item->child_price,
         ])->all();
 
         $snapshot = [
             'captured_at' => now()->toIso8601String(),
             'customer' => [
-                'id'      => $invoice->customer_id,
-                'name'    => $invoice->customer_name,
+                'id' => $invoice->customer_id,
+                'name' => $invoice->customer_name,
                 'address' => $invoice->customer_address,
-                'email'   => $invoice->customer_email,
+                'email' => $invoice->customer_email,
                 'contact' => $invoice->customer_contact,
             ],
-            'items'  => $items,
+            'items' => $items,
             'totals' => [
-                'subtotal'     => $invoice->subtotal,
-                'tax_amount'   => $invoice->tax_amount,
+                'subtotal' => $invoice->subtotal,
+                'tax_amount' => $invoice->tax_amount,
                 'total_amount' => $invoice->total_amount,
             ],
         ];
 
         $invoice->forceFill([
             'finalized_snapshot' => $snapshot,
-            'finalized_at'       => now(),
+            'finalized_at' => now(),
         ])->save();
     }
 
@@ -821,8 +738,8 @@ class InvoiceFinalizationService
      */
     public function afterCommit(Invoice $invoice, array $context = []): void
     {
-        app(\App\Services\SalesOrderService::class)->captureInvoice($invoice, ($context['actor'] ?? null)?->id ?? $invoice->created_by);
-        app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
+        app(SalesOrderService::class)->captureInvoice($invoice, ($context['actor'] ?? null)?->id ?? $invoice->created_by);
+        app(BillingCollectionService::class)->syncCollection($invoice);
 
         $notificationEmail = $invoice->notificationEmail();
         if ($notificationEmail) {
@@ -830,14 +747,14 @@ class InvoiceFinalizationService
                 @set_time_limit(120);
                 Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
             } catch (\Exception $mailEx) {
-                \Log::error("Failed to send POS transaction email to {$notificationEmail}: " . $mailEx->getMessage());
+                \Log::error("Failed to send POS transaction email to {$notificationEmail}: ".$mailEx->getMessage());
             }
 
             if (($context['source'] ?? null) === 'contract') {
                 try {
                     Mail::to($notificationEmail)->send(new BookingConfirmationMail($invoice, $context['contract'] ?? null));
                 } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send booking confirmation email to {$notificationEmail}: " . $mailEx->getMessage());
+                    \Log::error("Failed to send booking confirmation email to {$notificationEmail}: ".$mailEx->getMessage());
                 }
             }
         }

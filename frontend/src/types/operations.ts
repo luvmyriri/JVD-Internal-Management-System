@@ -61,6 +61,7 @@ export interface TripTicket {
   approved_by?: number;
   invoice_id?: number | null;
   sales_order_item_id?: number | null;
+  assignment_index?: number;
   
   created_at?: string;
   updated_at?: string;

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Query\Expression;
+use Illuminate\Support\Facades\DB;
 
 class Invoice extends Model
 {
@@ -72,9 +74,9 @@ class Invoice extends Model
      * The collected-revenue column expression, for passing to `->sum()`
      * (which applies its own `SUM(...)`), so do NOT pre-wrap it here.
      */
-    public static function collectedRevenueExpr(): \Illuminate\Database\Query\Expression
+    public static function collectedRevenueExpr(): Expression
     {
-        return \Illuminate\Support\Facades\DB::raw(self::COLLECTED_REVENUE_SQL);
+        return DB::raw(self::COLLECTED_REVENUE_SQL);
     }
 
     /**
@@ -269,7 +271,12 @@ class Invoice extends Model
 
     public function tripTicket(): HasOne
     {
-        return $this->hasOne(TripTicket::class);
+        return $this->hasOne(TripTicket::class)->orderBy('assignment_index');
+    }
+
+    public function tripTickets(): HasMany
+    {
+        return $this->hasMany(TripTicket::class)->orderBy('assignment_index');
     }
 
     public function booking(): HasOne
@@ -335,6 +342,8 @@ class Invoice extends Model
             'educationalTourBooking.vehicles.bus',
             'educationalTourBooking.vehicles.driver',
             'tripTicket',
+            'tripTickets.bus',
+            'tripTickets.driver',
             'salesOrder.adjustments',
             'salesOrder.creditNotes.refunds',
             'salesOrder.refunds',

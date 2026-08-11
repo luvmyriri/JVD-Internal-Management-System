@@ -11,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\PmsSchedule;
+use App\Models\SalesOrderItem;
 use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
@@ -137,7 +138,7 @@ class EducationalTourBookingService
                 'reference' => SalesReferenceService::generate('EDT', $program->name, $data['starts_at']), 'program_id' => $program->id, 'customer_id' => $customerId, 'invoice_id' => $invoice->id,
                 'school_name' => $data['school_name'], 'contact_person' => $data['contact_person'], 'contact_email' => $data['contact_email'] ?? null,
                 'contact_number' => $data['contact_number'] ?? null, 'grade_level' => $data['grade_level'], 'starts_at' => $data['starts_at'],
-                'ends_at' => $data['ends_at'], 'pickup_location' => $data['pickup_location'], 'stops_snapshot' => $data['stops'] ?? $program->default_stops,
+                'ends_at' => $data['ends_at'], 'pickup_location' => $data['pickup_location'], 'stops_snapshot' => ! empty($data['stops']) ? $data['stops'] : $program->default_stops,
                 'student_count' => $data['student_count'], 'chaperone_count' => $data['chaperone_count'], 'free_chaperone_count' => $pricing['free_chaperone_count'],
                 'booking_mode' => $data['booking_mode'] ?? 'entire_vehicle', 'selected_seats' => $data['selected_seats'] ?? [],
                 'passengers' => $data['passengers'] ?? [],
@@ -163,7 +164,7 @@ class EducationalTourBookingService
 
     public function update(EducationalTourBooking $booking, array $data): EducationalTourBooking
     {
-        return DB::transaction(function () use ($booking, $data) {
+        $updated = DB::transaction(function () use ($booking, $data) {
             $booking = EducationalTourBooking::lockForUpdate()->findOrFail($booking->id);
             if (! in_array($booking->status, ['confirmed', 'awaiting_payment', 'in_progress'], true)) {
                 throw ValidationException::withMessages(['booking' => 'Only active educational tour bookings can be edited.']);
@@ -219,7 +220,7 @@ class EducationalTourBookingService
                 'starts_at' => $data['starts_at'],
                 'ends_at' => $data['ends_at'],
                 'pickup_location' => $data['pickup_location'],
-                'stops_snapshot' => $data['stops'] ?? [],
+                'stops_snapshot' => ! empty($data['stops']) ? $data['stops'] : $booking->program->default_stops,
                 'booking_mode' => $data['booking_mode'],
                 'selected_seats' => $data['selected_seats'] ?? [],
                 'passengers' => $data['passengers'] ?? [],
@@ -228,6 +229,15 @@ class EducationalTourBookingService
 
             return $booking->fresh(['program.service', 'vehicles.bus', 'vehicles.driver', 'invoice.items']);
         });
+
+        $orderItem = SalesOrderItem::where('fulfillment_type', $updated->getMorphClass())
+            ->where('fulfillment_id', $updated->id)
+            ->first();
+        if ($orderItem) {
+            app(TripTicketService::class)->synchronizeForSalesItem($orderItem, $updated->created_by);
+        }
+
+        return $updated->fresh(['program.service', 'vehicles.bus', 'vehicles.driver', 'invoice.items']);
     }
 
     public function createFromInvoice(Invoice $invoice, array $data, int $actorId): EducationalTourBooking
@@ -266,7 +276,7 @@ class EducationalTourBookingService
             'school_name' => $data['school_name'], 'contact_person' => $data['contact_person'],
             'contact_email' => $data['contact_email'] ?? $invoice->customer_email, 'contact_number' => $data['contact_number'] ?? $invoice->customer_contact,
             'grade_level' => $data['grade_level'], 'starts_at' => $data['starts_at'], 'ends_at' => $data['ends_at'],
-            'pickup_location' => $data['pickup_location'], 'stops_snapshot' => $data['stops'] ?? $program->default_stops,
+            'pickup_location' => $data['pickup_location'], 'stops_snapshot' => ! empty($data['stops']) ? $data['stops'] : $program->default_stops,
             'student_count' => $data['student_count'], 'chaperone_count' => $guides,
             'booking_mode' => $data['booking_mode'] ?? 'entire_vehicle', 'selected_seats' => $data['selected_seats'] ?? [],
             'passengers' => $data['passengers'] ?? [], 'free_chaperone_count' => $pricing['free_chaperone_count'],

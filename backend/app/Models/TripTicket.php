@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\ResourceAllocationService;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class TripTicket extends Model
@@ -57,7 +59,7 @@ class TripTicket extends Model
     {
         static::saved(function ($tripTicket) {
             self::syncToTravelSchedules($tripTicket);
-            $allocations = app(\App\Services\ResourceAllocationService::class);
+            $allocations = app(ResourceAllocationService::class);
 
             // A sales-generated DTT is the operational document for an allocation
             // already owned by its typed fulfillment. Keep one central allocation
@@ -68,10 +70,19 @@ class TripTicket extends Model
                 ->first();
             if ($salesItem?->fulfillment) {
                 $allocations->release($tripTicket); // repairs any historical duplicate
-                if ($tripTicket->status === 'completed') {
-                    \App\Models\ResourceAllocation::where('source_type', $salesItem->fulfillment->getMorphClass())
-                        ->where('source_id', $salesItem->fulfillment->getKey())
-                        ->update(['status' => 'completed']);
+                $allocationOwner = $salesItem->fulfillment instanceof JoinerReservation
+                    ? $salesItem->fulfillment->departure
+                    : $salesItem->fulfillment;
+                if (! $allocationOwner) {
+                    return;
+                }
+
+                if (in_array($tripTicket->status, ['completed', 'cancelled'], true)) {
+                    ResourceAllocation::where('source_type', $allocationOwner->getMorphClass())
+                        ->where('source_id', $allocationOwner->getKey())
+                        ->when($tripTicket->bus_id, fn ($query) => $query->where('bus_id', $tripTicket->bus_id))
+                        ->update(['status' => $tripTicket->status]);
+
                     return;
                 }
 
@@ -79,7 +90,7 @@ class TripTicket extends Model
                 $end = $salesItem->scheduled_end;
                 if ($start && $end) {
                     $allocations->reserve(
-                        $salesItem->fulfillment,
+                        $allocationOwner,
                         $tripTicket->bus_id,
                         $tripTicket->driver_id,
                         $start,
@@ -88,33 +99,36 @@ class TripTicket extends Model
                         'confirmed'
                     );
                 }
+
                 return;
             }
 
             if (in_array($tripTicket->status, ['cancelled', 'completed'], true)) {
                 $allocations->release($tripTicket);
+
                 return;
             }
-            $start = \Carbon\Carbon::parse($tripTicket->date_of_travel);
+            $start = Carbon::parse($tripTicket->date_of_travel);
             $end = $start->copy()->addDay();
             $allocations->reserve($tripTicket, $tripTicket->bus_id, $tripTicket->driver_id, $start, $end, $tripTicket->control_no, $tripTicket->status ?? 'draft');
         });
 
         static::deleted(function ($tripTicket) {
             self::deleteFromTravelSchedules($tripTicket);
-            app(\App\Services\ResourceAllocationService::class)->release($tripTicket);
+            app(ResourceAllocationService::class)->release($tripTicket);
         });
     }
 
     public static function syncToTravelSchedules($tripTicket): void
     {
-        if ($tripTicket->status === 'cancelled' || !$tripTicket->bus_id) {
+        if ($tripTicket->status === 'cancelled' || ! $tripTicket->bus_id) {
             self::deleteFromTravelSchedules($tripTicket);
+
             return;
         }
 
         if ($tripTicket->invoice_id) {
-            $booking = \App\Models\Booking::where('invoice_id', $tripTicket->invoice_id)->first();
+            $booking = Booking::where('invoice_id', $tripTicket->invoice_id)->first();
             if ($booking) {
                 \DB::table('travels')
                     ->where('reference_type', 'booking')
