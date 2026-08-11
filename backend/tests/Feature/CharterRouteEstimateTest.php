@@ -58,6 +58,22 @@ class CharterRouteEstimateTest extends TestCase
             ->assertJsonPath('data.0.label', 'Ayala Triangle Gardens, Makati Avenue, Makati, Metro Manila, Philippines');
     }
 
+    public function test_official_location_search_uses_psgc_reference_data(): void
+    {
+        config(['services.psgc.token' => 'test-token']);
+        Http::fake(['*classification.psa.gov.ph/psgc/*' => Http::response([
+            ['psgc_code' => '1376020000', 'area_name' => 'City of Caloocan', 'geographic_level' => 'City', 'version' => 'Q2_2024'],
+            ['psgc_code' => '1411020000', 'area_name' => 'City of Baguio', 'geographic_level' => 'City', 'version' => 'Q2_2024'],
+        ])]);
+
+        $this->actingAs(User::factory()->superAdmin()->create())
+            ->getJson('/api/v1/sales/official-location-search?q=Baguio')
+            ->assertOk()
+            ->assertJsonPath('data.0.label', 'City of Baguio')
+            ->assertJsonPath('data.0.psgc_code', '1411020000')
+            ->assertJsonPath('data.0.provider', 'Philippine Statistics Authority PSGC');
+    }
+
     public function test_rate_plan_api_persists_the_server_computed_profit_lock(): void
     {
         $user = User::factory()->superAdmin()->create();

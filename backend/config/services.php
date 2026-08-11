@@ -53,4 +53,17 @@ return [
         'rates_url' => env('TRB_TOLL_RATES_URL', 'https://trb.gov.ph/index.php'),
     ],
 
+    'tollguru' => [
+        'api_key' => env('TOLLGURU_API_KEY'),
+        'base_url' => env('TOLLGURU_BASE_URL', 'https://apis.tollguru.com/toll/v2'),
+        'map_provider' => env('TOLLGURU_MAP_PROVIDER', 'here'),
+        'bus_vehicle_type' => env('TOLLGURU_BUS_VEHICLE_TYPE', '2AxlesBus'),
+    ],
+
+    'psgc' => [
+        'token' => env('PSGC_API_TOKEN'),
+        'base_url' => env('PSGC_BASE_URL', 'https://classification.psa.gov.ph/psgc'),
+        'version' => env('PSGC_VERSION', 'Q2_2024'),
+    ],
+
 ];

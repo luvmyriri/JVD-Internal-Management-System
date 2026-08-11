@@ -7,6 +7,8 @@ use Illuminate\Validation\ValidationException;
 
 class RouteEstimateService
 {
+    public function __construct(private readonly TollEstimateService $tolls) {}
+
     public function search(string $query): array
     {
         $googleKey = config('services.maps.google_geocoding_key');
@@ -72,6 +74,8 @@ class RouteEstimateService
             ? (($legs[1]['distance'] ?? 0) / 1000)
             : (($legs[0]['distance'] ?? 0) / 1000);
 
+        $tollEstimate = $this->tolls->estimate($points, $data['vehicle_class'] ?? 'bus');
+
         return [
             'garage_location' => $garageLocation,
             'pickup_location' => $pickup['label'],
@@ -85,12 +89,8 @@ class RouteEstimateService
             'geometry' => $selected['geometry']['coordinates'] ?? [],
             'routing_provider' => 'OSRM',
             'geocoding_provider' => $pickup['provider'],
-            'toll_source' => [
-                'provider' => 'Toll Regulatory Board',
-                'mode' => 'manual_reference',
-                'url' => config('services.toll_regulatory_board.rates_url'),
-                'message' => 'No documented live government toll-pricing API is available. Verify the editable toll values against the official TRB matrices.',
-            ],
+            'toll_estimate' => $tollEstimate,
+            'toll_source' => $tollEstimate,
         ];
     }
 

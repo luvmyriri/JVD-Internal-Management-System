@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Services\CharterBookingService;
 use App\Services\CharterRateCalculator;
 use App\Services\DocumentPdfService;
+use App\Services\PsgcService;
 use App\Services\ResourceAllocationService;
 use App\Services\RouteEstimateService;
 use App\Services\SalesLifecycleService;
@@ -32,6 +33,7 @@ class CharterController extends Controller
         private readonly CharterBookingService $charters,
         private readonly CharterRateCalculator $rateCalculator,
         private readonly RouteEstimateService $routes,
+        private readonly PsgcService $psgc,
     ) {}
 
     public function ratePlans()
@@ -79,6 +81,13 @@ class CharterController extends Controller
         return response()->json(['data' => $this->routes->search($data['q'])]);
     }
 
+    public function officialLocationSearch(Request $request)
+    {
+        $data = $request->validate(['q' => ['required', 'string', 'min:3', 'max:255']]);
+
+        return response()->json(['data' => $this->psgc->search($data['q'])]);
+    }
+
     public function routeEstimate(Request $request)
     {
         $data = $request->validate([
@@ -86,6 +95,7 @@ class CharterController extends Controller
             'destination' => ['required', 'string', 'max:255'],
             'garage_location' => ['nullable', 'string', 'max:255'],
             'include_garage' => ['nullable', 'boolean'],
+            'vehicle_class' => ['nullable', 'in:bus,coaster,van'],
             'pickup_coordinates' => ['nullable', 'array'],
             'pickup_coordinates.latitude' => ['required_with:pickup_coordinates', 'numeric', 'between:-90,90'],
             'pickup_coordinates.longitude' => ['required_with:pickup_coordinates', 'numeric', 'between:-180,180'],

@@ -43,6 +43,11 @@ type SearchFieldProps = {
   disabled?: boolean;
 };
 
+type MappedLocation = LocationSuggestion & { latitude: number; longitude: number };
+
+const hasCoordinates = (suggestion: LocationSuggestion): suggestion is MappedLocation =>
+  suggestion.latitude != null && suggestion.longitude != null;
+
 function SearchField({ label, value, onChange, onSelect, disabled }: SearchFieldProps) {
   const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,7 +59,13 @@ function SearchField({ label, value, onChange, onSelect, disabled }: SearchField
     }
     const timer = window.setTimeout(async () => {
       setLoading(true);
-      try { setSuggestions(await charterApi.searchLocations(value.trim())); }
+      try {
+        const [mapResults, officialResults] = await Promise.all([
+          charterApi.searchLocations(value.trim()),
+          charterApi.searchOfficialLocations(value.trim()),
+        ]);
+        setSuggestions([...mapResults, ...officialResults]);
+      }
       catch { setSuggestions([]); }
       finally { setLoading(false); }
     }, 450);
@@ -72,8 +83,8 @@ function SearchField({ label, value, onChange, onSelect, disabled }: SearchField
       {suggestions.length > 0 && (
         <span className="absolute z-[1001] mt-1 block max-h-56 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl">
           {suggestions.map(suggestion => (
-            <button key={`${suggestion.latitude}-${suggestion.longitude}`} type="button" onClick={() => { onSelect(suggestion); setSuggestions([]); }} className="flex w-full gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-blue-50">
-              <LuMapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />{suggestion.label}
+            <button key={suggestion.psgc_code ?? `${suggestion.latitude}-${suggestion.longitude}`} type="button" onClick={() => { onSelect(suggestion); setSuggestions([]); }} className="flex w-full gap-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-700 hover:bg-blue-50">
+              <LuMapPin className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" /><span>{suggestion.label}<small className="block font-medium text-slate-400">{suggestion.provider}</small></span>
             </button>
           ))}
         </span>
@@ -84,7 +95,7 @@ function SearchField({ label, value, onChange, onSelect, disabled }: SearchField
 
 export default function TripLocationMapPicker({
   pickupLocation = '', dropOffLocation = '', initialPickupCoords, initialDropoffCoords,
-  fuelPricePerLiter = 60, readOnly = false, garageLocation = 'Q24R+FP Caloocan, Metro Manila',
+  vehicleType = 'Bus', fuelPricePerLiter = 60, readOnly = false, garageLocation = 'Q24R+FP Caloocan, Metro Manila',
   includeGarageLeg = false, onLocationSelect,
 }: TripLocationMapPickerProps) {
   const mapNode = useRef<HTMLDivElement>(null);
@@ -93,8 +104,8 @@ export default function TripLocationMapPicker({
   const locationCallback = useRef(onLocationSelect);
   const [pickup, setPickup] = useState(pickupLocation);
   const [dropoff, setDropoff] = useState(dropOffLocation);
-  const [pickupCoords, setPickupCoords] = useState<LocationSuggestion | undefined>(initialPickupCoords ? { label: pickupLocation, latitude: initialPickupCoords[0], longitude: initialPickupCoords[1], provider: 'Saved' } : undefined);
-  const [dropoffCoords, setDropoffCoords] = useState<LocationSuggestion | undefined>(initialDropoffCoords ? { label: dropOffLocation, latitude: initialDropoffCoords[0], longitude: initialDropoffCoords[1], provider: 'Saved' } : undefined);
+  const [pickupCoords, setPickupCoords] = useState<MappedLocation | undefined>(initialPickupCoords ? { label: pickupLocation, latitude: initialPickupCoords[0], longitude: initialPickupCoords[1], provider: 'Saved' } : undefined);
+  const [dropoffCoords, setDropoffCoords] = useState<MappedLocation | undefined>(initialDropoffCoords ? { label: dropOffLocation, latitude: initialDropoffCoords[0], longitude: initialDropoffCoords[1], provider: 'Saved' } : undefined);
   const [estimate, setEstimate] = useState<RouteEstimate | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -123,6 +134,7 @@ export default function TripLocationMapPicker({
       destination_coordinates: { latitude: dropoffCoords.latitude, longitude: dropoffCoords.longitude },
       garage_location: garageLocation,
       include_garage: includeGarageLeg,
+      vehicle_class: vehicleType === 'Bus' ? 'bus' : vehicleType === 'Coaster' ? 'coaster' : 'van',
     }).then(result => {
       if (!active) return;
       setEstimate(result);
@@ -149,8 +161,8 @@ export default function TripLocationMapPicker({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <div className="grid gap-3 border-b border-slate-200 p-4 md:grid-cols-2">
-        <SearchField label="Pickup" value={pickup} disabled={readOnly} onChange={value => { setPickup(value); setPickupCoords(undefined); }} onSelect={suggestion => { setPickup(suggestion.label); setPickupCoords(suggestion); }} />
-        <SearchField label="Destination" value={dropoff} disabled={readOnly} onChange={value => { setDropoff(value); setDropoffCoords(undefined); }} onSelect={suggestion => { setDropoff(suggestion.label); setDropoffCoords(suggestion); }} />
+        <SearchField label="Pickup" value={pickup} disabled={readOnly} onChange={value => { setPickup(value); setPickupCoords(undefined); }} onSelect={suggestion => { setPickup(suggestion.label); setPickupCoords(hasCoordinates(suggestion) ? suggestion : undefined); }} />
+        <SearchField label="Destination" value={dropoff} disabled={readOnly} onChange={value => { setDropoff(value); setDropoffCoords(undefined); }} onSelect={suggestion => { setDropoff(suggestion.label); setDropoffCoords(hasCoordinates(suggestion) ? suggestion : undefined); }} />
       </div>
       {includeGarageLeg && <div className="flex items-center gap-2 border-b border-blue-100 bg-blue-50 px-4 py-2 text-xs font-semibold text-blue-800"><LuRoute className="h-4 w-4" /> Garage departure included: {garageLocation}</div>}
       <div ref={mapNode} className="h-72 w-full bg-slate-100" />
@@ -159,6 +171,7 @@ export default function TripLocationMapPicker({
           {includeGarageLeg && <span><strong>{estimate.garage_distance_km.toLocaleString()} km</strong> garage → pickup</span>}
           <span><strong>{estimate.route_distance_km.toLocaleString()} km</strong> pickup → destination</span>
           <span className="flex items-center gap-1 text-amber-700"><LuFuel /> <strong>{(estimate.total_distance_km / 2.5).toFixed(1)} L</strong> at 2.5 km/L</span>
+          <span className={estimate.toll_estimate.mode === 'automatic' ? 'font-bold text-emerald-700' : 'text-slate-500'}>{estimate.toll_estimate.mode === 'automatic' ? `₱${estimate.toll_estimate.total.toLocaleString()} automated tolls` : 'Tolls require manual entry'}</span>
         </> : <span className="text-slate-500">Search and select both exact addresses to calculate the road distance.</span>}
       </div>
     </div>

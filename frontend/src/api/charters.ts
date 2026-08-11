@@ -39,9 +39,26 @@ export interface CharterRatePlan {
 
 export interface LocationSuggestion {
   label: string;
-  latitude: number;
-  longitude: number;
+  latitude?: number;
+  longitude?: number;
   provider: string;
+  psgc_code?: string | null;
+  geographic_level?: string | null;
+  version?: string;
+}
+
+export interface TollEstimate {
+  provider: 'TollGuru' | 'Toll Regulatory Board';
+  mode: 'automatic' | 'manual_reference';
+  currency: string;
+  vehicle_type?: string;
+  toll_gate_fees: number;
+  easytrip: number;
+  autosweep: number;
+  total: number;
+  tolls: Array<{ name: string; road?: string | null; cost: number; currency: string }>;
+  url: string;
+  message: string;
 }
 
 export interface RouteEstimate {
@@ -51,13 +68,14 @@ export interface RouteEstimate {
   garage_distance_km: number;
   route_distance_km: number;
   total_distance_km: number;
-  garage_coordinates?: LocationSuggestion;
-  pickup_coordinates: LocationSuggestion;
-  destination_coordinates: LocationSuggestion;
+  garage_coordinates?: LocationSuggestion & { latitude: number; longitude: number };
+  pickup_coordinates: LocationSuggestion & { latitude: number; longitude: number };
+  destination_coordinates: LocationSuggestion & { latitude: number; longitude: number };
   geometry: [number, number][];
   routing_provider: string;
   geocoding_provider: string;
-  toll_source: { provider: string; mode: 'manual_reference'; url: string; message: string };
+  toll_estimate: TollEstimate;
+  toll_source: TollEstimate;
 }
 
 export interface CharterPricing {
@@ -112,6 +130,7 @@ export const charterApi = {
   resources: (startsAt: string, endsAt: string) => client.get('/sales/charter-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as CharterResources),
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
   searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
+  searchOfficialLocations: (q: string) => client.get('/sales/official-location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   estimateRoute: (data: Record<string, unknown>) => client.post('/sales/charter-route-estimate', data).then(res => res.data.data as RouteEstimate),
   createRatePlan: (data: Record<string, unknown>) => client.post('/sales/charter-rate-plans', data).then(res => res.data.data as CharterRatePlan),
   updateRatePlan: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-rate-plans/${id}`, data).then(res => res.data.data as CharterRatePlan),

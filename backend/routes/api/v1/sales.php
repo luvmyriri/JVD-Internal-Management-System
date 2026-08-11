@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/charter-resources', [CharterController::class, 'resources'])->name('sales.charters.resources');
         Route::post('/charter-quote', [CharterController::class, 'quote'])->name('sales.charters.quote');
         Route::get('/location-search', [CharterController::class, 'locationSearch'])->name('sales.location-search');
+        Route::get('/official-location-search', [CharterController::class, 'officialLocationSearch'])->name('sales.official-location-search');
         Route::post('/charter-route-estimate', [CharterController::class, 'routeEstimate'])->name('sales.charters.route-estimate');
         Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
         Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
