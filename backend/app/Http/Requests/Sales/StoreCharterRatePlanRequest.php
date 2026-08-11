@@ -45,6 +45,20 @@ class StoreCharterRatePlanRequest extends FormRequest
             'desired_profit' => ['nullable', 'numeric', 'min:0'],
             'auto_adjust_rate' => ['nullable', 'boolean'],
             'pricing_metadata' => ['nullable', 'array'],
+            'pricing_metadata.routing_provider' => ['nullable', 'string', 'max:100'],
+            'pricing_metadata.geocoding_provider' => ['nullable', 'string', 'max:100'],
+            'pricing_metadata.route_toll_provider' => ['nullable', 'string', 'max:100'],
+            'pricing_metadata.route_toll_mode' => ['nullable', 'string', 'max:50'],
+            'pricing_metadata.toll_pricing_mode' => ['nullable', 'in:route,matrix,manual'],
+            'pricing_metadata.include_garage_travel' => ['nullable', 'boolean'],
+            'pricing_metadata.toll_matrix_synced_at' => ['nullable', 'date'],
+            'pricing_metadata.toll_segments' => ['nullable', 'array', 'max:10'],
+            'pricing_metadata.toll_segments.*.network_id' => ['required_with:pricing_metadata.toll_segments', 'string', 'max:50'],
+            'pricing_metadata.toll_segments.*.network' => ['required_with:pricing_metadata.toll_segments', 'string', 'max:100'],
+            'pricing_metadata.toll_segments.*.entry_point' => ['required_with:pricing_metadata.toll_segments', 'string', 'max:100'],
+            'pricing_metadata.toll_segments.*.exit_point' => ['required_with:pricing_metadata.toll_segments', 'string', 'max:100'],
+            'pricing_metadata.toll_segments.*.rfid' => ['required_with:pricing_metadata.toll_segments', 'string', 'max:50'],
+            'pricing_metadata.toll_segments.*.fee' => ['required_with:pricing_metadata.toll_segments', 'numeric', 'min:0'],
         ];
     }
 }

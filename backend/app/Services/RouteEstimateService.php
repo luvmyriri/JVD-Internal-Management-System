@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class RouteEstimateService
 {
@@ -13,18 +14,24 @@ class RouteEstimateService
     {
         $googleKey = config('services.maps.google_geocoding_key');
         if ($googleKey) {
-            $response = Http::timeout(12)->get('https://maps.googleapis.com/maps/api/geocode/json', [
-                'address' => $query,
-                'region' => 'ph',
-                'key' => $googleKey,
-            ])->throw()->json();
-
-            return collect($response['results'] ?? [])->take(8)->map(fn (array $result) => [
-                'label' => $result['formatted_address'],
-                'latitude' => (float) $result['geometry']['location']['lat'],
-                'longitude' => (float) $result['geometry']['location']['lng'],
-                'provider' => 'Google Maps',
-            ])->values()->all();
+            try {
+                $response = Http::timeout(12)->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                    'address' => $query,
+                    'region' => 'ph',
+                    'key' => $googleKey,
+                ])->throw()->json();
+                $results = collect($response['results'] ?? [])->take(8)->map(fn (array $result) => [
+                    'label' => $result['formatted_address'],
+                    'latitude' => (float) $result['geometry']['location']['lat'],
+                    'longitude' => (float) $result['geometry']['location']['lng'],
+                    'provider' => 'Google Maps',
+                ])->values()->all();
+                if ($results !== []) {
+                    return $results;
+                }
+            } catch (Throwable) {
+                // Continue with the key-free provider when Google is unavailable.
+            }
         }
 
         $response = Http::withHeaders(['User-Agent' => config('services.maps.user_agent')])
@@ -51,7 +58,7 @@ class RouteEstimateService
         $garageLocation = $data['garage_location'] ?? config('services.maps.garage_location');
         $pickup = $this->resolve($data['pickup_location'], $data['pickup_coordinates'] ?? null);
         $destination = $this->resolve($data['destination'], $data['destination_coordinates'] ?? null);
-        $garage = $includeGarage ? $this->resolve($garageLocation, $data['garage_coordinates'] ?? null) : null;
+        $garage = $includeGarage ? $this->resolve($garageLocation, $data['garage_coordinates'] ?? $this->configuredGarageCoordinates()) : null;
         $points = array_values(array_filter([$garage, $pickup, $destination]));
         $coordinates = collect($points)->map(fn (array $point) => "{$point['longitude']},{$point['latitude']}")->implode(';');
 
@@ -94,6 +101,48 @@ class RouteEstimateService
         ];
     }
 
+    public function reverse(float $latitude, float $longitude): array
+    {
+        $googleKey = config('services.maps.google_geocoding_key');
+        if ($googleKey) {
+            try {
+                $response = Http::timeout(12)->get('https://maps.googleapis.com/maps/api/geocode/json', [
+                    'latlng' => "{$latitude},{$longitude}",
+                    'region' => 'ph',
+                    'key' => $googleKey,
+                ])->throw()->json();
+                $result = $response['results'][0] ?? null;
+                if ($result) {
+                    return [
+                        'label' => $result['formatted_address'],
+                        'latitude' => $latitude,
+                        'longitude' => $longitude,
+                        'provider' => 'Google Maps',
+                    ];
+                }
+            } catch (Throwable) {
+                // Continue with the key-free provider when Google is unavailable.
+            }
+        }
+
+        $response = Http::withHeaders(['User-Agent' => config('services.maps.user_agent')])
+            ->timeout(12)
+            ->get(rtrim(config('services.maps.geocoder_url'), '/').'/reverse', [
+                'lat' => $latitude,
+                'lon' => $longitude,
+                'format' => 'jsonv2',
+                'zoom' => 18,
+                'addressdetails' => 1,
+            ])->throw()->json();
+
+        return [
+            'label' => $response['display_name'] ?? sprintf('Pinned location (%.6f, %.6f)', $latitude, $longitude),
+            'latitude' => $latitude,
+            'longitude' => $longitude,
+            'provider' => isset($response['display_name']) ? 'OpenStreetMap Nominatim' : 'Map pin',
+        ];
+    }
+
     private function resolve(string $label, ?array $coordinates): array
     {
         if ($coordinates && isset($coordinates['latitude'], $coordinates['longitude'])) {
@@ -111,5 +160,16 @@ class RouteEstimateService
         }
 
         return $result;
+    }
+
+    private function configuredGarageCoordinates(): ?array
+    {
+        $latitude = config('services.maps.garage_latitude');
+        $longitude = config('services.maps.garage_longitude');
+        if (! is_numeric($latitude) || ! is_numeric($longitude)) {
+            return null;
+        }
+
+        return ['latitude' => (float) $latitude, 'longitude' => (float) $longitude];
     }
 }

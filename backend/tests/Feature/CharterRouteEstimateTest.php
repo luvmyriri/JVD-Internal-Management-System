@@ -43,6 +43,50 @@ class CharterRouteEstimateTest extends TestCase
             ->assertJsonPath('data.total_distance_km', 257)
             ->assertJsonPath('data.toll_source.provider', 'Toll Regulatory Board')
             ->assertJsonPath('data.toll_source.mode', 'manual_reference');
+
+        Http::assertNotSent(fn ($request) => str_contains($request->url(), '/search'));
+    }
+
+    public function test_route_estimate_can_exclude_the_garage_leg(): void
+    {
+        Http::fake([
+            '*router.project-osrm.org/route/v1/driving/*' => Http::response([
+                'code' => 'Ok',
+                'routes' => [[
+                    'distance' => 245000,
+                    'legs' => [['distance' => 245000]],
+                    'geometry' => ['coordinates' => [[121.0, 14.55], [120.59, 16.4]]],
+                ]],
+            ]),
+        ]);
+
+        $response = $this->actingAs(User::factory()->superAdmin()->create())->postJson('/api/v1/sales/charter-route-estimate', [
+            'pickup_location' => 'Exact Manila Pickup',
+            'destination' => 'Exact Baguio Destination',
+            'pickup_coordinates' => ['latitude' => 14.55, 'longitude' => 121.0],
+            'destination_coordinates' => ['latitude' => 16.4, 'longitude' => 120.59],
+            'include_garage' => false,
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.garage_distance_km', 0)
+            ->assertJsonPath('data.route_distance_km', 245)
+            ->assertJsonPath('data.total_distance_km', 245)
+            ->assertJsonPath('data.garage_coordinates', null);
+    }
+
+    public function test_map_pin_reverse_geocoding_returns_a_searchable_address(): void
+    {
+        Http::fake(['*nominatim.openstreetmap.org/reverse*' => Http::response([
+            'display_name' => 'SM City North EDSA, Quezon City, Metro Manila, Philippines',
+        ])]);
+
+        $this->actingAs(User::factory()->superAdmin()->create())
+            ->getJson('/api/v1/sales/reverse-location?latitude=14.6568&longitude=121.0293')
+            ->assertOk()
+            ->assertJsonPath('data.label', 'SM City North EDSA, Quezon City, Metro Manila, Philippines')
+            ->assertJsonPath('data.latitude', 14.6568)
+            ->assertJsonPath('data.longitude', 121.0293);
     }
 
     public function test_location_search_returns_the_full_specific_address(): void
@@ -110,12 +154,27 @@ class CharterRouteEstimateTest extends TestCase
             'commission' => 3000,
             'desired_profit' => 12000,
             'auto_adjust_rate' => true,
+            'pricing_metadata' => [
+                'toll_pricing_mode' => 'matrix',
+                'include_garage_travel' => true,
+                'toll_segments' => [[
+                    'network_id' => 'TPLEX',
+                    'network' => 'TPLEX',
+                    'entry_point' => 'La Paz',
+                    'exit_point' => 'Victoria',
+                    'rfid' => 'autosweep',
+                    'fee' => 76,
+                ]],
+            ],
         ]);
 
         $response->assertCreated()
             ->assertJsonPath('data.base_price', '24500.00')
             ->assertJsonPath('data.total_expenses', '12500.00')
-            ->assertJsonPath('data.projected_profit', '12000.00');
+            ->assertJsonPath('data.projected_profit', '12000.00')
+            ->assertJsonPath('data.pricing_metadata.toll_pricing_mode', 'matrix')
+            ->assertJsonPath('data.pricing_metadata.include_garage_travel', true)
+            ->assertJsonPath('data.pricing_metadata.toll_segments.0.fee', 76);
         $this->assertDatabaseHas('charter_rate_plans', ['id' => $response->json('data.id'), 'base_price' => 24500]);
     }
 }

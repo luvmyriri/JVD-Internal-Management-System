@@ -90,6 +90,16 @@ class CharterController extends Controller
         return response()->json(['data' => $this->psgc->search($data['q'])]);
     }
 
+    public function reverseLocation(Request $request)
+    {
+        $data = $request->validate([
+            'latitude' => ['required', 'numeric', 'between:-90,90'],
+            'longitude' => ['required', 'numeric', 'between:-180,180'],
+        ]);
+
+        return response()->json(['data' => $this->routes->reverse((float) $data['latitude'], (float) $data['longitude'])]);
+    }
+
     public function routeEstimate(Request $request)
     {
         $data = $request->validate([

@@ -34,6 +34,10 @@ export interface CharterRatePlan {
   total_expenses?: number;
   projected_profit?: number;
   auto_adjust_rate?: boolean;
+  pricing_metadata?: {
+    toll_pricing_mode?: 'route' | 'matrix' | 'manual';
+    include_garage_travel?: boolean;
+  };
   service: { id: number; name: string; description?: string; images?: string[] };
 }
 
@@ -169,6 +173,7 @@ export const charterApi = {
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
   searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   searchOfficialLocations: (q: string) => client.get('/sales/official-location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
+  reverseLocation: (latitude: number, longitude: number) => client.get('/sales/reverse-location', { params: { latitude, longitude } }).then(res => res.data.data as LocationSuggestion),
   estimateRoute: (data: Record<string, unknown>) => client.post('/sales/charter-route-estimate', data).then(res => res.data.data as RouteEstimate),
   tollMatrix: () => client.get('/sales/toll-matrix').then(res => res.data.data as TollMatrixCatalog),
   calculateTolls: (segments: Array<{ network_id: string; entry_point_id: number; exit_point_id: number }>) => client.post('/sales/toll-matrix/calculate', { segments }).then(res => res.data.data as TollMatrixCalculation),

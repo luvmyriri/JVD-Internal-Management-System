@@ -47,6 +47,8 @@ return [
         'router_url' => env('ROUTING_API_URL', 'https://router.project-osrm.org'),
         'user_agent' => env('LOCATION_API_USER_AGENT', 'JVD-Internal-Management-System/1.0'),
         'garage_location' => env('JVD_GARAGE_LOCATION', 'Q24R+FP Caloocan, Metro Manila'),
+        'garage_latitude' => env('JVD_GARAGE_LATITUDE', 14.7561875),
+        'garage_longitude' => env('JVD_GARAGE_LONGITUDE', 120.0418125),
     ],
 
     'toll_regulatory_board' => [
