@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
-import { ArrowRight, ImageIcon } from 'lucide-react';
-import { getStorageUrl } from '../../../utils';
+import { ArrowRight } from 'lucide-react';
+import { PackageImageCarousel } from '../../../components/ui';
 
 export interface PackageFact {
   label: string;
@@ -10,6 +10,7 @@ export interface PackageFact {
 
 interface PackageCatalogCardProps {
   image?: string | null;
+  images?: (string | null | undefined)[];
   badge: string;
   eyebrow: string;
   title: string;
@@ -24,6 +25,7 @@ interface PackageCatalogCardProps {
 
 export default function PackageCatalogCard({
   image,
+  images,
   badge,
   eyebrow,
   title,
@@ -35,20 +37,18 @@ export default function PackageCatalogCard({
   warning,
   controls,
 }: PackageCatalogCardProps) {
+  const imagesList = images && images.length > 0 ? images : image ? [image] : [];
+
   return (
     <article className={`group flex h-full flex-col overflow-hidden rounded-3xl border bg-surface transition duration-200 hover:-translate-y-1 hover:shadow-xl ${selected ? 'border-blue-500 ring-2 ring-blue-500/15' : 'border-border'}`}>
       <div className="relative h-48 overflow-hidden bg-slate-100 dark:bg-slate-800">
-        {image ? (
-          <img src={getStorageUrl(image)} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
-        ) : (
-          <div className="grid h-full place-items-center bg-gradient-to-br from-slate-100 to-blue-50 text-slate-300 dark:from-slate-900 dark:to-blue-950/40">
-            <ImageIcon className="h-10 w-10" />
-          </div>
-        )}
-        <span className="absolute left-4 top-4 rounded-full bg-[#071b33]/90 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white">
-          {badge}
-        </span>
-        {controls && <div className="absolute right-3 top-3 flex gap-1 rounded-xl bg-slate-950/75 p-1 text-white backdrop-blur">{controls}</div>}
+        <PackageImageCarousel
+          images={imagesList}
+          alt={title}
+          badgeText={badge}
+          className="h-full w-full"
+        />
+        {controls && <div className="absolute right-3 top-3 z-20 flex gap-1 rounded-xl bg-slate-950/75 p-1 text-white backdrop-blur-md">{controls}</div>}
       </div>
 
       <div className="flex flex-1 flex-col p-5">

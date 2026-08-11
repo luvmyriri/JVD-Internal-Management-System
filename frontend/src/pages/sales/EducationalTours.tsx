@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ArrowLeft, Bus, CheckCircle2, GraduationCap, ImagePlus, Pencil, Plus, Printer, Users, X } from 'lucide-react';
+import { ArrowLeft, Bus, CheckCircle2, GraduationCap, ImagePlus, Pencil, Plus, Printer, Trash2, Users, X } from 'lucide-react';
 
 import toast from 'react-hot-toast';
 import { educationalTourApi } from '../../api/educationalTours';
@@ -360,7 +360,16 @@ export default function EducationalTours() {
       const errors = error?.response?.data?.errors as Record<string, string[]> | undefined;
       toast.error(errors ? Object.values(errors)[0]?.[0] : error?.response?.data?.message ?? 'Program could not be saved');
     },
+  });
 
+  const removeProgram = useMutation({
+    mutationFn: (id: number) => billingApi.deleteService(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['educational-programs'] });
+      await queryClient.invalidateQueries({ queryKey: ['billing-services'] });
+      toast.success('Educational program removed');
+    },
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Program could not be removed'),
   });
 
   // Uniform Cart item construction matching Custom Transactions
@@ -454,6 +463,7 @@ export default function EducationalTours() {
           {filteredPrograms.map(program => <PackageCatalogCard
             key={program.id}
             image={program.images?.[0]}
+            images={program.images}
             badge="Educational tour"
             eyebrow="Academic exposure"
             title={program.name}
@@ -465,7 +475,12 @@ export default function EducationalTours() {
             ]}
             actionLabel="Select program & continue"
             onAction={() => handleSelectProgram(program)}
-            controls={<button type="button" onClick={() => openEditProgram(program)} title="Edit program" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>}
+            controls={
+              <div className="flex gap-1">
+                <button type="button" onClick={() => openEditProgram(program)} title="Edit program" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { if (window.confirm(`Delete educational program "${program.name}"?`)) removeProgram.mutate((program as any).service_id || program.id); }} title="Delete program" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            }
           />)}
         </div>}
       </section>

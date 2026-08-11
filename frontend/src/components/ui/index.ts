@@ -13,5 +13,6 @@ export * from './RequestCommissionModal';
 export * from './DashboardErrorBoundary';
 export { default as AuditLogDiffViewer } from './AuditLogDiffViewer';
 export { default as BusSeatAllocationModal } from './BusSeatAllocationModal';
+export { default as PackageImageCarousel } from './PackageImageCarousel';
 
 

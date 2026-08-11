@@ -39,6 +39,10 @@ export default function QuickRequestModal() {
   const [cbTolls, setCbTolls] = useState('');
   const [cbSop, setCbSop] = useState('');
 
+  // Diesel Autocalculator Helper State (KM / 2.5 * Diesel Price)
+  const [calcKm, setCalcKm] = useState('');
+  const [calcDieselPrice, setCalcDieselPrice] = useState('60');
+
   // Commission Form State
   const [commName, setCommName] = useState('');
   const [commDate, setCommDate] = useState(new Date().toISOString().split('T')[0]);
@@ -326,46 +330,100 @@ export default function QuickRequestModal() {
                   </button>
 
                   {showCbBreakdown && (
-                    <div className="mt-3 grid grid-cols-2 gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
-                      <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase">Diesel Fuel (₱)</label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={cbDiesel}
-                          onChange={(e) => setCbDiesel(e.target.value)}
-                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
-                        />
+                    <div className="mt-3 space-y-3">
+                      {/* Interactive Fuel Autocalculator Box */}
+                      <div className="p-3 rounded-2xl bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/50 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                            ⛽ Diesel Fuel Autocalculator (KM ÷ 2.5)
+                          </span>
+                          {parseFloat(calcKm) > 0 && (
+                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
+                              {(parseFloat(calcKm) / 2.5).toFixed(1)} Liters
+                            </span>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase block mb-0.5">Est. Kilometers (KM)</label>
+                            <input
+                              type="number"
+                              placeholder="e.g. 240"
+                              value={calcKm}
+                              onChange={(e) => {
+                                const km = e.target.value;
+                                setCalcKm(km);
+                                const kmNum = parseFloat(km) || 0;
+                                const priceNum = parseFloat(calcDieselPrice) || 60;
+                                const liters = Math.round((kmNum / 2.5) * 10) / 10;
+                                const cost = Math.round(liters * priceNum);
+                                setCbDiesel(kmNum > 0 ? String(cost) : '');
+                              }}
+                              className="w-full bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase block mb-0.5">Diesel Price (₱/L)</label>
+                            <input
+                              type="number"
+                              step="0.5"
+                              value={calcDieselPrice}
+                              onChange={(e) => {
+                                const price = e.target.value;
+                                setCalcDieselPrice(price);
+                                const kmNum = parseFloat(calcKm) || 0;
+                                const priceNum = parseFloat(price) || 0;
+                                const liters = Math.round((kmNum / 2.5) * 10) / 10;
+                                const cost = Math.round(liters * priceNum);
+                                setCbDiesel(kmNum > 0 ? String(cost) : '');
+                              }}
+                              className="w-full bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded-lg px-2.5 py-1 text-xs font-bold text-amber-700 dark:text-amber-300"
+                            />
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase">Meal Allowance (₱)</label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={cbMeals}
-                          onChange={(e) => setCbMeals(e.target.value)}
-                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase">Tolls / RFID (₱)</label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={cbTolls}
-                          onChange={(e) => setCbTolls(e.target.value)}
-                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[9px] font-black text-gray-400 uppercase">SOP / Misc (₱)</label>
-                        <input
-                          type="number"
-                          placeholder="0.00"
-                          value={cbSop}
-                          onChange={(e) => setCbSop(e.target.value)}
-                          className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
-                        />
+
+                      <div className="grid grid-cols-2 gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700">
+                        <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase">Diesel Fuel (₱)</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={cbDiesel}
+                            onChange={(e) => setCbDiesel(e.target.value)}
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-orange-600 dark:text-orange-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase">Meal Allowance (₱)</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={cbMeals}
+                            onChange={(e) => setCbMeals(e.target.value)}
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase">Tolls / RFID (₱)</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={cbTolls}
+                            onChange={(e) => setCbTolls(e.target.value)}
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] font-black text-gray-400 uppercase">SOP / Misc (₱)</label>
+                          <input
+                            type="number"
+                            placeholder="0.00"
+                            value={cbSop}
+                            onChange={(e) => setCbSop(e.target.value)}
+                            className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg px-2.5 py-1 text-xs font-bold text-gray-900 dark:text-white"
+                          />
+                        </div>
                       </div>
                     </div>
                   )}

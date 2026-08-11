@@ -368,10 +368,11 @@ class CollectionController extends Controller
 
         if ($collection->invoice) {
             $invoice = $collection->invoice;
-            // Attach the payment history from the collection side as well
-            if (! $invoice->relationLoaded('payments')) {
-                $invoice->setRelation('payments', $collection->payments);
-            }
+            // Always attach the payment history from the collection side to guarantee complete SOA PDF rendering
+            $invoice->setRelation('payments', $collection->payments);
+            $invoice->amount_received = $collection->paid_amount;
+            $invoice->balance = $collection->remaining_balance;
+            $invoice->status = ($collection->remaining_balance <= 0) ? 'paid' : (($collection->paid_amount > 0) ? 'partial' : 'pending_payment');
         } else {
             // Build a virtual Invoice object that the Blade template can consume
             $invoice = new Invoice([

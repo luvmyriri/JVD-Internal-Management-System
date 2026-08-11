@@ -19,6 +19,7 @@ import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ds';
+import { PackageImageCarousel } from '../../components/ui';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
 import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
@@ -287,8 +288,13 @@ export default function FixedPackages() {
         preview={(
           <div className="rounded-3xl bg-gradient-to-br from-blue-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
             <span className="rounded-md bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Live package preview</span>
-            <div className="mt-5 overflow-hidden rounded-2xl bg-white/5">
-              {form.images[0] ? <img src={imageUrl(form.images[0])} alt="" className="h-40 w-full object-cover" /> : <div className="grid h-40 place-items-center text-slate-500"><ImagePlus className="h-9 w-9" /></div>}
+            <div className="mt-4">
+              <PackageImageCarousel
+                images={form.images}
+                alt={form.name || 'Package preview'}
+                className="h-44 w-full"
+                showThumbnails={form.images.length > 1}
+              />
             </div>
             <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-blue-300">{form.destination || 'Destination pending'}</p>
             <h2 className="mt-1 text-xl font-black">{form.name || 'Untitled private tour package'}</h2>
@@ -424,7 +430,12 @@ export default function FixedPackages() {
             const config = service.package_config ?? {};
             const isConfigured = Boolean(config.destination && config.duration_days && config.minimum_pax && config.maximum_pax && config.default_itinerary?.length);
             return <article key={service.id} className="overflow-hidden rounded-3xl border border-border bg-surface-alt">
-              <div className="relative h-44 bg-slate-100 dark:bg-gray-800">{service.images?.[0] ? <img src={imageUrl(service.images[0])} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><MapPinned className="h-10 w-10 text-slate-300" /></div>}<span className="absolute left-4 top-4 rounded-full bg-slate-950/80 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-white">Private tour</span></div>
+              <PackageImageCarousel
+                images={service.images}
+                alt={service.name}
+                badgeText="Private tour"
+                className="h-48 w-full"
+              />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-brand">{config.destination || 'Destination not set'}</p><h3 className="mt-1 text-lg font-black text-ink">{service.name}</h3></div>{canManage && <div className="flex gap-1"><button aria-label={`Edit ${service.name}`} onClick={() => openEdit(service)} className="rounded-lg p-2 text-muted hover:bg-blue-50 hover:text-brand"><Pencil className="h-4 w-4" /></button><button aria-label={`Remove ${service.name}`} onClick={() => { if (confirm(`Remove ${service.name}?`)) removePackage.mutate(service.id); }} className="rounded-lg p-2 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>}</div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{service.description || 'No description recorded.'}</p>

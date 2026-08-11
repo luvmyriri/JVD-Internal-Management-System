@@ -91,7 +91,7 @@ function LineItemRow({
           <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Unit</label>
           <select value={item.unit_of_measure ?? 'pcs'} onChange={e => set('unit_of_measure', e.target.value)}
             className="w-full px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
-            {['pcs', 'set', 'ltr', 'kg', 'box', 'roll', 'm', 'pair'].map(u => <option key={u} value={u}>{u}</option>)}
+            {['pcs', 'set', 'ltr', 'kg', 'box', 'roll', 'm', 'pair', 'pale'].map(u => <option key={u} value={u}>{u}</option>)}
           </select>
         </div>
         <div className="col-span-2">

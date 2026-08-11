@@ -326,6 +326,7 @@ export default function Collections() {
     onSuccess: (res) => {
       toast.success('Payment added successfully');
       queryClient.invalidateQueries({ queryKey: ['collections'] });
+      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
       setSelectedCollection(res.data);
       setShowPaymentModal(false);
       setPaymentForm({

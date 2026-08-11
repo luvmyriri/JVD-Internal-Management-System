@@ -21,6 +21,7 @@ export interface Bus {
   last_service_date: string | null;
   next_service_due: string | null;
   is_service_overdue: boolean;
+  assigned_driver?: number | null;
   driver?: Driver | null;
   custom_seats?: any[] | null;
   work_orders?: Array<{

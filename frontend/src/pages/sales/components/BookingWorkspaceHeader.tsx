@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
-import { ArrowLeft, Check, ImageIcon } from 'lucide-react';
-import { getStorageUrl } from '../../../utils';
+import { ArrowLeft, Check } from 'lucide-react';
+import { PackageImageCarousel } from '../../../components/ui';
 
 interface BookingWorkspaceHeaderProps {
   eyebrow: string;
   title: string;
   description: string;
   image?: string | null;
+  images?: (string | null | undefined)[];
   badge: string;
   onBack: () => void;
   facts: Array<{ label: string; value: ReactNode }>;
@@ -18,18 +19,24 @@ export default function BookingWorkspaceHeader({
   title,
   description,
   image,
+  images,
   badge,
   onBack,
   facts,
   actions,
 }: BookingWorkspaceHeaderProps) {
+  const imagesList = images && images.length > 0 ? images : image ? [image] : [];
+
   return (
     <header className="overflow-hidden rounded-3xl bg-[#071b33] text-white shadow-xl">
       <div className="grid lg:grid-cols-[260px_minmax(0,1fr)]">
         <div className="relative min-h-52 overflow-hidden bg-slate-900">
-          {image ? <img src={getStorageUrl(image)} alt="" className="absolute inset-0 h-full w-full object-cover" /> : <div className="absolute inset-0 grid place-items-center bg-gradient-to-br from-blue-950 to-slate-950"><ImageIcon className="h-10 w-10 text-slate-600" /></div>}
-          <div className="absolute inset-0 bg-gradient-to-t from-[#071b33] via-transparent to-transparent" />
-          <span className="absolute left-5 top-5 rounded-full bg-amber-500 px-3 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-white">{badge}</span>
+          <PackageImageCarousel
+            images={imagesList}
+            alt={title}
+            badgeText={badge}
+            className="absolute inset-0 h-full w-full"
+          />
         </div>
 
         <div className="flex flex-col justify-between gap-6 p-6">

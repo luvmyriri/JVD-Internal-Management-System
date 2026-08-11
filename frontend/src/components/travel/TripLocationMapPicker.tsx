@@ -210,7 +210,7 @@ export default function TripLocationMapPicker({
   const [editableLiters, setEditableLiters] = useState<string>('23.6');
   const [editableCost, setEditableCost] = useState<string>('1617');
 
-  const [fuelPrice] = useState<number>(fuelPricePerLiter);
+  const [fuelPrice, setFuelPrice] = useState<number>(fuelPricePerLiter || 60);
   const [isRouting, setIsRouting] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -231,19 +231,20 @@ export default function TripLocationMapPicker({
     }
   }, [tripMode]);
 
-  // Recalculate values whenever oneWayKm or multiplier changes
+  // Recalculate values whenever oneWayKm, multiplier, or fuelPrice changes
   const applyAutoCalculations = (
     baseKm: number,
     currentMultiplier: number,
     pName = pickupName,
     dName = dropoffName,
     pCoord = pickupCoord,
-    dCoord = dropoffCoord
+    dCoord = dropoffCoord,
+    currentFuelPrice = fuelPrice
   ) => {
     const totalKm = Math.round(baseKm * currentMultiplier);
-    const kmPerL = vehicleType === 'Van' ? 9.0 : vehicleType === 'Coaster' ? 6.5 : 5.5;
-    const liters = Math.round((totalKm / kmPerL) * 10) / 10;
-    const cost = Math.round(liters * fuelPrice);
+    // Standard tourist bus diesel consumption: Kilometers / 2.5
+    const liters = Math.round((totalKm / 2.5) * 10) / 10;
+    const cost = Math.round(liters * currentFuelPrice);
 
     setEditableKm(String(totalKm));
     setEditableLiters(String(liters));
@@ -436,17 +437,29 @@ export default function TripLocationMapPicker({
   };
 
   // Sync edits to parent form
-  const handleInputChange = (field: 'km' | 'liters' | 'cost', val: string) => {
+  const handleInputChange = (field: 'km' | 'liters' | 'cost' | 'price', val: string) => {
     const num = parseFloat(val) || 0;
     if (field === 'km') {
       setEditableKm(val);
-      if (onLocationSelect) onLocationSelect(pickupName, dropoffName, num, parseFloat(editableLiters) || 0, parseFloat(editableCost) || 0);
+      const calcLiters = Math.round((num / 2.5) * 10) / 10;
+      const calcCost = Math.round(calcLiters * fuelPrice);
+      setEditableLiters(String(calcLiters));
+      setEditableCost(String(calcCost));
+      if (onLocationSelect) onLocationSelect(pickupName, dropoffName, num, calcLiters, calcCost);
     } else if (field === 'liters') {
       setEditableLiters(val);
-      if (onLocationSelect) onLocationSelect(pickupName, dropoffName, parseFloat(editableKm) || 0, num, parseFloat(editableCost) || 0);
+      const calcCost = Math.round(num * fuelPrice);
+      setEditableCost(String(calcCost));
+      if (onLocationSelect) onLocationSelect(pickupName, dropoffName, parseFloat(editableKm) || 0, num, calcCost);
     } else if (field === 'cost') {
       setEditableCost(val);
       if (onLocationSelect) onLocationSelect(pickupName, dropoffName, parseFloat(editableKm) || 0, parseFloat(editableLiters) || 0, num);
+    } else if (field === 'price') {
+      setFuelPrice(num);
+      const currentLiters = parseFloat(editableLiters) || 0;
+      const calcCost = Math.round(currentLiters * num);
+      setEditableCost(String(calcCost));
+      if (onLocationSelect) onLocationSelect(pickupName, dropoffName, parseFloat(editableKm) || 0, currentLiters, calcCost);
     }
   };
 
@@ -613,10 +626,10 @@ export default function TripLocationMapPicker({
       </div>
 
       {/* Fully Editable Inputs Bar */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
         <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
           <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest block mb-1">
-            Est. Road Distance (KM)
+            Road Distance (KM)
           </label>
           <input
             type="number"
@@ -629,7 +642,7 @@ export default function TripLocationMapPicker({
 
         <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
           <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest block mb-1">
-            Est. Diesel Liters (L)
+            Diesel Liters (KM ÷ 2.5)
           </label>
           <input
             type="number"
@@ -638,6 +651,20 @@ export default function TripLocationMapPicker({
             onChange={(e) => handleInputChange('liters', e.target.value)}
             disabled={readOnly}
             className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs font-black text-amber-600 dark:text-amber-400 outline-none focus:ring-2 focus:ring-amber-500"
+          />
+        </div>
+
+        <div className="p-3 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
+          <label className="text-[9px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-widest block mb-1">
+            Diesel Price (₱/L)
+          </label>
+          <input
+            type="number"
+            step="0.5"
+            value={fuelPrice}
+            onChange={(e) => handleInputChange('price', e.target.value)}
+            disabled={readOnly}
+            className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl px-3 py-1.5 text-xs font-black text-blue-600 dark:text-blue-400 outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 

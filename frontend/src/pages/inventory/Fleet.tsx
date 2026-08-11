@@ -51,7 +51,7 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
       total_mileage: bus.total_mileage,
       last_service_date: bus.last_service_date ?? '',
       next_service_due: bus.next_service_due ?? '',
-      assigned_driver: bus.driver?.id ?? null,
+      assigned_driver: bus.assigned_driver ?? bus.driver?.id ?? null,
       custom_seats: bus.custom_seats ?? null,
     } : {
       status: 'available', seating_capacity: 49, total_mileage: 0, bus_category: 'ECONOMY', custom_seats: null
@@ -71,7 +71,8 @@ function BusModal({ bus, isOpen, onClose, mode }: BusModalProps) {
   const currentSeats = form.custom_seats || bus?.custom_seats || defaultBusSeats;
 
   const { data: usersRes } = useQuery({ queryKey: ['users', 'drivers'], queryFn: () => userApi.list({ role: 'driver', per_page: 999 }) });
-  const drivers = usersRes?.data?.data ?? [];
+  const rawDrivers = (usersRes?.data as any)?.data ?? usersRes?.data ?? [];
+  const drivers = Array.isArray(rawDrivers) ? rawDrivers : [];
 
   const mutation = useMutation({
     mutationFn: () => {

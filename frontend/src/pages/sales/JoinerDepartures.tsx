@@ -9,6 +9,7 @@ import { billingApi, type Service } from '../../api/billing';
 import { catalogApi, type JoinerDeparture } from '../../api/catalog';
 
 import { Button, Modal } from '../../components/ds';
+import { PackageImageCarousel } from '../../components/ui';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 import { resolveServiceType } from './fixedPackagesUtils';
 import PackageBuilderShell from './components/PackageBuilderShell';
@@ -96,40 +97,13 @@ function JoinerImage({ path, alt, className }: { path?: string; alt: string; cla
 }
 
 function ProductSlideshow({ images, alt, className }: { images?: string[]; alt: string; className?: string }) {
-  const validImages = Array.isArray(images) ? images.filter(Boolean) : [];
-  const scrollRef = useRef<HTMLDivElement>(null);
-  
-  if (validImages.length === 0) return <JoinerImage path={undefined} alt={alt} className={className || ''} />;
-  
-  const scroll = (direction: 'left' | 'right') => {
-    if (scrollRef.current) {
-      const { scrollLeft, clientWidth } = scrollRef.current;
-      scrollRef.current.scrollTo({ left: direction === 'left' ? scrollLeft - clientWidth : scrollLeft + clientWidth, behavior: 'smooth' });
-    }
-  };
-
   return (
-    <div className={`group relative ${className || ''}`}>
-      <div ref={scrollRef} className="h-full w-full flex overflow-x-auto snap-x snap-mandatory [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
-        {validImages.map((path, i) => (
-          <div key={i} className="h-full min-w-full snap-start relative flex-shrink-0">
-            <JoinerImage path={path} alt={`${alt} ${i + 1}`} className="h-full w-full object-cover" />
-          </div>
-        ))}
-      </div>
-      
-      {validImages.length > 1 && (
-        <>
-          <button type="button" onClick={(e) => { e.stopPropagation(); scroll('left'); }} className="absolute left-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 z-10"><ChevronLeft className="h-4 w-4" /></button>
-          <button type="button" onClick={(e) => { e.stopPropagation(); scroll('right'); }} className="absolute right-2 top-1/2 -translate-y-1/2 grid h-7 w-7 place-items-center rounded-full bg-black/40 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 z-10"><ChevronRight className="h-4 w-4" /></button>
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10 rounded-full bg-black/40 px-2.5 py-1.5 backdrop-blur-sm pointer-events-none">
-            {validImages.map((_, i) => (
-              <div key={i} className="h-1.5 w-1.5 rounded-full bg-white/80 shadow-sm" />
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+    <PackageImageCarousel
+      images={images}
+      alt={alt}
+      className={className || 'h-48 w-full'}
+      badgeText="Joiner Tour"
+    />
   );
 }
 
@@ -145,7 +119,6 @@ export default function JoinerDepartures() {
   const [viewProduct, setViewProduct] = useState<Service | null>(null);
   const [viewDeparture, setViewDeparture] = useState<JoinerDeparture | null>(null);
   const [productSearch, setProductSearch] = useState('');
-
   const { data: rawDepartures, isLoading } = useQuery({ queryKey: ['joiner-departures', 'upcoming'], queryFn: catalogApi.getJoinerDepartures });
   const departures = useMemo(() => {
     const list = Array.isArray(rawDepartures) ? rawDepartures : [];
@@ -425,7 +398,14 @@ export default function JoinerDepartures() {
         preview={(
           <div className="rounded-3xl bg-gradient-to-br from-emerald-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
             <span className="rounded-md bg-emerald-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Joiner offer preview</span>
-            <div className="mt-5 h-40 overflow-hidden rounded-2xl bg-white/5"><JoinerImage path={productForm.images[0]} alt="" className="h-full w-full object-cover" /></div>
+            <div className="mt-4">
+              <PackageImageCarousel
+                images={productForm.images}
+                alt={productForm.name || 'Joiner preview'}
+                className="h-44 w-full"
+                showThumbnails={productForm.images.length > 1}
+              />
+            </div>
             <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-emerald-300">{productForm.destination || 'Destination pending'}</p>
             <h2 className="mt-1 text-xl font-black">{productForm.name || 'Untitled joiner product'}</h2>
             <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{productForm.description || 'Add the customer-facing trip story.'}</p>

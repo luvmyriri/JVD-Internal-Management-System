@@ -105,14 +105,14 @@ class BusController extends Controller
             'total_mileage'     => ['sometimes', 'numeric', 'min:0'],
             'last_service_date' => ['nullable', 'date'],
             'next_service_due'  => ['nullable', 'date'],
-            'assigned_driver'   => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
+            'assigned_driver'   => ['nullable', 'integer', Rule::exists('users', 'id')],
             'plate_number'      => ['sometimes', 'string', 'max:20', 'unique:buses,plate_number,' . $bus->id],
             'custom_seats'      => ['nullable', 'array'],
         ];
 
         if ($request->user() && $request->user()->role === 'corporate_secretary') {
             $rules = [
-                'assigned_driver' => ['nullable', 'integer', Rule::exists('users', 'id')->where('role', 'driver')],
+                'assigned_driver' => ['nullable', 'integer', Rule::exists('users', 'id')],
             ];
 
             $extraFields = array_diff(array_keys($request->except(['_method'])), ['assigned_driver']);
@@ -161,8 +161,8 @@ class BusController extends Controller
      */
     public function calendar(Request $request, Bus $bus): JsonResponse
     {
-        $month = $request->get('month', now()->month);
-        $year  = $request->get('year',  now()->year);
+        $month = (int) $request->input('month', now()->month);
+        $year  = (int) $request->input('year',  now()->year);
 
         $start = \Carbon\Carbon::create($year, $month, 1)->startOfDay();
         $end   = $start->copy()->endOfMonth()->endOfDay();
@@ -194,18 +194,38 @@ class BusController extends Controller
             ->orderBy('starts_at')
             ->get();
 
-        $entries = [];
+        $entries = array_merge(
+            $this->buildTravelCalendarEntries($travels),
+            $this->buildPmsCalendarEntries($pmsSchedules),
+            $this->buildAllocationCalendarEntries($allocations)
+        );
 
+        // Sort by date
+        usort($entries, fn($a, $b) => strcmp($a['date'], $b['date']));
+
+        return response()->json([
+            'success' => true,
+            'data'    => $entries,
+            'bus'     => [
+                'id'               => $bus->id,
+                'plate_number'     => $bus->plate_number,
+                'model'            => $bus->model,
+                'seating_capacity' => $bus->seating_capacity,
+                'bus_category'     => $bus->bus_category,
+            ],
+            'month'   => $month,
+            'year'    => $year,
+        ]);
+    }
+
+    private function buildTravelCalendarEntries($travels): array
+    {
+        $entries = [];
         foreach ($travels as $row) {
             if ($row->reference_type === 'invoice') {
                 $inv = \App\Models\Invoice::with('booking')->find($row->reference_id);
                 if ($inv) {
-                    $mappedStatus = 'reserved';
-                    if ($inv->status === 'paid') {
-                        $mappedStatus = 'completed';
-                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
-                        $mappedStatus = 'reserved';
-                    }
+                    $mappedStatus = ($inv->status === 'paid') ? 'completed' : 'reserved';
 
                     $entries[] = [
                         'date'          => $row->travel_date,
@@ -223,12 +243,7 @@ class BusController extends Controller
                 $booking = \App\Models\Booking::with('invoice')->find($row->reference_id);
                 if ($booking && $booking->invoice) {
                     $inv = $booking->invoice;
-                    $mappedStatus = 'reserved';
-                    if ($inv->status === 'paid') {
-                        $mappedStatus = 'completed';
-                    } elseif ($inv->status === 'partial' || $inv->payment_type === 'downpayment') {
-                        $mappedStatus = 'reserved';
-                    }
+                    $mappedStatus = ($inv->status === 'paid') ? 'completed' : 'reserved';
 
                     $entries[] = [
                         'date'          => $row->travel_date,
@@ -265,7 +280,12 @@ class BusController extends Controller
                 }
             }
         }
+        return $entries;
+    }
 
+    private function buildPmsCalendarEntries($pmsSchedules): array
+    {
+        $entries = [];
         foreach ($pmsSchedules as $row) {
             $refNo = 'TBA';
             if ($row->work_order_id) {
@@ -290,7 +310,12 @@ class BusController extends Controller
                 'seat_map'     => null,
             ];
         }
+        return $entries;
+    }
 
+    private function buildAllocationCalendarEntries($allocations): array
+    {
+        $entries = [];
         foreach ($allocations as $allocation) {
             $entries[] = [
                 'date' => $allocation->starts_at->toDateString(),
@@ -304,23 +329,6 @@ class BusController extends Controller
                 'seat_map' => null,
             ];
         }
-
-        // Sort by date
-        usort($entries, fn($a, $b) => strcmp($a['date'], $b['date']));
-
-
-        return response()->json([
-            'success' => true,
-            'data'    => $entries,
-            'bus'     => [
-                'id'               => $bus->id,
-                'plate_number'     => $bus->plate_number,
-                'model'            => $bus->model,
-                'seating_capacity' => $bus->seating_capacity,
-                'bus_category'     => $bus->bus_category,
-            ],
-            'month'   => (int) $month,
-            'year'    => (int) $year,
-        ]);
+        return $entries;
     }
 }

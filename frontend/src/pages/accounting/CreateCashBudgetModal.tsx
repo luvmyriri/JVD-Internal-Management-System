@@ -32,6 +32,10 @@ export default function CreateCashBudgetModal({ onClose }: { onClose: () => void
     total_amount: '',
   });
 
+  // Diesel Autocalculator Helper State (KM / 2.5 * Diesel Price)
+  const [calcKm, setCalcKm] = useState('');
+  const [calcPrice, setCalcPrice] = useState('60');
+
   // Fetch trip tickets for linking
   const { data: tripTicketsRaw } = useQuery({
     queryKey: ['trip-tickets-for-budget'],
@@ -270,6 +274,58 @@ export default function CreateCashBudgetModal({ onClose }: { onClose: () => void
                 <span>Budget Breakdown (₱)</span>
               </summary>
               <div className="p-4 pt-0 space-y-4">
+                {/* Diesel Autocalculator Widget */}
+                <div className="p-3.5 rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/40 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-widest flex items-center gap-1.5">
+                      ⛽ Diesel Fuel Autocalculator (KM ÷ 2.5)
+                    </span>
+                    {parseFloat(calcKm) > 0 && (
+                      <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-md">
+                        {(parseFloat(calcKm) / 2.5).toFixed(1)} Liters
+                      </span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase block mb-1">Trip Distance (KM)</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 300"
+                        value={calcKm}
+                        onChange={(e) => {
+                          const km = e.target.value;
+                          setCalcKm(km);
+                          const kmNum = parseFloat(km) || 0;
+                          const priceNum = parseFloat(calcPrice) || 60;
+                          const liters = Math.round((kmNum / 2.5) * 10) / 10;
+                          const cost = Math.round(liters * priceNum);
+                          setForm(p => ({ ...p, diesel: kmNum > 0 ? cost.toLocaleString() : p.diesel }));
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-bold text-gray-900 dark:text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase block mb-1">Diesel Price (₱/L)</label>
+                      <input
+                        type="number"
+                        step="0.5"
+                        value={calcPrice}
+                        onChange={(e) => {
+                          const price = e.target.value;
+                          setCalcPrice(price);
+                          const kmNum = parseFloat(calcKm) || 0;
+                          const priceNum = parseFloat(price) || 0;
+                          const liters = Math.round((kmNum / 2.5) * 10) / 10;
+                          const cost = Math.round(liters * priceNum);
+                          setForm(p => ({ ...p, diesel: kmNum > 0 ? cost.toLocaleString() : p.diesel }));
+                        }}
+                        className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-amber-300 dark:border-amber-700 rounded-xl text-xs font-bold text-amber-700 dark:text-amber-300"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Diesel Allocation</label>
