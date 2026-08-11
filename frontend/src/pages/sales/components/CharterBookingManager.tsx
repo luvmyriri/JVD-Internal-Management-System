@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bus, CalendarClock, Pencil, Plus, Trash2, UserRound, XCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bus, CalendarClock, Eye, Pencil, Plus, Trash2, UserRound, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { charterApi, type CharterBooking } from '../../../api/charters';
 import { Button, Modal } from '../../../components/ds';
@@ -10,6 +11,7 @@ const toLocal = (value: string) => value ? new Date(value).toISOString().slice(0
 
 export default function CharterBookingManager({ bookings, targetId }: { bookings: CharterBooking[]; targetId?: string | null }) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selected, setSelected] = useState<CharterBooking | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
   const [form, setForm] = useState<Record<string, any>>({});
@@ -154,7 +156,7 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
           <label className="text-xs font-bold text-muted md:col-span-2">Operations notes<textarea rows={3} value={form.operations_notes ?? ''} onChange={e => setForm({ ...form, operations_notes: e.target.value })} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-ink" /></label>
         </div>
         <div className="mt-5 flex flex-wrap justify-between gap-3 border-t border-border pt-4">
-          <Button variant="secondary" onClick={() => setManifestOpen(true)}><UserRound className="h-4 w-4" /> Edit passenger manifest ({form.passengers?.length ?? 0})</Button>
+          <div className="flex flex-wrap gap-2"><Button variant="secondary" onClick={() => setManifestOpen(true)}><UserRound className="h-4 w-4" /> Edit passenger manifest ({form.passengers?.length ?? 0})</Button>{selected?.invoice?.id && <Button variant="secondary" onClick={() => navigate(`/sales/transactions/${selected.invoice.id}`)}><Eye className="h-4 w-4" /> Transaction details</Button>}</div>
           <div className="flex gap-2"><Button variant="secondary" onClick={() => cancel.mutate()} isLoading={cancel.isPending} className="!text-red-600"><XCircle className="h-4 w-4" /> Request cancellation</Button><Button onClick={() => update.mutate()} isLoading={update.isPending}>Save booking</Button></div>
         </div>
       </Modal>

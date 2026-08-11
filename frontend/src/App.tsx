@@ -25,6 +25,8 @@ import JoinerDepartureDetail from './pages/sales/JoinerDepartureDetail';
 import CharterSales from './pages/sales/CharterSales';
 import EducationalTours from './pages/sales/EducationalTours';
 import CustomTransactions from './pages/sales/CustomTransactions';
+import SalesOrders from './pages/sales/SalesOrders';
+import { EducationalProgramDetails, SalesServiceDetails, SalesTransactionDetails } from './pages/sales/SalesDetails';
 import Billing from './pages/accounting/Billing';
 import Reports from './pages/accounting/Reports';
 import JournalEntries from './pages/accounting/JournalEntries';
@@ -181,7 +183,10 @@ export default function App() {
                     <Route path="/sales/fixed-packages" element={<FixedPackages />} />
                     <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
                     <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
-                    <Route path="/sales/orders" element={<Navigate to="/sales/custom-transactions" replace />} />
+                    <Route path="/sales/orders" element={<SalesOrders />} />
+                    <Route path="/sales/services/:serviceId/details" element={<SalesServiceDetails />} />
+                    <Route path="/sales/educational-programs/:programId/details" element={<EducationalProgramDetails />} />
+                    <Route path="/sales/transactions/:invoiceId" element={<SalesTransactionDetails />} />
 
                     {/* Travel Assistance */}
                     <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />

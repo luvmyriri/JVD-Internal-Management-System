@@ -39,6 +39,20 @@ class EducationalTourController extends Controller
         return response()->json(['data' => $programs]);
     }
 
+    public function programDetails(EducationalTourProgram $program)
+    {
+        $program->load([
+            'bookings' => fn ($query) => $query->with([
+                'invoice.customer', 'vehicles.bus', 'vehicles.driver',
+            ])->latest('starts_at')->limit(100),
+        ]);
+
+        return response()->json(['data' => [
+            'program' => $this->programData($program),
+            'bookings' => $program->bookings,
+        ]]);
+    }
+
     public function bookings()
     {
         return response()->json(['data' => EducationalTourBooking::with(['program', 'vehicles.bus', 'vehicles.driver', 'invoice:id,invoice_number,status,balance'])->orderByDesc('starts_at')->limit(100)->get()]);

@@ -6,6 +6,7 @@ import {
   Bus,
   CalendarDays,
   GraduationCap,
+  Eye,
   ImagePlus,
   MapPinned,
   Pencil,
@@ -440,7 +441,10 @@ export default function FixedPackages() {
                 <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-widest text-brand">{config.destination || 'Destination not set'}</p><h3 className="mt-1 text-lg font-black text-ink">{service.name}</h3></div>{canManage && <div className="flex gap-1"><button aria-label={`Edit ${service.name}`} onClick={() => openEdit(service)} className="rounded-lg p-2 text-muted hover:bg-blue-50 hover:text-brand"><Pencil className="h-4 w-4" /></button><button aria-label={`Remove ${service.name}`} onClick={() => { if (confirm(`Remove ${service.name}?`)) removePackage.mutate(service.id); }} className="rounded-lg p-2 text-muted hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" /></button></div>}</div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">{service.description || 'No description recorded.'}</p>
                 {isConfigured ? <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-surface p-3 text-center"><div><CalendarDays className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.duration_days}D / {config.duration_nights ?? 0}N</strong></div><div><UsersRound className="mx-auto h-4 w-4 text-brand" /><strong className="mt-1 block text-xs text-ink">{config.minimum_pax}-{config.maximum_pax} pax</strong></div><div><span className="block text-[9px] font-black text-brand">ADULT</span><strong className="mt-1 block text-xs text-ink">₱{Number(service.adult_price ?? service.price).toLocaleString()}</strong></div></div> : <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-bold text-amber-800">Complete the destination, duration, traveler limits, and itinerary before publishing this package.</div>}
-                <Button disabled={!isConfigured && !canManage} onClick={() => isConfigured ? sellPackage(service) : openEdit(service, true)} className="mt-4 w-full">{isConfigured ? 'Book for a customer' : canManage ? 'Complete package and continue' : 'Package setup required'} <ArrowRight className="h-4 w-4" /></Button>
+                <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
+                  <Button variant="secondary" onClick={() => navigate(`/sales/services/${service.id}/details`)}><Eye className="h-4 w-4" /> Details</Button>
+                  <Button disabled={!isConfigured && !canManage} onClick={() => isConfigured ? sellPackage(service) : openEdit(service, true)}>{isConfigured ? 'Book for a customer' : canManage ? 'Complete package and continue' : 'Package setup required'} <ArrowRight className="h-4 w-4" /></Button>
+                </div>
               </div>
             </article>;
           })}

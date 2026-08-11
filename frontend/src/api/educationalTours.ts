@@ -88,6 +88,7 @@ export interface EducationalBooking {
 
 export const educationalTourApi = {
   programs: () => client.get('/sales/educational-programs').then(res => res.data.data as EducationalProgram[]),
+  programDetails: (id: number) => client.get(`/sales/educational-programs/${id}/details`).then(res => res.data.data as { program: EducationalProgram; bookings: EducationalBooking[] }),
   bookings: () => client.get('/sales/educational-bookings').then(res => res.data.data as EducationalBooking[]),
   resources: (startsAt: string, endsAt: string) => client.get('/sales/educational-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as EducationalResources),
   quote: (programId: number, students: number, tourGuides: number) => client.post('/sales/educational-quote', { program_id: programId, student_count: students, tour_guide_count: tourGuides, chaperone_count: tourGuides }).then(res => res.data.data as EducationalPricing),

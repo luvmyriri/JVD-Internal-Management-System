@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ArrowLeft, Bus, CalendarClock, CheckCircle2, ChevronDown, Fuel, Gauge, LockKeyhole, Plus, Route, ShieldCheck, TriangleAlert, UsersRound, UserRound, Sparkles, Users, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bus, CalendarClock, CheckCircle2, ChevronDown, Eye, Fuel, Gauge, LockKeyhole, Plus, Route, ShieldCheck, TriangleAlert, UsersRound, UserRound, Sparkles, Users, Pencil, Trash2 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
@@ -542,7 +542,7 @@ export default function CharterSales() {
             ]}
             actionLabel="Select package & continue"
             onAction={() => setBooking(current => ({ ...current, rate_plan_id: String(plan.id) }))}
-            controls={<button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>}
+            controls={<div className="flex gap-1"><button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button><button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button></div>}
           />)}
         </div>}
       </section>
@@ -645,6 +645,7 @@ export default function CharterSales() {
                 }}
                 controls={
                   <div className="flex gap-1">
+                    <button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button>
                     <button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>
                     <button type="button" onClick={() => { if (window.confirm(`Deactivate charter rate plan "${plan.name}"? Existing bookings and the catalog service will be preserved.`)) removeRatePlan.mutate(plan.id); }} title="Deactivate rate plan" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
                   </div>

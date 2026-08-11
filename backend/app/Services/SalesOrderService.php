@@ -596,6 +596,21 @@ class SalesOrderService
 
     public function relations(): array
     {
-        return ['customer', 'agent:id,first_name,last_name,email', 'invoice', 'items.service', 'items.fulfillment', 'events', 'adjustments', 'creditNotes', 'refunds'];
+        return [
+            'customer',
+            'agent:id,first_name,last_name,email',
+            'invoice.items.service',
+            'invoice.passengers',
+            'invoice.itineraries',
+            'invoice.contract',
+            'invoice.tripTickets.bus',
+            'invoice.tripTickets.driver',
+            'items.service',
+            'items.fulfillment',
+            'events',
+            'adjustments',
+            'creditNotes',
+            'refunds',
+        ];
     }
 }

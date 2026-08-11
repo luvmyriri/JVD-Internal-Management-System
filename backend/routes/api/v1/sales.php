@@ -29,11 +29,15 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/toll-matrix', [CharterController::class, 'tollMatrix'])->name('sales.tolls.matrix');
         Route::post('/toll-matrix/calculate', [CharterController::class, 'calculateTolls'])->name('sales.tolls.calculate');
         Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
+        Route::get('/educational-programs/{program}/details', [EducationalTourController::class, 'programDetails'])->name('sales.educational.programs.details');
         Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
         Route::get('/educational-bookings/{booking}/manifest', [EducationalTourController::class, 'manifest'])->name('sales.educational.manifest');
         Route::get('/educational-resources', [EducationalTourController::class, 'resources'])->name('sales.educational.resources');
         Route::post('/educational-quote', [EducationalTourController::class, 'quote'])->name('sales.educational.quote');
         Route::get('/orders', [SalesOrderController::class, 'index'])->name('sales.orders.index');
+        Route::get('/services/{service}/details', [SalesOrderController::class, 'serviceDetails'])->name('sales.services.details');
+        Route::get('/transactions/invoices/{invoice}', [SalesOrderController::class, 'showByInvoice'])->name('sales.transactions.invoice');
+        Route::get('/orders/{order}/documents/{document}', [SalesOrderController::class, 'document'])->name('sales.orders.documents');
         Route::get('/orders/{order}', [SalesOrderController::class, 'show'])->name('sales.orders.show');
 
         // Customer-facing quotations (write access — sales roles).
