@@ -195,7 +195,7 @@ export default function TripLocationMapPicker({
           {includeGarageLeg && <span><strong>{estimate.garage_distance_km.toLocaleString()} km</strong> garage → pickup</span>}
           <span><strong>{estimate.route_distance_km.toLocaleString()} km</strong> pickup → destination</span>
           <span className="flex items-center gap-1 text-amber-700"><LuFuel /> <strong>{(estimate.total_distance_km / 2.5).toFixed(1)} L</strong> at 2.5 km/L</span>
-          <span className={estimate.toll_estimate.mode === 'automatic' ? 'font-bold text-emerald-700' : 'text-slate-500'}>{estimate.toll_estimate.mode === 'automatic' ? `₱${estimate.toll_estimate.total.toLocaleString()} automated tolls` : 'Class 2 toll matrix available below'}</span>
+          <span className={estimate.toll_estimate.mode !== 'manual_reference' ? 'font-bold text-emerald-700' : 'text-slate-500'}>{estimate.toll_estimate.mode !== 'manual_reference' ? `₱${estimate.toll_estimate.total.toLocaleString()} automated tolls` : 'Class 2 toll matrix available below'}</span>
         </> : <span className="text-slate-500">Search and select both exact addresses, or place both pins, to calculate the road route.</span>}
       </div>
     </div>

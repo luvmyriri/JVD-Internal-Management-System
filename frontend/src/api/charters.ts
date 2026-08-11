@@ -52,8 +52,8 @@ export interface LocationSuggestion {
 }
 
 export interface TollEstimate {
-  provider: 'TollGuru' | 'Toll Regulatory Board';
-  mode: 'automatic' | 'manual_reference';
+  provider: 'TollGuru' | 'Toll Regulatory Board' | 'JVD local Class 2 toll matrix';
+  mode: 'automatic' | 'automatic_matrix' | 'manual_reference';
   currency: string;
   vehicle_type?: string;
   toll_gate_fees: number;
@@ -63,6 +63,7 @@ export interface TollEstimate {
   tolls: Array<{ name: string; road?: string | null; cost: number; currency: string }>;
   url: string;
   message: string;
+  confidence?: 'high' | 'medium' | 'review';
 }
 
 export interface TollMatrixPoint {

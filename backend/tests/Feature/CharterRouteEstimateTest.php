@@ -75,6 +75,37 @@ class CharterRouteEstimateTest extends TestCase
             ->assertJsonPath('data.garage_coordinates', null);
     }
 
+    public function test_route_estimate_uses_the_local_matrix_when_toll_nodes_match(): void
+    {
+        Http::fake([
+            '*router.project-osrm.org/route/v1/driving/*' => Http::response([
+                'code' => 'Ok',
+                'routes' => [[
+                    'distance' => 36000,
+                    'legs' => [['distance' => 36000]],
+                    'geometry' => ['coordinates' => [[121.00044, 14.6793], [120.9395155, 14.8071119]]],
+                ]],
+            ]),
+        ]);
+
+        $response = $this->actingAs(User::factory()->superAdmin()->create())->postJson('/api/v1/sales/charter-route-estimate', [
+            'pickup_location' => 'Balintawak',
+            'destination' => 'Bocaue',
+            'pickup_coordinates' => ['latitude' => 14.6793, 'longitude' => 121.00044],
+            'destination_coordinates' => ['latitude' => 14.8071119, 'longitude' => 120.9395155],
+            'include_garage' => false,
+            'vehicle_class' => 'bus',
+        ]);
+
+        $response->assertOk()
+            ->assertJsonPath('data.toll_estimate.mode', 'automatic_matrix')
+            ->assertJsonPath('data.toll_estimate.provider', 'JVD local Class 2 toll matrix')
+            ->assertJsonPath('data.toll_estimate.easytrip', 263)
+            ->assertJsonPath('data.toll_estimate.total', 263)
+            ->assertJsonPath('data.toll_estimate.segments.0.entry_point', 'Balintawak')
+            ->assertJsonPath('data.toll_estimate.segments.0.exit_point', 'Bocaue');
+    }
+
     public function test_map_pin_reverse_geocoding_returns_a_searchable_address(): void
     {
         Http::fake(['*nominatim.openstreetmap.org/reverse*' => Http::response([

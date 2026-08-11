@@ -8,7 +8,10 @@ use Throwable;
 
 class RouteEstimateService
 {
-    public function __construct(private readonly TollEstimateService $tolls) {}
+    public function __construct(
+        private readonly TollEstimateService $tolls,
+        private readonly LocalTollRouteMatcher $localTolls,
+    ) {}
 
     public function search(string $query): array
     {
@@ -81,7 +84,15 @@ class RouteEstimateService
             ? (($legs[1]['distance'] ?? 0) / 1000)
             : (($legs[0]['distance'] ?? 0) / 1000);
 
-        $tollEstimate = $this->tolls->estimate($points, $data['vehicle_class'] ?? 'bus');
+        $vehicleClass = $data['vehicle_class'] ?? 'bus';
+        try {
+            $tollEstimate = in_array($vehicleClass, ['bus', 'coaster'], true)
+                ? $this->localTolls->estimate($selected['geometry']['coordinates'] ?? [])
+                : null;
+        } catch (Throwable) {
+            $tollEstimate = null;
+        }
+        $tollEstimate ??= $this->tolls->estimate($points, $vehicleClass);
 
         return [
             'garage_location' => $garageLocation,

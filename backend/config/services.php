@@ -58,6 +58,7 @@ return [
     'toll_matrix' => [
         'source_url' => env('TOLL_MATRIX_SOURCE_URL', 'https://toll.ph/matrix'),
         'data_file' => resource_path('data/toll-matrix-class-2.json'),
+        'node_file' => resource_path('data/toll-node-coordinates.json'),
     ],
 
     'tollguru' => [
