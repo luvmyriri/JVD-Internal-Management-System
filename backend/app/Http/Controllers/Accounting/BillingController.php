@@ -86,7 +86,7 @@ class BillingController extends Controller
     public function sendEmail(Request $request, $id)
     {
         $invoice = Invoice::with(['items.service', 'payments'])->findOrFail($id);
-        $recipient = $request->input('email', $invoice->customer_email);
+        $recipient = $request->input('email', $invoice->notificationEmail());
 
         if (empty($recipient)) {
             return response()->json(['message' => 'Customer email address is required.'], 422);

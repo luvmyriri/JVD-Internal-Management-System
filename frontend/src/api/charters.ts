@@ -71,6 +71,7 @@ export const charterApi = {
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
   createRatePlan: (data: Record<string, unknown>) => client.post('/sales/charter-rate-plans', data).then(res => res.data.data as CharterRatePlan),
   updateRatePlan: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-rate-plans/${id}`, data).then(res => res.data.data as CharterRatePlan),
+  deleteRatePlan: (id: number) => client.delete(`/sales/charter-rate-plans/${id}`).then(res => res.data),
   createBooking: (data: Record<string, unknown>) => client.post('/sales/charter-bookings', data).then(res => res.data.data as CharterBooking),
   updateBooking: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-bookings/${id}`, data).then(res => res.data.data as CharterBooking),
   cancelBooking: (id: number, reason: string) => client.post(`/sales/charter-bookings/${id}/cancel`, { reason }).then(res => res.data),

@@ -21,8 +21,8 @@ class InvoiceResource extends JsonResource
             : null;
         /** @var \App\Models\PrivateTourBooking|null $privateTour */
         $privateTour = $privateTourItem?->fulfillment;
-        $bus = $booking?->bus ?? ($privateTour && $privateTour->relationLoaded('bus') ? $privateTour->bus : null);
-        $driver = $booking?->driver ?? ($privateTour && $privateTour->relationLoaded('driver') ? $privateTour->driver : null);
+        $bus = $this->operationalBus();
+        $driver = $this->operationalDriver();
 
         return [
             'id' => $this->id,
@@ -30,7 +30,7 @@ class InvoiceResource extends JsonResource
             'customer_id' => $this->customer_id,
             'customer_name' => $this->customer_name,
             'customer_address' => $this->customer_address,
-            'customer_email' => $this->customer_email,
+            'customer_email' => $this->notificationEmail(),
             'customer_contact' => $this->customer_contact,
             'subtotal' => (float) $this->subtotal,
             'tax_amount' => (float) $this->tax_amount,
@@ -48,13 +48,14 @@ class InvoiceResource extends JsonResource
             'status' => $this->status,
             'notes' => $this->notes,
             'cash_budget_request_id' => $this->cash_budget_request_id,
-            'bus_id' => $booking?->bus_id ?? $privateTour?->bus_id,
-            'driver_id' => $booking?->driver_id ?? $privateTour?->driver_id,
+            'bus_id' => $this->bus_id,
+            'driver_id' => $this->driver_id,
             'seat_map' => $booking?->seat_map,
-            'travel_date' => $booking?->travel_date ?? $privateTour?->starts_at?->toISOString(),
-            'pickup_location' => $booking?->pickup_location ?? $privateTour?->pickup_location,
-            'tour_code' => $booking?->tour_code ?? $privateTour?->package_name,
-            'pax_count' => $booking?->pax_count ?? $privateTour?->passenger_count,
+            'travel_date' => $this->travel_date,
+            'pickup_location' => $this->pickup_location,
+            'destination' => $this->destination,
+            'tour_code' => $this->tour_code,
+            'pax_count' => $this->pax_count,
             'arrival_datetime' => $booking?->arrival_datetime ?? $privateTour?->ends_at?->toISOString(),
             'departure_datetime' => $booking?->departure_datetime ?? $privateTour?->starts_at?->toISOString(),
             'bus' => $bus ? [

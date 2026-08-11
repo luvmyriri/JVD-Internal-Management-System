@@ -95,40 +95,126 @@ class Invoice extends Model
 
     public function getTravelDateAttribute(): ?string
     {
-        return $this->due_date
+        return $this->booking?->travel_date?->toDateString()
+            ?? $this->charterBooking?->starts_at?->toDateString()
+            ?? $this->educationalTourBooking?->starts_at?->toDateString()
+            ?? $this->joinerReservation?->departure?->starts_at?->toDateString()
+            ?? $this->privateTourFulfillment()?->starts_at?->toDateString()
             ?? $this->tripTicket?->date_of_travel
-            ?? $this->charterBooking?->travel_date
-            ?? $this->educationalTourBooking?->travel_date
-            ?? now()->toDateString();
+            ?? $this->due_date;
     }
 
     public function getTourCodeAttribute(): ?string
     {
-        return $this->attributes['tour_code'] ?? ($this->tripTicket?->control_no ?? 'TOUR-2026-001');
+        return $this->booking?->tour_code
+            ?? $this->joinerReservation?->departure?->code
+            ?? $this->charterBooking?->reference
+            ?? $this->educationalTourBooking?->reference
+            ?? $this->tripTicket?->control_no;
     }
 
     public function getPickupLocationAttribute(): ?string
     {
-        return $this->attributes['pickup_location'] ?? ($this->tripTicket?->pick_up ?? 'JVD Main Terminal, Manila');
+        return $this->booking?->pickup_location
+            ?? $this->charterBooking?->pickup_location
+            ?? $this->educationalTourBooking?->pickup_location
+            ?? $this->joinerReservation?->departure?->pickup_instructions
+            ?? $this->privateTourFulfillment()?->pickup_location
+            ?? $this->tripTicket?->pick_up;
     }
 
     public function getDestinationAttribute(): ?string
     {
-        return $this->attributes['destination'] ?? ($this->tripTicket?->drop_off ?? 'Tagaytay City');
+        return $this->charterBooking?->destination
+            ?? $this->privateTourFulfillment()?->destination
+            ?? $this->booking?->tour_code
+            ?? $this->tripTicket?->drop_off
+            ?? $this->tripTicket?->destination
+            ?? $this->educationalTourBooking?->program?->name;
     }
+
     public function getBusIdAttribute(): ?int
     {
-        return $this->attributes['bus_id'] ?? ($this->tripTicket?->bus_id ?? null);
+        return $this->booking?->bus_id
+            ?? $this->charterBooking?->bus_id
+            ?? $this->educationalTourBooking?->vehicles?->first()?->bus_id
+            ?? $this->joinerReservation?->departure?->bus_id
+            ?? $this->privateTourFulfillment()?->bus_id
+            ?? $this->tripTicket?->bus_id;
     }
 
     public function getDriverIdAttribute(): ?int
     {
-        return $this->attributes['driver_id'] ?? ($this->tripTicket?->driver_id ?? null);
+        return $this->booking?->driver_id
+            ?? $this->charterBooking?->driver_id
+            ?? $this->educationalTourBooking?->vehicles?->first()?->driver_id
+            ?? $this->joinerReservation?->departure?->driver_id
+            ?? $this->privateTourFulfillment()?->driver_id
+            ?? $this->tripTicket?->driver_id;
     }
 
     public function getPaxCountAttribute(): int
     {
-        return $this->attributes['pax_count'] ?? ($this->passengers()->count() ?: 45);
+        if ($this->booking?->pax_count) {
+            return (int) $this->booking->pax_count;
+        }
+        if ($this->charterBooking?->passenger_count) {
+            return (int) $this->charterBooking->passenger_count;
+        }
+        if ($this->educationalTourBooking) {
+            return (int) $this->educationalTourBooking->student_count
+                + (int) $this->educationalTourBooking->chaperone_count;
+        }
+        if ($this->joinerReservation?->passenger_count) {
+            return (int) $this->joinerReservation->passenger_count;
+        }
+        if ($this->privateTourFulfillment()?->passenger_count) {
+            return (int) $this->privateTourFulfillment()->passenger_count;
+        }
+
+        return (int) ($this->tripTicket?->no_of_passengers ?? $this->passengers()->count());
+    }
+
+    /** Resolve the best customer email without rewriting the finalized invoice snapshot. */
+    public function notificationEmail(): ?string
+    {
+        return $this->attributes['customer_email']
+            ?? $this->customer?->email
+            ?? $this->charterBooking?->lead_email
+            ?? $this->educationalTourBooking?->contact_email
+            ?? $this->joinerReservation?->lead_email;
+    }
+
+    public function operationalBus(): ?Bus
+    {
+        return $this->booking?->bus
+            ?? $this->charterBooking?->bus
+            ?? $this->educationalTourBooking?->vehicles?->first()?->bus
+            ?? $this->joinerReservation?->departure?->bus
+            ?? $this->privateTourFulfillment()?->bus
+            ?? $this->tripTicket?->bus;
+    }
+
+    public function operationalDriver(): ?User
+    {
+        return $this->booking?->driver
+            ?? $this->charterBooking?->driver
+            ?? $this->educationalTourBooking?->vehicles?->first()?->driver
+            ?? $this->joinerReservation?->departure?->driver
+            ?? $this->privateTourFulfillment()?->driver
+            ?? $this->tripTicket?->driver;
+    }
+
+    private function privateTourFulfillment(): ?PrivateTourBooking
+    {
+        if (! $this->relationLoaded('salesOrder') || ! $this->salesOrder?->relationLoaded('items')) {
+            return null;
+        }
+
+        return $this->salesOrder->items->first(
+            fn (SalesOrderItem $item) => $item->relationLoaded('fulfillment')
+                && $item->fulfillment instanceof PrivateTourBooking
+        )?->fulfillment;
     }
 
     public function customer(): BelongsTo

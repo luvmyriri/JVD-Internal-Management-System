@@ -14,6 +14,7 @@ use App\Mail\ContractSentForSignatureMail;
 use App\Models\Booking;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
+use App\Models\Customer;
 use App\Models\CustomerPortalToken;
 use App\Models\CustomTransactionDetail;
 use App\Models\Invoice;
@@ -100,6 +101,8 @@ class ContractController extends Controller
                 $validated['customer_contact'] ?? null,
                 $validated['customer_address'] ?? null
             );
+            $customer = $customerId ? Customer::find($customerId) : null;
+            $customerName = ($validated['customer_name'] ?? null) ?: ($customer ? trim(implode(' ', array_filter([$customer->first_name, $customer->middle_name, $customer->last_name, $customer->suffix]))) : null);
 
             $finalizer->assertPassportCasesCanBeBilled(
                 collect($validated['items'])->pluck('passport_case_id')->all(),
@@ -122,10 +125,10 @@ class ContractController extends Controller
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-'.strtoupper(Str::random(8)),
                 'customer_id' => $customerId,
-                'customer_name' => $validated['customer_name'] ?? null,
-                'customer_address' => $validated['customer_address'] ?? null,
-                'customer_email' => $validated['customer_email'] ?? null,
-                'customer_contact' => $validated['customer_contact'] ?? null,
+                'customer_name' => $customerName,
+                'customer_address' => ($validated['customer_address'] ?? null) ?: $customer?->address,
+                'customer_email' => ($validated['customer_email'] ?? null) ?: $customer?->email,
+                'customer_contact' => ($validated['customer_contact'] ?? null) ?: $customer?->phone,
                 'subtotal' => $calc['subtotal'],
                 'tax_amount' => $calc['taxAmount'],
                 'total_amount' => $calc['totalAmount'],
@@ -310,12 +313,12 @@ class ContractController extends Controller
         $signingLink = PortalLinkResolver::buildPortalLink($token->token, $request);
 
         $mailError = null;
-        if ($contract->invoice->customer_email) {
+        if ($email = $contract->invoice->notificationEmail()) {
             try {
-                Mail::to($contract->invoice->customer_email)->send(new ContractSentForSignatureMail($contract, $signingLink));
+                Mail::to($email)->send(new ContractSentForSignatureMail($contract, $signingLink));
             } catch (\Exception $e) {
                 $mailError = $e->getMessage();
-                \Log::error("Failed to send contract signature request to {$contract->invoice->customer_email}: {$mailError}");
+                \Log::error("Failed to send contract signature request to {$email}: {$mailError}");
             }
         }
 
@@ -441,9 +444,9 @@ class ContractController extends Controller
         $signingLink = PortalLinkResolver::buildPortalLink($token->token);
 
         $mailError = null;
-        if ($amendment->contract->invoice->customer_email) {
+        if ($email = $amendment->contract->invoice->notificationEmail()) {
             try {
-                Mail::to($amendment->contract->invoice->customer_email)->send(new ContractSentForSignatureMail($amendment->contract, $signingLink));
+                Mail::to($email)->send(new ContractSentForSignatureMail($amendment->contract, $signingLink));
             } catch (\Exception $e) {
                 $mailError = $e->getMessage();
             }

@@ -134,8 +134,8 @@
                 @if($invoice->customer_address)
                     <div class="info-sub">{{ $invoice->customer_address }}</div>
                 @endif
-                @if($invoice->customer_email)
-                    <div class="info-sub">{{ $invoice->customer_email }}</div>
+                @if($invoice->notificationEmail())
+                    <div class="info-sub">{{ $invoice->notificationEmail() }}</div>
                 @endif
                 @if($invoice->customer_contact)
                     <div class="info-sub">{{ $invoice->customer_contact }}</div>
@@ -154,6 +154,10 @@
         </tr>
     </table>
 
+    @php
+        $operationalBus = $invoice->operationalBus();
+        $operationalDriver = $invoice->operationalDriver();
+    @endphp
     @if($invoice->travel_date || $invoice->bus_id || $invoice->driver_id || $invoice->tour_code || $invoice->pickup_location || $invoice->pax_count)
     <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 14px; margin-bottom: 20px; font-size: 10px;">
         <div style="font-size: 8px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;">Travel &amp; Assignment Details</div>
@@ -176,11 +180,11 @@
             @endif
             @if($invoice->bus_id || $invoice->driver_id)
             <tr>
-                @if($invoice->bus)
-                <td style="padding: 3px 0; vertical-align: top;"><strong>Bus Assigned:</strong> {{ $invoice->bus->plate_number }} ({{ $invoice->bus->model }})</td>
+                @if($operationalBus)
+                <td style="padding: 3px 0; vertical-align: top;"><strong>Bus Assigned:</strong> {{ $operationalBus->plate_number }} ({{ $operationalBus->model }})</td>
                 @endif
-                @if($invoice->driver)
-                <td style="padding: 3px 0; vertical-align: top;"><strong>Driver:</strong> {{ $invoice->driver->first_name }} {{ $invoice->driver->last_name }}</td>
+                @if($operationalDriver)
+                <td style="padding: 3px 0; vertical-align: top;"><strong>Driver:</strong> {{ $operationalDriver->first_name }} {{ $operationalDriver->last_name }}</td>
                 @endif
                 @if($invoice->seat_map && count($invoice->seat_map) > 0)
                 <td style="padding: 3px 0; vertical-align: top;"><strong>Selected Seats:</strong> {{ implode(', ', $invoice->seat_map) }}</td>

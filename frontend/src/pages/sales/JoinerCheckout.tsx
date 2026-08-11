@@ -86,7 +86,6 @@ export default function JoinerCheckout() {
         };
       });
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSeats.join('|'), isLeadAsPassenger1, lead.name, lead.contact]);
 
   // Format seat label for UI badges (e.g., '1' -> 'Seat 1')
@@ -157,6 +156,7 @@ export default function JoinerCheckout() {
     const formattedSeatList = sortedSeats.map(formatSeatLabel).join(', ');
     const adultCount = passengers.filter(p => p.passenger_type === 'adult').length;
     const childCount = passengers.filter(p => p.passenger_type === 'child').length;
+    const averageSeatPrice = sortedSeats.length > 0 ? subtotal / sortedSeats.length : 0;
     const passengerSummary = passengers
       .map(p => `${p.first_name || 'Passenger'} ${p.last_name || p.seat_code}`.trim())
       .filter(Boolean)
@@ -168,12 +168,16 @@ export default function JoinerCheckout() {
         id: departure.service?.id ?? departure.id,
         name: `Joiner Tour: ${departure.service?.name || 'Tour'} (${departure.code})`,
         category: 'Joiners',
-        price: subtotal,
+        price: averageSeatPrice,
         is_sales_catalog: true,
       },
       quantity: sortedSeats.length,
       quantityLocked: true,
-      customPrice: subtotal,
+      customPrice: averageSeatPrice,
+      adults: adultCount,
+      childrenCount: childCount,
+      adultUnitPrice: adultPrice,
+      childUnitPrice: childPrice,
       travelDate: departure.starts_at ? departure.starts_at.slice(0, 10) : undefined,
       departureDate: departure.starts_at,
       arrivalDate: departure.ends_at,

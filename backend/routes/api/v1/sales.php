@@ -58,6 +58,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('/orders/{order}/adjustments', [SalesOrderController::class, 'requestAdjustment'])->name('sales.orders.adjustments.store');
         });
 
+        Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff|sales:delete')->group(function () {
+            Route::delete('/charter-rate-plans/{ratePlan}', [CharterController::class, 'destroyRatePlan'])->name('sales.charters.rate-plans.destroy');
+            Route::delete('/educational-programs/{program}', [EducationalTourController::class, 'destroyProgram'])->name('sales.educational.programs.destroy');
+        });
+
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff|sales:create')->group(function () {
             Route::post('/invoices/{invoice}/cancellation', [SalesOrderController::class, 'requestInvoiceCancellation'])->name('sales.invoices.cancellation');
         });

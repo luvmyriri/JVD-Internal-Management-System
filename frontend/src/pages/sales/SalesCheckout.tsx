@@ -73,6 +73,25 @@ export interface CartItem {
   requiresContract?: boolean;
 }
 
+const calculateCartItemTotal = (item: CartItem): number => {
+  const adultCount = Math.max(0, Number(item.adults ?? 0));
+  const childCount = Math.max(0, Number(item.childrenCount ?? 0));
+
+  if (item.adults !== undefined || item.childrenCount !== undefined) {
+    const adultRate = Number(item.adultUnitPrice ?? (item.service as any)?.adult_price ?? item.customPrice ?? item.service.price ?? 0);
+    const childRate = Number(item.childUnitPrice ?? (item.service as any)?.child_price ?? item.customPrice ?? item.service.price ?? 0);
+    return (adultCount * adultRate) + (childCount * childRate);
+  }
+
+  const unitPrice = Number(item.customPrice ?? item.service.price ?? 0);
+  const perPaxCategories = ['International Tour', 'Domestic Tour', 'Educational Tour', 'Visa Processing', 'Joiners', 'Booking', 'Tour Package'];
+  const multiplier = item.customPrice === undefined && perPaxCategories.includes(String(item.service?.category))
+    ? Number(item.paxCount ?? item.quantity ?? 1)
+    : Number(item.quantity ?? 1);
+
+  return unitPrice * Math.max(0, multiplier);
+};
+
 export interface SalesCheckoutProps {
   cart: CartItem[];
   removeFromCart: (serviceId: number, adults?: number, childrenCount?: number, vehicleType?: 'Bus' | 'Coaster', busId?: number, cartId?: string) => void;
@@ -174,13 +193,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
   // Calculations
   const subtotal = useMemo(() => {
-    return cart.reduce((sum, item) => {
-      const price = item.customPrice ?? item.service.price;
-      const isPerPax = !item.customPrice && ['International Tour', 'Domestic Tour', 'Educational Tour', 'Visa Processing', 'Joiners', 'Booking', 'Tour Package'].includes(String(item.service?.category));
-      const paxCount = item.paxCount || item.adults || 1;
-      const multiplier = isPerPax ? paxCount : item.quantity;
-      return sum + (price * multiplier);
-    }, 0);
+    return cart.reduce((sum, item) => sum + calculateCartItemTotal(item), 0);
   }, [cart]);
 
   const tax = subtotal * vatRate;
@@ -360,12 +373,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         ? Object.values(data.errors).flat().join('\n')
         : null;
       const serverMsg = validationDetails
-        || data?.error
-        || data?.message
-        || err?.message
-        || 'Unknown error';
+        || (data?.error_reference
+          ? `Checkout could not be completed. No payment was recorded. Support reference: ${data.error_reference}`
+          : 'Checkout could not be completed. No payment was recorded. Please try again or contact support.');
       alert(`Checkout failed: ${serverMsg}`);
-      console.error('Checkout error:', err?.response?.data || err);
+      console.error('Checkout error reference:', data?.error_reference || 'not provided');
     } finally {
       setIsProcessing(false);
     }
@@ -517,7 +529,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                         <button onClick={() => updateQuantity(item.service.id, item.quantity + 1, item.adults, item.childrenCount, item.vehicleType, item.busId, item.cartId)} className="p-1.5 hover:bg-gray-50 dark:bg-gray-800/60 dark:hover:bg-gray-800 rounded-lg text-gray-400 transition-colors"><LuPlus className="w-3 h-3" /></button>
                       </div>
                     )}
-                    <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{(Number(item.customPrice ?? item.service.price) * item.quantity).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                    <p className="text-sm font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{calculateCartItemTotal(item).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
                   </div>
                 </div>
               ))}

@@ -68,7 +68,8 @@ class TripTicketService
                 ->first();
             if ($existing) {
                 // If bus or driver was subsequently assigned in sales, update draft ticket
-                if (($busId && !$existing->bus_id) || ($driverId && !$existing->driver_id)) {
+                if (($busId && (int) $busId !== (int) $existing->bus_id)
+                    || ($driverId && (int) $driverId !== (int) $existing->driver_id)) {
                     $bus = $busId ? Bus::find($busId) : null;
                     $existing->update([
                         'bus_id' => $busId ?: $existing->bus_id,

@@ -66,7 +66,7 @@ export interface TripTicket {
   updated_at?: string;
   
   bus?: { id: number; plate_number: string };
-  driver?: { id: number; name: string };
+  driver?: { id: number; name?: string; first_name?: string; last_name?: string };
   requestedBy?: { id: number; name: string };
   approvedBy?: { id: number; name: string };
   invoice?: {

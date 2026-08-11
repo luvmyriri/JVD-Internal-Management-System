@@ -190,52 +190,55 @@
                 <h3>Dear {{ $invoice->customer_name }},</h3>
                 <p>Your partial payment / downpayment has been successfully credited to your transaction ledger.</p>
                 <p>We have generated a <strong>Statement of Account (SOA)</strong> detailing your remaining balance and payment history, which is attached to this email as a PDF document.</p>
-                <p>To settle the outstanding balance conveniently online via **GCash**, please click the direct payment button below:</p>
-
-                <a href="{{ $invoice->payment_url ?? $gcashLink }}" target="_blank" class="btn-cta">
-                    📲 Settle Balance via GCash
-                </a>
+                @if($invoice->payment_url)
+                    <p>To settle the outstanding balance through the secure PayMongo checkout, use the payment button below. Available methods, including QR Ph, depend on the company PayMongo account configuration.</p>
+                    <a href="{{ $invoice->payment_url }}" target="_blank" class="btn-cta">
+                        Settle Balance via PayMongo
+                    </a>
+                @else
+                    <p>Please contact JVD Accounting for the approved payment instructions for this balance.</p>
+                @endif
             @endif
 
-            @if($invoice->booking?->travel_date || $invoice->booking?->bus_id || $invoice->booking?->driver_id || $invoice->booking?->tour_code || $invoice->booking?->pickup_location || $invoice->booking?->pax_count)
+            @if($invoice->travel_date || $invoice->bus_id || $invoice->driver_id || $invoice->tour_code || $invoice->pickup_location || $invoice->pax_count)
             <!-- Travel & Assignment Details -->
             <div class="financial-card" style="margin-bottom: 20px;">
                 <h4 style="margin: 0 0 12px 0; color: #1e293b; font-size: 14px;">📅 Travel &amp; Assignment Specifications</h4>
                 <table class="financial-table">
-                    @if($invoice->booking?->travel_date)
+                    @if($invoice->travel_date)
                     <tr>
                         <td>Travel Date:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ \Carbon\Carbon::parse($invoice->booking->travel_date)->format('F d, Y') }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ \Carbon\Carbon::parse($invoice->travel_date)->format('F d, Y') }}</td>
                     </tr>
                     @endif
-                    @if($invoice->booking?->tour_code)
+                    @if($invoice->tour_code)
                     <tr>
                         <td>Tour/Joiner Code:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->tour_code }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->tour_code }}</td>
                     </tr>
                     @endif
-                    @if($invoice->booking?->pax_count)
+                    @if($invoice->pax_count)
                     <tr>
                         <td>Pax Count:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->pax_count }} Pax</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->pax_count }} Pax</td>
                     </tr>
                     @endif
-                    @if($invoice->booking?->pickup_location)
+                    @if($invoice->pickup_location)
                     <tr>
                         <td>Pickup Location:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->booking->pickup_location }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->pickup_location }}</td>
                     </tr>
                     @endif
-                    @if($invoice->bus)
+                    @if($invoice->operationalBus())
                     <tr>
                         <td>Bus Assigned:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->bus->plate_number }} ({{ $invoice->bus->model }})</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->operationalBus()->plate_number }} ({{ $invoice->operationalBus()->model }})</td>
                     </tr>
                     @endif
-                    @if($invoice->driver)
+                    @if($invoice->operationalDriver())
                     <tr>
                         <td>Driver Assigned:</td>
-                        <td class="text-right" style="color: #0f172a;">{{ $invoice->driver->first_name }} {{ $invoice->driver->last_name }}</td>
+                        <td class="text-right" style="color: #0f172a;">{{ $invoice->operationalDriver()->first_name }} {{ $invoice->operationalDriver()->last_name }}</td>
                     </tr>
                     @endif
                     @if($invoice->booking?->seat_map && count($invoice->booking->seat_map) > 0)

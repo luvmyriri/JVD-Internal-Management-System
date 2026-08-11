@@ -192,18 +192,18 @@ export default function CharterSales() {
 
   const { data: pricing } = useQuery({ queryKey: ['charter-quote', booking.rate_plan_id, booking.starts_at, booking.ends_at, booking.estimated_kilometers], queryFn: () => charterApi.quote({ rate_plan_id: Number(booking.rate_plan_id), starts_at: booking.starts_at, ends_at: booking.ends_at, estimated_kilometers: Number(booking.estimated_kilometers) }), enabled: validInterval && Boolean(booking.rate_plan_id) });
 
-  // Compute base price from rate_per_km × min_km_basis
+  // Base price is the explicit sell rate. Distance feeds the expense preview
+  // and excess-kilometer pricing, but must not silently replace the sell rate.
   const computedBasePrice = useMemo(() => {
-    const rate = parseFloat(planForm.rate_per_km) || 0;
-    const minKm = parseFloat(planForm.min_km_basis) || 0;
-    return Math.round(rate * minKm);
-  }, [planForm.rate_per_km, planForm.min_km_basis]);
+    return Math.max(0, Math.round((parseFloat(customBaseRate) || 0) * 100) / 100);
+  }, [customBaseRate]);
 
   const [editingRatePlanId, setEditingRatePlanId] = useState<number | null>(null);
 
   const openCreatePlan = () => {
     setEditingRatePlanId(null);
     setPlanForm(planInitial);
+    setCustomBaseRate('35000');
     setPlanOpen(true);
   };
 
@@ -227,6 +227,7 @@ export default function CharterSales() {
       includes_tolls: plan.includes_tolls ?? false,
       includes_parking: plan.includes_parking ?? false,
     });
+    setCustomBaseRate(String(plan.base_price ?? 0));
     setPlanOpen(true);
   };
 
@@ -247,7 +248,6 @@ export default function CharterSales() {
         includes_fuel: planForm.includes_fuel,
         includes_tolls: planForm.includes_tolls,
         includes_parking: planForm.includes_parking,
-        rate_per_km: Number(planForm.rate_per_km),
       };
 
       if (editingRatePlanId) {
@@ -266,7 +266,7 @@ export default function CharterSales() {
   });
 
   const removeRatePlan = useMutation({
-    mutationFn: (serviceId: number) => billingApi.deleteService(serviceId),
+    mutationFn: (ratePlanId: number) => charterApi.deleteRatePlan(ratePlanId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] });
       await queryClient.invalidateQueries({ queryKey: ['billing-services'] });
@@ -294,12 +294,12 @@ export default function CharterSales() {
         id: selectedPlan.service_id || selectedPlan.id,
         name: `Bus Charter: ${selectedPlan.name} (${busesRequired} Bus${busesRequired > 1 ? 'es' : ''})`,
         category: 'Bus Rental',
-        price: totalCharterSubtotal,
+        price: baseSubtotal,
         is_sales_catalog: true,
       },
       quantity: busesRequired,
       quantityLocked: true,
-      customPrice: totalCharterSubtotal,
+      customPrice: baseSubtotal,
       busId: Number(busAssignments[0]?.bus_id) || undefined,
       selectedSeats: selectedSeats.length > 0 ? selectedSeats : undefined,
       driverId: Number(busAssignments[0]?.driver_id) || undefined,
@@ -491,6 +491,27 @@ export default function CharterSales() {
             <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">3 · Rates & Inclusions</p>
             <h2 className="mt-1 text-lg font-black text-ink">Package Standards & Equipment</h2>
           </div>
+          <div className="grid gap-4 md:grid-cols-4">
+            {([
+              ['included_hours', 'Included hours'],
+              ['extra_hour_rate', 'Extra hour rate (₱)'],
+              ['extra_kilometer_rate', 'Extra kilometer rate (₱)'],
+              ['overnight_rate', 'Overnight rate (₱)'],
+            ] as [keyof typeof planForm, string][]).map(([key, label]) => (
+              <label key={key} className="text-xs font-bold text-muted">
+                {label}
+                <input
+                  required
+                  type="number"
+                  min={key === 'included_hours' ? 1 : 0}
+                  step={key === 'included_hours' ? 1 : 0.01}
+                  value={String(planForm[key])}
+                  onChange={e => setPlanForm(current => ({ ...current, [key]: e.target.value }))}
+                  className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
+                />
+              </label>
+            ))}
+          </div>
           <div className="grid gap-3 rounded-2xl bg-surface-alt p-4 sm:grid-cols-4">
             {([['includes_driver', 'Driver fee'], ['includes_fuel', 'Fuel'], ['includes_tolls', 'Toll fees'], ['includes_parking', 'Parking fees']] as [string, string][]).map(([key, label]) => (
               <label key={key} className="flex items-center gap-2 text-xs font-bold text-ink">
@@ -650,7 +671,7 @@ export default function CharterSales() {
                 controls={
                   <div className="flex gap-1">
                     <button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>
-                    <button type="button" onClick={() => { if (window.confirm(`Delete charter rate plan "${plan.name}"?`)) removeRatePlan.mutate(plan.service_id || plan.service?.id || plan.id); }} title="Delete rate plan" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
+                    <button type="button" onClick={() => { if (window.confirm(`Deactivate charter rate plan "${plan.name}"? Existing bookings and the catalog service will be preserved.`)) removeRatePlan.mutate(plan.id); }} title="Deactivate rate plan" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 }
               />

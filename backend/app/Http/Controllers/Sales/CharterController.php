@@ -53,6 +53,15 @@ class CharterController extends Controller
         return response()->json(['data' => $ratePlan->fresh()->load('service:id,name,description,images')]);
     }
 
+    public function destroyRatePlan(CharterRatePlan $ratePlan)
+    {
+        $ratePlan->update(['is_active' => false]);
+
+        return response()->json([
+            'message' => 'Charter rate plan deactivated. Existing bookings and the catalog service were preserved.',
+        ]);
+    }
+
     public function bookings()
     {
         return response()->json(['data' => CharterBooking::with(['ratePlan.service', 'bus', 'driver', 'invoice:id,invoice_number,status,balance'])->orderByDesc('starts_at')->limit(100)->get()]);

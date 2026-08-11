@@ -146,6 +146,18 @@ class CharterBookingTest extends TestCase
         $booking = CharterBooking::where('invoice_id', $invoiceId)->firstOrFail();
         $this->assertSame(['1A', '1B'], $booking->selected_seats);
         $this->assertSame('Ana', $booking->passengers[0]['first_name']);
+        $this->actingAs($this->user)->getJson("/api/v1/billing/{$invoiceId}")
+            ->assertOk()
+            ->assertJsonPath('data.pickup_location', 'JVD Office')
+            ->assertJsonPath('data.destination', 'Baguio City')
+            ->assertJsonPath('data.bus_id', $this->bus->id)
+            ->assertJsonPath('data.driver_id', $this->driver->id)
+            ->assertJsonPath('data.customer_email', 'client@example.com');
+        $this->assertDatabaseHas('collections', [
+            'invoice_id' => $invoiceId,
+            'pick_up' => 'JVD Office',
+            'drop_off' => 'Baguio City',
+        ]);
         $this->assertDatabaseHas('sales_order_items', [
             'service_type' => 'bus_rental',
             'fulfillment_type' => $booking->getMorphClass(),
@@ -172,6 +184,16 @@ class CharterBookingTest extends TestCase
             ->assertJsonPath('data.lead_name', 'Updated Corporate Client')
             ->assertJsonPath('data.selected_seats.0', '2A')
             ->assertJsonPath('data.passengers.0.first_name', 'Jose');
+    }
+
+    public function test_removing_a_rate_plan_deactivates_it_without_deleting_its_service(): void
+    {
+        $this->actingAs($this->user)
+            ->deleteJson("/api/v1/sales/charter-rate-plans/{$this->plan->id}")
+            ->assertOk();
+
+        $this->assertDatabaseHas('charter_rate_plans', ['id' => $this->plan->id, 'is_active' => false]);
+        $this->assertDatabaseHas('services', ['id' => $this->plan->service_id]);
     }
 
     private function payload(): array

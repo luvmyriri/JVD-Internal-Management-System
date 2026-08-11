@@ -9,6 +9,7 @@ class BillingCollectionService
 {
     public function syncCollection(Invoice $invoice)
     {
+        $invoice->loadMissing(Invoice::operationalDocumentRelations());
         $collection = $invoice->collection;
 
         if (!$collection) {
@@ -27,7 +28,9 @@ class BillingCollectionService
                 'client_name'        => $invoice->customer_name ?? 'Walk-in Customer',
                 'customer_id'        => $invoice->customer_id,
                 'date'               => $invoice->created_at->format('Y-m-d'),
-                'travel_date'        => $invoice->booking?->travel_date ?? $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
+                'travel_date'        => $invoice->travel_date ?? $invoice->due_date ?? $invoice->created_at->format('Y-m-d'),
+                'pick_up'            => $invoice->pickup_location,
+                'drop_off'           => $invoice->destination,
                 'rate'               => $invoice->total_amount,
                 'service_type'       => $serviceType,
                 'other_service_type' => $otherServiceType,
@@ -57,6 +60,11 @@ class BillingCollectionService
             }
             $collection->billing_amount    = $invoice->total_amount;
             $collection->due_date          = $invoice->due_date;
+            $collection->customer_id       = $invoice->customer_id;
+            $collection->client_name       = $invoice->customer_name ?? $collection->client_name;
+            $collection->travel_date       = $invoice->travel_date ?? $collection->travel_date;
+            $collection->pick_up            = $invoice->pickup_location ?? $collection->pick_up;
+            $collection->drop_off           = $invoice->destination ?? $collection->drop_off;
 
             // Sync payment records
             $invoicePaidAmount = $invoice->amount_received ?? 0;

@@ -162,12 +162,13 @@ class CollectionController extends Controller
             // Send updated invoice email if linked to an invoice and has customer email
             if ($collection->invoice_id) {
                 $invoice = $collection->invoice;
-                if ($invoice && $invoice->customer_email) {
+                $notificationEmail = $invoice?->notificationEmail();
+                if ($invoice && $notificationEmail) {
                     try {
                         @set_time_limit(120);
-                        Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                        Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
                     } catch (\Exception $mailEx) {
-                        \Log::error("Failed to send updated payment receipt email on update to {$invoice->customer_email}: ".$mailEx->getMessage());
+                        \Log::error("Failed to send updated payment receipt email on update to {$notificationEmail}: ".$mailEx->getMessage());
                     }
                 }
             }
@@ -209,15 +210,16 @@ class CollectionController extends Controller
         });
 
         // Send email outside of transaction
-        if ($collection->invoice_id && $collection->invoice && $collection->invoice->customer_email) {
+        if ($collection->invoice_id && $collection->invoice && $collection->invoice->notificationEmail()) {
             $invoice = $collection->invoice;
 
-            if ($invoice->customer_email) {
+            $notificationEmail = $invoice->notificationEmail();
+            if ($notificationEmail) {
                 try {
                     @set_time_limit(120);
-                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                    Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
                 } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send fully paid invoice email to {$invoice->customer_email}: ".$mailEx->getMessage());
+                    \Log::error("Failed to send fully paid invoice email to {$notificationEmail}: ".$mailEx->getMessage());
                 }
             }
         }
@@ -271,12 +273,13 @@ class CollectionController extends Controller
 
         if ($collection->invoice_id) {
             $invoice = $collection->invoice;
-            if ($invoice && $invoice->customer_email) {
+            $notificationEmail = $invoice?->notificationEmail();
+            if ($invoice && $notificationEmail) {
                 try {
                     @set_time_limit(120);
-                    Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                    Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
                 } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send updated payment receipt email on addPayment to {$invoice->customer_email}: ".$mailEx->getMessage());
+                    \Log::error("Failed to send updated payment receipt email on addPayment to {$notificationEmail}: ".$mailEx->getMessage());
                 }
             }
         }
@@ -319,8 +322,8 @@ class CollectionController extends Controller
         $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
 
         $email = null;
-        if ($collection->invoice && $collection->invoice->customer_email) {
-            $email = $collection->invoice->customer_email;
+        if ($collection->invoice && $collection->invoice->notificationEmail()) {
+            $email = $collection->invoice->notificationEmail();
         } elseif ($collection->customer && $collection->customer->email) {
             $email = $collection->customer->email;
         }
@@ -357,11 +360,12 @@ class CollectionController extends Controller
      */
     private function buildSoaInvoice(Collection $collection): array
     {
-        $collection->loadMissing(['invoice.items.service', 'customer', 'payments']);
+        $collection->loadMissing(['invoice', 'customer', 'payments']);
+        $collection->invoice?->loadMissing(Invoice::operationalDocumentRelations());
 
         $email = null;
-        if ($collection->invoice && $collection->invoice->customer_email) {
-            $email = $collection->invoice->customer_email;
+        if ($collection->invoice && $collection->invoice->notificationEmail()) {
+            $email = $collection->invoice->notificationEmail();
         } elseif ($collection->customer && $collection->customer->email) {
             $email = $collection->customer->email;
         }

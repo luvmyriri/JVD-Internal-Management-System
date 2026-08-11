@@ -66,6 +66,36 @@ class PayMongoWebhookTest extends TestCase
         $this->call('POST', '/api/v1/paymongo/webhook', [], [], [], [
             'CONTENT_TYPE' => 'application/json',
             'HTTP_PAYMONGO_SIGNATURE' => "t={$timestamp},te={$signature}",
-        ], $raw)->assertOk();
+            ], $raw)->assertOk();
+    }
+
+    public function test_gateway_overpayment_is_rejected_without_posting_a_collection_payment(): void
+    {
+        config(['services.paymongo.webhook_secret' => 'test-webhook-secret']);
+        $user = User::factory()->superAdmin()->create();
+        $invoice = Invoice::create([
+            'invoice_number' => 'INV-PAYMONGO-OVERPAY', 'customer_name' => 'Gateway Customer',
+            'subtotal' => 1, 'tax_amount' => 0, 'total_amount' => 1,
+            'amount_received' => 0, 'balance' => 1, 'status' => 'pending_payment',
+            'payment_method' => 'QR Ph', 'payment_type' => 'full', 'payment_id' => 'cs_test_overpay',
+            'created_by' => $user->id,
+        ]);
+        $payload = ['data' => ['id' => 'evt_test_overpay', 'attributes' => [
+            'type' => 'checkout_session.payment.paid',
+            'data' => ['id' => 'pay_test_overpay', 'type' => 'payment', 'attributes' => [
+                'checkout_session_id' => 'cs_test_overpay', 'amount' => 200, 'currency' => 'PHP',
+            ]],
+        ]]];
+        $raw = json_encode($payload, JSON_THROW_ON_ERROR);
+        $timestamp = time();
+        $signature = hash_hmac('sha256', $timestamp.'.'.$raw, 'test-webhook-secret');
+
+        $this->call('POST', '/api/v1/billing/webhook', [], [], [], [
+            'CONTENT_TYPE' => 'application/json',
+            'HTTP_PAYMONGO_SIGNATURE' => "t={$timestamp},te={$signature}",
+        ], $raw)->assertConflict();
+
+        $this->assertSame(0.0, (float) $invoice->fresh()->amount_received);
+        $this->assertDatabaseMissing('collection_payments', ['paymongo_payment_id' => 'pay_test_overpay']);
     }
 }

@@ -61,6 +61,15 @@ class EducationalTourController extends Controller
         return response()->json(['data' => $this->programData($program)]);
     }
 
+    public function destroyProgram(EducationalTourProgram $program)
+    {
+        $program->update(['is_active' => false]);
+
+        return response()->json([
+            'message' => 'Educational program deactivated. Existing bookings and catalog services were preserved.',
+        ]);
+    }
+
     public function quote(Request $request)
     {
         $data = $request->validate([

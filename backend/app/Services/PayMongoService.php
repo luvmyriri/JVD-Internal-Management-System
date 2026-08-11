@@ -21,11 +21,10 @@ class PayMongoService
     public function createCheckoutSession($data)
     {
         if (!$this->secretKey) {
-            Log::warning('PayMongo Secret Key not configured. Using mock response.');
+            Log::error('PayMongo checkout blocked because the secret key is not configured.');
             return [
-                'success' => true,
-                'checkout_url' => null, // No URL means it's a mock/auto-success
-                'id' => 'mock_' . uniqid()
+                'success' => false,
+                'error' => 'Online payment is temporarily unavailable. Please contact accounting.',
             ];
         }
 
@@ -42,6 +41,9 @@ class PayMongoService
                         'line_items' => $data['line_items'],
                         'payment_method_types' => $data['payment_method_types'] ?? ['gcash', 'card', 'paymaya', 'qrph'],
                         'description' => $data['description'] ?? 'JVD POS Transaction',
+                        'reference_number' => $data['reference_number'] ?? null,
+                        'success_url' => $data['success_url'] ?? config('app.frontend_url', config('app.url')),
+                        'cancel_url' => $data['cancel_url'] ?? config('app.frontend_url', config('app.url')),
                     ]
                 ]
             ]);
@@ -56,11 +58,11 @@ class PayMongoService
             }
 
             Log::error('PayMongo Session Creation Failed: ' . $response->body());
-            return ['success' => false, 'error' => $response->json()['errors'][0]['detail'] ?? 'PayMongo Error'];
+            return ['success' => false, 'error' => 'PayMongo could not create the payment checkout.'];
 
         } catch (\Exception $e) {
             Log::error('PayMongo Exception: ' . $e->getMessage());
-            return ['success' => false, 'error' => $e->getMessage()];
+            return ['success' => false, 'error' => 'PayMongo could not be reached. Please try again.'];
         }
     }
 

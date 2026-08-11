@@ -363,7 +363,7 @@ export default function EducationalTours() {
   });
 
   const removeProgram = useMutation({
-    mutationFn: (id: number) => billingApi.deleteService(id),
+    mutationFn: (id: number) => educationalTourApi.deleteProgram(id),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['educational-programs'] });
       await queryClient.invalidateQueries({ queryKey: ['billing-services'] });
@@ -478,7 +478,7 @@ export default function EducationalTours() {
             controls={
               <div className="flex gap-1">
                 <button type="button" onClick={() => openEditProgram(program)} title="Edit program" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>
-                <button type="button" onClick={() => { if (window.confirm(`Delete educational program "${program.name}"?`)) removeProgram.mutate((program as any).service_id || program.id); }} title="Delete program" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { if (window.confirm(`Deactivate educational program "${program.name}"? Existing bookings and catalog services will be preserved.`)) removeProgram.mutate(program.id); }} title="Deactivate program" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
               </div>
             }
           />)}

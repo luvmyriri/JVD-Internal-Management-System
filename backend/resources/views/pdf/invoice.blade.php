@@ -78,7 +78,7 @@
                 <h3 style="margin: 0; color: #475569; font-size: 13px;">OFFICIAL INVOICE</h3>
                 <div style="margin-top: 5px; font-weight: 900; color: #0f172a; font-size: 10px;">{{ $invoice->customer_name }}</div>
                 <div style="font-size: 8px;">{{ $invoice->customer_address }}</div>
-                <div style="font-size: 8px;">{{ $invoice->customer_email }}</div>
+                <div style="font-size: 8px;">{{ $invoice->notificationEmail() }}</div>
                 <div style="margin-top: 5px; font-size: 9px; font-weight: 900;">Invoice #: {{ $invoice->invoice_number }}</div>
                 <div style="font-size: 8px;">Date: {{ $invoice->created_at->format('M d, Y') }}</div>
             </td>

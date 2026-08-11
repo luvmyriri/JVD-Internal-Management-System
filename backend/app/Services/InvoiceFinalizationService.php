@@ -525,16 +525,21 @@ class InvoiceFinalizationService
             $payData = [
                 'line_items' => $this->buildPayMongoLineItems($invoice, $processedItems),
                 'description' => "JVD Order #{$invoice->invoice_number}",
+                'reference_number' => $invoice->invoice_number,
                 'payment_method_types' => $invoice->payment_method === 'GCash' ? ['gcash', 'qrph'] : ['card', 'paymaya', 'dob', 'qrph', 'gcash'],
             ];
 
             $session = $paymongo->createCheckoutSession($payData);
-            if ($session['success']) {
-                $invoice->update([
-                    'payment_url' => $session['checkout_url'],
-                    'payment_id' => $session['id'],
+            if (! $session['success'] || empty($session['checkout_url']) || empty($session['id'])) {
+                throw ValidationException::withMessages([
+                    'payment_method' => [$session['error'] ?? 'Online payment checkout could not be created.'],
                 ]);
             }
+
+            $invoice->update([
+                'payment_url' => $session['checkout_url'],
+                'payment_id' => $session['id'],
+            ]);
         }
 
         $hasBusService = false;
@@ -819,19 +824,20 @@ class InvoiceFinalizationService
         app(\App\Services\SalesOrderService::class)->captureInvoice($invoice, ($context['actor'] ?? null)?->id ?? $invoice->created_by);
         app(\App\Services\BillingCollectionService::class)->syncCollection($invoice);
 
-        if ($invoice->customer_email) {
+        $notificationEmail = $invoice->notificationEmail();
+        if ($notificationEmail) {
             try {
                 @set_time_limit(120);
-                Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
             } catch (\Exception $mailEx) {
-                \Log::error("Failed to send POS transaction email to {$invoice->customer_email}: " . $mailEx->getMessage());
+                \Log::error("Failed to send POS transaction email to {$notificationEmail}: " . $mailEx->getMessage());
             }
 
             if (($context['source'] ?? null) === 'contract') {
                 try {
-                    Mail::to($invoice->customer_email)->send(new BookingConfirmationMail($invoice, $context['contract'] ?? null));
+                    Mail::to($notificationEmail)->send(new BookingConfirmationMail($invoice, $context['contract'] ?? null));
                 } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send booking confirmation email to {$invoice->customer_email}: " . $mailEx->getMessage());
+                    \Log::error("Failed to send booking confirmation email to {$notificationEmail}: " . $mailEx->getMessage());
                 }
             }
         }

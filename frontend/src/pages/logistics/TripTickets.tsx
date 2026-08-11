@@ -45,7 +45,9 @@ function printTripTicket(ticket: TripTicket) {
   const win = window.open('', '_blank', 'width=800,height=1100');
   if (!win) return;
 
-  const driverName = ticket.driver?.name || 'TBA';
+  const driverName = ticket.driver?.name
+    || [ticket.driver?.first_name, ticket.driver?.last_name].filter(Boolean).join(' ')
+    || 'TBA';
   const plateNo = ticket.bus?.plate_number || ticket.plate_no || 'TBA';
   const unitBus = ticket.bus?.plate_number || plateNo;
 

@@ -18,18 +18,12 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
     use Queueable, SerializesModels;
 
     public $invoice;
-    public $gcashLink;
-
     /**
      * Create a new message instance.
      */
     public function __construct(Invoice $invoice)
     {
         $this->invoice = $invoice->load(Invoice::operationalDocumentRelations());
-        
-        // Generate ready-to-use GCash payment deep link
-        $corporatePhone = '09764711294'; // Standard corporate GCash number
-        $this->gcashLink = "https://getqr.gcash.com/pay?account={$corporatePhone}&amount=" . urlencode($invoice->balance) . "&note=" . urlencode("INV-{$invoice->invoice_number}");
     }
 
     /**

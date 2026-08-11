@@ -11,6 +11,7 @@ use App\Http\Resources\InvoiceResource;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Booking;
 use App\Models\CollectionPayment;
+use App\Models\Customer;
 use App\Models\CustomTransactionDetail;
 use App\Models\IntegrationEvent;
 use App\Models\Invoice;
@@ -366,6 +367,8 @@ class BillingService
                 $request->customer_contact,
                 $request->customer_address
             );
+            $customer = $customerId ? Customer::find($customerId) : null;
+            $customerName = $request->customer_name ?: ($customer ? trim(implode(' ', array_filter([$customer->first_name, $customer->middle_name, $customer->last_name, $customer->suffix]))) : null);
 
             $finalizer->assertPassportCasesCanBeBilled(
                 collect($validated['items'])->pluck('passport_case_id')->all(),
@@ -378,10 +381,10 @@ class BillingService
             $invoice = Invoice::create([
                 'invoice_number' => 'INV-'.strtoupper(Str::random(8)),
                 'customer_id' => $customerId,
-                'customer_name' => $request->customer_name,
-                'customer_address' => $request->customer_address,
-                'customer_email' => $request->customer_email,
-                'customer_contact' => $request->customer_contact,
+                'customer_name' => $customerName,
+                'customer_address' => $request->customer_address ?: $customer?->address,
+                'customer_email' => $request->customer_email ?: $customer?->email,
+                'customer_contact' => $request->customer_contact ?: $customer?->phone,
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
@@ -496,10 +499,17 @@ class BillingService
         } catch (\Exception $e) {
             DB::rollBack();
 
+            $errorReference = (string) Str::uuid();
+            \Log::error('Invoice checkout failed.', [
+                'error_reference' => $errorReference,
+                'exception' => $e,
+                'user_id' => auth()->id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Error: '.$e->getMessage().' in '.$e->getFile().' on line '.$e->getLine(),
-                'error' => $e->getMessage(),
+                'message' => 'Checkout could not be completed. No payment was recorded. Please contact support with reference '.$errorReference.'.',
+                'error_reference' => $errorReference,
             ], 500);
         }
     }
@@ -542,12 +552,13 @@ class BillingService
             app(BillingCollectionService::class)->syncCollection($invoice);
         });
 
-        if ($invoice->customer_email) {
+        $notificationEmail = $invoice->notificationEmail();
+        if ($notificationEmail) {
             try {
                 @set_time_limit(120);
-                Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
             } catch (\Exception $mailEx) {
-                \Log::error("Failed to send POS status update email to {$invoice->customer_email}: ".$mailEx->getMessage());
+                \Log::error("Failed to send POS status update email to {$notificationEmail}: ".$mailEx->getMessage());
             }
         }
 
@@ -652,7 +663,30 @@ class BillingService
                 if ($invoice) {
                     $amountPaidCentavos = $sessionData['amount'] ?? 0;
                     $amountPaidPHP = $amountPaidCentavos / 100;
+                    $currency = strtoupper((string) ($sessionData['currency'] ?? 'PHP'));
                     $eventId = $providerEventId;
+
+                    if (! $providerPaymentId || $currency !== 'PHP' || $amountPaidPHP <= 0) {
+                        $eventReceipt->update([
+                            'status' => 'failed',
+                            'error' => 'PayMongo payment payload was incomplete or used an unsupported currency.',
+                            'invoice_id' => $invoice->id,
+                            'processed_at' => now(),
+                        ]);
+
+                        return response()->json(['error' => 'Invalid payment payload.'], 422);
+                    }
+
+                    if ($amountPaidPHP - (float) $invoice->balance > 0.01) {
+                        $eventReceipt->update([
+                            'status' => 'failed',
+                            'error' => 'PayMongo payment exceeds the invoice outstanding balance.',
+                            'invoice_id' => $invoice->id,
+                            'processed_at' => now(),
+                        ]);
+
+                        return response()->json(['error' => 'Payment amount does not match the invoice balance.'], 409);
+                    }
 
                     // PayMongo retries webhooks. The provider event id is the accounting
                     // idempotency key: only the first delivery may create a payment or post AR.
@@ -690,12 +724,13 @@ class BillingService
                     app(SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
                     $eventReceipt->update(['status' => 'processed', 'invoice_id' => $invoice->id, 'processed_at' => now()]);
 
-                    if ($invoice->customer_email) {
+                    $notificationEmail = $invoice->notificationEmail();
+                    if ($notificationEmail) {
                         try {
                             @set_time_limit(120);
-                            Mail::to($invoice->customer_email)->send(new TransactionNotificationMail($invoice));
+                            Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
                         } catch (\Exception $mailEx) {
-                            \Log::error("Failed to send updated payment receipt email via webhook to {$invoice->customer_email}: ".$mailEx->getMessage());
+                            \Log::error("Failed to send updated payment receipt email via webhook to {$notificationEmail}: ".$mailEx->getMessage());
                         }
                     }
 
