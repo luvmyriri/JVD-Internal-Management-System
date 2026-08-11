@@ -53,6 +53,11 @@ return [
         'rates_url' => env('TRB_TOLL_RATES_URL', 'https://trb.gov.ph/index.php'),
     ],
 
+    'toll_matrix' => [
+        'source_url' => env('TOLL_MATRIX_SOURCE_URL', 'https://toll.ph/matrix'),
+        'data_file' => resource_path('data/toll-matrix-class-2.json'),
+    ],
+
     'tollguru' => [
         'api_key' => env('TOLLGURU_API_KEY'),
         'base_url' => env('TOLLGURU_BASE_URL', 'https://apis.tollguru.com/toll/v2'),

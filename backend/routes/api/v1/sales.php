@@ -25,6 +25,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/location-search', [CharterController::class, 'locationSearch'])->name('sales.location-search');
         Route::get('/official-location-search', [CharterController::class, 'officialLocationSearch'])->name('sales.official-location-search');
         Route::post('/charter-route-estimate', [CharterController::class, 'routeEstimate'])->name('sales.charters.route-estimate');
+        Route::get('/toll-matrix', [CharterController::class, 'tollMatrix'])->name('sales.tolls.matrix');
+        Route::post('/toll-matrix/calculate', [CharterController::class, 'calculateTolls'])->name('sales.tolls.calculate');
         Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
         Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
         Route::get('/educational-bookings/{booking}/manifest', [EducationalTourController::class, 'manifest'])->name('sales.educational.manifest');

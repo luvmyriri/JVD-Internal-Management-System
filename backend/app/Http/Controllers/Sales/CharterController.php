@@ -23,6 +23,7 @@ use App\Services\ResourceAllocationService;
 use App\Services\RouteEstimateService;
 use App\Services\SalesLifecycleService;
 use App\Services\SalesOrderService;
+use App\Services\TollMatrixService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -34,6 +35,7 @@ class CharterController extends Controller
         private readonly CharterRateCalculator $rateCalculator,
         private readonly RouteEstimateService $routes,
         private readonly PsgcService $psgc,
+        private readonly TollMatrixService $tollMatrix,
     ) {}
 
     public function ratePlans()
@@ -108,6 +110,23 @@ class CharterController extends Controller
         ]);
 
         return response()->json(['data' => $this->routes->estimate($data)]);
+    }
+
+    public function tollMatrix()
+    {
+        return response()->json(['data' => $this->tollMatrix->catalog()]);
+    }
+
+    public function calculateTolls(Request $request)
+    {
+        $data = $request->validate([
+            'segments' => ['required', 'array', 'min:1', 'max:10'],
+            'segments.*.network_id' => ['required', 'string', 'max:50'],
+            'segments.*.entry_point_id' => ['required', 'integer'],
+            'segments.*.exit_point_id' => ['required', 'integer'],
+        ]);
+
+        return response()->json(['data' => $this->tollMatrix->calculate($data['segments'])]);
     }
 
     public function bookings()

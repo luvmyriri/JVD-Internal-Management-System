@@ -23,6 +23,7 @@ import { getStorageUrl } from '../../utils';
 import PackageCatalogCard from './components/PackageCatalogCard';
 import BookingWorkspaceHeader from './components/BookingWorkspaceHeader';
 import BusCharterQuotationModal from './components/BusCharterQuotationModal';
+import TollMatrixPicker from './components/TollMatrixPicker';
 import { LuFileText } from 'react-icons/lu';
 
 
@@ -420,6 +421,7 @@ export default function CharterSales() {
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700"><Fuel className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Editable trip costs</h2><p className="text-xs text-slate-500">Fuel starts from total km ÷ 2.5 km/L. Override any figure when operations knows better.</p></div></div>
+              <TollMatrixPicker onApply={result => { setTollFeeEst(String(result.toll_gate_fees)); setEasytripEst(String(result.easytrip)); setAutosweepEst(String(result.autosweep)); }} />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="text-xs font-bold text-slate-600">Estimated liters<input type="number" min="0" step="0.01" value={estimatedLiters} onChange={event => { const liters = event.target.value; setEstimatedLiters(liters); setDieselCost(String((Number(liters) || 0) * (Number(dieselPricePerL) || 0))); }} className={inputClass} /></label>
                 {moneyInput('Diesel price / liter', dieselPricePerL, value => { setDieselPricePerL(value); setDieselCost(String((Number(estimatedLiters) || 0) * (Number(value) || 0))); }, 'border-amber-200 bg-amber-50')}

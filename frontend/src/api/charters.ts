@@ -61,6 +61,44 @@ export interface TollEstimate {
   message: string;
 }
 
+export interface TollMatrixPoint {
+  id: number;
+  name: string;
+  expressway: string;
+  sequence: number;
+}
+
+export interface TollMatrixNetwork {
+  id: string;
+  name: string;
+  rfid: 'easytrip' | 'autosweep' | 'toll_gate_fees';
+  points: TollMatrixPoint[];
+}
+
+export interface TollMatrixCatalog {
+  vehicle_class: number;
+  vehicle_description: string;
+  source_name: string;
+  source_url: string;
+  official_verification_url: string;
+  synced_at: string;
+  networks: TollMatrixNetwork[];
+}
+
+export interface TollMatrixCalculation {
+  provider: string;
+  mode: 'matrix';
+  currency: 'PHP';
+  toll_gate_fees: number;
+  easytrip: number;
+  autosweep: number;
+  total: number;
+  segments: Array<{ network_id: string; network: string; entry_point: string; exit_point: string; rfid: string; fee: number }>;
+  source_url: string;
+  official_verification_url: string;
+  synced_at: string;
+}
+
 export interface RouteEstimate {
   garage_location: string;
   pickup_location: string;
@@ -132,6 +170,8 @@ export const charterApi = {
   searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   searchOfficialLocations: (q: string) => client.get('/sales/official-location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   estimateRoute: (data: Record<string, unknown>) => client.post('/sales/charter-route-estimate', data).then(res => res.data.data as RouteEstimate),
+  tollMatrix: () => client.get('/sales/toll-matrix').then(res => res.data.data as TollMatrixCatalog),
+  calculateTolls: (segments: Array<{ network_id: string; entry_point_id: number; exit_point_id: number }>) => client.post('/sales/toll-matrix/calculate', { segments }).then(res => res.data.data as TollMatrixCalculation),
   createRatePlan: (data: Record<string, unknown>) => client.post('/sales/charter-rate-plans', data).then(res => res.data.data as CharterRatePlan),
   updateRatePlan: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-rate-plans/${id}`, data).then(res => res.data.data as CharterRatePlan),
   deleteRatePlan: (id: number) => client.delete(`/sales/charter-rate-plans/${id}`).then(res => res.data),
