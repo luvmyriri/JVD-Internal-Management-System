@@ -117,6 +117,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [amountReceived, setAmountReceived] = useState<number | string>('');
   const [receiptAmountReceived, setReceiptAmountReceived] = useState<number | string>('');
   const [receiptChange, setReceiptChange] = useState<number>(0);
+  const [isEmailingInvoice, setIsEmailingInvoice] = useState(false);
+  const [invoiceEmailFeedback, setInvoiceEmailFeedback] = useState<{
+    type: 'success' | 'error';
+    message: string;
+  } | null>(null);
   const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
   const [vatRate, setVatRate] = useState<number>(0.12);
   const [checkoutError, setCheckoutError] = useState<{
@@ -400,6 +405,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       setLastInvoice(response.data.data);
       setReceiptAmountReceived(amountReceived);
       setReceiptChange(change);
+      setInvoiceEmailFeedback(null);
       setShowReceipt(true);
 
       if (response.data.data.payment_url) {
@@ -427,6 +433,36 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       console.error('Checkout error reference:', data?.error_reference || 'not provided');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleEmailInvoice = async () => {
+    if (!lastInvoice?.id || isEmailingInvoice) return;
+
+    const recipient = String(lastInvoice.customer_email || '').trim();
+    if (!recipient) {
+      setInvoiceEmailFeedback({
+        type: 'error',
+        message: 'Add a valid customer email to the invoice before sending it.',
+      });
+      return;
+    }
+
+    setIsEmailingInvoice(true);
+    setInvoiceEmailFeedback(null);
+    try {
+      await billingApi.sendEmail(lastInvoice.id, recipient);
+      setInvoiceEmailFeedback({
+        type: 'success',
+        message: `Invoice emailed to ${recipient}.`,
+      });
+    } catch (err: any) {
+      setInvoiceEmailFeedback({
+        type: 'error',
+        message: err?.response?.data?.message || 'The invoice could not be emailed. Please try again.',
+      });
+    } finally {
+      setIsEmailingInvoice(false);
     }
   };
 
@@ -898,8 +934,8 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       {showReceipt && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-md duration-300">
           <div className="bg-white dark:bg-gray-900 w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden max-h-[95vh] flex flex-col">
-            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0 no-print">
-              <div className="flex items-center gap-3">
+            <div className="p-6 border-b border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-4 bg-white dark:bg-gray-900 shrink-0 no-print">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <div className="w-12 h-12 bg-emerald-500 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
                   <LuCheck className="w-7 h-7" />
                 </div>
@@ -908,7 +944,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-widest">Transaction Successfully Processed</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
                 <button
                   onClick={() => window.print()}
                   className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
@@ -916,13 +952,42 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   <LuPrinter className="w-4 h-4" /> Print Invoice
                 </button>
                 <button
+                  type="button"
+                  onClick={handleEmailInvoice}
+                  disabled={isEmailingInvoice || !lastInvoice?.customer_email}
+                  aria-label={lastInvoice?.customer_email
+                    ? `Email invoice to ${lastInvoice.customer_email}`
+                    : 'Email unavailable because the invoice has no customer email'}
+                  className="p-3 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all border border-blue-100 flex items-center gap-2 font-bold text-xs uppercase tracking-widest disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:border-gray-200"
+                >
+                  {isEmailingInvoice
+                    ? <LuLoaderCircle className="w-4 h-4 animate-spin" aria-hidden="true" />
+                    : <LuMail className="w-4 h-4" aria-hidden="true" />}
+                  {isEmailingInvoice ? 'Sending' : 'Email Invoice'}
+                </button>
+                <button
                   onClick={() => setShowReceipt(false)}
+                  aria-label="Close invoice"
                   className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 dark:bg-gray-800 rounded-2xl transition-all text-gray-405 hover:text-gray-900 dark:text-white"
                 >
                   <LuX className="w-5 h-5" />
                 </button>
               </div>
             </div>
+
+            {invoiceEmailFeedback && (
+              <div
+                role={invoiceEmailFeedback.type === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+                className={`no-print px-6 py-3 text-sm font-semibold border-b ${
+                  invoiceEmailFeedback.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
+                    : 'bg-rose-50 text-rose-800 border-rose-100'
+                }`}
+              >
+                {invoiceEmailFeedback.message}
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-8 bg-gray-100 dark:bg-gray-950 flex justify-center items-start print-wrapper">
               <div
