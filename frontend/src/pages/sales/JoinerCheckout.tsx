@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import { catalogApi, type JoinerDeparture, type JoinerReservationResult } from '../../api/catalog';
 import { Button } from '../../components/ds';
 import BusLayout from '../../components/ui/BusLayout';
-import SalesCheckout, { type CartItem } from './SalesCheckout';
+import SalesCheckout, { type CartItem, type SalesCheckoutSubmission } from './SalesCheckout';
 
 type Passenger = { seat_code: string; first_name: string; last_name: string; passenger_type: 'adult' | 'child'; date_of_birth: string; emergency_contact: string };
 
@@ -24,6 +24,7 @@ export default function JoinerCheckout() {
   const [isLeadAsPassenger1, setIsLeadAsPassenger1] = useState(true);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
   const [result, setResult] = useState<{ reference: string; invoice: any } | null>(null);
+  const [pendingHold, setPendingHold] = useState<{ departureId: number; seatKey: string; reservationId: number } | null>(null);
 
   const { data: departures = [], isFetching } = useQuery<JoinerDeparture[]>({
     queryKey: ['joiner-departures'],
@@ -199,6 +200,61 @@ export default function JoinerCheckout() {
     }];
   }, [departure, selectedSeats, passengers, subtotal]);
 
+  const handleJoinerCheckout = async (submission: SalesCheckoutSubmission) => {
+    if (!departure || selectedSeats.length === 0) {
+      throw new Error('Choose a departure and at least one available seat before checkout.');
+    }
+    if (passengers.length !== selectedSeats.length || passengers.some(passenger => !passenger.first_name.trim() || !passenger.last_name.trim())) {
+      throw new Error('Enter the first and last name of every selected passenger before checkout.');
+    }
+
+    const seatCodes = Array.from(new Set(selectedSeats.map(normalizeSeatCode)))
+      .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    const seatKey = seatCodes.join('|');
+    let reservationId = pendingHold?.departureId === departure.id && pendingHold.seatKey === seatKey
+      ? pendingHold.reservationId
+      : null;
+
+    if (!reservationId) {
+      const held = await catalogApi.holdJoinerSeats(departure.id, {
+        customer_id: submission.customerId || undefined,
+        lead_name: submission.customerName,
+        lead_email: submission.customerEmail || undefined,
+        lead_contact: submission.customerContact || undefined,
+        passenger_count: passengers.length,
+        seat_codes: seatCodes,
+      });
+      reservationId = held.id;
+      setPendingHold({ departureId: departure.id, seatKey, reservationId });
+    }
+
+    try {
+      const confirmed = await catalogApi.confirmJoinerReservation(reservationId, {
+        passengers: passengers.map(passenger => ({
+          seat_code: normalizeSeatCode(passenger.seat_code),
+          first_name: passenger.first_name.trim(),
+          last_name: passenger.last_name.trim(),
+          passenger_type: passenger.passenger_type,
+          date_of_birth: passenger.date_of_birth || undefined,
+          emergency_contact: passenger.emergency_contact || undefined,
+        })),
+        payment_method: submission.paymentMethod,
+        payment_type: submission.paymentType,
+        amount_received: submission.amountReceived,
+      });
+      if (!confirmed.invoice) {
+        throw new Error('The reservation was confirmed but its invoice could not be loaded. Refresh the departure before retrying.');
+      }
+      setPendingHold(null);
+      return confirmed.invoice;
+    } catch (error: any) {
+      if (error?.response?.data?.errors?.reservation) {
+        setPendingHold(null);
+      }
+      throw error;
+    }
+  };
+
   if (result) return <div className="mx-auto max-w-2xl py-12"><div className="rounded-[32px] border border-emerald-200 bg-surface p-8 text-center shadow-xl"><CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" /><p className="mt-5 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-600">Booking confirmed</p><h1 className="mt-2 text-3xl font-black text-ink">Seats are secured.</h1><p className="mt-3 text-sm text-muted">Reservation {result.reference}</p><div className="mt-7 rounded-2xl bg-surface-alt p-5"><p className="text-xs font-bold uppercase tracking-wider text-muted">Invoice</p><p className="mt-1 text-2xl font-black text-ink">{result.invoice?.invoice_number}</p><p className="mt-1 text-sm text-muted">₱{Number(result.invoice?.total_amount ?? 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })} · {result.invoice?.status}</p></div><div className="mt-7 flex justify-center gap-3"><Button variant="ghost" onClick={() => navigate('/sales/departures')}>Departure board</Button><Button onClick={() => navigate(`/accounting/billing`)}>Open billing</Button></div></div></div>;
 
   return <div className="w-full space-y-5 pb-12">
@@ -290,6 +346,7 @@ export default function JoinerCheckout() {
         <SalesCheckout
           cart={cart}
           customerPreset={customerPreset}
+          checkoutHandler={handleJoinerCheckout}
           removeFromCart={() => {}}
           updateQuantity={() => {}}
           clearCart={() => {}}

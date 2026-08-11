@@ -2,12 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Models\Booking;
+use App\Models\Bus;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\JoinerDepartureSeat;
+use App\Models\JoinerPassenger;
 use App\Models\JoinerReservation;
 use App\Models\Service;
 use App\Models\User;
-use App\Models\Bus;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -16,6 +20,7 @@ class JoinerReservationTest extends TestCase
     use RefreshDatabase;
 
     private User $user;
+
     private Service $service;
 
     protected function setUp(): void
@@ -207,6 +212,61 @@ class JoinerReservationTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
+    public function test_legacy_generic_joiner_checkout_is_repaired_for_the_passenger_manifest(): void
+    {
+        $departure = $this->departure();
+        $invoice = Invoice::create([
+            'invoice_number' => 'INV-LEGACY-JOINER',
+            'customer_name' => 'Val Javez Lamsen',
+            'customer_email' => 'val@example.test',
+            'customer_contact' => '09171234567',
+            'subtotal' => 4500,
+            'tax_amount' => 540,
+            'total_amount' => 5040,
+            'amount_received' => 5040,
+            'change' => 0,
+            'payment_method' => 'Cash',
+            'payment_type' => 'full',
+            'balance' => 0,
+            'status' => 'paid',
+            'created_by' => $this->user->id,
+        ]);
+        InvoiceItem::create([
+            'invoice_id' => $invoice->id,
+            'service_id' => $this->service->id,
+            'service_type' => 'joiner_tour',
+            'item_description' => "Seat A1 (1 adult, 0 child). Passengers: Val Javez Lamsen. Tour Code: {$departure->code}.",
+            'quantity' => 1,
+            'unit_price' => 4500,
+            'total_price' => 4500,
+            'adults' => 1,
+            'children' => 0,
+        ]);
+        Booking::create([
+            'invoice_id' => $invoice->id,
+            'seat_map' => ['A1'],
+            'travel_date' => $departure->starts_at->toDateString(),
+            'tour_code' => $departure->code,
+            'pax_count' => 1,
+            'status' => 'confirmed',
+        ]);
+        JoinerDepartureSeat::where('departure_id', $departure->id)->where('seat_code', 'A1')->update(['status' => 'confirmed']);
+
+        $migration = require database_path('migrations/2026_08_12_020000_repair_legacy_joiner_manifest_records.php');
+        $migration->up();
+
+        $reservation = JoinerReservation::where('invoice_id', $invoice->id)->firstOrFail();
+        $this->assertSame('confirmed', $reservation->status);
+        $this->assertDatabaseHas('joiner_passengers', [
+            'reservation_id' => $reservation->id,
+            'first_name' => 'Val',
+            'last_name' => 'Javez Lamsen',
+            'passenger_type' => 'adult',
+        ]);
+        $this->assertSame($reservation->id, JoinerDepartureSeat::where('departure_id', $departure->id)->where('seat_code', 'A1')->value('reservation_id'));
+        $this->assertSame(1, JoinerPassenger::where('reservation_id', $reservation->id)->count());
+    }
+
     private function departure(): JoinerDeparture
     {
         $departure = JoinerDeparture::create([
@@ -222,6 +282,7 @@ class JoinerReservationTest extends TestCase
         foreach (['A1', 'A2', 'B1'] as $code) {
             JoinerDepartureSeat::create(['departure_id' => $departure->id, 'seat_code' => $code]);
         }
+
         return $departure;
     }
 }

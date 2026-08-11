@@ -101,9 +101,22 @@ export interface SalesCheckoutProps {
   onEditCartItem?: (item: CartItem) => void;
   customerPreset?: CheckoutCustomerPreset | null;
   onCheckoutSuccess?: (invoice: any) => void;
+  checkoutHandler?: (submission: SalesCheckoutSubmission) => Promise<any>;
 }
 
-export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart, onEditCartItem, customerPreset, onCheckoutSuccess }: SalesCheckoutProps) {
+export interface SalesCheckoutSubmission {
+  customerId: number | null;
+  customerName: string;
+  customerAddress: string;
+  customerEmail: string;
+  customerContact: string;
+  paymentMethod: string;
+  paymentType: 'full' | 'downpayment';
+  amountReceived: number;
+  taxRate: number;
+}
+
+export default function SalesCheckout({ cart, removeFromCart, updateQuantity, clearCart, onEditCartItem, customerPreset, onCheckoutSuccess, checkoutHandler }: SalesCheckoutProps) {
 
   // State
   const [customerName, setCustomerName] = useState('');
@@ -377,43 +390,58 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
         return;
       }
 
-      const response = await billingApi.createInvoice({
-        customer_id: selectedCustomerId || undefined,
-        customer_name: customerName || undefined,
-        customer_address: customerAddress || undefined,
-        customer_email: customerEmail || undefined,
-        customer_contact: customerContact ? customerContact.replace(/[-\s()]/g, '') : undefined,
-        payment_method: paymentMethod,
-        payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
-        amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
-        change: paymentMethod === 'Cash' ? Number(change) : undefined,
-        tax_rate: vatRate,
-        items: invoiceItems(),
-        bus_id: cart.find(item => item.busId)?.busId || null,
-        driver_id: cart.find(item => item.driverId)?.driverId || null,
-        seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
-        travel_date: cart.find(item => item.travelDate)?.travelDate || null,
-        pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation || null,
-        tour_code: cart.find(item => item.tourCode || item.destination)?.tourCode
-          || cart.find(item => item.destination)?.destination
-          || null,
-        pax_count: cart.find(item => item.paxCount)?.paxCount || null,
-        arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
-        departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
-      } as any);
+      const normalizedPaymentType = paymentType === 'half' ? 'downpayment' : paymentType;
+      const normalizedContact = customerContact ? customerContact.replace(/[-\s()]/g, '') : '';
+      const normalizedAmountReceived = Number(parseMoneyInput(String(amountReceived || 0)));
+      const invoice = checkoutHandler
+        ? await checkoutHandler({
+            customerId: selectedCustomerId,
+            customerName,
+            customerAddress,
+            customerEmail,
+            customerContact: normalizedContact,
+            paymentMethod,
+            paymentType: normalizedPaymentType,
+            amountReceived: normalizedAmountReceived,
+            taxRate: vatRate,
+          })
+        : (await billingApi.createInvoice({
+            customer_id: selectedCustomerId || undefined,
+            customer_name: customerName || undefined,
+            customer_address: customerAddress || undefined,
+            customer_email: customerEmail || undefined,
+            customer_contact: normalizedContact || undefined,
+            payment_method: paymentMethod,
+            payment_type: normalizedPaymentType,
+            amount_received: paymentMethod === 'Cash' ? normalizedAmountReceived : undefined,
+            change: paymentMethod === 'Cash' ? Number(change) : undefined,
+            tax_rate: vatRate,
+            items: invoiceItems(),
+            bus_id: cart.find(item => item.busId)?.busId || null,
+            driver_id: cart.find(item => item.driverId)?.driverId || null,
+            seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
+            travel_date: cart.find(item => item.travelDate)?.travelDate || null,
+            pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation || null,
+            tour_code: cart.find(item => item.tourCode || item.destination)?.tourCode
+              || cart.find(item => item.destination)?.destination
+              || null,
+            pax_count: cart.find(item => item.paxCount)?.paxCount || null,
+            arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
+            departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
+          } as any)).data.data;
 
-      setLastInvoice(response.data.data);
+      setLastInvoice(invoice);
       setReceiptAmountReceived(amountReceived);
       setReceiptChange(change);
       setInvoiceEmailFeedback(null);
       setShowReceipt(true);
 
-      if (response.data.data.payment_url) {
-        window.open(response.data.data.payment_url, '_blank');
+      if (invoice.payment_url) {
+        window.open(invoice.payment_url, '_blank');
       }
 
       if (onCheckoutSuccess) {
-        onCheckoutSuccess(response.data.data);
+        onCheckoutSuccess(invoice);
       }
 
       resetCheckoutForm();
