@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>Statement of Account</title>
     <style>
+        @page { size: A4; margin: 12mm 14mm 22mm; }
         * { box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 24px 28px; font-size: 11px; line-height: 1.6; background: #fff; }
 
@@ -70,9 +71,13 @@
         .footer-left  { width: 50%; vertical-align: top; }
         .footer-right { width: 50%; text-align: right; vertical-align: top; }
         .section-title { font-size: 9.5px; font-weight: 900; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+        body > .header-table, body > .title-bar, body > .footer { display: none; }
+        @include('pdf.partials.brand-styles')
     </style>
 </head>
 <body>
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Statement of Account', 'documentReference' => $invoice->invoice_number, 'documentDate' => $invoice->created_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Statement of account. Please contact JVD Accounting to confirm authorized payment channels before remitting funds.'])
 
     @php
         $isPartial = in_array($invoice->status, ['partial', 'downpayment']);
@@ -308,11 +313,8 @@
         <table class="footer-table">
             <tr>
                 <td class="footer-left">
-                    <strong>Bank Transfer:</strong><br>
-                    UnionBank of the Philippines<br>
-                    Account Name: JVD Event and Travel Management Company<br>
-                    Account Number: 1029-4829-1928<br><br>
-                    <strong>GCash:</strong> 0976 471 1294
+                    <strong>Payment instructions:</strong><br>
+                    Please contact JVD Accounting for the currently authorized payment channels before sending payment.
                 </td>
                 <td class="footer-right">
                     <strong>For inquiries:</strong><br>

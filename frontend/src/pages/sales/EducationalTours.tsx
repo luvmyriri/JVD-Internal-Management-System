@@ -269,43 +269,63 @@ export default function EducationalTours() {
 
   const selectedProgram = programs.find(p => p.id === Number(booking.program_id));
 
+  // A selected-seat booking prices the people actually occupying seats. Tour
+  // guides are part of the traveler total, so the remainder is the billable
+  // student count used by the server quote and final booking capture.
+  useEffect(() => {
+    if (bookingMode !== 'selected_seats' || selectedSeats.length === 0 || !selectedProgram) return;
+
+    const guideCount = Math.max(0, Number(booking.tour_guide_count || 0));
+    const selectedStudentCount = selectedSeats.length - guideCount;
+    if (selectedStudentCount < Number(selectedProgram.minimum_students || 1)) return;
+
+    setBooking(current => current.student_count === String(selectedStudentCount)
+      ? current
+      : { ...current, student_count: String(selectedStudentCount) });
+  }, [bookingMode, selectedSeats.length, selectedProgram, booking.tour_guide_count]);
+
   // Auto-fill bus & driver allocations when resources load or travelers change
   useEffect(() => {
-    if (resources?.buses && resources.buses.length > 0) {
-      const currentAllocatedCount = busAllocations.length;
-      if (currentAllocatedCount < requiredBuses) {
-        const newAllocs: AllocatedBus[] = [];
-        const newAssigns: Assignment[] = [];
+    if (!resources?.buses?.length) return;
 
-        for (let i = 0; i < requiredBuses; i++) {
-          const fleetBus = resources.buses[i % resources.buses.length];
-          const fleetDriver = resources.drivers[i % (resources.drivers.length || 1)];
+    setAssignments(current => {
+      let remaining = travelers;
+      const next = Array.from({ length: requiredBuses }, (_, index) => {
+        const existing = current[index];
+        const existingBus = resources.buses.find(bus => bus.id === Number(existing?.bus_id));
+        const fallbackBus = resources.buses[index];
+        const fleetBus = existingBus || fallbackBus;
+        const existingDriver = resources.drivers.find(driver => driver.id === Number(existing?.driver_id));
+        const fallbackDriver = resources.drivers[index];
+        const capacity = Number(fleetBus?.seating_capacity || 49);
+        const plannedPassengers = Math.min(capacity, Math.max(0, remaining));
+        remaining -= plannedPassengers;
 
-          if (fleetBus) {
-            newAllocs.push({
-              bus_id: fleetBus.id,
-              bus_name: `${fleetBus.model || 'Tourist Bus'} (${fleetBus.seating_capacity || 49} Seater)`,
-              plate_number: fleetBus.plate_number,
-              capacity: fleetBus.seating_capacity || 49,
-              driver_id: fleetDriver ? fleetDriver.id : undefined,
-              driver_name: fleetDriver ? `${fleetDriver.first_name} ${fleetDriver.last_name}` : undefined,
-              seat_assignments: {},
-            });
-            newAssigns.push({
-              bus_id: String(fleetBus.id),
-              driver_id: fleetDriver ? String(fleetDriver.id) : '',
-              planned_passengers: String(Math.min(49, travelers - i * 49)),
-            });
-          }
-        }
+        return {
+          bus_id: fleetBus ? String(fleetBus.id) : '',
+          driver_id: existingDriver ? String(existingDriver.id) : fallbackDriver ? String(fallbackDriver.id) : '',
+          planned_passengers: String(plannedPassengers),
+        };
+      });
 
-        setBusAllocations(newAllocs);
-        setAssignments(newAssigns);
-      }
-    }
+      return JSON.stringify(current) === JSON.stringify(next) ? current : next;
+    });
   }, [resources, requiredBuses, travelers]);
 
   const handleSeatConfirm = (result: SeatSelectionResult) => {
+    if (result.bookingMode === 'selected_seats') {
+      const guideCount = Math.max(0, Number(booking.tour_guide_count || 0));
+      const selectedStudentCount = result.selectedSeats.length - guideCount;
+      const minimumStudents = Number(selectedProgram?.minimum_students || 1);
+
+      if (selectedStudentCount < minimumStudents) {
+        toast.error(`Select seats for at least ${minimumStudents} students plus ${guideCount} tour guide${guideCount === 1 ? '' : 's'}.`);
+        return;
+      }
+
+      setBooking(current => ({ ...current, student_count: String(selectedStudentCount) }));
+    }
+
     setBookingMode(result.bookingMode);
     setSelectedSeats(result.selectedSeats);
     if (result.busId) {
@@ -313,7 +333,6 @@ export default function EducationalTours() {
         ...item,
         bus_id: String(result.busId),
         driver_id: result.driverId ? String(result.driverId) : item.driver_id,
-        planned_passengers: String(result.paxCount),
       } : item));
     }
     toast.success(`Vehicle seat option selected (${result.bookingMode === 'entire_vehicle' ? 'Entire Bus' : `${result.selectedSeats.length} seats`})`);
@@ -382,7 +401,9 @@ export default function EducationalTours() {
     return [{
       cartId: `educational-${selectedProgram.id}`,
       service: {
-        id: (selectedProgram as any).service_id || selectedProgram.id,
+        // Educational programs are deliberately independent from catalog
+        // services. The program ID is only a stable virtual UI identifier.
+        id: selectedProgram.id,
         name: `Educational Tour: ${selectedProgram.name}`,
         category: 'Educational Tour',
         price: subtotal,
@@ -390,6 +411,8 @@ export default function EducationalTours() {
       },
       quantity: 1,
       quantityLocked: true,
+      isBespoke: true,
+      catalogServiceId: (selectedProgram as any).service_id || undefined,
       customPrice: subtotal,
       busId: primaryBusId,
       selectedSeats: selectedSeats.length > 0 ? selectedSeats : undefined,

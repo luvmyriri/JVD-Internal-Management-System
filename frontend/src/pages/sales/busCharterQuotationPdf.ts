@@ -1,4 +1,9 @@
-import { getStorageUrl } from '../../utils';
+const esc = (value: unknown): string =>
+  String(value ?? '').replace(/[&<>"']/g, character => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string
+  ));
+
+const peso = (amount: number): string => `&#8369; ${Number(amount).toLocaleString('en-PH')}`;
 
 export interface BusCharterQuotationData {
   quotationNumber: string;
@@ -43,22 +48,22 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
   const rowsHtml = data.items.map(item => `
     <tr>
       <td style="padding: 12px 10px; border: 1px solid #000; font-size: 11px; font-weight: bold; text-align: center; vertical-align: middle;">
-        ${item.startDate}${item.endDate ? `<br/>to<br/>${item.endDate}` : ''}
+        ${esc(item.startDate)}${item.endDate ? `<br/>to<br/>${esc(item.endDate)}` : ''}
       </td>
       <td style="padding: 12px 12px; border: 1px solid #000; font-size: 11px; vertical-align: top;">
         <strong style="display: block; margin-bottom: 4px;">Pick-up Location:</strong>
-        <span style="display: block; margin-bottom: 8px; color: #1e293b;">${item.pickupLocation}</span>
+        <span style="display: block; margin-bottom: 8px; color: #1e293b;">${esc(item.pickupLocation)}</span>
         <strong style="display: block; margin-bottom: 4px;">Destination:</strong>
-        <span style="display: block; color: #1e293b;">${item.destination}</span>
+        <span style="display: block; color: #1e293b;">${esc(item.destination)}</span>
       </td>
       <td style="padding: 12px 10px; border: 1px solid #000; font-size: 11px; font-weight: bold; text-align: center; vertical-align: middle;">
-        ${item.duration}
+        ${esc(item.duration)}
       </td>
       <td style="padding: 12px 10px; border: 1px solid #000; font-size: 11px; font-weight: bold; text-align: center; vertical-align: middle;">
         ${item.quantityUnits} ${item.quantityUnits === 1 ? 'unit' : 'units'}
       </td>
       <td style="padding: 12px 10px; border: 1px solid #000; font-size: 12px; font-weight: 900; text-align: right; vertical-align: middle;">
-        ₱ ${item.unitPrice.toLocaleString()}<br/>
+        ${peso(item.unitPrice)}<br/>
         <span style="font-size: 9px; font-weight: normal; color: #64748b;">per unit</span>
       </td>
     </tr>
@@ -69,11 +74,11 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
     <html>
     <head>
       <meta charset="utf-8" />
-      <title>Quotation #${data.quotationNumber} - JVD Event & Travel</title>
+      <title>Quotation #${esc(data.quotationNumber)} - JVD Event &amp; Travel</title>
       <style>
-        @page { size: A4; margin: 10mm; }
+        @page { size: A4; margin: 10mm 10mm 18mm; }
         body { font-family: 'Arial', sans-serif; color: #000; margin: 0; padding: 0; background: #fff; line-height: 1.4; }
-        .page { page-break-after: always; padding: 15px 20px; box-sizing: border-box; position: relative; min-height: 98vh; }
+        .page { page-break-after: always; padding: 15px 20px 54px; box-sizing: border-box; position: relative; min-height: 267mm; overflow: hidden; }
         .page:last-child { page-break-after: avoid; }
         
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
@@ -82,7 +87,9 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
         .header-contact a { color: #0044cc; text-decoration: none; }
         .header-contact strong { color: #e11d48; }
 
-        .red-bar { height: 4px; background: #e11d48; margin-bottom: 15px; }
+        .red-bar { height: 4px; background: #b91c1c; margin-bottom: 15px; }
+        .watermark { position: absolute; top: 31%; left: 50%; width: 330px; opacity: .035; transform: translateX(-50%); z-index: 0; }
+        .page-content { position: relative; z-index: 1; }
         
         .greeting { font-size: 12px; font-weight: bold; margin-bottom: 8px; }
         .intro-text { font-size: 11px; margin-bottom: 15px; color: #1e293b; }
@@ -105,21 +112,17 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
         .inc-list, .exc-list { margin: 0; padding-left: 18px; font-size: 11px; font-weight: bold; }
         .inc-list li, .exc-list li { margin-bottom: 4px; }
 
-        .dot-seal { position: absolute; bottom: 45px; right: 25px; text-align: center; }
-        .dot-seal img { width: 75px; height: auto; }
+        .dot-seal { position: absolute; bottom: 32px; right: 25px; text-align: center; z-index: 2; }
+        .dot-seal img { width: 62px; height: auto; }
         .dot-label { font-size: 9px; font-weight: bold; margin-top: 2px; }
 
-        .bottom-bar { position: absolute; bottom: 10px; left: 0; right: 0; background: #b91c1c; color: #fff; text-align: center; padding: 6px; font-size: 9px; font-weight: bold; }
+        .bottom-bar { position: absolute; bottom: 0; left: 0; right: 0; border-top: 5px solid #b91c1c; border-bottom: 5px solid #1d4ed8; color: #334155; text-align: center; padding: 5px; font-size: 8px; font-weight: bold; z-index: 2; }
 
         /* Page 2 Terms Table */
         .terms-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 20px; border: 2px solid #000; }
         .terms-table th { border: 1px solid #000; padding: 8px; font-size: 12px; font-weight: 900; text-transform: uppercase; background: #fff; text-align: left; }
         .terms-table td { border: 1px solid #000; padding: 8px 10px; font-size: 11px; font-weight: bold; }
         .terms-table .num-col { width: 40px; text-align: center; font-weight: 900; }
-
-        .bank-table { width: 100%; border-collapse: collapse; margin-top: 15px; margin-bottom: 25px; border: 2px solid #000; }
-        .bank-table td { border: 1px solid #000; padding: 8px 12px; font-size: 11px; font-weight: bold; }
-        .bank-table .b-label { width: 160px; background: #f8fafc; text-transform: uppercase; }
 
         .sig-container { width: 100%; margin-top: 40px; text-align: center; display: table; }
         .sig-col { display: table-cell; width: 50%; vertical-align: top; text-align: center; }
@@ -132,6 +135,8 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
       
       <!-- PAGE 1: QUOTATION PARTICULARS -->
       <div class="page">
+        <img class="watermark" src="/JVDlogo-removebg-preview.png" alt="" />
+        <div class="page-content">
         <table class="header-table">
           <tr>
             <td style="vertical-align: middle;">
@@ -158,21 +163,21 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
         <table class="meta-table">
           <tr>
             <td class="label" style="width: 140px;">Group/Company Name</td>
-            <td><strong>${data.groupCompanyName || '—'}</strong></td>
+            <td><strong>${esc(data.groupCompanyName || '-')}</strong></td>
             <td class="label" style="width: 80px;">QTN</td>
-            <td style="width: 140px;"><strong>${data.quotationNumber}</strong></td>
+            <td style="width: 140px;"><strong>${esc(data.quotationNumber)}</strong></td>
           </tr>
           <tr>
             <td class="label">Contact Person</td>
-            <td>${data.contactPerson || '—'}</td>
+            <td>${esc(data.contactPerson || '-')}</td>
             <td class="label">Date</td>
-            <td>${data.quotationDate}</td>
+            <td>${esc(data.quotationDate)}</td>
           </tr>
           <tr>
             <td class="label">Email Address</td>
-            <td>${data.emailAddress || '—'}</td>
+            <td>${esc(data.emailAddress || '-')}</td>
             <td class="label">Contact No.</td>
-            <td>${data.contactNumber || '—'}</td>
+            <td>${esc(data.contactNumber || '-')}</td>
           </tr>
         </table>
 
@@ -192,7 +197,7 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
             ${rowsHtml}
             <tr class="total-row">
               <td colSpan="4" style="text-transform: uppercase;">TOTAL</td>
-              <td>₱ ${data.grandTotal.toLocaleString()}</td>
+              <td>${peso(data.grandTotal)}</td>
             </tr>
           </tbody>
         </table>
@@ -201,29 +206,32 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
           <div class="inc-col">
             <div class="sec-header">Inclusions</div>
             <ul class="inc-list">
-              ${inclusions.map(inc => `<li>${inc}</li>`).join('')}
+              ${inclusions.map(inc => `<li>${esc(inc)}</li>`).join('')}
             </ul>
           </div>
           <div class="exc-col">
             <div class="sec-header">Exclusions</div>
             <ul class="exc-list">
-              ${exclusions.map(exc => `<li>${exc}</li>`).join('')}
+              ${exclusions.map(exc => `<li>${esc(exc)}</li>`).join('')}
             </ul>
           </div>
         </div>
 
+        </div>
         <div class="dot-seal">
-          <div style="font-size: 8px; font-weight: bold; border: 1px solid #b91c1c; color: #b91c1c; padding: 2px 6px; border-radius: 50px; margin-bottom: 2px;">DOT Quality Seal</div>
+          <img src="/dot-quality-seal.png" alt="Department of Tourism Quality Seal" />
           <div class="dot-label">Accredited Agency</div>
         </div>
 
         <div class="bottom-bar">
-          UNIT-6 Aryanna Village Center, Susano Rd, Brgy 175. Camarin Caloocan City &nbsp;•&nbsp; Accreditation No. DOT-NCR-TTA-02903-2024
+          UNIT 6 Aryanna Village Center, Susano Road, Brgy. 175, Camarin, Caloocan City &nbsp;&bull;&nbsp; DOT-NCR-TTA-02903-2024
         </div>
       </div>
 
       <!-- PAGE 2: TERMS AND CONDITIONS -->
       <div class="page">
+        <img class="watermark" src="/JVDlogo-removebg-preview.png" alt="" />
+        <div class="page-content">
         <table class="header-table">
           <tr>
             <td style="vertical-align: middle;">
@@ -255,7 +263,7 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
             </tr>
             <tr>
               <td class="num-col">2</td>
-              <td>Rate inclusive Diesel, Toll Fee, Driver and Driver’s meal</td>
+              <td>Rate includes diesel, toll fees, driver, and driver's meal.</td>
             </tr>
             <tr>
               <td class="num-col">3</td>
@@ -284,24 +292,6 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
           </tbody>
         </table>
 
-        <table class="bank-table">
-          <tr>
-            <td colSpan="2" style="background: #f1f5f9; text-transform: uppercase; font-size: 11px;">BANK DETAILS</td>
-          </tr>
-          <tr>
-            <td class="b-label">BANK</td>
-            <td>BPI</td>
-          </tr>
-          <tr>
-            <td class="b-label">ACCOUNT NAME</td>
-            <td>RHEAN UMALI</td>
-          </tr>
-          <tr>
-            <td class="b-label">ACCOUNT NUMBER</td>
-            <td>0889924094</td>
-          </tr>
-        </table>
-
         <div style="text-align: center; font-size: 11px; font-weight: 900; margin-top: 30px; margin-bottom: 40px; letter-spacing: 1px;">
           THANK YOU FOR TRUSTING! WE ARE HAPPY TO SERVE YOU!
         </div>
@@ -318,9 +308,15 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
             <div class="sig-title">Executive Vice President</div>
           </div>
         </div>
+        </div>
+
+        <div class="dot-seal">
+          <img src="/dot-quality-seal.png" alt="Department of Tourism Quality Seal" />
+          <div class="dot-label">Accredited Agency</div>
+        </div>
 
         <div class="bottom-bar">
-          UNIT-6 Aryanna Village Center, Susano Rd, Brgy 175. Camarin Caloocan City &nbsp;•&nbsp; Accreditation No. DOT-NCR-TTA-02903-2024
+          UNIT 6 Aryanna Village Center, Susano Road, Brgy. 175, Camarin, Caloocan City &nbsp;&bull;&nbsp; DOT-NCR-TTA-02903-2024
         </div>
       </div>
 

@@ -105,6 +105,15 @@ class CharterBookingService
                 'passenger_count' => $data['passenger_count'], 'estimated_kilometers' => $data['estimated_kilometers'],
                 'booking_mode' => $data['booking_mode'] ?? 'entire_vehicle', 'selected_seats' => $data['selected_seats'] ?? [],
                 'passengers' => $data['passengers'] ?? [],
+                'fleet_assignments' => [[
+                    'bus_id' => $bus->id,
+                    'driver_id' => $driver?->id,
+                    'plate_number' => $bus->plate_number,
+                    'model' => $bus->model,
+                    'seating_capacity' => $bus->seating_capacity,
+                    'driver_name' => $driver ? trim($driver->first_name.' '.$driver->last_name) : null,
+                    'driver_phone' => $driver?->phone,
+                ]],
                 'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
                 'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
                 'subtotal' => $pricing['subtotal'], 'pricing_snapshot' => [...$pricing, 'rate_plan' => $plan->only(['id', 'name', 'vehicle_class', 'included_hours', 'included_kilometers', 'extra_hour_rate', 'extra_kilometer_rate', 'overnight_rate'])],
@@ -164,6 +173,8 @@ class CharterBookingService
                     'plate_number' => $assignment[0]->plate_number,
                     'model' => $assignment[0]->model,
                     'seating_capacity' => $assignment[0]->seating_capacity,
+                    'driver_name' => $assignment[1] ? trim($assignment[1]->first_name.' '.$assignment[1]->last_name) : null,
+                    'driver_phone' => $assignment[1]?->phone,
                 ])->all(),
                 'operations_notes' => $data['operations_notes'] ?? null,
             ]);
@@ -198,10 +209,12 @@ class CharterBookingService
                 'plate_number' => $assignment[0]->plate_number,
                 'model' => $assignment[0]->model,
                 'seating_capacity' => $assignment[0]->seating_capacity,
+                'driver_name' => $assignment[1] ? trim($assignment[1]->first_name.' '.$assignment[1]->last_name) : null,
+                'driver_phone' => $assignment[1]?->phone,
             ])->all(),
             'base_price' => $pricing['base_price'], 'extra_hours_amount' => $pricing['extra_hours_amount'],
             'extra_kilometers_amount' => $pricing['extra_kilometers_amount'], 'overnight_amount' => $pricing['overnight_amount'],
-            'subtotal' => $invoice->subtotal, 'pricing_snapshot' => [...$pricing, 'invoice_subtotal' => (float) $invoice->subtotal],
+            'subtotal' => $invoice->subtotal, 'pricing_snapshot' => [...$pricing, 'invoice_subtotal' => (float) $invoice->subtotal, 'requested_units' => (int) ($data['requested_units'] ?? count($assignments))],
             'status' => 'confirmed', 'operations_notes' => $data['operations_notes'] ?? null, 'created_by' => $actorId,
         ]);
         foreach ($assignments as [$assignedBus, $assignedDriver]) {

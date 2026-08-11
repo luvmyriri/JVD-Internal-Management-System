@@ -32,6 +32,7 @@ class GroupBookingCaptureService
                 'stops' => $stops,
                 'passenger_count' => $metadata['passenger_count'] ?? $context['pax_count'],
                 'estimated_kilometers' => $metadata['estimated_kilometers'] ?? 0,
+                'requested_units' => $metadata['requested_units'] ?? $metadata['buses_required'] ?? count($assignments),
                 'booking_mode' => $metadata['booking_mode'] ?? 'entire_vehicle',
                 'selected_seats' => $metadata['selected_seats'] ?? [],
                 'passengers' => $metadata['passengers'] ?? [],

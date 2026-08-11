@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Payment Receipt</title>
     <style>
-        @page { size: A4; margin: 14mm 15mm; }
+        @page { size: A4; margin: 14mm 15mm 22mm; }
         * { box-sizing: border-box; }
         body { margin: 0; color: #172033; font-family: 'DejaVu Sans', sans-serif; font-size: 9px; line-height: 1.4; }
         table { width: 100%; border-collapse: collapse; }
@@ -33,6 +33,8 @@
         .summary .total td { padding-top: 7px; border-top: 2px solid #173b68; color: #173b68; font-size: 11px; }
         .note { margin-top: 15px; padding: 8px 10px; border-left: 3px solid #17844b; background: #effaf3; color: #245637; }
         .footer { margin-top: 24px; padding-top: 7px; border-top: 1px solid #cbd6e1; color: #64748b; font-size: 7.5px; }
+        body > .header, body > .footer { display: none; }
+        @include('pdf.partials.brand-styles')
     </style>
 </head>
 <body>
@@ -44,6 +46,9 @@
             .($passenger->passenger_type === 'child' ? ' (Child)' : '')
         )->filter()->values()->all() ?? [];
     @endphp
+
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Payment Receipt', 'documentReference' => $invoice->invoice_number, 'documentDate' => $invoice->updated_at ?? $invoice->created_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Official payment receipt. Retain this document with the corresponding invoice for your records.'])
 
     <table class="header">
         <tr>

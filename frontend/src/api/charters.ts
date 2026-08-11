@@ -179,7 +179,7 @@ export interface CharterBooking {
   booking_mode?: 'entire_vehicle' | 'selected_seats';
   selected_seats?: string[];
   passengers?: Array<Record<string, unknown>>;
-  fleet_assignments?: Array<{ bus_id: number; driver_id?: number | null; plate_number?: string; model?: string; seating_capacity?: number }>;
+  fleet_assignments?: Array<{ bus_id: number; driver_id?: number | null; plate_number?: string; model?: string; seating_capacity?: number; driver_name?: string | null; driver_phone?: string | null }>;
   operations_notes?: string | null;
   subtotal: number;
   status: string;

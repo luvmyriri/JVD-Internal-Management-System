@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Bus;
+use App\Models\Contract;
 use App\Models\EducationalTourBooking;
 use App\Models\EducationalTourProgram;
 use App\Models\Service;
@@ -120,6 +121,68 @@ class EducationalTourBookingTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
     }
 
+    public function test_shared_sales_checkout_accepts_an_educational_program_as_a_bespoke_line(): void
+    {
+        $response = $this->actingAs($this->user)->postJson('/api/v1/billing', $this->sharedCheckoutPayload());
+
+        $response->assertCreated();
+        $invoiceId = $response->json('data.id');
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoiceId,
+            'service_id' => null,
+            'item_name' => 'Educational Tour: JVD Academy (Science Discovery Tour)',
+            'service_type' => 'educational_tour',
+            'quantity' => 1,
+            'total_price' => 124500,
+        ]);
+        $this->assertDatabaseHas('educational_tour_bookings', [
+            'invoice_id' => $invoiceId,
+            'school_name' => 'JVD Academy',
+            'student_count' => 60,
+            'chaperone_count' => 3,
+            'pickup_location' => 'School Main Gate',
+        ]);
+    }
+
+    public function test_contract_draft_preserves_the_bespoke_educational_checkout_line(): void
+    {
+        $payload = $this->sharedCheckoutPayload();
+        $payload['custom_transaction_detail'] = [
+            'category' => 'educational_tour',
+            'school_name' => 'JVD Academy',
+            'grade_level' => 'Grade 10',
+            'expected_pax' => 63,
+            'destination' => 'Science Discovery Tour',
+        ];
+
+        $this->actingAs($this->user)
+            ->postJson('/api/v1/contracts/draft', $payload)
+            ->assertCreated();
+
+        $contract = Contract::latest('id')->firstOrFail();
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $contract->invoice_id,
+            'service_id' => null,
+            'item_name' => 'Educational Tour: JVD Academy (Science Discovery Tour)',
+            'service_type' => 'educational_tour',
+            'total_price' => 124500,
+        ]);
+
+        $this->actingAs($this->user)
+            ->postJson("/api/v1/contracts/{$contract->id}/sign", [
+                'signature_image' => 'data:image/png;base64,dGVzdA==',
+                'signature_typed_name' => 'Teacher Reyes',
+            ])
+            ->assertOk();
+
+        $this->assertDatabaseHas('educational_tour_bookings', [
+            'invoice_id' => $contract->invoice_id,
+            'school_name' => 'JVD Academy',
+            'student_count' => 60,
+            'chaperone_count' => 3,
+        ]);
+    }
+
     public function test_every_traveler_must_be_allocated_to_exactly_one_vehicle(): void
     {
         $payload = $this->payload();
@@ -177,6 +240,55 @@ class EducationalTourBookingTest extends TestCase
                 ['bus_id' => $this->busTwo->id, 'driver_id' => $this->driverTwo->id, 'planned_passengers' => 14],
             ],
             'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 139440,
+        ];
+    }
+
+    private function sharedCheckoutPayload(): array
+    {
+        $start = now()->addMonths(2)->setTime(5, 0);
+
+        return [
+            'customer_name' => 'JVD Academy',
+            'customer_email' => 'teacher@example.com',
+            'customer_contact' => '09171234567',
+            'payment_method' => 'Cash',
+            'payment_type' => 'full',
+            'amount_received' => 139440,
+            'tax_rate' => 0.12,
+            'pickup_location' => 'School Main Gate',
+            'tour_code' => 'Science Discovery Tour',
+            'pax_count' => 63,
+            'bus_id' => $this->busOne->id,
+            'driver_id' => $this->driverOne->id,
+            'departure_datetime' => $start->toIso8601String(),
+            'arrival_datetime' => $start->copy()->addHours(14)->toIso8601String(),
+            'items' => [[
+                'service_id' => null,
+                'item_name' => 'Educational Tour: JVD Academy (Science Discovery Tour)',
+                'service_type' => 'educational_tour',
+                'quantity' => 1,
+                'unit_price' => 124500,
+                'item_metadata' => [
+                    'program_id' => $this->program->id,
+                    'school_name' => 'JVD Academy',
+                    'contact_person' => 'Teacher Reyes',
+                    'contact_email' => 'teacher@example.com',
+                    'contact_number' => '09171234567',
+                    'grade_level' => 'Grade 10',
+                    'starts_at' => $start->toIso8601String(),
+                    'ends_at' => $start->copy()->addHours(14)->toIso8601String(),
+                    'pickup_location' => 'School Main Gate',
+                    'destination' => 'Science Discovery Tour',
+                    'student_count' => 60,
+                    'tour_guide_count' => 3,
+                    'booking_mode' => 'selected_seats',
+                    'selected_seats' => array_map(fn (int $seat) => "Seat {$seat}", range(1, 63)),
+                    'assignments' => [
+                        ['bus_id' => $this->busOne->id, 'driver_id' => $this->driverOne->id, 'planned_passengers' => 49],
+                        ['bus_id' => $this->busTwo->id, 'driver_id' => $this->driverTwo->id, 'planned_passengers' => 14],
+                    ],
+                ],
+            ]],
         ];
     }
 }

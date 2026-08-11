@@ -47,6 +47,7 @@ class StoreInvoiceRequest extends FormRequest
             'items.*.item_metadata.destination' => 'nullable|string|max:255',
             'items.*.item_metadata.stops' => 'nullable',
             'items.*.item_metadata.buses_required' => 'nullable|integer|min:1|max:100',
+            'items.*.item_metadata.requested_units' => 'nullable|integer|min:1|max:100',
             'items.*.item_metadata.bus_assignments' => 'nullable|array|max:100',
             'items.*.item_metadata.bus_assignments.*.bus_id' => 'required_with:items.*.item_metadata.bus_assignments|integer|exists:buses,id|distinct',
             'items.*.item_metadata.bus_assignments.*.driver_id' => 'nullable|integer|exists:users,id|distinct',

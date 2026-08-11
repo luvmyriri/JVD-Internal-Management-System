@@ -7,7 +7,7 @@ const esc = (value: unknown): string =>
   ));
 
 const formatPrice = (amount: number) => {
-  return '₱' + Number(amount).toLocaleString('en-US', {
+  return '&#8369; ' + Number(amount).toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -116,7 +116,7 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
     if (items.length === 0) return '';
     const listItems = items.map((item) => `
       <li style="margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px;">
-        <span style="color: ${isExclusion ? '#e11d48' : '#16a34a'}; font-weight: bold; font-size: 12px; line-height: 1.2;">${isExclusion ? '✕' : '✓'}</span>
+        <span style="color: ${isExclusion ? '#b91c1c' : '#166534'}; font-weight: bold; font-size: 12px; line-height: 1.2;">${isExclusion ? 'X' : '+'}</span>
         <span style="font-size: 12px;">${esc(item)}</span>
       </li>
     `).join('');
@@ -172,15 +172,16 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
       <title>Quotation ${esc(meta.quotationNumber)}</title>
       <meta charset="utf-8">
       <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        @page { size: A4 portrait; margin: 14mm; }
-        body { font-family: 'Plus Jakarta Sans', -apple-system, sans-serif; color: #334155; margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; min-height: 96vh; justify-content: space-between; }
-        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #3b82f6; padding-bottom: 16px; margin-bottom: 18px; }
+        @page { size: A4 portrait; margin: 12mm 14mm 18mm; }
+        body { font-family: Arial, Helvetica, sans-serif; color: #334155; margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .container { max-width: 800px; margin: 0 auto; display: flex; flex-direction: column; min-height: 260mm; justify-content: space-between; position: relative; overflow: hidden; }
+        .content { position: relative; z-index: 1; }
+        .watermark { position: absolute; width: 330px; left: 50%; top: 32%; transform: translateX(-50%); opacity: .035; z-index: 0; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #b91c1c; padding-bottom: 12px; margin-bottom: 18px; }
         .brand { display: flex; align-items: center; gap: 14px; }
         .logo { height: 50px; width: auto; }
-        .brand-text h1 { font-size: 19px; font-weight: 800; margin: 0; color: #1e3a8a; letter-spacing: -0.03em; }
-        .brand-text p { font-size: 9px; color: #3b82f6; margin: 3px 0 0 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
+        .brand-text h1 { font-size: 19px; font-weight: 800; margin: 0; color: #172554; letter-spacing: -0.03em; }
+        .brand-text p { font-size: 9px; color: #b91c1c; margin: 3px 0 0 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
         .brand-contact { font-size: 8.5px; color: #94a3b8; margin-top: 5px; line-height: 1.4; }
         .meta-info { text-align: right; font-size: 11px; color: #475569; line-height: 1.6; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 12px; min-width: 190px; }
         .meta-title { font-size: 13px; font-weight: 800; color: #1e3a8a; margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
@@ -210,25 +211,27 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
         .terms { margin-top: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px 18px; }
         .terms-title { font-size: 10px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; }
         .terms ul { margin: 0; padding-left: 16px; font-size: 10px; color: #475569; line-height: 1.7; }
-        .footer-section { border-top: 1px solid #e2e8f0; padding-top: 22px; margin-top: 24px; }
+        .footer-section { border-top: 1px solid #e2e8f0; padding-top: 22px; margin-top: 24px; position: relative; z-index: 1; padding-bottom: 28px; }
         .sign-grid { display: flex; justify-content: space-between; margin-bottom: 22px; }
         .sign-col { width: 45%; }
         .sign-line { border-bottom: 1.5px solid #cbd5e1; margin-top: 42px; margin-bottom: 6px; }
         .sign-title { font-size: 10px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
         .sign-name { font-size: 12px; font-weight: 700; color: #0f172a; }
-        .company-info { text-align: center; font-size: 9px; color: #94a3b8; line-height: 1.4; letter-spacing: 0.02em; }
+        .company-info { text-align: center; font-size: 8px; color: #64748b; line-height: 1.4; letter-spacing: 0.02em; border-top: 5px solid #b91c1c; border-bottom: 5px solid #1d4ed8; padding: 5px 74px 5px 4px; min-height: 23px; }
+        .dot-seal { position: absolute; right: 5px; bottom: 3px; width: 62px; height: auto; }
       </style>
     </head>
     <body>
       <div class="container">
-        <div>
+        <img class="watermark" src="${window.location.origin}/JVDlogo-removebg-preview.png" alt="">
+        <div class="content">
           <div class="header">
             <div class="brand">
-              <img class="logo" src="${window.location.origin}/JVD 3D.png" alt="JVD Logo" onerror="this.style.display='none'">
+              <img class="logo" src="${window.location.origin}/JVDlogo-removebg-preview.png" alt="JVD Logo" onerror="this.style.display='none'">
               <div class="brand-text">
                 <h1>JVD Event &amp; Travel</h1>
                 <p>Management Co.</p>
-                <div class="brand-contact">jvdmarketing8@gmail.com &bull; (02) 8652 7325</div>
+                <div class="brand-contact">jvdtransport8@gmail.com &bull; 0954 396 0802 &bull; (02) 8293 8068</div>
               </div>
             </div>
             <div class="meta-info">
@@ -245,7 +248,7 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
             <div class="party-box">
               <div class="party-label">Quotation To</div>
               <div class="party-name">${esc(recipient.client_name)}</div>
-              <div class="party-lines">${recipientHTML || '<span style="color:#94a3b8;">—</span>'}</div>
+              <div class="party-lines">${recipientHTML || '<span style="color:#94a3b8;">-</span>'}</div>
             </div>
             <div class="party-box">
               <div class="party-label">Prepared By</div>
@@ -312,8 +315,10 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
             </div>
           </div>
           <div class="company-info">
-            JVD Event &amp; Travel Management Co. &bull; jvdmarketing8@gmail.com &bull; (02) 8652 7325
+            Unit 6 Aryanna Village Center, Susano Road, Brgy. 175, Camarin, Caloocan City<br>
+            DOT Accreditation No. DOT-NCR-TTA-02903-2024
           </div>
+          <img class="dot-seal" src="${window.location.origin}/dot-quality-seal.png" alt="Department of Tourism Quality Seal">
         </div>
       </div>
 

@@ -165,6 +165,73 @@ class CharterBookingTest extends TestCase
         ]);
     }
 
+    public function test_shared_checkout_invoices_and_stores_explicit_extra_bus_units(): void
+    {
+        $secondDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);
+        $secondBus = Bus::create([
+            'plate_number' => 'CHARTER-02',
+            'model' => 'Coach Two',
+            'vehicle_type' => 'bus',
+            'seating_capacity' => 49,
+            'status' => 'available',
+        ]);
+        $start = now()->addMonths(3)->startOfDay();
+
+        $response = $this->actingAs($this->user)->postJson('/api/v1/billing', [
+            'customer_name' => 'Two Unit Client',
+            'customer_email' => 'fleet@example.com',
+            'customer_contact' => '09171234567',
+            'payment_method' => 'Cash',
+            'payment_type' => 'full',
+            'amount_received' => 39200,
+            'tax_rate' => 0.12,
+            'bus_id' => $this->bus->id,
+            'driver_id' => $this->driver->id,
+            'pickup_location' => 'Cubao Pickup Point',
+            'tour_code' => 'Baguio City',
+            'pax_count' => 40,
+            'departure_datetime' => $start->toIso8601String(),
+            'arrival_datetime' => $start->copy()->addDay()->toIso8601String(),
+            'items' => [[
+                'service_id' => $this->plan->service_id,
+                'item_name' => 'Bus Charter - 2 units',
+                'service_type' => 'bus_rental',
+                'quantity' => 2,
+                'unit_price' => 17500,
+                'item_metadata' => [
+                    'rate_plan_id' => $this->plan->id,
+                    'starts_at' => $start->toIso8601String(),
+                    'ends_at' => $start->copy()->addDay()->toIso8601String(),
+                    'pickup_location' => 'Cubao Pickup Point',
+                    'destination' => 'Baguio City',
+                    'estimated_kilometers' => 150,
+                    'passenger_count' => 40,
+                    'buses_required' => 2,
+                    'requested_units' => 2,
+                    'booking_mode' => 'entire_vehicle',
+                    'bus_assignments' => [
+                        ['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id],
+                        ['bus_id' => $secondBus->id, 'driver_id' => $secondDriver->id],
+                    ],
+                ],
+            ]],
+        ]);
+
+        $response->assertCreated();
+        $invoiceId = $response->json('data.id');
+        $this->assertDatabaseHas('invoice_items', [
+            'invoice_id' => $invoiceId,
+            'quantity' => 2,
+            'unit_price' => 17500,
+            'total_price' => 35000,
+        ]);
+        $booking = CharterBooking::where('invoice_id', $invoiceId)->firstOrFail();
+        $this->assertCount(2, $booking->fleet_assignments);
+        $this->assertSame(2, $booking->pricing_snapshot['requested_units']);
+        $this->assertSame('Cubao Pickup Point', $booking->pickup_location);
+        $this->assertSame(40, $booking->passenger_count);
+    }
+
     public function test_active_charter_booking_can_update_operations_and_manifest(): void
     {
         $created = $this->actingAs($this->user)

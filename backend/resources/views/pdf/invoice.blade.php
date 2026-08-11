@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Official Invoice</title>
     <style>
-        @page { size: A4; margin: 12mm 15mm; }
+        @page { size: A4; margin: 12mm 15mm 22mm; }
         * { box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', sans-serif; color: #1a1a1a; margin: 0; padding: 0; font-size: 10px; line-height: 1.4; }
 
@@ -41,6 +41,8 @@
         .footer-left { width: 50%; vertical-align: top; }
         .footer-right { width: 50%; text-align: right; vertical-align: top; }
         .thank-you { text-align: center; font-size: 10px; font-weight: 900; color: #1e3a8a; letter-spacing: 0.5px; margin-top: 10px; padding-top: 6px; border-top: 1px solid #e2e8f0; }
+        body > .header-table, body > .doc-title, body > .footer { display: none; }
+        @include('pdf.partials.brand-styles')
     </style>
 </head>
 <body>
@@ -52,6 +54,9 @@
             'phone' => '0976 471 1294', 'email' => 'accounts@jvd-travel.com', 'registration' => '912-883-911-000',
         ];
     @endphp
+
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Official Invoice', 'documentReference' => $invoice->invoice_number, 'documentDate' => $invoice->created_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Official invoice. Please contact JVD Accounting for currently authorized payment channels.'])
 
     <!-- Header -->
     <table class="header-table">
@@ -194,22 +199,29 @@
     @endif
 
     @if($charter)
+    @php
+        $charterFleet = $charter->fleet_assignments ?: [[
+            'plate_number' => $charter->bus?->plate_number,
+            'model' => $charter->bus?->model,
+            'seating_capacity' => $charter->bus?->seating_capacity,
+            'driver_name' => $charter->driver ? trim($charter->driver->first_name.' '.$charter->driver->last_name) : null,
+            'driver_phone' => $charter->driver?->phone,
+        ]];
+    @endphp
     <div class="details-box">
         <div class="details-title">Exclusive Transport Details</div>
         <table class="details-table">
             <tr>
                 <td style="width:33.3%;"><span class="details-label">Charter Reference:</span> {{ $charter->reference }}</td>
                 <td style="width:33.3%;"><span class="details-label">Passengers:</span> {{ $charter->passenger_count }}</td>
-                <td style="width:33.3%;"><span class="details-label">Vehicle:</span> {{ $charter->bus?->plate_number }} {{ $charter->bus ? '('.$charter->bus->model.')' : '' }}</td>
+                <td style="width:33.3%;"><span class="details-label">Vehicles:</span> {{ count($charterFleet) }} unit(s)</td>
             </tr>
             <tr>
                 <td colspan="2"><span class="details-label">Schedule:</span> {{ $charter->starts_at->format('M d, Y h:i A') }} &ndash; {{ $charter->ends_at->format('M d, Y h:i A') }}</td>
                 <td><span class="details-label">Estimated Distance:</span> {{ number_format($charter->estimated_kilometers, 0) }} km</td>
             </tr>
             <tr><td colspan="3"><span class="details-label">Route:</span> {{ $charter->pickup_location }} &rarr; {{ $charter->destination }}</td></tr>
-            @if($charter->driver)
-            <tr><td colspan="3"><span class="details-label">Driver Contact:</span> {{ trim($charter->driver->first_name.' '.$charter->driver->last_name) }} &mdash; {{ $charter->driver->phone ?: 'Phone not recorded' }} | {{ $charter->driver->email ?: 'Email not recorded' }}</td></tr>
-            @endif
+            <tr><td colspan="3"><span class="details-label">Fleet Assignment:</span> {{ collect($charterFleet)->map(fn($assignment, $index) => 'Unit '.($index + 1).': '.($assignment['plate_number'] ?? 'vehicle pending').(!empty($assignment['model']) ? ' ('.$assignment['model'].')' : '').' - '.($assignment['driver_name'] ?? 'driver pending').(!empty($assignment['driver_phone']) ? ' ['.$assignment['driver_phone'].']' : ''))->implode('; ') }}</td></tr>
         </table>
     </div>
     @endif

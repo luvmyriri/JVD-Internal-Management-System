@@ -34,7 +34,7 @@ const getTomorrowStartEnd = () => {
   return { starts_at: `${dateStr}T08:00`, ends_at: `${dateStr}T20:00` };
 };
 
-const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: [] as string[], passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
+const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: [] as string[], passenger_count: '25', requested_units: '1', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
 const GARAGE_LOCATION = 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila';
 const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '0', pickup_location: '', drop_off_location: '', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
@@ -165,7 +165,16 @@ export default function CharterSales() {
 
   const paxCount = Math.max(1, Number(booking.passenger_count || 1));
   const primaryCapacity = selectedBus?.seating_capacity || (selectedPlan?.vehicle_class === 'van' ? 14 : selectedPlan?.vehicle_class === 'coaster' ? 29 : 49);
-  const busesRequired = Math.ceil(paxCount / primaryCapacity);
+  const minimumBuses = Math.ceil(paxCount / primaryCapacity);
+  const requestedUnits = Math.min(100, Math.max(1, Number(booking.requested_units || 1)));
+  const busesRequired = Math.max(minimumBuses, requestedUnits);
+
+  // Keep the visible requested quantity honest when passenger capacity requires
+  // more units. Staff may always increase it beyond the automatic minimum.
+  useEffect(() => {
+    if (requestedUnits >= minimumBuses) return;
+    setBooking(current => ({ ...current, requested_units: String(minimumBuses) }));
+  }, [minimumBuses, requestedUnits]);
 
   // Keep busAssignments length synced with busesRequired
   useEffect(() => {
@@ -393,6 +402,7 @@ export default function CharterSales() {
         destination: booking.destination,
         stops: booking.stops,
         buses_required: busesRequired,
+        requested_units: busesRequired,
         bus_assignments: busAssignments,
         selected_seats: selectedSeats,
         booking_mode: bookingMode,
@@ -768,12 +778,17 @@ export default function CharterSales() {
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <label className="text-xs font-bold text-muted">Departure Date & Time<input type="datetime-local" value={booking.starts_at} onChange={e => setBooking({ ...booking, starts_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Return Date & Time<input type="datetime-local" value={booking.ends_at} onChange={e => setBooking({ ...booking, ends_at: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Passenger Count<input type="number" min="1" max="500" value={booking.passenger_count} onChange={e => setBooking({ ...booking, passenger_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+            <label className="text-xs font-bold text-muted">Bus Units Requested<input type="number" min={minimumBuses} max="100" value={booking.requested_units} onChange={e => setBooking({ ...booking, requested_units: e.target.value })} aria-describedby="charter-unit-help" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Est. Distance (KM)<input type="number" min="0" value={booking.estimated_kilometers} onChange={e => setBooking({ ...booking, estimated_kilometers: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
           </div>
+
+          <p id="charter-unit-help" className="rounded-xl bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">
+            Capacity requires at least {minimumBuses} unit{minimumBuses === 1 ? '' : 's'} for {paxCount} passenger{paxCount === 1 ? '' : 's'}. Increase the requested units when the client wants additional buses; checkout and the invoice will use {busesRequired} unit{busesRequired === 1 ? '' : 's'}.
+          </p>
 
           <div className="grid gap-4 md:grid-cols-2 pt-1">
             <label className="text-xs font-bold text-muted">Pickup Location<input type="text" value={booking.pickup_location} onChange={e => setBooking({ ...booking, pickup_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>

@@ -235,7 +235,9 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   };
 
   const invoiceItems = () => cart.map(item => ({
-    service_id: item.service.id,
+    // Bespoke workflows (educational tours and custom arrangements) use virtual
+    // frontend IDs. Never send those IDs as catalog service foreign keys.
+    service_id: item.catalogServiceId ?? (item.isBespoke ? null : item.service.id),
     item_name: item.lineName || item.service.name,
     service_type: item.serviceType || item.service.service_type || undefined,
     item_description: item.lineDescription,

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Joiner Passenger Manifest</title>
     <style>
-        @page { size: A4; margin: 12mm 14mm; }
+        @page { size: A4; margin: 12mm 14mm 22mm; }
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; color: #142033; font-size: 9px; margin: 0; }
         .header { width: 100%; border-collapse: collapse; border-bottom: 3px solid #123c69; padding-bottom: 8px; }
@@ -22,9 +22,13 @@
         .signatures { width: 100%; border-collapse: collapse; margin-top: 28px; }
         .signatures td { width: 33.33%; text-align: center; padding: 0 12px; }
         .line { border-top: 1px solid #39495d; padding-top: 4px; }
+        body > .header, body > .footer { display: none; }
+        @include('pdf.partials.brand-styles')
     </style>
 </head>
 <body>
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Passenger Manifest', 'documentReference' => $departure->code, 'documentDate' => $departure->starts_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Confidential passenger manifest. Use only for this departure and protect personal information.'])
     <table class="header"><tr><td><div class="brand">{{ $company['name'] }}</div><div>{{ $company['phone'] }} | {{ $company['email'] }}</div></td><td class="title">PASSENGER MANIFEST<br><span style="font-size:9px;color:#607087;">{{ $departure->code }}</span></td></tr></table>
     <table class="meta">
         <tr>
@@ -52,7 +56,7 @@
                 <td><strong>{{ $passenger->first_name }} {{ $passenger->last_name }}</strong></td>
                 <td>{{ ucfirst($passenger->passenger_type) }}</td>
                 <td>{{ $reservation->lead_name }}<br><span style="color:#607087;">{{ $reservation->lead_contact }}</span></td>
-                <td>{{ $passenger->emergency_contact ?: '—' }}</td>
+                <td>{{ $passenger->emergency_contact ?: '-' }}</td>
                 <td>{{ $passenger->special_needs ?: '' }}</td>
             </tr>
             @endforeach

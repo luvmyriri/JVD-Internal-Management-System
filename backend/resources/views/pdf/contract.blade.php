@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Service Contract {{ $contract->contract_number }}</title>
     <style>
-        @page { size: A4; margin: 14mm 14mm 18mm; }
+        @page { size: A4; margin: 14mm 14mm 22mm; }
         body { font-family: 'DejaVu Sans', sans-serif; color: #243247; margin: 0; font-size: 10px; line-height: 1.45; }
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
         .header-left { width: 60%; vertical-align: top; }
@@ -25,9 +25,13 @@
         .totals .grand td { border-top: 2px solid #1e3a8a; border-bottom: 0; font-size: 12px; font-weight: bold; color: #1e3a8a; }
         .footer { position: fixed; bottom: -11mm; left: 0; right: 0; border-top: 1px solid #d9e2ec; padding-top: 5px; color: #64748b; font-size: 7px; }
         .page-number:after { content: counter(page); }
+        body > .header-table, body > .document-title, body > .footer { display: none; }
+        @include('pdf.partials.brand-styles')
     </style>
 </head>
 <body>
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Contract Service Agreement', 'documentReference' => $contract->contract_number, 'documentDate' => $contract->created_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Contract service agreement. Changes are valid only when documented and approved by both parties.'])
     <table class="header-table">
         <tr>
             <td class="header-left">
@@ -83,7 +87,7 @@
     <div class="section-title">Deposit</div>
     <div>
         @if($contract->deposit_required_percent) {{ $contract->deposit_required_percent }}% @endif
-        @if($contract->deposit_required_amount) (₱{{ number_format($contract->deposit_required_amount, 2) }}) @endif
+        @if($contract->deposit_required_amount) (&#8369;{{ number_format($contract->deposit_required_amount, 2) }}) @endif
         required to confirm this booking.
     </div>
     @endif
@@ -134,7 +138,7 @@
             <tr>
                 <td>{{ $row->installment_number }}</td>
                 <td>{{ $row->due_date->format('M d, Y') }}</td>
-                <td>₱{{ number_format($row->amount_due, 2) }}</td>
+                <td>&#8369;{{ number_format($row->amount_due, 2) }}</td>
                 <td>{{ ucfirst($row->status) }}</td>
             </tr>
         @endforeach
@@ -142,22 +146,55 @@
     </table>
     @endif
 
-    <div class="section-title">Terms &amp; Conditions</div>
-    <div class="terms-box">{{ $contract->terms_snapshot }}</div>
+    <div style="page-break-before: always;"></div>
+    @include('pdf.partials.brand-header', ['documentTitle' => 'Terms and Conditions', 'documentReference' => $contract->contract_number, 'documentDate' => $contract->created_at])
 
-    @if($contract->isFullySigned())
+    @php
+        $contractTerms = collect(preg_split('/\r\n|\r|\n/', trim((string) $contract->terms_snapshot)))
+            ->map(fn ($term) => trim(preg_replace('/^\s*\d+[\.)-]?\s*/', '', $term)))
+            ->filter()
+            ->values();
+    @endphp
+    <table class="jvd-data-table">
+        <thead><tr><th style="width: 8%; text-align: center;">No.</th><th>Terms and Conditions</th></tr></thead>
+        <tbody>
+        @forelse($contractTerms as $index => $term)
+            <tr><td style="text-align: center; font-weight: 900;">{{ $index + 1 }}</td><td>{{ $term }}</td></tr>
+        @empty
+            <tr><td style="text-align: center; font-weight: 900;">1</td><td>The services, pricing, schedule, inclusions, and exclusions stated in this agreement form the approved booking scope.</td></tr>
+        @endforelse
+        </tbody>
+    </table>
+
+    <div class="section-title">Cancellation Policy</div>
+    <div class="terms-box">
+        The required deposit is subject to the cancellation terms stated in this agreement. A cancellation made within three (3) working days of the scheduled trip may result in forfeiture of the deposit. A cancellation made within twenty-four (24) hours of departure may be charged at the full contracted rate. Client-caused cancellation at the pickup point is likewise subject to the agreed cancellation charges.
+    </div>
+
+    <div class="section-title">Conduct Rules and Damage Liability</div>
+    <div class="terms-box">
+        Liquor, illegal drugs, and unsafe conduct are prohibited inside the vehicle. JVD and its service providers may refuse transport to any person who creates a safety risk or serious disruption. The client is responsible for damage caused by members of the traveling party and for securing personal belongings before leaving the vehicle.
+    </div>
+
+    <p style="margin: 18px 0 0; text-align: center; font-size: 9px;">By signing below, both parties confirm that they have reviewed and accepted this contract service agreement.</p>
     <table class="signature-block">
         <tr>
-            <td style="width: 50%;">
-                <div class="meta-label">Customer Signature</div>
+            <td style="width: 50%; text-align: center; padding: 0 18px; vertical-align: bottom;">
                 @if($contract->signature_image)
-                    <img class="signature-img" src="{{ $contract->signature_image }}" alt="Signature">
+                    <img class="signature-img" src="{{ $contract->signature_image }}" alt="Customer signature">
+                @else
+                    <div style="height: 60px;"></div>
                 @endif
-                <div style="margin-top: 4px;">{{ $contract->signature_typed_name }}</div>
-                <div style="font-size: 8px; color: #64748b;">Signed: {{ $contract->signed_at?->format('M d, Y h:i A') }}</div>
+                <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 900;">{{ $contract->signature_typed_name ?: $invoice->customer_name }}</div>
+                <div style="font-size: 8px; color: #64748b;">Client printed name / signature @if($contract->signed_at)<br>Signed {{ $contract->signed_at->format('M d, Y h:i A') }}@endif</div>
+            </td>
+            <td style="width: 50%; text-align: center; padding: 0 18px; vertical-align: bottom;">
+                <div style="height: 60px;"></div>
+                <div style="border-top: 1px solid #1f2937; padding-top: 4px; font-weight: 900;">Ms. Rhean Umali</div>
+                <div style="font-size: 8px; color: #64748b;">Executive Vice President<br>JVD Event &amp; Travel Management Company</div>
             </td>
         </tr>
     </table>
-    @endif
+    <div style="margin-top: 24px; text-align: center; font-weight: 900; font-size: 10px;">THANK YOU FOR TRUSTING US. WE ARE HAPPY TO SERVE YOU.</div>
 </body>
 </html>

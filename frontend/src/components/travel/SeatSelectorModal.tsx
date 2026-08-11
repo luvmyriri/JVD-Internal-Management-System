@@ -4,7 +4,7 @@ import { LuBus, LuCheck, LuX, LuCircleAlert, LuLoaderCircle, LuUserCheck } from 
 import client from '../../api/client';
 import BusLayout from '../ui/BusLayout';
 
-export type VehicleBookingMode = 'entire_vehicle' | 'specific_seats';
+export type VehicleBookingMode = 'entire_vehicle' | 'selected_seats';
 
 export interface SeatSelectionResult {
   bookingMode: VehicleBookingMode;
@@ -36,7 +36,7 @@ export default function SeatSelectorModal({
   onConfirm,
   buses = [],
   initialBusId,
-  initialMode = 'specific_seats',
+  initialMode = 'selected_seats',
   initialSeats = [],
   travelDate,
   returnDate,
@@ -84,9 +84,9 @@ export default function SeatSelectorModal({
   const isWholeVehicleBooked: boolean = availabilityResponse?.is_whole_vehicle_booked || false;
   const seatingCapacity: number = availabilityResponse?.seating_capacity || activeBus?.seating_capacity || 49;
 
-  // Auto-select first available seat when opening modal in specific_seats mode
+  // Auto-select first available seat when opening modal in selected_seats mode
   useEffect(() => {
-    if (isOpen && bookingMode === 'specific_seats' && selectedSeats.length === 0 && !isWholeVehicleBooked) {
+    if (isOpen && bookingMode === 'selected_seats' && selectedSeats.length === 0 && !isWholeVehicleBooked) {
       for (let i = 1; i <= seatingCapacity; i++) {
         const code = String(i);
         if (!occupiedSeats.includes(code)) {
@@ -131,7 +131,7 @@ export default function SeatSelectorModal({
         return;
       }
       onConfirm({
-        bookingMode: 'specific_seats',
+        bookingMode: 'selected_seats',
         busId: activeBus.id,
         busPlate: activeBus.plate_number,
         selectedSeats,
@@ -207,9 +207,9 @@ export default function SeatSelectorModal({
               <div className="mt-1 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setBookingMode('specific_seats')}
+                  onClick={() => setBookingMode('selected_seats')}
                   className={`flex items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black transition-all border ${
-                    bookingMode === 'specific_seats'
+                    bookingMode === 'selected_seats'
                       ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300'
                       : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
                   }`}

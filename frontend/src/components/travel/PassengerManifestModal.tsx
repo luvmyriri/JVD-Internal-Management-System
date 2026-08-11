@@ -22,6 +22,11 @@ export interface PassengerManifestRow extends PassengerInput {
   seat_code?: string;
 }
 
+const escapePrintValue = (value: unknown): string =>
+  String(value ?? '').replace(/[&<>"']/g, character => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string
+  ));
+
 interface PassengerManifestModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -148,7 +153,26 @@ export default function PassengerManifestModal({
   };
 
   const handlePrintManifest = () => {
-    window.print();
+    const printWindow = window.open('', '_blank', 'width=900,height=1100');
+    if (!printWindow) {
+      alert('Popup blocked. Please allow popups to print the passenger manifest.');
+      return;
+    }
+    const rows = passengers.map((passenger, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${escapePrintValue(passenger.seat_code || '-')}</td>
+        <td><strong>${escapePrintValue(`${passenger.first_name} ${passenger.last_name}`.trim())}</strong></td>
+        <td>${escapePrintValue(passenger.role.replace('_', ' '))}</td>
+        <td>${escapePrintValue(passenger.date_of_birth || '-')}</td>
+        <td>${escapePrintValue(passenger.emergency_contact || leadCustomer?.phone || '-')}</td>
+        <td>${escapePrintValue(passenger.dietary_restrictions || passenger.special_needs || '-')}</td>
+      </tr>
+    `).join('');
+    printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Passenger Manifest - ${escapePrintValue(packageName)}</title><style>
+      @page{size:A4 landscape;margin:12mm 12mm 18mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#172033;margin:0;font-size:10px}.header{display:flex;align-items:center;justify-content:space-between;border-bottom:4px solid #b91c1c;padding-bottom:8px}.header img{width:76px}.contact{text-align:right;color:#174a8b;font-size:8px;line-height:1.5}.contact strong{color:#b91c1c;text-transform:uppercase}.heading{display:flex;justify-content:space-between;align-items:flex-end;margin:12px 0}.heading h1{margin:0;font-family:Georgia,serif;font-size:19px;text-transform:uppercase}.meta{text-align:right;color:#64748b;font-size:9px}table{width:100%;border-collapse:collapse}th{background:#174a8b;color:#fff;text-align:left;text-transform:uppercase;font-size:8px;padding:7px;border:1px solid #17365d}td{padding:7px;border:1px solid #cbd5e1;vertical-align:top}.summary{margin-top:10px;font-weight:bold}.signatures{display:flex;gap:40px;margin:42px 18px 0}.signature{flex:1;border-top:1px solid #1f2937;text-align:center;padding-top:5px;font-size:9px}.footer{margin-top:20px;border-top:5px solid #b91c1c;border-bottom:5px solid #1d4ed8;min-height:50px;padding:7px 75px 5px 4px;position:relative;color:#475569;font-size:8px}.footer img{position:absolute;right:8px;bottom:2px;width:54px}@media print{.no-print{display:none}}
+    </style></head><body><div class="header"><img src="/JVDlogo-removebg-preview.png" alt="JVD"><div class="contact"><strong>Email:</strong> jvdtransport8@gmail.com<br><strong>Address:</strong> Unit 6 Aryanna Village Center, Susano Road, Camarin, Caloocan City<br><strong>Phone:</strong> 0954 396 0802 &nbsp; <strong>Tel:</strong> 02 8293 8068</div></div><div class="heading"><h1>Passenger Manifest</h1><div class="meta"><strong>${escapePrintValue(packageName)}</strong><br>Generated ${new Date().toLocaleString('en-PH')}</div></div><table><thead><tr><th>No.</th><th>Seat</th><th>Passenger Name</th><th>Role</th><th>Date of Birth</th><th>Emergency Contact</th><th>Medical / Special Notes</th></tr></thead><tbody>${rows || '<tr><td colspan="7" style="text-align:center">No passengers recorded.</td></tr>'}</tbody></table><div class="summary">Manifest count: ${passengers.length} passenger(s)</div><div class="signatures"><div class="signature">Prepared by</div><div class="signature">Tour coordinator</div><div class="signature">Driver acknowledgement</div></div><div class="footer">JVD Event &amp; Travel Management Company<br>DOT Accreditation No. DOT-NCR-TTA-02903-2024<img src="/dot-quality-seal.png" alt="Department of Tourism Quality Seal"></div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
+    printWindow.document.close();
   };
 
   if (!isOpen) return null;

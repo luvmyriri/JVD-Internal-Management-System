@@ -1,5 +1,12 @@
 import type { TripTicket } from '../../types';
 
+const esc = (value: unknown): string =>
+  String(value ?? '').replace(/[&<>"']/g, character => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character] as string
+  ));
+
+const peso = (value: unknown): string => `&#8369; ${Number(value || 0).toLocaleString('en-PH')}`;
+
 // Print logic extracted and matched from TripTickets
 export function printTripTicket(ticket: TripTicket) {
   const win = window.open('', '_blank', 'width=800,height=1100');
@@ -16,26 +23,28 @@ export function printTripTicket(ticket: TripTicket) {
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Driver's Trip Ticket - ${ticket.control_no}</title>
+  <title>Driver's Trip Ticket - ${esc(ticket.control_no)}</title>
   <style>
+    @page { size: A4 portrait; margin: 10mm 12mm 18mm; }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
       font-size: 11px;
       color: #000;
       background: #fff;
-      padding: 18px 24px;
+      padding: 18px 24px 54px;
     }
     .dtt-wrap {
       width: 100%;
       max-width: 680px;
       margin: 0 auto;
-      border: 2px solid #000;
+      border: 1.5px solid #172554;
+      position: relative;
     }
     .dtt-header {
       display: flex;
       align-items: stretch;
-      border-bottom: 2px solid #000;
+      border-bottom: 4px solid #b91c1c;
     }
     .dtt-logo-cell {
       padding: 8px 12px;
@@ -194,6 +203,8 @@ export function printTripTicket(ticket: TripTicket) {
     .pax-ratings span { display: flex; align-items: center; gap: 5px; }
     .pax-box { display: inline-block; width: 12px; height: 12px; border: 1.5px solid #000; vertical-align: middle; }
     .pax-sig-line { border-top: 1px solid #000; padding-top: 3px; text-align: center; font-size: 10px; margin-top: 10px; }
+    .dtt-footer { margin-top: 12px; border-top: 5px solid #b91c1c; border-bottom: 5px solid #1d4ed8; min-height: 46px; padding: 5px 76px 5px 8px; position: relative; font-size: 8px; line-height: 1.4; color: #334155; }
+    .dtt-footer img { position: absolute; right: 8px; bottom: 2px; width: 54px; height: auto; }
     @media print {
       body { padding: 0; }
       .dtt-wrap { border: 2px solid #000; }
@@ -204,8 +215,8 @@ export function printTripTicket(ticket: TripTicket) {
 <body>
 
   <div class="no-print" style="text-align:right; margin-bottom:10px;">
-    <button onclick="window.print()" style="padding:8px 20px; background:#1a56db; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">🖨️ Print</button>
-    <button onclick="window.close()" style="margin-left:10px; padding:8px 20px; background:#6b7280; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">✕ Close</button>
+    <button onclick="window.print()" style="padding:8px 20px; background:#1a56db; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">Print</button>
+    <button onclick="window.close()" style="margin-left:10px; padding:8px 20px; background:#6b7280; color:white; border:none; border-radius:6px; font-weight:700; cursor:pointer; font-size:13px;">Close</button>
   </div>
 
   <div class="dtt-wrap">
@@ -218,35 +229,35 @@ export function printTripTicket(ticket: TripTicket) {
         <p>(DTT)</p>
       </div>
       <div class="dtt-control-cell">
-        <div><span>Control No.:</span> ${ticket.control_no}</div>
-        <div><span>Issue Date:</span> ${ticket.issue_date || ''}</div>
+        <div><span>Control No.:</span> ${esc(ticket.control_no)}</div>
+        <div><span>Issue Date:</span> ${esc(ticket.issue_date || '')}</div>
       </div>
     </div>
 
     <table class="dtt-grid">
       <tr>
         <td class="label">Date of Travel:</td>
-        <td class="val">${ticket.date_of_travel}</td>
+        <td class="val">${esc(ticket.date_of_travel)}</td>
         <td class="label">Duration:</td>
-        <td class="val">${ticket.duration || ''}</td>
+        <td class="val">${esc(ticket.duration || '')}</td>
       </tr>
       <tr>
         <td class="label">Pick Up:</td>
-        <td class="val">${ticket.pick_up}</td>
+        <td class="val">${esc(ticket.pick_up)}</td>
         <td class="label">Drop Off:</td>
-        <td class="val">${ticket.drop_off}</td>
+        <td class="val">${esc(ticket.drop_off)}</td>
       </tr>
       <tr>
         <td class="label">Unit/Bus:</td>
-        <td class="val">${unitBus}</td>
+        <td class="val">${esc(unitBus)}</td>
         <td class="label">Plate No.:</td>
-        <td class="val">${plateNo}</td>
+        <td class="val">${esc(plateNo)}</td>
       </tr>
       <tr>
         <td class="label">No of Passengers:</td>
-        <td class="val">${ticket.no_of_passengers}${ticket.passenger_name ? ' — ' + ticket.passenger_name : ''}</td>
+        <td class="val">${esc(ticket.no_of_passengers)}${ticket.passenger_name ? ' - ' + esc(ticket.passenger_name) : ''}</td>
         <td class="label">Driver:</td>
-        <td class="val">${driverName}</td>
+        <td class="val">${esc(driverName)}</td>
       </tr>
     </table>
 
@@ -271,23 +282,23 @@ export function printTripTicket(ticket: TripTicket) {
         <div class="liq-title">Liquidation</div>
         <div class="liq-row">
           <span class="liq-label">Meal Allowance</span>
-          <span class="liq-underline">${ticket.meal_allowance ? '₱ ' + Number(ticket.meal_allowance).toLocaleString() : '₱ 0.00'}</span>
+          <span class="liq-underline">${peso(ticket.meal_allowance)}</span>
         </div>
         <div class="liq-row">
           <span class="liq-label">Diesel</span>
-          <span class="liq-underline">${ticket.diesel ? '₱ ' + Number(ticket.diesel).toLocaleString() : '₱ 0.00'}</span>
+          <span class="liq-underline">${peso(ticket.diesel)}</span>
         </div>
         <div class="liq-row">
           <span class="liq-label">SOP</span>
-          <span class="liq-underline">${ticket.sop ? '₱ ' + Number(ticket.sop).toLocaleString() : '₱ 0.00'}</span>
+          <span class="liq-underline">${peso(ticket.sop)}</span>
         </div>
         <div class="liq-row">
           <span class="liq-label">Easy Trip</span>
-          <span class="liq-underline">${ticket.easy_trip ? '₱ ' + Number(ticket.easy_trip).toLocaleString() : '₱ 0.00'}</span>
+          <span class="liq-underline">${peso(ticket.easy_trip)}</span>
         </div>
         <div class="liq-row">
           <span class="liq-label">Autosweep</span>
-          <span class="liq-underline">${ticket.autosweep ? '₱ ' + Number(ticket.autosweep).toLocaleString() : '₱ 0.00'}</span>
+          <span class="liq-underline">${peso(ticket.autosweep)}</span>
         </div>
         <div class="liq-sig">Signature</div>
       </div>
@@ -349,6 +360,11 @@ export function printTripTicket(ticket: TripTicket) {
       </div>
       <div class="pax-sig-line">Passenger's Name in Print and Signature</div>
     </div>
+  </div>
+  <div class="dtt-footer">
+    JVD Event &amp; Travel Management Company<br>
+    Unit 6 Aryanna Village Center, Susano Road, Brgy. 175, Camarin, Caloocan City &nbsp; | &nbsp; DOT-NCR-TTA-02903-2024
+    <img src="/dot-quality-seal.png" alt="Department of Tourism Quality Seal">
   </div>
 </body>
 </html>
