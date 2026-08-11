@@ -159,6 +159,10 @@ class StoreInvoiceRequest extends FormRequest
         return [
             'customer_contact.regex' => 'The contact number must be a valid Philippine mobile number.',
             'customer_email.email' => 'The email address must be a valid email format.',
+            'items.*.item_metadata.bus_assignments.*.bus_id.required_with' => 'Select a fleet bus for every requested charter unit before checkout.',
+            'items.*.item_metadata.bus_assignments.*.bus_id.exists' => 'One of the selected charter buses is no longer available. Refresh the fleet list and choose another bus.',
+            'items.*.item_metadata.assignments.*.bus_id.required_with' => 'Select a fleet bus for every travel assignment before checkout.',
+            'items.*.item_metadata.assignments.*.driver_id.required_with' => 'Select a driver for every travel assignment before checkout.',
         ];
     }
 }

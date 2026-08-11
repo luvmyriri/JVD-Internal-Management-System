@@ -143,4 +143,14 @@ class DraftContractRequest extends FormRequest
             'passengers.*.last_name' => 'required_with:passengers|string|max:255',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            'items.*.item_metadata.bus_assignments.*.bus_id.required_with' => 'Select a fleet bus for every requested charter unit before creating the contract.',
+            'items.*.item_metadata.bus_assignments.*.bus_id.exists' => 'One of the selected charter buses is no longer available. Refresh the fleet list and choose another bus.',
+            'items.*.item_metadata.assignments.*.bus_id.required_with' => 'Select a fleet bus for every travel assignment before creating the contract.',
+            'items.*.item_metadata.assignments.*.driver_id.required_with' => 'Select a driver for every travel assignment before creating the contract.',
+        ];
+    }
 }

@@ -403,6 +403,7 @@ export default function CharterSales() {
         stops: booking.stops,
         buses_required: busesRequired,
         requested_units: busesRequired,
+        includes_driver: Boolean(selectedPlan.includes_driver),
         bus_assignments: busAssignments,
         selected_seats: selectedSeats,
         booking_mode: bookingMode,
@@ -836,7 +837,7 @@ export default function CharterSales() {
                 <p className="text-xs font-black uppercase tracking-wider text-brand mb-3">Vehicle Allocation #{index + 1}</p>
                 <div className="grid gap-4 md:grid-cols-2">
                   <label className="text-xs font-bold text-muted">Assigned Fleet Bus
-                    <select value={assignment.bus_id} onChange={e => {
+                    <select required aria-invalid={!assignment.bus_id} value={assignment.bus_id} onChange={e => {
                       const val = e.target.value;
                       setBusAssignments(current => current.map((item, i) => i === index ? { ...item, bus_id: val } : item));
                     }} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink">
@@ -852,9 +853,12 @@ export default function CharterSales() {
                         );
                       })}
                     </select>
+                    {!assignment.bus_id && validInterval && !resourcesLoading && (
+                      <span className="mt-1.5 block text-[11px] font-semibold text-amber-700 dark:text-amber-400">Required before checkout</span>
+                    )}
                   </label>
                   <label className="text-xs font-bold text-muted">Assigned Driver
-                    <select required={Boolean(selectedPlan?.includes_driver)} value={assignment.driver_id} onChange={e => {
+                    <select required={Boolean(selectedPlan?.includes_driver)} aria-invalid={Boolean(selectedPlan?.includes_driver && !assignment.driver_id)} value={assignment.driver_id} onChange={e => {
                       const val = e.target.value;
                       setBusAssignments(current => current.map((item, i) => i === index ? { ...item, driver_id: val } : item));
                     }} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm text-ink">
@@ -870,6 +874,9 @@ export default function CharterSales() {
                         );
                       })}
                     </select>
+                    {selectedPlan?.includes_driver && !assignment.driver_id && validInterval && !resourcesLoading && (
+                      <span className="mt-1.5 block text-[11px] font-semibold text-amber-700 dark:text-amber-400">Required by this rate plan</span>
+                    )}
                   </label>
                 </div>
               </div>

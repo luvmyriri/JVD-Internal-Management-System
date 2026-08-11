@@ -1,12 +1,22 @@
 <?php
 
+use App\Http\Middleware\AuditLogger;
+use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnforcePasswordChange;
+use App\Http\Middleware\SanitizeApiErrorResponses;
+use App\Http\Middleware\SecurityHeaders;
+use App\Http\Middleware\TrackUserOnlineStatus;
+use App\Http\Middleware\VerifyTwoFactor;
+use App\Support\ApiErrorSanitizer;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Support\Facades\Route;
 use Sentry\Laravel\Integration;
+use Symfony\Component\HttpFoundation\Response;
 
-$tempDir = __DIR__ . '/../storage/app/temp';
-if (!is_dir($tempDir)) {
+$tempDir = __DIR__.'/../storage/app/temp';
+if (! is_dir($tempDir)) {
     @mkdir($tempDir, 0777, true);
 }
 @ini_set('upload_tmp_dir', $tempDir);
@@ -21,9 +31,9 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             $apiPath = __DIR__.'/../routes/api/v1';
             if (is_dir($apiPath)) {
-                $files = glob($apiPath . '/*.php');
+                $files = glob($apiPath.'/*.php');
                 foreach ($files as $file) {
-                    \Illuminate\Support\Facades\Route::middleware(['api', 'throttle:api'])
+                    Route::middleware(['api', 'throttle:api'])
                         ->prefix('api/v1')
                         ->group($file);
                 }
@@ -33,21 +43,22 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Register custom middleware aliases
         $middleware->alias([
-            'role'                    => \App\Http\Middleware\CheckRole::class,
-            'audit'                   => \App\Http\Middleware\AuditLogger::class,
-            'verify.2fa'              => \App\Http\Middleware\VerifyTwoFactor::class,
-            'enforce.password.change' => \App\Http\Middleware\EnforcePasswordChange::class,
+            'role' => CheckRole::class,
+            'audit' => AuditLogger::class,
+            'verify.2fa' => VerifyTwoFactor::class,
+            'enforce.password.change' => EnforcePasswordChange::class,
         ]);
 
         // Apply audit logging to all API routes
         $middleware->api(append: [
-            \App\Http\Middleware\SecurityHeaders::class,
-            \App\Http\Middleware\AuditLogger::class,
-            \App\Http\Middleware\TrackUserOnlineStatus::class,
+            SecurityHeaders::class,
+            SanitizeApiErrorResponses::class,
+            AuditLogger::class,
+            TrackUserOnlineStatus::class,
         ]);
 
         $middleware->statefulApi();
-        
+
         $middleware->preventRequestForgery(except: [
             'api/admin/settings/landing-page',
             'api/accreditations/*/submit-kyc',
@@ -57,4 +68,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
+        $exceptions->respond(function (Response $response) {
+            return ApiErrorSanitizer::sanitize(request(), $response);
+        });
     })->create();

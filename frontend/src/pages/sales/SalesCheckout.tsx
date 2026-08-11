@@ -16,7 +16,8 @@ import {
   LuWallet,
   LuLoaderCircle,
   LuPenLine,
-  LuSmartphone
+  LuSmartphone,
+  LuCircleAlert,
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
@@ -118,6 +119,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [receiptChange, setReceiptChange] = useState<number>(0);
   const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
   const [vatRate, setVatRate] = useState<number>(0.12);
+  const [checkoutError, setCheckoutError] = useState<{
+    message: string;
+    reference?: string;
+    actionItem?: CartItem;
+  } | null>(null);
 
   const [selectedCustomerId, setSelectedCustomerId] = useState<number | null>(null);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -284,12 +290,48 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setPaymentType('full');
     setSelectedCustomerId(null);
     setSearchResults([]);
+    setCheckoutError(null);
   };
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+    setCheckoutError(null);
+
     if (!isContactValid || !isEmailValid) {
-      alert('Please correct the validation errors in customer details.');
+      setCheckoutError({ message: 'Correct the highlighted customer contact or email before checkout.' });
+      return;
+    }
+
+    const incompleteCharter = cart.find((item) => {
+      if (item.serviceType !== 'bus_rental') return false;
+      const assignments = Array.isArray(item.lineMetadata?.bus_assignments)
+        ? item.lineMetadata.bus_assignments
+        : [];
+      const requestedUnits = Number(item.lineMetadata?.requested_units || item.quantity || 1);
+      return assignments.length < requestedUnits
+        || assignments.slice(0, requestedUnits).some((assignment: any) => !Number(assignment?.bus_id));
+    });
+    if (incompleteCharter) {
+      setCheckoutError({
+        message: 'Assign one available fleet bus to every requested charter unit before checkout.',
+        actionItem: incompleteCharter,
+      });
+      return;
+    }
+
+    const missingRequiredDriver = cart.find((item) => {
+      if (item.serviceType !== 'bus_rental' || !item.lineMetadata?.includes_driver) return false;
+      const assignments = Array.isArray(item.lineMetadata?.bus_assignments)
+        ? item.lineMetadata.bus_assignments
+        : [];
+      const requestedUnits = Number(item.lineMetadata?.requested_units || item.quantity || 1);
+      return assignments.slice(0, requestedUnits).some((assignment: any) => !Number(assignment?.driver_id));
+    });
+    if (missingRequiredDriver) {
+      setCheckoutError({
+        message: 'Assign one available driver to every charter unit required by this rate plan.',
+        actionItem: missingRequiredDriver,
+      });
       return;
     }
 
@@ -372,13 +414,16 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     } catch (err: any) {
       const data = err?.response?.data;
       const validationDetails = data?.errors
-        ? Object.values(data.errors).flat().join('\n')
-        : null;
+        ? (Object.values(data.errors).flat().find(message => typeof message === 'string') as string | undefined)
+        : undefined;
       const serverMsg = validationDetails
-        || (data?.error_reference
-          ? `Checkout could not be completed. No payment was recorded. Support reference: ${data.error_reference}`
-          : 'Checkout could not be completed. No payment was recorded. Please try again or contact support.');
-      alert(`Checkout failed: ${serverMsg}`);
+        || data?.message
+        || err?.message
+        || 'Checkout could not be completed. Please try again or contact support.';
+      setCheckoutError({
+        message: serverMsg,
+        reference: data?.error_reference,
+      });
       console.error('Checkout error reference:', data?.error_reference || 'not provided');
     } finally {
       setIsProcessing(false);
@@ -812,6 +857,30 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             <span className="text-3xl font-black text-blue-600 dark:text-blue-400 tracking-tighter">₱{total.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
         </div>
+
+        {checkoutError && (
+          <div role="alert" aria-live="assertive" className="mb-4 rounded-2xl bg-rose-50 p-4 text-rose-900 ring-1 ring-inset ring-rose-200 dark:bg-rose-950/40 dark:text-rose-100 dark:ring-rose-800">
+            <div className="flex items-start gap-3">
+              <LuCircleAlert className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold leading-5">Transaction not completed</p>
+                <p className="mt-1 break-words text-xs leading-5">{checkoutError.message}</p>
+                {checkoutError.reference && (
+                  <p className="mt-2 text-[11px] font-bold">Support reference: {checkoutError.reference}</p>
+                )}
+                {checkoutError.actionItem && onEditCartItem && (
+                  <button
+                    type="button"
+                    onClick={() => onEditCartItem(checkoutError.actionItem!)}
+                    className="mt-3 rounded-xl bg-rose-700 px-3 py-2 text-xs font-bold text-white transition hover:bg-rose-800 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:ring-offset-2"
+                  >
+                    Review vehicle assignments
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         <button
           disabled={cart.length === 0 || isProcessing || (paymentMethod === 'Cash' && paymentType === 'full' && (Number(parseMoneyInput(String(amountReceived))) < total)) || (paymentMethod === 'Cash' && (paymentType === 'downpayment' || paymentType === 'half') && (Number(parseMoneyInput(String(amountReceived))) <= 0 || Number(parseMoneyInput(String(amountReceived))) >= total)) || !isContactValid || !isEmailValid}

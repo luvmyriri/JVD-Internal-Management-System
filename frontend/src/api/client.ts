@@ -1,10 +1,35 @@
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+const SENSITIVE_ERROR_PATTERN = /SQLSTATE|PDOException|QueryException|Stack trace:|Illuminate\\Database|vendor[\\/]laravel|Connection:\s*(?:pgsql|mysql|sqlite)/i;
+const SAFE_SERVER_MESSAGE = 'The system could not complete this request. Please try again. If it continues, contact support.';
+
+const safeErrorText = (value: unknown, fallback: string): string => {
+  if (typeof value !== 'string' || !value.trim() || SENSITIVE_ERROR_PATTERN.test(value)) return fallback;
+  return value;
+};
+
+const sanitizeErrorPayload = (payload: any, status: number) => {
+  const source = payload && typeof payload === 'object' ? payload : {};
+  const fallback = status >= 500 ? SAFE_SERVER_MESSAGE : 'The request could not be completed. Check the entered information and try again.';
+  const errors = source.errors && typeof source.errors === 'object'
+    ? Object.fromEntries(Object.entries(source.errors).map(([field, messages]) => [
+        field,
+        (Array.isArray(messages) ? messages : [messages]).map(message => safeErrorText(message, fallback)),
+      ]))
+    : undefined;
+
+  return {
+    success: false,
+    message: status >= 500 ? fallback : safeErrorText(source.message, fallback),
+    ...(errors ? { errors } : {}),
+    ...(typeof source.error_reference === 'string' ? { error_reference: source.error_reference } : {}),
+  };
+};
 
 const client = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 30000, // 30-second request timeout
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -14,34 +39,30 @@ const client = axios.create({
   withXSRFToken: true,
 });
 
-// Request interceptor — attach auth token & fix FormData uploads
 client.interceptors.request.use(
   (config) => {
-    // Prevent browser/tunnel caching on GET requests
     if (config.method?.toLowerCase() === 'get') {
       config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
       config.headers['Pragma'] = 'no-cache';
       config.headers['Expires'] = '0';
     }
 
-    // When sending FormData, let the browser/axios auto-set multipart boundary
     if (config.data instanceof FormData) {
       delete config.headers['Content-Type'];
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
-// Response interceptor — comprehensive error handling
 client.interceptors.response.use(
   (response) => response,
   (error) => {
-    // 401 Unauthorized — clear session ONLY if primary auth session check fails
     if (error.response?.status === 401) {
+      error.response.data = sanitizeErrorPayload(error.response.data, error.response.status);
       const requestUrl = error.config?.url || '';
       const isAuthCheck = requestUrl.includes('/auth/me') || requestUrl.includes('/login') || requestUrl.includes('/user');
-      
+
       if (isAuthCheck || !localStorage.getItem('auth_token')) {
         localStorage.removeItem('auth_token');
         if (window.location.pathname !== '/login') {
@@ -51,37 +72,28 @@ client.interceptors.response.use(
       return Promise.reject(error);
     }
 
-    // Request timeout (axios ECONNABORTED or code ETIMEDOUT)
     if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
       console.error('[API] Request timed out:', error.config?.url);
       return Promise.reject(new Error('The request timed out. Please try again.'));
     }
 
-    // Network error — no response received (server down, offline, CORS failure)
     if (!error.response) {
-      console.error('[API] Network error — no response received:', error.message);
-      return Promise.reject(new Error('Network error — please check your connection and try again.'));
+      console.error('[API] Network error - no response received:', error.message);
+      return Promise.reject(new Error('Network error - please check your connection and try again.'));
     }
 
-    // 5xx Server errors
+    error.response.data = sanitizeErrorPayload(error.response.data, error.response.status);
+
     if (error.response.status >= 500) {
       console.error(
         `[API] Server error ${error.response.status}:`,
         error.config?.url,
-        error.response.data
-      );
-      return Promise.reject(
-        new Error(
-          error.response.data?.message ||
-          `Server error (${error.response.status}). Please try again or contact support.`
-        )
+        error.response.data.error_reference || 'no support reference',
       );
     }
 
-    // All other errors (4xx etc.) — pass through as-is so callers can handle them
     return Promise.reject(error);
-  }
+  },
 );
 
 export default client;
-
