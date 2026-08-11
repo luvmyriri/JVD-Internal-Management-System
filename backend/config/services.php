@@ -41,4 +41,16 @@ return [
         'webhook_secret' => env('PAYMONGO_WEBHOOK_SECRET'),
     ],
 
+    'maps' => [
+        'google_geocoding_key' => env('GOOGLE_MAPS_API_KEY'),
+        'geocoder_url' => env('LOCATION_GEOCODER_URL', 'https://nominatim.openstreetmap.org'),
+        'router_url' => env('ROUTING_API_URL', 'https://router.project-osrm.org'),
+        'user_agent' => env('LOCATION_API_USER_AGENT', 'JVD-Internal-Management-System/1.0'),
+        'garage_location' => env('JVD_GARAGE_LOCATION', 'Q24R+FP Caloocan, Metro Manila'),
+    ],
+
+    'toll_regulatory_board' => [
+        'rates_url' => env('TRB_TOLL_RATES_URL', 'https://trb.gov.ph/index.php'),
+    ],
+
 ];

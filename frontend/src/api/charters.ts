@@ -15,7 +15,49 @@ export interface CharterRatePlan {
   includes_fuel: boolean;
   includes_tolls: boolean;
   includes_parking: boolean;
+  garage_location?: string;
+  pickup_location?: string | null;
+  destination?: string | null;
+  garage_distance_km?: number;
+  route_distance_km?: number;
+  total_distance_km?: number;
+  fuel_efficiency_km_per_liter?: number;
+  estimated_liters?: number;
+  diesel_price_per_liter?: number;
+  diesel_cost?: number;
+  driver_meals?: number;
+  toll_gate_fees?: number;
+  easytrip?: number;
+  autosweep?: number;
+  commission?: number;
+  desired_profit?: number;
+  total_expenses?: number;
+  projected_profit?: number;
+  auto_adjust_rate?: boolean;
   service: { id: number; name: string; description?: string; images?: string[] };
+}
+
+export interface LocationSuggestion {
+  label: string;
+  latitude: number;
+  longitude: number;
+  provider: string;
+}
+
+export interface RouteEstimate {
+  garage_location: string;
+  pickup_location: string;
+  destination: string;
+  garage_distance_km: number;
+  route_distance_km: number;
+  total_distance_km: number;
+  garage_coordinates?: LocationSuggestion;
+  pickup_coordinates: LocationSuggestion;
+  destination_coordinates: LocationSuggestion;
+  geometry: [number, number][];
+  routing_provider: string;
+  geocoding_provider: string;
+  toll_source: { provider: string; mode: 'manual_reference'; url: string; message: string };
 }
 
 export interface CharterPricing {
@@ -69,6 +111,8 @@ export const charterApi = {
   bookings: () => client.get('/sales/charter-bookings').then(res => res.data.data as CharterBooking[]),
   resources: (startsAt: string, endsAt: string) => client.get('/sales/charter-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as CharterResources),
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
+  searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
+  estimateRoute: (data: Record<string, unknown>) => client.post('/sales/charter-route-estimate', data).then(res => res.data.data as RouteEstimate),
   createRatePlan: (data: Record<string, unknown>) => client.post('/sales/charter-rate-plans', data).then(res => res.data.data as CharterRatePlan),
   updateRatePlan: (id: number, data: Record<string, unknown>) => client.put(`/sales/charter-rate-plans/${id}`, data).then(res => res.data.data as CharterRatePlan),
   deleteRatePlan: (id: number) => client.delete(`/sales/charter-rate-plans/${id}`).then(res => res.data),

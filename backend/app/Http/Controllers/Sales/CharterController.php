@@ -16,8 +16,10 @@ use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\CharterBookingService;
+use App\Services\CharterRateCalculator;
 use App\Services\DocumentPdfService;
 use App\Services\ResourceAllocationService;
+use App\Services\RouteEstimateService;
 use App\Services\SalesLifecycleService;
 use App\Services\SalesOrderService;
 use Carbon\Carbon;
@@ -26,7 +28,11 @@ use Illuminate\Validation\ValidationException;
 
 class CharterController extends Controller
 {
-    public function __construct(private readonly CharterBookingService $charters) {}
+    public function __construct(
+        private readonly CharterBookingService $charters,
+        private readonly CharterRateCalculator $rateCalculator,
+        private readonly RouteEstimateService $routes,
+    ) {}
 
     public function ratePlans()
     {
@@ -40,7 +46,9 @@ class CharterController extends Controller
         if ($service->is_sales_catalog === false) {
             throw ValidationException::withMessages(['service_id' => 'Select an active sales catalog service.']);
         }
-        $plan = CharterRatePlan::create([...$data, 'created_by' => $request->user()->id]);
+        $pricing = $this->rateCalculator->calculate($data);
+        unset($pricing['recommended_base_price']);
+        $plan = CharterRatePlan::create([...$data, ...$pricing, 'created_by' => $request->user()->id]);
 
         return response()->json(['data' => $plan->load('service:id,name,description,images')], 201);
     }
@@ -48,7 +56,9 @@ class CharterController extends Controller
     public function updateRatePlan(StoreCharterRatePlanRequest $request, CharterRatePlan $ratePlan)
     {
         $data = $request->validated();
-        $ratePlan->update($data);
+        $pricing = $this->rateCalculator->calculate($data);
+        unset($pricing['recommended_base_price']);
+        $ratePlan->update([...$data, ...$pricing]);
 
         return response()->json(['data' => $ratePlan->fresh()->load('service:id,name,description,images')]);
     }
@@ -60,6 +70,34 @@ class CharterController extends Controller
         return response()->json([
             'message' => 'Charter rate plan deactivated. Existing bookings and the catalog service were preserved.',
         ]);
+    }
+
+    public function locationSearch(Request $request)
+    {
+        $data = $request->validate(['q' => ['required', 'string', 'min:3', 'max:255']]);
+
+        return response()->json(['data' => $this->routes->search($data['q'])]);
+    }
+
+    public function routeEstimate(Request $request)
+    {
+        $data = $request->validate([
+            'pickup_location' => ['required', 'string', 'max:255'],
+            'destination' => ['required', 'string', 'max:255'],
+            'garage_location' => ['nullable', 'string', 'max:255'],
+            'include_garage' => ['nullable', 'boolean'],
+            'pickup_coordinates' => ['nullable', 'array'],
+            'pickup_coordinates.latitude' => ['required_with:pickup_coordinates', 'numeric', 'between:-90,90'],
+            'pickup_coordinates.longitude' => ['required_with:pickup_coordinates', 'numeric', 'between:-180,180'],
+            'destination_coordinates' => ['nullable', 'array'],
+            'destination_coordinates.latitude' => ['required_with:destination_coordinates', 'numeric', 'between:-90,90'],
+            'destination_coordinates.longitude' => ['required_with:destination_coordinates', 'numeric', 'between:-180,180'],
+            'garage_coordinates' => ['nullable', 'array'],
+            'garage_coordinates.latitude' => ['required_with:garage_coordinates', 'numeric', 'between:-90,90'],
+            'garage_coordinates.longitude' => ['required_with:garage_coordinates', 'numeric', 'between:-180,180'],
+        ]);
+
+        return response()->json(['data' => $this->routes->estimate($data)]);
     }
 
     public function bookings()

@@ -22,6 +22,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/charter-bookings/{booking}/dispatch-sheet', [CharterController::class, 'dispatchSheet'])->name('sales.charters.dispatch');
         Route::get('/charter-resources', [CharterController::class, 'resources'])->name('sales.charters.resources');
         Route::post('/charter-quote', [CharterController::class, 'quote'])->name('sales.charters.quote');
+        Route::get('/location-search', [CharterController::class, 'locationSearch'])->name('sales.location-search');
+        Route::post('/charter-route-estimate', [CharterController::class, 'routeEstimate'])->name('sales.charters.route-estimate');
         Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
         Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
         Route::get('/educational-bookings/{booking}/manifest', [EducationalTourController::class, 'manifest'])->name('sales.educational.manifest');

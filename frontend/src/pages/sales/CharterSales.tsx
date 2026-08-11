@@ -2,11 +2,11 @@ import { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-import { ArrowLeft, Bus, CalendarClock, CheckCircle2, Plus, UsersRound, UserRound, Sparkles, Users, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, Bus, CalendarClock, CheckCircle2, ChevronDown, Fuel, Gauge, LockKeyhole, Plus, Route, ShieldCheck, TriangleAlert, UsersRound, UserRound, Sparkles, Users, Pencil, Trash2 } from 'lucide-react';
 
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
-import { charterApi, type CharterRatePlan } from '../../api/charters';
+import { charterApi, type CharterRatePlan, type RouteEstimate } from '../../api/charters';
 
 import { Button, Modal } from '../../components/ds';
 import BusLayout from '../../components/ui/BusLayout';
@@ -20,7 +20,6 @@ import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
 import CharterBookingManager from './components/CharterBookingManager';
 import { getStorageUrl } from '../../utils';
-import PackageBuilderShell from './components/PackageBuilderShell';
 import PackageCatalogCard from './components/PackageCatalogCard';
 import BookingWorkspaceHeader from './components/BookingWorkspaceHeader';
 import BusCharterQuotationModal from './components/BusCharterQuotationModal';
@@ -35,7 +34,8 @@ const getTomorrowStartEnd = () => {
 };
 
 const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: '', passenger_count: '25', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
-const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '100', pickup_location: 'Manila Hub (Pasay Bus Terminal, Metro Manila)', drop_off_location: 'Tagaytay City (Taal Lake Overview, Cavite)', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
+const GARAGE_LOCATION = 'Q24R+FP Caloocan, Metro Manila';
+const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '0', pickup_location: '', drop_off_location: '', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
 export default function CharterSales() {
   const navigate = useNavigate();
@@ -69,10 +69,16 @@ export default function CharterSales() {
   // Profit-First Engine States
   const [customBaseRate, setCustomBaseRate] = useState('35000');
   const [dieselPricePerL, setDieselPricePerL] = useState('60');
-  const [tollFeeEst, setTollFeeEst] = useState('2500');
+  const [estimatedLiters, setEstimatedLiters] = useState('0');
+  const [dieselCost, setDieselCost] = useState('0');
+  const [tollFeeEst, setTollFeeEst] = useState('0');
+  const [easytripEst, setEasytripEst] = useState('0');
+  const [autosweepEst, setAutosweepEst] = useState('0');
   const [mealAllowanceEst, setMealAllowanceEst] = useState('1500');
   const [agentCommissionEst, setAgentCommissionEst] = useState('3000');
-  const [manualDriverSalary, setManualDriverSalary] = useState('');
+  const [desiredProfit, setDesiredProfit] = useState('12000');
+  const [autoAdjustRate, setAutoAdjustRate] = useState(true);
+  const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
 
   const { data: plans = [] } = useQuery({ queryKey: ['charter-rate-plans'], queryFn: charterApi.ratePlans });
 
@@ -192,11 +198,14 @@ export default function CharterSales() {
 
   const { data: pricing } = useQuery({ queryKey: ['charter-quote', booking.rate_plan_id, booking.starts_at, booking.ends_at, booking.estimated_kilometers], queryFn: () => charterApi.quote({ rate_plan_id: Number(booking.rate_plan_id), starts_at: booking.starts_at, ends_at: booking.ends_at, estimated_kilometers: Number(booking.estimated_kilometers) }), enabled: validInterval && Boolean(booking.rate_plan_id) });
 
-  // Base price is the explicit sell rate. Distance feeds the expense preview
-  // and excess-kilometer pricing, but must not silently replace the sell rate.
+  const totalExpenses = useMemo(() => [dieselCost, tollFeeEst, easytripEst, autosweepEst, mealAllowanceEst, agentCommissionEst]
+    .reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [dieselCost, tollFeeEst, easytripEst, autosweepEst, mealAllowanceEst, agentCommissionEst]);
+  const recommendedBasePrice = totalExpenses + Math.max(0, Number(desiredProfit) || 0);
   const computedBasePrice = useMemo(() => {
-    return Math.max(0, Math.round((parseFloat(customBaseRate) || 0) * 100) / 100);
-  }, [customBaseRate]);
+    const entered = Math.max(0, Number(customBaseRate) || 0);
+    return Math.round((autoAdjustRate ? Math.max(entered, recommendedBasePrice) : entered) * 100) / 100;
+  }, [autoAdjustRate, customBaseRate, recommendedBasePrice]);
+  const projectedProfit = computedBasePrice - totalExpenses;
 
   const [editingRatePlanId, setEditingRatePlanId] = useState<number | null>(null);
 
@@ -204,6 +213,9 @@ export default function CharterSales() {
     setEditingRatePlanId(null);
     setPlanForm(planInitial);
     setCustomBaseRate('35000');
+    setEstimatedLiters('0'); setDieselCost('0'); setRouteEstimate(null);
+    setTollFeeEst('0'); setEasytripEst('0'); setAutosweepEst('0');
+    setMealAllowanceEst('1500'); setAgentCommissionEst('3000'); setDesiredProfit('12000'); setAutoAdjustRate(true);
     setPlanOpen(true);
   };
 
@@ -216,8 +228,8 @@ export default function CharterSales() {
       vehicle_class: plan.vehicle_class,
       rate_per_km: String(ratePerKm),
       min_km_basis: String(plan.included_kilometers || 50),
-      pickup_location: '',
-      drop_off_location: '',
+      pickup_location: plan.pickup_location || '',
+      drop_off_location: plan.destination || '',
       included_hours: String(plan.included_hours || 10),
       extra_hour_rate: String(plan.extra_hour_rate || 500),
       extra_kilometer_rate: String(plan.extra_kilometer_rate || 80),
@@ -228,6 +240,17 @@ export default function CharterSales() {
       includes_parking: plan.includes_parking ?? false,
     });
     setCustomBaseRate(String(plan.base_price ?? 0));
+    setDieselPricePerL(String(plan.diesel_price_per_liter ?? 60));
+    setEstimatedLiters(String(plan.estimated_liters ?? 0));
+    setDieselCost(String(plan.diesel_cost ?? 0));
+    setTollFeeEst(String(plan.toll_gate_fees ?? 0));
+    setEasytripEst(String(plan.easytrip ?? 0));
+    setAutosweepEst(String(plan.autosweep ?? 0));
+    setMealAllowanceEst(String(plan.driver_meals ?? 0));
+    setAgentCommissionEst(String(plan.commission ?? 0));
+    setDesiredProfit(String(plan.desired_profit ?? 12000));
+    setAutoAdjustRate(plan.auto_adjust_rate ?? true);
+    setRouteEstimate(null);
     setPlanOpen(true);
   };
 
@@ -248,6 +271,24 @@ export default function CharterSales() {
         includes_fuel: planForm.includes_fuel,
         includes_tolls: planForm.includes_tolls,
         includes_parking: planForm.includes_parking,
+        garage_location: GARAGE_LOCATION,
+        pickup_location: planForm.pickup_location,
+        destination: planForm.drop_off_location,
+        garage_distance_km: routeEstimate?.garage_distance_km ?? 0,
+        route_distance_km: routeEstimate?.route_distance_km ?? Number(planForm.min_km_basis),
+        total_distance_km: Number(planForm.min_km_basis),
+        fuel_efficiency_km_per_liter: 2.5,
+        estimated_liters: Number(estimatedLiters),
+        diesel_price_per_liter: Number(dieselPricePerL),
+        diesel_cost: Number(dieselCost),
+        driver_meals: Number(mealAllowanceEst),
+        toll_gate_fees: Number(tollFeeEst),
+        easytrip: Number(easytripEst),
+        autosweep: Number(autosweepEst),
+        commission: Number(agentCommissionEst),
+        desired_profit: Number(desiredProfit),
+        auto_adjust_rate: autoAdjustRate,
+        pricing_metadata: routeEstimate ? { routing_provider: routeEstimate.routing_provider, geocoding_provider: routeEstimate.geocoding_provider, toll_source: routeEstimate.toll_source } : null,
       };
 
       if (editingRatePlanId) {
@@ -348,180 +389,74 @@ export default function CharterSales() {
       setEditingRatePlanId(null);
       setPlanForm(planInitial);
     };
-    const selectedCatalogService = services.find(service => String(service.id) === planForm.service_id);
+    const inputClass = 'mt-1 h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100';
+    const moneyInput = (label: string, value: string, setter: (value: string) => void, tone = '') => (
+      <label className="text-xs font-bold text-slate-600">{label}<span className="relative mt-1 block"><span className="absolute left-3 top-2.5 text-sm text-slate-400">₱</span><input type="number" min="0" step="0.01" value={value} onChange={event => setter(event.target.value)} className={`${inputClass} pl-8 ${tone}`} /></span></label>
+    );
     return (
-      <PackageBuilderShell
-        eyebrow="Studio · Charter rate plan builder"
-        title={editingRatePlanId ? 'Refine Charter Rate Plan' : 'Build & Launch Charter Rate Plan'}
-        description="Create the route product, vehicle class, distance engine, overtime pricing, and base-rate inclusions in one full operating canvas."
-        onCancel={closePlanBuilder}
-        onSave={() => savePlan.mutate()}
-        saveLabel={editingRatePlanId ? 'Save rate plan changes' : 'Save & launch rate plan'}
-        isSaving={savePlan.isPending}
-        preview={(
-          <div className="rounded-3xl bg-gradient-to-br from-amber-950 via-[#071b33] to-slate-950 p-6 text-white shadow-xl">
-            <span className="rounded-md bg-amber-500 px-2.5 py-1 text-[9px] font-black uppercase tracking-widest">Charter plan preview</span>
-            <div className="mt-5 h-40 overflow-hidden rounded-2xl bg-white/5">{selectedCatalogService?.images?.[0] ? <img src={getStorageUrl(selectedCatalogService.images[0])} alt="" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><Bus className="h-10 w-10 text-slate-500" /></div>}</div>
-            <p className="mt-5 text-[10px] font-black uppercase tracking-widest text-amber-300">{planForm.vehicle_class || 'Vehicle class pending'}</p>
-            <h2 className="mt-1 text-xl font-black">{planForm.name || 'Untitled charter rate plan'}</h2>
-            <p className="mt-2 text-xs text-slate-300">{planForm.pickup_location || 'Pickup pending'} → {planForm.drop_off_location || 'Destination pending'}</p>
-            <div className="mt-5 space-y-3 border-t border-white/10 pt-4 text-xs">
-              <div className="flex justify-between"><span className="text-slate-400">Base price</span><strong className="text-lg text-amber-300">₱{computedBasePrice.toLocaleString()}</strong></div>
-              <div className="flex justify-between"><span className="text-slate-400">Minimum distance</span><strong>{planForm.min_km_basis || 0} km</strong></div>
-              <div className="flex justify-between"><span className="text-slate-400">Included time</span><strong>{planForm.included_hours || 0} hours</strong></div>
-            </div>
-            <Button onClick={() => savePlan.mutate()} disabled={savePlan.isPending || computedBasePrice === 0} className="mt-6 w-full !bg-amber-500 !text-white">{editingRatePlanId ? 'Save rate plan changes' : 'Save & launch rate plan'}</Button>
+      <div className="min-h-screen bg-slate-50 pb-16">
+        <header className="border-b border-slate-200 bg-white px-5 py-5 lg:px-8">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4"><button type="button" onClick={closePlanBuilder} className="grid h-10 w-10 place-items-center rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"><ArrowLeft className="h-4 w-4" /></button><div><p className="text-[10px] font-black uppercase tracking-[0.22em] text-blue-700">Bus charter pricing desk</p><h1 className="text-xl font-black text-slate-950">{editingRatePlanId ? 'Edit rate worksheet' : 'Build a rate in one pass'}</h1></div></div>
+            <div className="flex gap-2"><Button variant="secondary" onClick={closePlanBuilder}>Cancel</Button><Button onClick={() => savePlan.mutate()} disabled={savePlan.isPending || !planForm.service_id || !planForm.name || computedBasePrice <= 0}>{savePlan.isPending ? 'Saving…' : 'Save rate plan'}</Button></div>
           </div>
-        )}
-      >
-        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="border-b border-border pb-4"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">1 · Product & vehicle identity</p><h2 className="mt-1 text-lg font-black text-ink">What customers will browse</h2></div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-xs font-bold text-muted md:col-span-2">Catalog service<select required value={planForm.service_id} onChange={e => setPlanForm({ ...planForm, service_id: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="">Select transport service…</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
-            <label className="text-xs font-bold text-muted">Rate plan name<input required value={planForm.name} onChange={e => setPlanForm({ ...planForm, name: e.target.value })} placeholder="e.g. Deluxe Bus Charter — Daily Luzon" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" /></label>
-            <label className="text-xs font-bold text-muted">Vehicle type<select value={planForm.vehicle_class} onChange={e => setPlanForm({ ...planForm, vehicle_class: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"><option value="bus">Tourist Bus (49 Seater)</option><option value="coaster">Coaster (28–30 Seater)</option><option value="van">Van (10–14 Seater)</option></select></label>
+        </header>
+
+        <main className="mx-auto grid max-w-7xl gap-6 px-5 py-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
+          <div className="space-y-5">
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-slate-900 text-white"><Bus className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Plan identity</h2><p className="text-xs text-slate-500">Name the sellable service and choose its vehicle.</p></div></div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <label className="text-xs font-bold text-slate-600">Catalog service<select value={planForm.service_id} onChange={event => setPlanForm(current => ({ ...current, service_id: event.target.value }))} className={inputClass}><option value="">Select service…</option>{services.map(service => <option key={service.id} value={service.id}>{service.name}</option>)}</select></label>
+                <label className="text-xs font-bold text-slate-600">Rate plan name<input value={planForm.name} onChange={event => setPlanForm(current => ({ ...current, name: event.target.value }))} placeholder="Manila to Baguio — Tourist Bus" className={inputClass} /></label>
+                <label className="text-xs font-bold text-slate-600">Vehicle<select value={planForm.vehicle_class} onChange={event => setPlanForm(current => ({ ...current, vehicle_class: event.target.value }))} className={inputClass}><option value="bus">Tourist Bus (49 seats)</option><option value="coaster">Coaster (28–30 seats)</option><option value="van">Van (10–14 seats)</option></select></label>
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-start justify-between gap-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white"><Route className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Route</h2><p className="text-xs text-slate-500">Choose exact addresses. Garage travel is added automatically.</p></div></div>{routeEstimate && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{routeEstimate.total_distance_km.toLocaleString()} km total</span>}</div>
+              <TripLocationMapPicker pickupLocation={planForm.pickup_location} dropOffLocation={planForm.drop_off_location} garageLocation={GARAGE_LOCATION} includeGarageLeg fuelPricePerLiter={Number(dieselPricePerL) || 0} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm, liters, cost, _pickupCoords, _dropoffCoords, details) => { setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) })); setEstimatedLiters(liters.toFixed(2)); setDieselCost(cost.toFixed(2)); setRouteEstimate(details ?? null); }} />
+            </section>
+
+            <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-4 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700"><Fuel className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Editable trip costs</h2><p className="text-xs text-slate-500">Fuel starts from total km ÷ 2.5 km/L. Override any figure when operations knows better.</p></div></div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <label className="text-xs font-bold text-slate-600">Estimated liters<input type="number" min="0" step="0.01" value={estimatedLiters} onChange={event => { const liters = event.target.value; setEstimatedLiters(liters); setDieselCost(String((Number(liters) || 0) * (Number(dieselPricePerL) || 0))); }} className={inputClass} /></label>
+                {moneyInput('Diesel price / liter', dieselPricePerL, value => { setDieselPricePerL(value); setDieselCost(String((Number(estimatedLiters) || 0) * (Number(value) || 0))); }, 'border-amber-200 bg-amber-50')}
+                {moneyInput('Diesel cost', dieselCost, setDieselCost, 'border-amber-200 bg-amber-50')}
+                {moneyInput('Driver meals', mealAllowanceEst, setMealAllowanceEst)}
+                {moneyInput('Toll gate fees', tollFeeEst, setTollFeeEst)}
+                {moneyInput('Easytrip', easytripEst, setEasytripEst)}
+                {moneyInput('Autosweep', autosweepEst, setAutosweepEst)}
+                {moneyInput('Commission estimate', agentCommissionEst, setAgentCommissionEst)}
+              </div>
+              <div className="mt-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900"><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>Tolls remain editable. The government Toll Regulatory Board publishes rate matrices, but does not provide a documented live pricing API. Verify Easytrip, Autosweep, and toll-gate values before sending the quotation. {routeEstimate?.toll_source.url && <a href={routeEstimate.toll_source.url} target="_blank" rel="noreferrer" className="font-black underline">Open official TRB source</a>}</span></div>
+            </section>
+
+            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
+              <summary className="flex cursor-pointer list-none items-center justify-between p-5"><div><h2 className="font-black text-slate-950">Advanced package rules</h2><p className="text-xs text-slate-500">Overtime, excess distance, overnight, and inclusions.</p></div><ChevronDown className="h-5 w-5 text-slate-400 transition group-open:rotate-180" /></summary>
+              <div className="grid gap-4 border-t border-slate-200 p-5 md:grid-cols-4">
+                {([['included_hours', 'Included hours'], ['extra_hour_rate', 'Extra hour rate'], ['extra_kilometer_rate', 'Extra km rate'], ['overnight_rate', 'Overnight rate']] as [keyof typeof planForm, string][]).map(([key, label]) => <label key={key} className="text-xs font-bold text-slate-600">{label}<input type="number" min="0" value={String(planForm[key])} onChange={event => setPlanForm(current => ({ ...current, [key]: event.target.value }))} className={inputClass} /></label>)}
+                <div className="grid gap-3 md:col-span-4 sm:grid-cols-4">{([['includes_driver', 'Driver fee'], ['includes_fuel', 'Fuel'], ['includes_tolls', 'Toll fees'], ['includes_parking', 'Parking fees']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-700"><input type="checkbox" checked={planForm[key]} onChange={event => setPlanForm(current => ({ ...current, [key]: event.target.checked }))} />{label}</label>)}</div>
+              </div>
+            </details>
           </div>
-        </section>
 
-        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="border-b border-border pb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">2 · Route & Profit-First Expense Engine</p>
-            <h2 className="mt-1 text-lg font-black text-ink">Base Rate & Expense Deductions</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="text-xs font-bold text-muted">
-              Pickup Location
-              <input required value={planForm.pickup_location} onChange={e => setPlanForm({ ...planForm, pickup_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" />
-            </label>
-            <label className="text-xs font-bold text-muted">
-              Drop-off / Destination
-              <input required value={planForm.drop_off_location} onChange={e => setPlanForm({ ...planForm, drop_off_location: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm" />
-            </label>
-          </div>
-          <TripLocationMapPicker pickupLocation={planForm.pickup_location || 'Manila Hub'} dropOffLocation={planForm.drop_off_location || 'Tagaytay City'} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm) => setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) }))} />
-
-          {/* Profit-First Autocalculator Box */}
-          <div className="p-5 rounded-2xl bg-gradient-to-br from-slate-900 to-amber-950 text-white space-y-4 shadow-lg border border-amber-900/40">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/10 pb-3">
-              <div>
-                <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest block">
-                  Profit-First Financial Calculation Engine
-                </span>
-                <p className="text-xs text-slate-300">Base Rate per day comes first. Expenses are deducted to compute Net Profit.</p>
+          <aside className="lg:sticky lg:top-5 lg:self-start">
+            <section className="overflow-hidden rounded-2xl bg-slate-950 text-white shadow-xl">
+              <div className="border-b border-white/10 p-5"><div className="flex items-center gap-2 text-emerald-400"><LockKeyhole className="h-4 w-4" /><span className="text-[10px] font-black uppercase tracking-[0.2em]">Profit lock</span></div><h2 className="mt-2 text-xl font-black">Rate per unit</h2></div>
+              <div className="space-y-5 p-5">
+                {moneyInput('Staff estimated rate', customBaseRate, setCustomBaseRate, '!border-white/20 !bg-white/10 !text-white')}
+                {moneyInput('Desired profit', desiredProfit, setDesiredProfit, '!border-emerald-500/40 !bg-emerald-500/10 !text-emerald-200')}
+                <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/5 p-3 text-xs"><input type="checkbox" checked={autoAdjustRate} onChange={event => setAutoAdjustRate(event.target.checked)} className="mt-0.5" /><span><strong className="block text-white">Protect target profit</strong><span className="text-slate-400">Raise the saved rate only when the estimate falls short.</span></span></label>
+                <div className="space-y-2 border-y border-white/10 py-4 text-xs"><div className="flex justify-between text-slate-400"><span>Total expenses</span><strong className="text-white">₱{totalExpenses.toLocaleString()}</strong></div><div className="flex justify-between text-slate-400"><span>Minimum rate for target</span><strong className="text-white">₱{recommendedBasePrice.toLocaleString()}</strong></div><div className="flex justify-between text-slate-400"><span>Projected profit</span><strong className={projectedProfit >= Number(desiredProfit) ? 'text-emerald-400' : 'text-red-400'}>₱{projectedProfit.toLocaleString()}</strong></div></div>
+                <div className={projectedProfit >= Number(desiredProfit) ? 'rounded-xl bg-emerald-500/15 p-4' : 'rounded-xl bg-red-500/15 p-4'}><div className="flex items-center gap-2">{projectedProfit >= Number(desiredProfit) ? <ShieldCheck className="h-5 w-5 text-emerald-400" /> : <Gauge className="h-5 w-5 text-red-400" />}<span className="text-xs font-bold">{projectedProfit >= Number(desiredProfit) ? 'Target protected' : 'Below target'}</span></div><p className="mt-2 text-3xl font-black">₱{computedBasePrice.toLocaleString()}</p><p className="mt-1 text-xs text-slate-400">final saved base rate per unit</p></div>
+                <Button onClick={() => savePlan.mutate()} disabled={savePlan.isPending || !planForm.service_id || !planForm.name || computedBasePrice <= 0} className="w-full !bg-blue-600 !text-white">{savePlan.isPending ? 'Saving…' : editingRatePlanId ? 'Save changes' : 'Save rate plan'}</Button>
               </div>
-              <div className="bg-amber-500/20 border border-amber-500/40 px-3 py-1 rounded-xl text-right">
-                <span className="text-[9px] font-bold text-amber-300 uppercase block">Estimated Net Profit</span>
-                <span className={`text-xl font-black ${(parseFloat(customBaseRate) || 0) - ((Math.round(((parseFloat(planForm.min_km_basis || '120') / 2.5)) * 10) / 10 * (parseFloat(dieselPricePerL) || 60)) + (parseFloat(tollFeeEst) || 0) + (manualDriverSalary !== '' ? parseFloat(manualDriverSalary) : (parseFloat(customBaseRate) || 0) * 0.10) + (parseFloat(mealAllowanceEst) || 0) + (parseFloat(agentCommissionEst) || 0)) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  ₱{((parseFloat(customBaseRate) || 0) - ((Math.round(((parseFloat(planForm.min_km_basis || '120') / 2.5)) * 10) / 10 * (parseFloat(dieselPricePerL) || 60)) + (parseFloat(tollFeeEst) || 0) + (manualDriverSalary !== '' ? parseFloat(manualDriverSalary) : (parseFloat(customBaseRate) || 0) * 0.10) + (parseFloat(mealAllowanceEst) || 0) + (parseFloat(agentCommissionEst) || 0))).toLocaleString()}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] font-black text-amber-300 uppercase block mb-1">1. Base Rate per Day (₱) *</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={customBaseRate}
-                  onChange={e => setCustomBaseRate(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-amber-500/40 rounded-xl text-sm font-black text-amber-300 focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-300 uppercase block mb-1">Diesel Price (₱/L)</label>
-                <input
-                  type="number"
-                  step="0.5"
-                  value={dieselPricePerL}
-                  onChange={e => setDieselPricePerL(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-xs font-bold text-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-300 uppercase block mb-1">Toll Fees Est (₱) (NLEX/SLEX)</label>
-                <input
-                  type="number"
-                  value={tollFeeEst}
-                  onChange={e => setTollFeeEst(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-xs font-bold text-white"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-white/10">
-              <div>
-                <label className="text-[10px] font-black text-slate-300 uppercase block mb-1">Driver Salary (10% of Base Rate)</label>
-                <input
-                  type="number"
-                  placeholder={`₱${((parseFloat(customBaseRate) || 0) * 0.10).toLocaleString()}`}
-                  value={manualDriverSalary}
-                  onChange={e => setManualDriverSalary(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-xs font-bold text-emerald-300"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-300 uppercase block mb-1">Driver Meal Allowance (₱)</label>
-                <input
-                  type="number"
-                  value={mealAllowanceEst}
-                  onChange={e => setMealAllowanceEst(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-xs font-bold text-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-black text-slate-300 uppercase block mb-1">Agent Commission (₱)</label>
-                <input
-                  type="number"
-                  value={agentCommissionEst}
-                  onChange={e => setAgentCommissionEst(e.target.value)}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-xl text-xs font-bold text-amber-300"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="space-y-5 rounded-3xl border border-border bg-surface p-6 shadow-sm">
-          <div className="border-b border-border pb-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-600">3 · Rates & Inclusions</p>
-            <h2 className="mt-1 text-lg font-black text-ink">Package Standards & Equipment</h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-4">
-            {([
-              ['included_hours', 'Included hours'],
-              ['extra_hour_rate', 'Extra hour rate (₱)'],
-              ['extra_kilometer_rate', 'Extra kilometer rate (₱)'],
-              ['overnight_rate', 'Overnight rate (₱)'],
-            ] as [keyof typeof planForm, string][]).map(([key, label]) => (
-              <label key={key} className="text-xs font-bold text-muted">
-                {label}
-                <input
-                  required
-                  type="number"
-                  min={key === 'included_hours' ? 1 : 0}
-                  step={key === 'included_hours' ? 1 : 0.01}
-                  value={String(planForm[key])}
-                  onChange={e => setPlanForm(current => ({ ...current, [key]: e.target.value }))}
-                  className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm"
-                />
-              </label>
-            ))}
-          </div>
-          <div className="grid gap-3 rounded-2xl bg-surface-alt p-4 sm:grid-cols-4">
-            {([['includes_driver', 'Driver fee'], ['includes_fuel', 'Fuel'], ['includes_tolls', 'Toll fees'], ['includes_parking', 'Parking fees']] as [string, string][]).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 text-xs font-bold text-ink">
-                <input type="checkbox" checked={Boolean((planForm as any)[key])} onChange={e => setPlanForm({ ...planForm, [key]: e.target.checked })} className="h-4 w-4 rounded" />
-                {label}
-              </label>
-            ))}
-          </div>
-        </section>
-      </PackageBuilderShell>
+            </section>
+          </aside>
+        </main>
+      </div>
     );
   }
 
