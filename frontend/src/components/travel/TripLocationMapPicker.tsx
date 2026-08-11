@@ -143,6 +143,33 @@ export default function TripLocationMapPicker({
   }, []);
 
   useEffect(() => {
+    const node = mapNode.current;
+    if (!node) return;
+
+    let frame = 0;
+    const refreshMapSize = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => map.current?.invalidateSize({ pan: false }));
+    };
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(refreshMapSize);
+
+    observer?.observe(node);
+    window.addEventListener('resize', refreshMapSize);
+    refreshMapSize();
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+      observer?.disconnect();
+      window.removeEventListener('resize', refreshMapSize);
+    };
+  }, []);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => map.current?.invalidateSize({ pan: false }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [includeGarageLeg, pinMode]);
+
+  useEffect(() => {
     if (!pickupCoords || !dropoffCoords) return;
     let active = true;
     setLoading(true); setError('');
@@ -187,8 +214,12 @@ export default function TripLocationMapPicker({
         {onIncludeGarageLegChange && <label className="flex cursor-pointer items-center gap-2 text-xs font-bold text-slate-700"><input type="checkbox" checked={includeGarageLeg} disabled={readOnly} onChange={event => onIncludeGarageLegChange(event.target.checked)} className="h-4 w-4 accent-blue-600" /><LuRoute className="h-4 w-4 text-amber-600" />Include garage → pickup distance</label>}
         {!readOnly && <div className="flex flex-wrap gap-2"><button type="button" aria-pressed={pinMode === 'pickup'} onClick={() => setPinMode(current => current === 'pickup' ? null : 'pickup')} className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-bold ${pinMode === 'pickup' ? 'bg-blue-700 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-blue-50'}`}><LuMapPin className="h-4 w-4" />Pin pickup</button><button type="button" aria-pressed={pinMode === 'dropoff'} onClick={() => setPinMode(current => current === 'dropoff' ? null : 'dropoff')} className={`inline-flex h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-bold ${pinMode === 'dropoff' ? 'bg-red-600 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-red-50'}`}><LuMapPin className="h-4 w-4" />Pin destination</button></div>}
       </div>
-      {includeGarageLeg && <div className="flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900"><LuRoute className="h-4 w-4" />Garage leg starts from the saved office pin: {garageLocation}</div>}
-      {pinMode && <div className="border-b border-blue-200 bg-blue-700 px-4 py-2 text-center text-xs font-bold text-white">Click the map to place the {pinMode === 'pickup' ? 'pickup' : 'destination'} pin. Zoom in for building-level precision.</div>}
+      <div className={includeGarageLeg ? 'flex items-center gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-900' : 'hidden'} aria-hidden={!includeGarageLeg}>
+        <LuRoute className="h-4 w-4 shrink-0" />Garage leg starts from the saved office pin: {garageLocation}
+      </div>
+      <div className={pinMode ? 'border-b border-blue-200 bg-blue-700 px-4 py-2 text-center text-xs font-bold text-white' : 'hidden'} aria-live="polite">
+        {pinMode ? `Click the map to place the ${pinMode === 'pickup' ? 'pickup' : 'destination'} pin. Zoom in for building-level precision.` : ''}
+      </div>
       <div ref={mapNode} className={`h-80 w-full bg-slate-100 ${pinMode ? 'cursor-crosshair' : ''}`} />
       <div aria-live="polite" className="flex min-h-14 flex-wrap items-center gap-x-6 gap-y-2 border-t border-slate-200 px-4 py-3 text-xs">
         {pinning ? <span className="flex items-center gap-2 font-bold text-blue-700"><LuLoaderCircle className="animate-spin" />Naming pinned location…</span> : loading ? <span className="flex items-center gap-2 font-bold text-blue-700"><LuLoaderCircle className="animate-spin" />Calculating road route…</span> : error ? <span role="alert" className="font-semibold text-red-600">{error}</span> : estimate ? <>
