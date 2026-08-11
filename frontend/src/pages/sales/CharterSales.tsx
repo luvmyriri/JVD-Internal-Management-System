@@ -6,7 +6,7 @@ import { ArrowLeft, Bus, CalendarClock, CheckCircle2, ChevronDown, Fuel, Gauge, 
 
 import toast from 'react-hot-toast';
 import { billingApi, type Service } from '../../api/billing';
-import { charterApi, type CharterRatePlan, type RouteEstimate } from '../../api/charters';
+import { charterApi, type CharterRatePlan, type RouteEstimate, type TollMatrixCalculation } from '../../api/charters';
 
 import { Button, Modal } from '../../components/ds';
 import BusLayout from '../../components/ui/BusLayout';
@@ -80,6 +80,7 @@ export default function CharterSales() {
   const [desiredProfit, setDesiredProfit] = useState('12000');
   const [autoAdjustRate, setAutoAdjustRate] = useState(true);
   const [routeEstimate, setRouteEstimate] = useState<RouteEstimate | null>(null);
+  const [matrixTollResult, setMatrixTollResult] = useState<TollMatrixCalculation | null>(null);
 
   const { data: plans = [] } = useQuery({ queryKey: ['charter-rate-plans'], queryFn: charterApi.ratePlans });
 
@@ -214,7 +215,7 @@ export default function CharterSales() {
     setEditingRatePlanId(null);
     setPlanForm(planInitial);
     setCustomBaseRate('35000');
-    setEstimatedLiters('0'); setDieselCost('0'); setRouteEstimate(null);
+    setEstimatedLiters('0'); setDieselCost('0'); setRouteEstimate(null); setMatrixTollResult(null);
     setTollFeeEst('0'); setEasytripEst('0'); setAutosweepEst('0');
     setMealAllowanceEst('1500'); setAgentCommissionEst('3000'); setDesiredProfit('12000'); setAutoAdjustRate(true);
     setPlanOpen(true);
@@ -252,6 +253,7 @@ export default function CharterSales() {
     setDesiredProfit(String(plan.desired_profit ?? 12000));
     setAutoAdjustRate(plan.auto_adjust_rate ?? true);
     setRouteEstimate(null);
+    setMatrixTollResult(null);
     setPlanOpen(true);
   };
 
@@ -416,12 +418,12 @@ export default function CharterSales() {
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-start justify-between gap-4"><div className="flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-blue-600 text-white"><Route className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Route</h2><p className="text-xs text-slate-500">Choose exact addresses. Garage travel is added automatically.</p></div></div>{routeEstimate && <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">{routeEstimate.total_distance_km.toLocaleString()} km total</span>}</div>
-              <TripLocationMapPicker pickupLocation={planForm.pickup_location} dropOffLocation={planForm.drop_off_location} garageLocation={GARAGE_LOCATION} includeGarageLeg fuelPricePerLiter={Number(dieselPricePerL) || 0} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm, liters, cost, _pickupCoords, _dropoffCoords, details) => { setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) })); setEstimatedLiters(liters.toFixed(2)); setDieselCost(cost.toFixed(2)); setRouteEstimate(details ?? null); if (details?.toll_estimate.mode === 'automatic') { setTollFeeEst(String(details.toll_estimate.toll_gate_fees)); setEasytripEst(String(details.toll_estimate.easytrip)); setAutosweepEst(String(details.toll_estimate.autosweep)); } }} />
+              <TripLocationMapPicker pickupLocation={planForm.pickup_location} dropOffLocation={planForm.drop_off_location} garageLocation={GARAGE_LOCATION} includeGarageLeg fuelPricePerLiter={Number(dieselPricePerL) || 0} vehicleType={planForm.vehicle_class === 'van' ? 'Van' : planForm.vehicle_class === 'coaster' ? 'Coaster' : 'Bus'} onLocationSelect={(pickup, dropoff, distanceKm, liters, cost, _pickupCoords, _dropoffCoords, details) => { setPlanForm(current => ({ ...current, pickup_location: pickup, drop_off_location: dropoff, min_km_basis: String(distanceKm) })); setEstimatedLiters(liters.toFixed(2)); setDieselCost(cost.toFixed(2)); setRouteEstimate(details ?? null); setMatrixTollResult(null); if (details?.toll_estimate.mode === 'automatic') { setTollFeeEst(String(details.toll_estimate.toll_gate_fees)); setEasytripEst(String(details.toll_estimate.easytrip)); setAutosweepEst(String(details.toll_estimate.autosweep)); } }} />
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <div className="mb-4 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-xl bg-amber-100 text-amber-700"><Fuel className="h-4 w-4" /></span><div><h2 className="font-black text-slate-950">Editable trip costs</h2><p className="text-xs text-slate-500">Fuel starts from total km ÷ 2.5 km/L. Override any figure when operations knows better.</p></div></div>
-              <TollMatrixPicker onApply={result => { setTollFeeEst(String(result.toll_gate_fees)); setEasytripEst(String(result.easytrip)); setAutosweepEst(String(result.autosweep)); }} />
+              <TollMatrixPicker onApply={result => { setMatrixTollResult(result); setTollFeeEst(String(result.toll_gate_fees)); setEasytripEst(String(result.easytrip)); setAutosweepEst(String(result.autosweep)); }} />
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <label className="text-xs font-bold text-slate-600">Estimated liters<input type="number" min="0" step="0.01" value={estimatedLiters} onChange={event => { const liters = event.target.value; setEstimatedLiters(liters); setDieselCost(String((Number(liters) || 0) * (Number(dieselPricePerL) || 0))); }} className={inputClass} /></label>
                 {moneyInput('Diesel price / liter', dieselPricePerL, value => { setDieselPricePerL(value); setDieselCost(String((Number(estimatedLiters) || 0) * (Number(value) || 0))); }, 'border-amber-200 bg-amber-50')}
@@ -432,7 +434,7 @@ export default function CharterSales() {
                 {moneyInput('Autosweep', autosweepEst, setAutosweepEst)}
                 {moneyInput('Commission estimate', agentCommissionEst, setAgentCommissionEst)}
               </div>
-              <div className={`mt-4 flex gap-2 rounded-xl border p-3 text-xs leading-5 ${routeEstimate?.toll_estimate.mode === 'automatic' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-amber-200 bg-amber-50 text-amber-900'}`}><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>{routeEstimate?.toll_estimate.message ?? 'Configure TollGuru to automate bus toll estimates. Values remain editable for operations staff.'} {routeEstimate?.toll_source.url && <a href={routeEstimate.toll_source.url} target="_blank" rel="noreferrer" className="font-black underline">Open official TRB source</a>}</span></div>
+              <div className={`mt-4 flex gap-2 rounded-xl border p-3 text-xs leading-5 ${matrixTollResult || routeEstimate?.toll_estimate.mode === 'automatic' ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>{matrixTollResult ? `Class 2 toll matrix applied for ${matrixTollResult.segments.length} segment${matrixTollResult.segments.length === 1 ? '' : 's'} (₱${matrixTollResult.total.toLocaleString()}). Values remain editable.` : routeEstimate?.toll_estimate.mode === 'automatic' ? routeEstimate.toll_estimate.message : 'Select the expressway entry and exit in the Class 2 bus toll calculator above. TollGuru is optional for route-aware estimates.'} {(matrixTollResult?.official_verification_url || routeEstimate?.toll_source.url) && <a href={matrixTollResult?.official_verification_url || routeEstimate?.toll_source.url} target="_blank" rel="noreferrer" className="ml-1 font-black underline">Open TRB reference</a>}</span></div>
             </section>
 
             <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">

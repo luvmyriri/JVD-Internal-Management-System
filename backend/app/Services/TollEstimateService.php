@@ -11,7 +11,7 @@ class TollEstimateService
     {
         $apiKey = config('services.tollguru.api_key');
         if (! $apiKey || count($points) < 2) {
-            return $this->manualFallback('TollGuru is not configured. Enter toll values manually and verify them against TRB.');
+            return $this->manualFallback('Use the Class 2 toll matrix selector for published bus rates. TollGuru is optional for route-aware estimates.');
         }
 
         $origin = array_shift($points);
@@ -38,18 +38,18 @@ class TollEstimateService
                 ->throw()
                 ->json();
         } catch (Throwable) {
-            return $this->manualFallback('Automated toll lookup was unavailable. Enter toll values manually and verify them against TRB.');
+            return $this->manualFallback('Route-aware toll lookup was unavailable. Use the Class 2 toll matrix selector and verify operational changes against TRB.');
         }
 
         if (strtolower((string) ($response['status'] ?? '')) !== 'ok') {
-            return $this->manualFallback('TollGuru did not return a usable route. Enter toll values manually and verify them against TRB.');
+            return $this->manualFallback('No route-aware toll estimate was returned. Use the Class 2 toll matrix selector and verify operational changes against TRB.');
         }
 
         $route = collect($response['routes'] ?? [])->sortBy(fn (array $candidate) => $candidate['costs']['minimumTollCost'] ?? PHP_FLOAT_MAX
         )->first();
         $currency = strtoupper((string) ($response['summary']['currency'] ?? 'PHP'));
         if (! $route || $currency !== 'PHP') {
-            return $this->manualFallback('No Philippine-peso toll estimate was returned. Enter toll values manually and verify them against TRB.');
+            return $this->manualFallback('No Philippine-peso route estimate was returned. Use the Class 2 toll matrix selector and verify operational changes against TRB.');
         }
 
         $categories = ['toll_gate_fees' => 0.0, 'easytrip' => 0.0, 'autosweep' => 0.0];
