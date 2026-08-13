@@ -81,7 +81,6 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader 
   const [inclusions, setInclusions] = useState(catalogService?.inclusions ?? '');
   const [exclusions, setExclusions] = useState(catalogService?.exclusions ?? '');
   const [specialRequests, setSpecialRequests] = useState('');
-  const [requiresContract, setRequiresContract] = useState(false);
   const [busId, setBusId] = useState('');
   const [driverId, setDriverId] = useState('');
   const [busAllocationModalOpen, setBusAllocationModalOpen] = useState(false);
@@ -309,7 +308,6 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader 
       },
       itinerary,
       passengers,
-      requiresContract,
       serviceDate: startsAtIso,
       destination: destination.trim(),
       paxCount: travelers.length,
@@ -496,10 +494,6 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader 
             <div className="flex justify-between text-muted"><span>{children} child{children === 1 ? '' : 'ren'}</span><strong className="text-ink">₱{(children * moneyValue(childRate)).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
             <div className="flex justify-between text-lg font-black text-ink"><span>Quoted total</span><span>₱{quotedTotal.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span></div>
           </div>
-          <label className="flex cursor-pointer gap-3 rounded-2xl border border-border bg-surface-alt p-4">
-            <input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border text-blue-600 focus:ring-blue-500" />
-            <span><strong className="block text-xs text-ink">Require signed contract</strong><span className="mt-1 block text-[11px] leading-4 text-muted">Checkout will create the contract before invoice finalization.</span></span>
-          </label>
           <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20">
             <LuPlus /> Add private tour to order
           </button>

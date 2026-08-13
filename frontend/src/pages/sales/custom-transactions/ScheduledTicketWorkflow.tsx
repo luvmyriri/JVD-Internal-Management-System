@@ -50,7 +50,6 @@ export function ScheduledTicketWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
   const [passengers, setPassengers] = useState<TicketPassenger[]>([makePassenger()]);
   const [supplierCost, setSupplierCost] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
-  const [requiresContract, setRequiresContract] = useState(false);
 
   const normalizedSeats = useMemo(
     () => passengers.map((passenger) => passenger.seat.trim().toUpperCase()).filter(Boolean),
@@ -134,7 +133,6 @@ export function ScheduledTicketWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
         category_meta: metadata,
       },
       passengers: invoicePassengers,
-      requiresContract,
       serviceDate: toIsoDateTime(departureAt),
       destination: destination.trim(),
       paxCount: passengers.length,
@@ -191,8 +189,7 @@ export function ScheduledTicketWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
           <div className="rounded-2xl bg-surface p-4"><p className="text-[10px] font-black uppercase tracking-widest text-muted">Commercial snapshot</p><div className="mt-2 flex justify-between text-sm text-muted"><span>{passengers.length} ticket{passengers.length === 1 ? '' : 's'}</span><strong className="text-ink">₱{sellingAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div><div className={`mt-1 flex justify-between text-xs font-bold ${grossMargin < 0 ? 'text-red-600' : 'text-emerald-600'}`}><span>Gross margin</span><span>₱{grossMargin.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span></div></div>
         </section>
 
-        <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-3 text-xs font-bold text-ink"><input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} className="h-4 w-4 rounded border-border text-cyan-700" /> Require signed service agreement</label>
+        <div className="flex justify-end border-t border-border pt-5">
           <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-700 px-6 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-cyan-800"><LuReceiptText /> Add scheduled tickets</button>
         </div>
         <p className="flex items-center gap-2 text-[11px] text-muted"><LuMapPin /> The external operator controls its global seat inventory; this workflow prevents duplicates within the JVD transaction manifest.</p>

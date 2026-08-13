@@ -391,7 +391,6 @@ export default function CharterSales() {
       lineName: `Bus Charter: ${selectedPlan.name} (${busesRequired} Bus${busesRequired > 1 ? 'es' : ''} for ${paxCount} Pax)`,
       lineDescription: `${busesRequired} × Vehicles required for ${paxCount} passengers. ${bookingMode === 'entire_vehicle' ? 'Entire Vehicle Charter' : `Specific Seats: ${selectedSeats.join(', ')}`}. Assigned Vehicles: ${assignedPlates}.`,
       serviceType: 'bus_rental',
-      requiresContract: (totalCharterSubtotal ?? 0) >= 50000,
       lineMetadata: {
         rate_plan_id: selectedPlan.id,
         starts_at: booking.starts_at,

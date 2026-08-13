@@ -103,7 +103,6 @@ export default function VisaAssistanceWorkflow({ onAdd, onBack }: ServiceWorkflo
   const [appointmentAt, setAppointmentAt] = useState('');
   const [professionalFee, setProfessionalFee] = useState('');
   const [notes, setNotes] = useState('');
-  const [requiresContract, setRequiresContract] = useState(false);
 
   const {
     data: queriedCases = [],
@@ -215,7 +214,6 @@ export default function VisaAssistanceWorkflow({ onAdd, onBack }: ServiceWorkflo
         category_meta: metadata,
         additional_remarks: notes.trim() || undefined,
       },
-      requiresContract,
       serviceDate: intendedDeparture,
       destination: metadata.destination_country,
     };
@@ -228,7 +226,6 @@ export default function VisaAssistanceWorkflow({ onAdd, onBack }: ServiceWorkflo
     setAppointmentAt('');
     setProfessionalFee('');
     setNotes('');
-    setRequiresContract(false);
     toast.success('Visa assistance added with its Travel case and customer ownership locked.');
   };
 
@@ -375,13 +372,6 @@ export default function VisaAssistanceWorkflow({ onAdd, onBack }: ServiceWorkflo
           <label className={labelClass} htmlFor="visa-notes">Billing notes <span className="normal-case tracking-normal text-slate-400">(optional)</span></label>
           <textarea id="visa-notes" rows={3} className={inputClass} value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Scope, special handling, or fee inclusions shown on the transaction." />
         </div>
-        <label className="sm:col-span-2 flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-950">
-          <input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500" />
-          <span>
-            <span className="block text-sm font-bold text-slate-900 dark:text-white">Require a signed service contract</span>
-            <span className="mt-0.5 block text-xs leading-5 text-slate-500 dark:text-slate-400">Use for high-value assistance or when the agreed scope needs customer acknowledgement before finalization.</span>
-          </span>
-        </label>
       </section>
 
       <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-5 dark:border-slate-800 sm:flex-row sm:justify-end">

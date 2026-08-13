@@ -18,12 +18,12 @@ import {
   LuPenLine,
   LuSmartphone,
   LuCircleAlert,
+  LuSignature,
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
 import { contractsApi, type CustomTransactionDetailInput, type ItineraryDayInput, type PassengerInput } from '../../api/contracts';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
-import ContractReviewPanel from './components/ContractReviewPanel';
 
 export interface CheckoutCustomerPreset {
   id?: number;
@@ -69,9 +69,6 @@ export interface CartItem {
   customCategoryDetail?: CustomTransactionDetailInput;
   itinerary?: ItineraryDayInput[];
   passengers?: PassengerInput[];
-  // Explicit per-transaction contract requirement, set by the checkbox on the custom
-  // transaction form. Sole decider of whether checkout routes through the contract flow.
-  requiresContract?: boolean;
 }
 
 const calculateCartItemTotal = (item: CartItem): number => {
@@ -148,9 +145,11 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
 
-  // Contract-gated checkout (Custom Transactions only — see evaluateContractGate below).
-  const [draftContract, setDraftContract] = useState<any>(null);
-  const [showContractReview, setShowContractReview] = useState(false);
+  const [generateContract, setGenerateContract] = useState(false);
+  const [contractGenerationFeedback, setContractGenerationFeedback] = useState<{
+    type: 'success' | 'warning';
+    message: string;
+  } | null>(null);
 
   // Sync customerPreset when provided by parent forms (Joiner, Charter, Educational, Visa)
   useEffect(() => {
@@ -251,13 +250,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
   const formatName = (val: string) => val.replace(/[^A-Za-z\s-']/g, '');
 
-  // The "Requires a signed contract" checkbox on the custom transaction form is the sole
-  // decider: checkout routes through the contract draft/e-signature flow only when a cart
-  // item is explicitly flagged. No automatic threshold/downpayment inference.
-  const evaluateContractGate = () => {
-    return cart.some(item => !!item.requiresContract);
-  };
-
   const invoiceItems = () => cart.map(item => ({
     // Bespoke workflows (educational tours and custom arrangements) use virtual
     // frontend IDs. Never send those IDs as catalog service foreign keys.
@@ -277,26 +269,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     destination: item.destination,
   }));
 
-  const contractDetail = (): CustomTransactionDetailInput => {
-    const explicit = cart.find(item => item.customCategoryDetail)?.customCategoryDetail;
-    if (explicit) return explicit;
-
-    const item = cart.find(entry => entry.requiresContract) ?? cart[0];
-    return {
-      category: item.serviceType || item.service.category || 'sales_booking',
-      destination: item.destination,
-      route: [item.pickupLocation, item.destination].filter(Boolean).join(' to ') || undefined,
-      school_name: item.lineMetadata?.school_name,
-      grade_level: item.lineMetadata?.grade_level,
-      expected_pax: item.paxCount,
-      itinerary_stops: Array.isArray(item.lineMetadata?.stops)
-        ? item.lineMetadata.stops.join('\n')
-        : item.lineMetadata?.stops,
-      booking_type: item.lineMetadata?.booking_mode,
-      booking_details: item.lineDescription,
-    };
-  };
-
   const resetCheckoutForm = () => {
     clearCart();
     setCustomerName('');
@@ -309,6 +281,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setSelectedCustomerId(null);
     setSearchResults([]);
     setCheckoutError(null);
+    setGenerateContract(false);
   };
 
   const handleCheckout = async () => {
@@ -355,41 +328,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
 
     setIsProcessing(true);
     try {
-      if (evaluateContractGate()) {
-        const contractItem = cart.find(item => !!item.customCategoryDetail)
-          ?? cart.find(item => !!item.requiresContract)
-          ?? cart[0];
-        const response = await contractsApi.draft({
-          customer_id: selectedCustomerId || undefined,
-          customer_name: customerName || undefined,
-          customer_address: customerAddress || undefined,
-          customer_email: customerEmail || undefined,
-          customer_contact: customerContact ? customerContact.replace(/[-\s()]/g, '') : undefined,
-          payment_method: paymentMethod,
-          payment_type: paymentType === 'half' ? 'downpayment' : paymentType,
-          amount_received: paymentMethod === 'Cash' ? Number(parseMoneyInput(String(amountReceived || 0))) : undefined,
-          tax_rate: vatRate,
-          travel_date: cart.find(item => item.travelDate)?.travelDate,
-          pickup_location: cart.find(item => item.pickupLocation)?.pickupLocation,
-          tour_code: cart.find(item => item.tourCode || item.destination)?.tourCode
-            || cart.find(item => item.destination)?.destination,
-          pax_count: cart.find(item => item.paxCount)?.paxCount,
-          bus_id: cart.find(item => item.busId)?.busId || null,
-          driver_id: cart.find(item => item.driverId)?.driverId || null,
-          seat_map: cart.find(item => item.selectedSeats)?.selectedSeats || null,
-          items: invoiceItems(),
-          custom_transaction_detail: contractDetail(),
-          itinerary: contractItem.itinerary,
-          passengers: contractItem.passengers,
-        });
-
-        setDraftContract(response.data.data);
-        setShowContractReview(true);
-        resetCheckoutForm();
-        setIsProcessing(false);
-        return;
-      }
-
       const normalizedPaymentType = paymentType === 'half' ? 'downpayment' : paymentType;
       const normalizedContact = customerContact ? customerContact.replace(/[-\s()]/g, '') : '';
       const normalizedAmountReceived = Number(parseMoneyInput(String(amountReceived || 0)));
@@ -429,6 +367,20 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
             departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
           } as any)).data.data;
+
+      setContractGenerationFeedback(null);
+      if (generateContract) {
+        try {
+          const result = await contractsApi.generateForInvoice(invoice.id, Boolean(customerEmail));
+          invoice.contract = result.data.contract;
+          setContractGenerationFeedback({ type: 'success', message: result.message });
+        } catch (contractError: any) {
+          setContractGenerationFeedback({
+            type: 'warning',
+            message: contractError?.response?.data?.message || 'Checkout succeeded, but the contract could not be generated. Retry from Transaction Details.',
+          });
+        }
+      }
 
       setLastInvoice(invoice);
       setReceiptAmountReceived(amountReceived);
@@ -897,6 +849,18 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       </div>
 
       <div className="p-8 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 shrink-0">
+        <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-white p-4 ring-1 ring-inset ring-gray-200 transition hover:ring-blue-300 dark:bg-gray-900 dark:ring-gray-700">
+          <input
+            type="checkbox"
+            checked={generateContract}
+            onChange={(event) => setGenerateContract(event.target.checked)}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="min-w-0">
+            <span className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-white"><LuSignature className="h-4 w-4 text-blue-600" aria-hidden="true" />Generate contract</span>
+            <span className="mt-1 block break-words text-xs leading-5 text-gray-500 dark:text-gray-400">Optional. Checkout continues normally. {customerEmail ? `A PDF will be emailed to ${customerEmail}.` : 'Add an email to send the PDF automatically.'}</span>
+          </span>
+        </label>
         <div className="space-y-2 mb-6">
           <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
             <span>Subtotal</span>
@@ -1014,6 +978,20 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 }`}
               >
                 {invoiceEmailFeedback.message}
+              </div>
+            )}
+
+            {contractGenerationFeedback && (
+              <div
+                role={contractGenerationFeedback.type === 'warning' ? 'alert' : 'status'}
+                aria-live="polite"
+                className={`no-print border-b px-6 py-3 text-sm font-semibold ${
+                  contractGenerationFeedback.type === 'success'
+                    ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
+                    : 'border-amber-100 bg-amber-50 text-amber-900'
+                }`}
+              >
+                {contractGenerationFeedback.message}
               </div>
             )}
 
@@ -1261,13 +1239,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
           </div>
         </div>,
         document.body
-      )}
-
-      {showContractReview && draftContract && (
-        <ContractReviewPanel
-          contract={draftContract}
-          onClose={() => { setShowContractReview(false); setDraftContract(null); }}
-        />
       )}
 
       {/* Print Styles */}

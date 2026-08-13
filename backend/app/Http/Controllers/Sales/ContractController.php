@@ -11,6 +11,7 @@ use App\Http\Requests\Sales\SignContractAtCounterRequest;
 use App\Http\Requests\Sales\UpdateContractDraftRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Mail\ContractSentForSignatureMail;
+use App\Mail\GeneratedContractMail;
 use App\Models\Booking;
 use App\Models\Contract;
 use App\Models\ContractAmendment;
@@ -66,6 +67,70 @@ class ContractController extends Controller
         $contract->load(['invoice.items.service', 'invoice.itineraries', 'invoice.passengers', 'invoice.paymentSchedules', 'invoice.customTransactionDetail', 'amendments', 'creator']);
 
         return response()->json(['success' => true, 'data' => $contract]);
+    }
+
+    /**
+     * Generate an optional contract for an invoice that has already completed checkout.
+     * This never gates payment, fulfillment, or the Operations/DTT handoff.
+     */
+    public function generateForInvoice(Request $request, Invoice $invoice): JsonResponse
+    {
+        $validated = $request->validate([
+            'send_email' => ['sometimes', 'boolean'],
+        ]);
+
+        $invoice->loadMissing(['items.service', 'itineraries', 'passengers', 'paymentSchedules', 'customTransactionDetail']);
+        $depositPercent = (float) SystemSetting::getValue('sales.default_deposit_percent', 30);
+
+        $contract = DB::transaction(function () use ($invoice, $depositPercent) {
+            $contract = $invoice->contract()->first();
+
+            if (! $contract) {
+                $contract = Contract::create([
+                    'invoice_id' => $invoice->id,
+                    'contract_number' => $this->generateContractNumber(),
+                    'status' => 'issued',
+                    'terms_snapshot' => $this->renderTermsSnapshot($invoice, $depositPercent),
+                    'deposit_required_percent' => $depositPercent,
+                    'deposit_required_amount' => round((float) $invoice->total_amount * ($depositPercent / 100), 2),
+                    'created_by' => auth()->id(),
+                    'sent_at' => null,
+                ]);
+            } elseif (in_array($contract->status, ['draft', 'sent_for_signature'], true) && ! $contract->signed_at) {
+                $contract->update(['status' => 'issued']);
+            }
+
+            $invoice->update([
+                'requires_contract' => true,
+                'contract_gate_status' => 'generated',
+            ]);
+
+            return $contract;
+        });
+
+        $emailSent = false;
+        $email = $invoice->notificationEmail();
+        if (($validated['send_email'] ?? true) && $email) {
+            try {
+                Mail::to($email)->queue(new GeneratedContractMail($contract));
+                $contract->update(['sent_at' => now()]);
+                $emailSent = true;
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $emailSent
+                ? "Contract generated and queued for {$email}."
+                : ($email ? 'Contract generated. Email delivery could not be queued.' : 'Contract generated. Add a customer email to send it.'),
+            'data' => [
+                'contract' => $contract->fresh()->load('invoice'),
+                'email_sent' => $emailSent,
+                'email' => $email,
+            ],
+        ], $contract->wasRecentlyCreated ? 201 : 200);
     }
 
     /**

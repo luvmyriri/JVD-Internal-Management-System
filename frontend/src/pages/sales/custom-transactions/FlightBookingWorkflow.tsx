@@ -35,7 +35,6 @@ export default function FlightBookingWorkflow({ onAdd, onBack }: ServiceWorkflow
   const [sellingPrice, setSellingPrice] = useState('');
   const [supplierCost, setSupplierCost] = useState('');
   const [notes, setNotes] = useState('');
-  const [requiresContract, setRequiresContract] = useState(false);
 
   const effectiveSegments = tripType === 'multi_city' ? segments : segments.slice(0, 1);
   const routeLabel = useMemo(() => effectiveSegments
@@ -106,7 +105,6 @@ export default function FlightBookingWorkflow({ onAdd, onBack }: ServiceWorkflow
         category_meta: { trip_type: tripType, segments: typedSegments, fare_class: fareClass, baggage_allowance: baggage },
       },
       passengers,
-      requiresContract,
       serviceDate: first.departureAt,
       destination: last.destination.trim().toUpperCase(),
       paxCount: namedPassengers.length,
@@ -154,7 +152,7 @@ export default function FlightBookingWorkflow({ onAdd, onBack }: ServiceWorkflow
           <label className={`${labelClass} md:col-span-3`}>Flight notes<textarea className={textareaClass} value={notes} onChange={(event) => setNotes(event.target.value)} /></label>
         </div>
 
-        <div className="flex flex-col gap-4 border-t border-sky-100 pt-5 sm:flex-row sm:items-center sm:justify-between dark:border-sky-950"><label className="flex items-center gap-3 text-xs font-bold text-slate-700 dark:text-slate-200"><input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} /> Require signed service agreement</label><button className="rounded-xl bg-sky-700 px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-sky-800">Add flight booking</button></div>
+        <div className="flex justify-end border-t border-sky-100 pt-5 dark:border-sky-950"><button className="rounded-xl bg-sky-700 px-6 py-3 text-[11px] font-black uppercase tracking-[0.18em] text-white hover:bg-sky-800">Add flight booking</button></div>
       </div>
     </form>
   );

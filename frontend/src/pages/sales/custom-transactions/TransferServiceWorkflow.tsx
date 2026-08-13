@@ -50,7 +50,6 @@ export function TransferServiceWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
   const [busId, setBusId] = useState('');
   const [driverId, setDriverId] = useState('');
   const [sellingPrice, setSellingPrice] = useState('');
-  const [requiresContract, setRequiresContract] = useState(false);
 
   const passengerCount = Number(declaredPassengerCount) || 0;
   const bags = Number(luggageCount) || 0;
@@ -147,7 +146,6 @@ export function TransferServiceWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
         category_meta: metadata,
       },
       passengers: invoicePassengers,
-      requiresContract,
       serviceDate: pickupAtIso,
       destination: dropoffLocation.trim(),
       paxCount: passengerCount,
@@ -205,8 +203,7 @@ export function TransferServiceWorkflow({ onAdd, onBack }: ServiceWorkflowProps)
           <label className={`${labelClass} md:col-span-2`}>Dispatch notes<textarea maxLength={3000} rows={4} className={inputClass} value={dispatchNotes} onChange={(event) => setDispatchNotes(event.target.value)} placeholder="Meet-and-greet instructions, signage, contact sequence, stops, accessibility, or luggage handling" /><span className="mt-1 block text-right text-[10px] font-normal text-muted">{dispatchNotes.length}/3,000</span></label>
         </section>
 
-        <div className="flex flex-col gap-4 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-3 text-xs font-bold text-ink"><input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} className="h-4 w-4 rounded border-border text-orange-700" /> Require signed service agreement</label>
+        <div className="flex justify-end border-t border-border pt-5">
           <button type="submit" className="inline-flex items-center justify-center gap-2 rounded-xl bg-orange-700 px-6 py-3 text-[11px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-orange-800"><LuRoute /> Add transfer dispatch</button>
         </div>
         <div className="grid gap-2 text-[11px] text-muted sm:grid-cols-2"><p className="flex items-center gap-2"><LuMapPin /> {pickupLocation || 'Pickup pending'} → {dropoffLocation || 'Drop-off pending'}</p><p className="flex items-center gap-2 sm:justify-end"><LuUserRound /> {passengers.length} named / {passengerCount || 0} declared</p></div>

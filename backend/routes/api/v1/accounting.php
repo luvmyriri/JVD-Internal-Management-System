@@ -1,35 +1,14 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\AuditLogController;
-use App\Http\Controllers\Admin\SystemSettingController;
-use App\Http\Controllers\Procurement\PurchaseOrderController;
-use App\Http\Controllers\Procurement\SupplierController;
-use App\Http\Controllers\Procurement\JobOrderController;
-use App\Http\Controllers\Procurement\WorkOrderController;
-use App\Http\Controllers\Travel\CustomerController;
-use App\Http\Controllers\Travel\CustomerPassportController;
-use App\Http\Controllers\Travel\CustomerVisaController;
-use App\Http\Controllers\Travel\CustomerKycController;
-use App\Http\Controllers\Travel\AgentTaskController;
-use App\Http\Controllers\Travel\PassengerController;
-use App\Http\Controllers\Travel\PassportCaseController;
-use App\Http\Controllers\Travel\LegalDocumentController;
-use App\Http\Controllers\Fleet\BusController;
-use App\Http\Controllers\Procurement\AccreditationController;
-use App\Http\Controllers\Admin\RolePermissionController;
-use App\Http\Controllers\Inventory\InventoryController;
-use App\Http\Controllers\Auth\ProfileController;
-use App\Http\Controllers\Procurement\ProcurementDocumentController;
-use App\Http\Controllers\CommissionController;
-use App\Http\Controllers\TripTicketController;
-use App\Http\Controllers\CashBudgetRequestController;
-use App\Http\Controllers\CollectionController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\PayrollController;
+use App\Http\Controllers\Accounting\AccountController;
+use App\Http\Controllers\Accounting\BillingController;
 use App\Http\Controllers\Accounting\FinancialReadinessController;
+use App\Http\Controllers\Accounting\JournalEntryController;
+use App\Http\Controllers\Accounting\LiquidationController;
+use App\Http\Controllers\Accounting\ReportController;
+use App\Http\Controllers\CollectionController;
+use App\Http\Controllers\Sales\ContractController;
+use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->group(function () {
     // COLLECTIONS / FINANCE
@@ -50,27 +29,27 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     // ──────────────────────────────────────
     // ACCOUNTING (dynamic permissions)
     // ──────────────────────────────────────
-    
+
     // Webhook for PayMongo (no auth required)
-    Route::post('/billing/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
+    Route::post('/billing/webhook', [BillingController::class, 'handleWebhook'])->name('billing.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
     // Canonical PayMongo provider path; retain /billing/webhook for existing integrations.
-    Route::post('/paymongo/webhook', [App\Http\Controllers\Accounting\BillingController::class, 'handleWebhook'])->name('paymongo.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
+    Route::post('/paymongo/webhook', [BillingController::class, 'handleWebhook'])->name('paymongo.webhook')->withoutMiddleware('auth:sanctum')->middleware('throttle:60,1');
 
     Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,accounting:view')->group(function () {
         // Billing / Reports / Sales
-        Route::get('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'getServices'])->name('billing.services');
-        Route::post('/billing/services', [App\Http\Controllers\Accounting\BillingController::class, 'storeService'])->name('billing.services.store');
-        Route::post('/billing/services/upload-image', [App\Http\Controllers\Accounting\BillingController::class, 'uploadServiceImage'])->name('billing.services.upload-image');
-        Route::put('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'updateService'])->name('billing.services.update');
-        Route::delete('/billing/services/{id}', [App\Http\Controllers\Accounting\BillingController::class, 'deleteService'])->name('billing.services.delete');
-        Route::get('/billing/services/{id}/occupancy', [App\Http\Controllers\Accounting\BillingController::class, 'getServiceOccupancy'])->name('billing.services.occupancy');
-        Route::patch('/billing/{billing}/status', [App\Http\Controllers\Accounting\BillingController::class, 'updateStatus'])->name('billing.status.update');
-        Route::post('/billing/{id}/send-email', [App\Http\Controllers\Accounting\BillingController::class, 'sendEmail'])->name('billing.send-email');
+        Route::get('/billing/services', [BillingController::class, 'getServices'])->name('billing.services');
+        Route::post('/billing/services', [BillingController::class, 'storeService'])->name('billing.services.store');
+        Route::post('/billing/services/upload-image', [BillingController::class, 'uploadServiceImage'])->name('billing.services.upload-image');
+        Route::put('/billing/services/{id}', [BillingController::class, 'updateService'])->name('billing.services.update');
+        Route::delete('/billing/services/{id}', [BillingController::class, 'deleteService'])->name('billing.services.delete');
+        Route::get('/billing/services/{id}/occupancy', [BillingController::class, 'getServiceOccupancy'])->name('billing.services.occupancy');
+        Route::patch('/billing/{billing}/status', [BillingController::class, 'updateStatus'])->name('billing.status.update');
+        Route::post('/billing/{id}/send-email', [BillingController::class, 'sendEmail'])->name('billing.send-email');
 
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive')->group(function () {
-            Route::get('/billing/reports/summary', [App\Http\Controllers\Accounting\ReportController::class, 'getSummary'])->name('billing.reports.summary');
-            Route::get('/billing/reports/detailed', [App\Http\Controllers\Accounting\ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
-            Route::get('/accounting/reconciliation', [App\Http\Controllers\Accounting\ReportController::class, 'reconciliation'])->name('accounting.reconciliation');
+            Route::get('/billing/reports/summary', [ReportController::class, 'getSummary'])->name('billing.reports.summary');
+            Route::get('/billing/reports/detailed', [ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
+            Route::get('/accounting/reconciliation', [ReportController::class, 'reconciliation'])->name('accounting.reconciliation');
             Route::get('/accounting/readiness/runs', [FinancialReadinessController::class, 'runs'])->name('accounting.readiness.runs');
             Route::post('/accounting/readiness/runs', [FinancialReadinessController::class, 'run'])->name('accounting.readiness.run');
             Route::get('/accounting/opening-balances', [FinancialReadinessController::class, 'batches'])->name('accounting.opening-balances.index');
@@ -78,39 +57,40 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::post('/accounting/opening-balances/{batch}/approve', [FinancialReadinessController::class, 'approveBatch'])->name('accounting.opening-balances.approve');
             Route::post('/accounting/opening-balances/{batch}/post', [FinancialReadinessController::class, 'postBatch'])->name('accounting.opening-balances.post');
         });
-        Route::apiResource('billing', App\Http\Controllers\Accounting\BillingController::class);
+        Route::apiResource('billing', BillingController::class);
 
-        // Sales Contracts (Custom Transactions contract gate)
-        Route::get('/contracts', [App\Http\Controllers\Sales\ContractController::class, 'index'])->name('contracts.index');
-        Route::get('/contracts/{contract}', [App\Http\Controllers\Sales\ContractController::class, 'show'])->name('contracts.show');
-        Route::post('/contracts/draft', [App\Http\Controllers\Sales\ContractController::class, 'draft'])->name('contracts.draft');
-        Route::patch('/contracts/{contract}', [App\Http\Controllers\Sales\ContractController::class, 'updateDraft'])->name('contracts.update-draft');
-        Route::post('/contracts/{contract}/payment-schedule', [App\Http\Controllers\Sales\ContractController::class, 'attachPaymentSchedule'])->name('contracts.payment-schedule');
-        Route::post('/contracts/{contract}/send', [App\Http\Controllers\Sales\ContractController::class, 'sendForSignature'])->name('contracts.send');
-        Route::post('/contracts/{contract}/sign', [App\Http\Controllers\Sales\ContractController::class, 'signAtCounter'])->name('contracts.sign-at-counter');
-        Route::post('/contracts/{contract}/void', [App\Http\Controllers\Sales\ContractController::class, 'void'])->name('contracts.void');
-        Route::get('/contracts/{contract}/pdf', [App\Http\Controllers\Sales\ContractController::class, 'pdf'])->name('contracts.pdf');
-        Route::post('/contracts/{contract}/amendments', [App\Http\Controllers\Sales\ContractController::class, 'createAmendment'])->name('contracts.amendments.create');
-        Route::post('/contract-amendments/{amendment}/send', [App\Http\Controllers\Sales\ContractController::class, 'sendAmendmentForSignature'])->name('contract-amendments.send');
+        // Optional Sales contracts. Legacy signature routes remain for already-issued signing links.
+        Route::get('/contracts', [ContractController::class, 'index'])->name('contracts.index');
+        Route::get('/contracts/{contract}', [ContractController::class, 'show'])->name('contracts.show');
+        Route::post('/invoices/{invoice}/contract', [ContractController::class, 'generateForInvoice'])->name('contracts.generate-for-invoice');
+        Route::post('/contracts/draft', [ContractController::class, 'draft'])->name('contracts.draft');
+        Route::patch('/contracts/{contract}', [ContractController::class, 'updateDraft'])->name('contracts.update-draft');
+        Route::post('/contracts/{contract}/payment-schedule', [ContractController::class, 'attachPaymentSchedule'])->name('contracts.payment-schedule');
+        Route::post('/contracts/{contract}/send', [ContractController::class, 'sendForSignature'])->name('contracts.send');
+        Route::post('/contracts/{contract}/sign', [ContractController::class, 'signAtCounter'])->name('contracts.sign-at-counter');
+        Route::post('/contracts/{contract}/void', [ContractController::class, 'void'])->name('contracts.void');
+        Route::get('/contracts/{contract}/pdf', [ContractController::class, 'pdf'])->name('contracts.pdf');
+        Route::post('/contracts/{contract}/amendments', [ContractController::class, 'createAmendment'])->name('contracts.amendments.create');
+        Route::post('/contract-amendments/{amendment}/send', [ContractController::class, 'sendAmendmentForSignature'])->name('contract-amendments.send');
 
         // Ledger & Liquidations
-        Route::get('/accounts', [App\Http\Controllers\Accounting\AccountController::class, 'index'])->name('accounts.index');
-        Route::get('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');
+        Route::get('/accounts', [AccountController::class, 'index'])->name('accounts.index');
+        Route::get('/accounting/journal-entries', [JournalEntryController::class, 'index'])->name('accounting.journal-entries.index');
 
         // Manual journal entries + CSV import (write access — tighter role gate).
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive,accounting:create')->group(function () {
-            Route::post('/accounting/journal-entries', [App\Http\Controllers\Accounting\JournalEntryController::class, 'store'])->name('accounting.journal-entries.store');
-            Route::post('/accounting/journal-entries/import', [App\Http\Controllers\Accounting\JournalEntryController::class, 'import'])->name('accounting.journal-entries.import');
+            Route::post('/accounting/journal-entries', [JournalEntryController::class, 'store'])->name('accounting.journal-entries.store');
+            Route::post('/accounting/journal-entries/import', [JournalEntryController::class, 'import'])->name('accounting.journal-entries.import');
         });
 
-        Route::get('/accounting/journal-entries/{id}', [App\Http\Controllers\Accounting\JournalEntryController::class, 'show'])->name('accounting.journal-entries.show');
-        Route::get('/accounting/employee-soa', [App\Http\Controllers\Accounting\AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
-        Route::get('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'index'])->name('liquidations.index');
-        Route::get('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'show'])->name('liquidations.show');
-        Route::post('/liquidations', [App\Http\Controllers\Accounting\LiquidationController::class, 'store'])->name('liquidations.store');
-        Route::put('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'update'])->name('liquidations.update');
-        Route::delete('/liquidations/{liquidation}', [App\Http\Controllers\Accounting\LiquidationController::class, 'destroy'])->name('liquidations.destroy');
-        Route::post('/liquidations/{liquidation}/settle', [App\Http\Controllers\Accounting\LiquidationController::class, 'settle'])->name('liquidations.settle');
+        Route::get('/accounting/journal-entries/{id}', [JournalEntryController::class, 'show'])->name('accounting.journal-entries.show');
+        Route::get('/accounting/employee-soa', [AccountController::class, 'employeeSoa'])->name('accounting.employee_soa');
+        Route::get('/liquidations', [LiquidationController::class, 'index'])->name('liquidations.index');
+        Route::get('/liquidations/{liquidation}', [LiquidationController::class, 'show'])->name('liquidations.show');
+        Route::post('/liquidations', [LiquidationController::class, 'store'])->name('liquidations.store');
+        Route::put('/liquidations/{liquidation}', [LiquidationController::class, 'update'])->name('liquidations.update');
+        Route::delete('/liquidations/{liquidation}', [LiquidationController::class, 'destroy'])->name('liquidations.destroy');
+        Route::post('/liquidations/{liquidation}/settle', [LiquidationController::class, 'settle'])->name('liquidations.settle');
     });
 
     // ──────────────────────────────────────

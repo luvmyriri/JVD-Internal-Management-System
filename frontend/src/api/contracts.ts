@@ -88,6 +88,8 @@ export const contractsApi = {
   list: (params?: { status?: string; invoice_id?: number; per_page?: number }) => client.get('/contracts', { params }),
   get: (id: number) => client.get(`/contracts/${id}`),
   draft: (data: ContractDraftPayload) => client.post('/contracts/draft', data),
+  generateForInvoice: (invoiceId: number, sendEmail = true) =>
+    client.post(`/invoices/${invoiceId}/contract`, { send_email: sendEmail }).then(response => response.data),
   updateDraft: (id: number, data: { terms_snapshot?: string; deposit_required_percent?: number; deposit_required_amount?: number; cancellation_policy_key?: string }) =>
     client.patch(`/contracts/${id}`, data),
   attachPaymentSchedule: (id: number, data: { mode: 'auto' | 'manual'; count?: number; first_due_date?: string; interval_days?: number; rows?: { due_date: string; amount_due: number }[] }) =>

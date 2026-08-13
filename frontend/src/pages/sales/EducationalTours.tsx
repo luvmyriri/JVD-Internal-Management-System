@@ -427,7 +427,6 @@ export default function EducationalTours() {
       lineName: `Educational Tour: ${booking.school_name || 'School Group'} (${selectedProgram.name})`,
       lineDescription: `School: ${booking.school_name || 'School'}. Grade: ${booking.grade_level || 'General'}. Students: ${booking.student_count}. Tour Guides: ${booking.tour_guide_count}. Pickup: ${booking.pickup_location || 'TBD'}. Option: ${bookingMode === 'entire_vehicle' ? 'Whole Bus Charter' : `Specific Seats (${selectedSeats.join(', ')})`}.`,
       serviceType: 'educational_tour',
-      requiresContract: (pricing?.total ?? 0) >= 50000,
       itinerary,
       lineMetadata: {
         program_id: selectedProgram.id,

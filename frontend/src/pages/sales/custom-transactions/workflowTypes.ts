@@ -29,7 +29,6 @@ export interface PreparedServiceLine {
   customDetail?: CustomTransactionDetailInput;
   itinerary?: ItineraryDayInput[];
   passengers?: PassengerInput[];
-  requiresContract?: boolean;
   serviceDate?: string;
   destination?: string;
   paxCount?: number;
@@ -95,7 +94,6 @@ export const preparedLineToCartItem = (line: PreparedServiceLine, sequence: numb
     customCategoryDetail: line.customDetail,
     itinerary: line.itinerary,
     passengers: line.passengers,
-    requiresContract: line.requiresContract,
     serviceDate: line.serviceDate,
     destination: line.destination,
     paxCount: line.paxCount,

@@ -188,7 +188,6 @@ export default function JoinerCheckout() {
       lineName: `Joiner Tour: ${departure.service?.name || 'Tour'} (${departure.code})`,
       lineDescription: `${formattedSeatList} (${adultCount} adult, ${childCount} child). Passengers: ${passengerSummary || 'TBD'}. Tour Code: ${departure.code}. Date: ${new Date(departure.starts_at).toLocaleDateString('en-PH')}.`,
       serviceType: 'joiner_tour',
-      requiresContract: false,
       passengers: passengers.map(p => ({
         first_name: p.first_name || 'Passenger',
         last_name: p.last_name || p.seat_code,

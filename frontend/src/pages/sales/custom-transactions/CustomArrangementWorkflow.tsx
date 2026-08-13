@@ -4,7 +4,6 @@ import {
   LuCalendarRange,
   LuCircleAlert,
   LuClipboardCheck,
-  LuSignature,
   LuPackageCheck,
   LuPlus,
   LuReceiptText,
@@ -38,7 +37,6 @@ export function CustomArrangementWorkflow({ onAdd, onBack }: ServiceWorkflowProp
   const [supplierReference, setSupplierReference] = useState('');
   const [supplierCost, setSupplierCost] = useState('');
   const [quotedPrice, setQuotedPrice] = useState('');
-  const [requiresContract, setRequiresContract] = useState(true);
   const [deliverables, setDeliverables] = useState<DeliverableRow[]>([makeDeliverable()]);
 
   const quotedAmount = numericMoney(quotedPrice);
@@ -102,7 +100,6 @@ export function CustomArrangementWorkflow({ onAdd, onBack }: ServiceWorkflowProp
         category_meta: metadata,
         additional_remarks: `Deliverables: ${completeDeliverables.join('; ')}`,
       },
-      requiresContract,
       serviceDate: toIsoDateTime(targetStartsAt),
     };
 
@@ -179,10 +176,6 @@ export function CustomArrangementWorkflow({ onAdd, onBack }: ServiceWorkflowProp
             <div className="flex justify-between text-muted"><span>Supplier cost</span><strong className="text-ink">₱{supplierAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</strong></div>
             <div className={`flex justify-between font-black ${margin < 0 ? 'text-red-600' : 'text-emerald-600'}`}><span>Gross margin</span><span>₱{margin.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</span></div>
           </div>
-          <label className="flex cursor-pointer gap-3 rounded-2xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900 dark:bg-violet-950/20">
-            <input type="checkbox" checked={requiresContract} onChange={(event) => setRequiresContract(event.target.checked)} className="mt-0.5 h-4 w-4 rounded border-border text-violet-600 focus:ring-violet-500" />
-            <span><strong className="flex items-center gap-1.5 text-xs text-ink"><LuSignature /> Require signed contract</strong><span className="mt-1 block text-[11px] leading-4 text-muted">Recommended for non-standard scope, supplier dependency, or material value.</span></span>
-          </label>
           <button type="submit" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-violet-600 px-5 py-3 text-sm font-black text-white shadow-lg shadow-violet-600/20 transition hover:bg-violet-700 focus:outline-none focus:ring-4 focus:ring-violet-500/20"><LuPlus /> Add arrangement to order</button>
           <p className="text-[11px] leading-4 text-muted">This creates one scoped transaction line. It does not create a reusable catalog product.</p>
         </aside>
