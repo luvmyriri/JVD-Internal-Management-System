@@ -1,4 +1,5 @@
 import type { Service } from '../../api/billing';
+import type { QuotationLineItem } from '../../api/salesQuotations';
 
 // Escape user-controlled values before interpolating into the print HTML (prevents XSS in the print window).
 const esc = (value: unknown): string =>
@@ -32,44 +33,6 @@ export interface QuotationPricingInput {
   selectedDetailChildDiscount: number;
 }
 
-export interface QuotationLineItem {
-  description: string;
-  unit_price: number;
-  quantity: number;
-  amount: number;
-}
-
-/**
- * Derive the priced line items from the current booking selections.
- * Shared by the API payload and the printed table so both stay in sync.
- * Prices are VAT-inclusive (as stored on the service).
- */
-export function computeQuotationLineItems(p: QuotationPricingInput): QuotationLineItem[] {
-  const { service } = p;
-  const rows: QuotationLineItem[] = [];
-  const row = (description: string, unit_price: number, quantity: number) =>
-    rows.push({ description, unit_price, quantity, amount: Math.round(unit_price * quantity * 100) / 100 });
-
-  if (service.is_tour) {
-    const base = p.bookingTourVehicle === 'Bus' ? (service.bus_price || 0) : (service.coaster_price || 0);
-    row(`Vehicle Rental (${p.bookingTourVehicle})`, base, 1);
-    if (p.bookingTourExtraDays > 0) {
-      row('Extra Rental Days', p.bookingTourVehicle === 'Bus' ? 22010 : 16780, p.bookingTourExtraDays);
-    }
-    if (p.bookingTourExtraHours > 0) {
-      row('Extra Rental Hours', p.bookingTourVehicle === 'Bus' ? 1950 : 1680, p.bookingTourExtraHours);
-    }
-  } else if (service.has_booking_fields) {
-    row('Adult Guest Tickets', p.selectedDetailAdultPrice, p.bookingAdults);
-    if (p.bookingChildren > 0) {
-      row(`Child Guest Tickets (${p.selectedDetailChildDiscount}% off)`, p.selectedDetailChildPrice, p.bookingChildren);
-    }
-  } else {
-    row('Standard Base Rate', service.price || 0, 1);
-  }
-  return rows;
-}
-
 export interface QuotationRecipient {
   client_name: string;
   client_company?: string;
@@ -93,13 +56,13 @@ export interface ServiceQuotationParams extends QuotationPricingInput {
   agentName: string;
   recipient: QuotationRecipient;
   meta: QuotationMeta;
+  lineItems: QuotationLineItem[];
 }
 
 // Builds the full printable, business-standard quotation HTML document.
 export function buildServiceQuotationHtml(params: ServiceQuotationParams): string {
-  const { service, agentName, recipient, meta } = params;
+  const { service, agentName, recipient, meta, lineItems } = params;
 
-  const lineItems = computeQuotationLineItems(params);
   const pricingRowsHTML = lineItems.map((li) => `
     <tr>
       <td style="font-weight: 600; color: #0f172a;">${esc(li.description)}</td>
@@ -287,14 +250,14 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
             <div class="row"><span>VAT (${meta.vatRate}%)</span><span>${formatPrice(meta.vatAmount)}</span></div>
             <div class="row grand"><span>Total Amount</span><span>${formatPrice(meta.total)}</span></div>
           </div>
-          <p class="disclaimer">* All figures are in Philippine Peso and VAT-inclusive. This quotation is valid until ${formatDate(meta.validUntil)}.</p>
+          <p class="disclaimer">* Line rates are in Philippine Peso and VAT-exclusive; VAT is shown separately. This quotation is valid until ${formatDate(meta.validUntil)}.</p>
 
           <div class="terms">
             <div class="terms-title">Terms &amp; Conditions</div>
             <ul>
               <li>Prices are subject to change without prior notice after the validity date.</li>
               <li>A reservation is confirmed only upon receipt of the required deposit.</li>
-              <li>Rates are inclusive of 12% VAT unless otherwise stated.</li>
+              <li>${esc(meta.vatRate)}% VAT is added to the VAT-exclusive line rates shown above.</li>
               <li>Inclusions and exclusions are as listed above; additional requests may incur extra charges.</li>
             </ul>
           </div>

@@ -1,10 +1,26 @@
 import client from './client';
 
 export interface QuotationLineItem {
+  service_id?: number | null;
   description: string;
   unit_price: number;
   quantity: number;
-  amount?: number;
+  amount: number;
+}
+
+export interface CreateQuotationLineItem {
+  service_id?: number | null;
+  description: string;
+  unit_price: number;
+  quantity: number;
+}
+
+export interface QuotationPricingContext {
+  vehicle?: 'bus' | 'coaster';
+  extra_days?: number;
+  extra_hours?: number;
+  adults?: number;
+  children?: number;
 }
 
 export interface CreateSalesQuotationPayload {
@@ -18,7 +34,8 @@ export interface CreateSalesQuotationPayload {
   service_id?: number | null;
   service_name?: string;
   category?: string;
-  line_items: QuotationLineItem[];
+  line_items?: CreateQuotationLineItem[];
+  pricing_context?: QuotationPricingContext;
   description?: string;
   inclusions?: string;
   exclusions?: string;
@@ -31,6 +48,7 @@ export interface SalesQuotation {
   id: number;
   quotation_number: string;
   client_name: string;
+  line_items: QuotationLineItem[];
   subtotal: string | number;
   vat_amount: string | number;
   total: string | number;

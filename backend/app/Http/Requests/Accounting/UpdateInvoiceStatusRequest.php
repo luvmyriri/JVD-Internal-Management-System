@@ -14,7 +14,9 @@ class UpdateInvoiceStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|in:pending_payment,partial,paid,voided,disbursed_budget',
+            // This endpoint only reconciles display state to posted payment evidence.
+            // Voids, cancellations, refunds, and budget disbursements have dedicated flows.
+            'status' => 'required|in:pending_payment,partial,paid',
         ];
     }
 }

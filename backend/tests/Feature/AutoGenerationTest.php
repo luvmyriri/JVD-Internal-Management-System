@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\JobApplication;
 use App\Models\Commission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Notification;
 use Tests\TestCase;
 
 class AutoGenerationTest extends TestCase
@@ -23,6 +24,8 @@ class AutoGenerationTest extends TestCase
 
     public function test_candidate_conversion_auto_generates_sequential_employee_id()
     {
+        Notification::fake();
+
         // 1. Create a hired candidate
         $app = JobApplication::create([
             'first_name' => 'John',
@@ -43,7 +46,9 @@ class AutoGenerationTest extends TestCase
             ->postJson("/api/v1/job-applications/{$app->id}/convert-to-employee", $payload);
 
         $response->assertCreated()
-            ->assertJsonPath('success', true);
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('data.invitation_sent', true)
+            ->assertJsonMissingPath('data.temporary_password');
 
         // 3. Verify user exists with generated sequential employee_id
         $latestUser = User::orderBy('id', 'desc')->first();
@@ -60,6 +65,7 @@ class AutoGenerationTest extends TestCase
         ]);
         
         $this->assertEquals('JVD-EMP-1002', $response->json('data.user.employee_id'));
+        Notification::assertSentTo($latestUser, \App\Notifications\AccountInvitation::class);
     }
 
     public function test_commission_creation_auto_generates_sequential_serial_number()

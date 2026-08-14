@@ -543,7 +543,6 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
         // Super Admin can directly set a specific password for any user
-        Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
 
         // Role Permissions Management (Super Admin only)
         Route::get('/role-permissions',              [RolePermissionController::class, 'index'])->name('role-permissions.index');
@@ -570,4 +569,3 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             ->name('dashboards.approvals');
     });
 });
-

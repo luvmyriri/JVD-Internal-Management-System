@@ -13,6 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\ValidationException;
 
 class CollectionController extends Controller
 {
@@ -84,13 +85,11 @@ class CollectionController extends Controller
             'travel_date' => 'required|date',
             'pick_up' => 'nullable|string',
             'drop_off' => 'nullable|string',
-            'rate' => 'nullable|numeric',
+            'rate' => 'nullable|numeric|min:0.01',
             'customer_id' => 'nullable|exists:customers,id',
-            'payments' => 'nullable|array',
-            'payments.*.payment_date' => 'required|date',
-            'payments.*.payment_method' => 'required|string',
-            'payments.*.amount' => 'required|numeric',
-            'payments.*.balance' => 'nullable|numeric',
+            // Payment evidence must go through addPayment(), where collection
+            // locking, idempotency, terminal-state, and balance checks apply.
+            'payments' => 'prohibited',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -104,12 +103,6 @@ class CollectionController extends Controller
 
             $collection = Collection::create($collectionData);
 
-            if (! empty($validated['payments'])) {
-                foreach ($validated['payments'] as $payment) {
-                    $collection->payments()->create($payment);
-                }
-            }
-
             // Recalculate will populate paid_amount, remaining_balance, and status!
             $collection->recalculate();
 
@@ -121,11 +114,6 @@ class CollectionController extends Controller
 
     public function show($id)
     {
-        $user = auth()->user();
-        if (! $user->hasRole('super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager')) {
-            return response()->json(['error' => 'Unauthorized.'], 403);
-        }
-
         return Collection::with('payments')->findOrFail($id);
     }
 
@@ -141,25 +129,26 @@ class CollectionController extends Controller
             'travel_date' => 'sometimes|date',
             'pick_up' => 'sometimes|string',
             'drop_off' => 'sometimes|string',
-            'rate' => 'sometimes|numeric',
-            'payments' => 'nullable|array',
+            'rate' => 'prohibited',
+            'payments' => 'prohibited',
         ]);
 
-        return DB::transaction(function () use ($request, $collection, $validated) {
-            $collection->update(collect($validated)->except('payments')->toArray());
+        return DB::transaction(function () use ($collection, $validated) {
+            $oldValues = $collection->toArray();
+            $collection->update($validated);
 
-            // If payments are explicitly provided, we replace the existing ones.
-            // A more robust app might only add new payments, but for this form we just sync.
-            if ($request->has('payments')) {
-                $collection->payments()->delete();
-                foreach ($validated['payments'] as $payment) {
-                    $collection->payments()->create($payment);
-                }
-            }
-
+            // Payment rows post journal entries when created. They are append-only and
+            // can only be added through addPayment(), never replaced by a metadata edit.
             $collection->recalculate();
+            AuditLogService::log(
+                'update',
+                'accounting',
+                'Collection',
+                $collection->id,
+                $oldValues,
+                $collection->fresh()->toArray()
+            );
 
-            // Send updated invoice email if linked to an invoice and has customer email
             if ($collection->invoice_id) {
                 $invoice = $collection->invoice;
                 $notificationEmail = $invoice?->notificationEmail();
@@ -168,7 +157,7 @@ class CollectionController extends Controller
                         @set_time_limit(120);
                         Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
                     } catch (\Exception $mailEx) {
-                        \Log::error("Failed to send updated payment receipt email on update to {$notificationEmail}: ".$mailEx->getMessage());
+                        \Log::error("Failed to send updated collection email to {$notificationEmail}: ".$mailEx->getMessage());
                     }
                 }
             }
@@ -195,51 +184,14 @@ class CollectionController extends Controller
     {
         $collection = Collection::findOrFail($id);
 
-        DB::transaction(function () use ($collection) {
-            $remaining = $collection->billing_amount - $collection->payments()->sum('amount');
-            if ($remaining > 0) {
-                $collection->payments()->create([
-                    'payment_date' => date('Y-m-d'),
-                    'payment_method' => 'Cash',
-                    'amount' => $remaining,
-                    'balance' => 0,
-                ]);
-            }
-
-            $collection->recalculate();
-        });
-
-        // Send email outside of transaction
-        if ($collection->invoice_id && $collection->invoice && $collection->invoice->notificationEmail()) {
-            $invoice = $collection->invoice;
-
-            $notificationEmail = $invoice->notificationEmail();
-            if ($notificationEmail) {
-                try {
-                    @set_time_limit(120);
-                    Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
-                } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send fully paid invoice email to {$notificationEmail}: ".$mailEx->getMessage());
-                }
-            }
-        }
-
         return response()->json([
-            'message' => 'Collection confirmed as fully paid.',
+            'message' => 'Direct confirmation is disabled because it has no payment evidence. Record the actual payment method and amount instead.',
             'data' => $collection->load('payments'),
-        ]);
+        ], 409);
     }
 
     public function addPayment(Request $request, $id)
     {
-        $collection = Collection::findOrFail($id);
-
-        if ($collection->collection_status === 'completed') {
-            return response()->json([
-                'message' => 'This collection is already fully settled. No further payments can be recorded.',
-            ], 422);
-        }
-
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|string',
@@ -247,31 +199,74 @@ class CollectionController extends Controller
             'idempotency_key' => 'sometimes|nullable|string|max:255',
         ]);
 
-        // Idempotency: a repeated submit (double-click, network retry) carrying the same key
-        // must not post a second payment + ledger entry. Return the already-recorded result.
-        if (! empty($validated['idempotency_key'])) {
-            $existing = CollectionPayment::where('idempotency_key', $validated['idempotency_key'])->first();
-            if ($existing) {
-                return response()->json([
-                    'message' => 'Payment already recorded.',
-                    'data' => $collection->load('payments'),
+        // Resolve the immutable invoice association before entering the critical
+        // section so every payment path acquires locks in one order:
+        // Invoice -> Collection -> existing payment evidence.
+        $invoiceId = Collection::query()->whereKey($id)->value('invoice_id');
+
+        $result = DB::transaction(function () use ($id, $invoiceId, $validated) {
+            $invoice = $invoiceId ? Invoice::lockForUpdate()->findOrFail($invoiceId) : null;
+            $collection = Collection::lockForUpdate()->findOrFail($id);
+
+            if ((int) ($collection->invoice_id ?? 0) !== (int) ($invoice?->id ?? 0)) {
+                throw ValidationException::withMessages([
+                    'payment' => ['The collection invoice association changed. Reload and retry the payment.'],
                 ]);
             }
-        }
 
-        // H-13: enforce the overpayment cap server-side (the frontend check is bypassable).
-        $remaining = (float) ($collection->remaining_balance ?? $collection->billing_amount ?? $collection->rate ?? 0);
-        if ((float) $validated['amount'] > $remaining + 0.01) {
-            return response()->json([
-                'message' => 'Payment amount cannot exceed the remaining balance of ₱'.number_format($remaining, 2).'.',
-            ], 422);
-        }
+            if ($invoice && in_array($invoice->status, ['cancelled', 'voided', 'disbursed_budget'], true)) {
+                throw ValidationException::withMessages([
+                    'payment' => ['Payments cannot be posted to a cancelled, voided, or internal disbursement invoice.'],
+                ]);
+            }
 
-        $payment = $collection->payments()->create($validated);
+            $paymentEvidence = $collection->payments()->lockForUpdate()->get();
 
-        $collection->recalculate();
+            if (! empty($validated['idempotency_key'])) {
+                $existing = $paymentEvidence->firstWhere('idempotency_key', $validated['idempotency_key'])
+                    ?? CollectionPayment::where('idempotency_key', $validated['idempotency_key'])->lockForUpdate()->first();
+                if ($existing) {
+                    if ((int) $existing->collection_id !== (int) $collection->id) {
+                        throw ValidationException::withMessages([
+                            'idempotency_key' => ['This idempotency key was already used for a different collection.'],
+                        ]);
+                    }
 
-        if ($collection->invoice_id) {
+                    return ['collection' => $collection->load('payments'), 'duplicate' => true];
+                }
+            }
+
+            // Calculate truth from posted rows while holding the collection lock;
+            // stale remaining_balance values can never authorize an overpayment.
+            $billingAmount = $invoice
+                ? (float) $invoice->total_amount
+                : (float) ($collection->billing_amount ?: $collection->rate ?: 0);
+            $postedAmount = (float) $paymentEvidence->sum('amount');
+            $remainingCents = max(0, (int) round($billingAmount * 100) - (int) round($postedAmount * 100));
+            $remaining = $remainingCents / 100;
+
+            if ($remaining <= 0 || $collection->collection_status === 'completed') {
+                throw ValidationException::withMessages([
+                    'payment' => ['This collection is already fully settled. No further payments can be recorded.'],
+                ]);
+            }
+
+            $paymentCents = (int) round((float) $validated['amount'] * 100);
+            if ($paymentCents > $remainingCents) {
+                throw ValidationException::withMessages([
+                    'amount' => ['Payment amount cannot exceed the remaining balance of ₱'.number_format($remaining, 2).'.'],
+                ]);
+            }
+
+            $collection->payments()->create($validated);
+            $collection->recalculate();
+
+            return ['collection' => $collection->fresh()->load(['payments', 'invoice']), 'duplicate' => false];
+        });
+
+        $collection = $result['collection'];
+
+        if (! $result['duplicate'] && $collection->invoice_id) {
             $invoice = $collection->invoice;
             $notificationEmail = $invoice?->notificationEmail();
             if ($invoice && $notificationEmail) {
@@ -285,7 +280,7 @@ class CollectionController extends Controller
         }
 
         return response()->json([
-            'message' => 'Payment added successfully.',
+            'message' => $result['duplicate'] ? 'Payment already recorded.' : 'Payment added successfully.',
             'data' => $collection->load('payments'),
         ]);
     }

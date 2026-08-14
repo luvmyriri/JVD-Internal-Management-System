@@ -10,6 +10,7 @@ use App\Http\Requests\Accounting\UpdateServiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Booking;
+use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Customer;
 use App\Models\CustomTransactionDetail;
@@ -331,7 +332,7 @@ class BillingService
             DB::beginTransaction();
 
             try {
-                $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count, $request->tax_rate);
+                $calc = $finalizer->calculateItems($request->items, $request->travel_date, $request->pax_count);
             } catch (MaxPaxExceededException $e) {
                 DB::rollBack();
 
@@ -541,15 +542,51 @@ class BillingService
     {
         // C-04: only accept known invoice statuses — never persist an arbitrary string.
         $validated = $request->validated();
+        $invoice = DB::transaction(function () use ($id, $validated) {
+            $invoice = Invoice::lockForUpdate()->findOrFail($id);
+            $collection = $invoice->collection()->lockForUpdate()->first();
+            $postedPayments = $collection
+                ? $collection->payments()->lockForUpdate()->get()
+                : collect();
+            $postedAmount = round((float) $postedPayments->sum('amount'), 2);
+            $postedCents = (int) round($postedAmount * 100);
+            $totalCents = (int) round((float) $invoice->total_amount * 100);
+            $requestedStatus = $validated['status'];
 
-        $invoice = Invoice::findOrFail($id);
+            if (in_array($invoice->status, ['cancelled', 'voided', 'disbursed_budget'], true)) {
+                throw ValidationException::withMessages([
+                    'status' => ['A cancelled, voided, or internal disbursement invoice cannot be reconciled into a payable status.'],
+                ]);
+            }
 
-        DB::transaction(function () use ($invoice, $validated) {
-            $invoice->update([
-                'status' => $validated['status'],
+            if (in_array($requestedStatus, ['pending_payment', 'partial', 'paid'], true)) {
+                $evidenceStatus = match (true) {
+                    $postedCents <= 0 => 'pending_payment',
+                    $postedCents < $totalCents => 'partial',
+                    default => 'paid',
+                };
+
+                if ($requestedStatus !== $evidenceStatus) {
+                    throw ValidationException::withMessages([
+                        'status' => [
+                            "Invoice status cannot be changed to {$requestedStatus} without matching posted payment evidence. Record the payment in Collections instead.",
+                        ],
+                    ]);
+                }
+
+                $invoice->update([
+                    'status' => $evidenceStatus,
+                    'amount_received' => $postedAmount,
+                    'balance' => max(0, round((float) $invoice->total_amount - $postedAmount, 2)),
+                    'change' => max(0, round($postedAmount - (float) $invoice->total_amount, 2)),
+                ]);
+
+                return $invoice->fresh();
+            }
+
+            throw ValidationException::withMessages([
+                'status' => ['Invoice status can only be reconciled from posted payment evidence.'],
             ]);
-
-            app(BillingCollectionService::class)->syncCollection($invoice);
         });
 
         $notificationEmail = $invoice->notificationEmail();
@@ -677,10 +714,79 @@ class BillingService
                         return response()->json(['error' => 'Invalid payment payload.'], 422);
                     }
 
-                    if ($amountPaidPHP - (float) $invoice->balance > 0.01) {
+                    // PayMongo retries webhooks. The provider event id is the accounting
+                    // idempotency key. Lock and recompute accounting truth in the
+                    // canonical Invoice -> Collection -> payments order so a
+                    // simultaneous counter payment cannot overpost the invoice.
+                    $paymentResult = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId, $providerPaymentId) {
+                        $lockedInvoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+                        $key = $eventId ? "paymongo:{$eventId}" : "paymongo-session:{$lockedInvoice->payment_id}";
+
+                        if (in_array($lockedInvoice->status, ['cancelled', 'voided', 'disbursed_budget'], true)) {
+                            return [
+                                'error' => 'PayMongo payment cannot be posted to a terminal invoice.',
+                                'invoice' => $lockedInvoice,
+                            ];
+                        }
+
+                        // Keep the canonical Invoice -> Collection lock order even
+                        // while synchronizing legacy collection data. Existing
+                        // collections must be locked before syncCollection mutates
+                        // or recalculates them. When none exists, the invoice lock
+                        // serializes creation, after which we lock the new row.
+                        $collection = Collection::where('invoice_id', $lockedInvoice->id)->lockForUpdate()->first();
+                        if ($collection) {
+                            $lockedInvoice->setRelation('collection', $collection);
+                            app(BillingCollectionService::class)->syncCollection($lockedInvoice);
+                        } else {
+                            $lockedInvoice->unsetRelation('collection');
+                            app(BillingCollectionService::class)->syncCollection($lockedInvoice);
+                            $collection = Collection::where('invoice_id', $lockedInvoice->id)->lockForUpdate()->first();
+                        }
+
+                        if (! $collection) {
+                            throw new \RuntimeException('Unable to create collection for PayMongo payment.');
+                        }
+
+                        $paymentEvidence = $collection->payments()->lockForUpdate()->get();
+                        $existing = $paymentEvidence->first(
+                            fn (CollectionPayment $payment) => $payment->idempotency_key === $key
+                                || $payment->paymongo_payment_id === $providerPaymentId
+                        );
+
+                        if ($existing) {
+                            return ['invoice' => $lockedInvoice->fresh(), 'duplicate' => true];
+                        }
+
+                        $postedCents = (int) round((float) $paymentEvidence->sum('amount') * 100);
+                        $totalCents = (int) round((float) $lockedInvoice->total_amount * 100);
+                        $remainingCents = max(0, $totalCents - $postedCents);
+                        $paymentCents = (int) round($amountPaidPHP * 100);
+
+                        if ($paymentCents > $remainingCents) {
+                            return [
+                                'error' => 'PayMongo payment exceeds the invoice outstanding balance.',
+                                'invoice' => $lockedInvoice,
+                            ];
+                        }
+
+                        $collection->payments()->create([
+                            'payment_date' => now()->toDateString(),
+                            'payment_method' => $lockedInvoice->payment_method,
+                            'amount' => $amountPaidPHP,
+                            'balance' => ($remainingCents - $paymentCents) / 100,
+                            'idempotency_key' => $key,
+                            'paymongo_payment_id' => $providerPaymentId,
+                        ]);
+                        $collection->recalculate();
+
+                        return ['invoice' => $lockedInvoice->fresh(), 'duplicate' => false];
+                    });
+
+                    if (isset($paymentResult['error'])) {
                         $eventReceipt->update([
                             'status' => 'failed',
-                            'error' => 'PayMongo payment exceeds the invoice outstanding balance.',
+                            'error' => $paymentResult['error'],
                             'invoice_id' => $invoice->id,
                             'processed_at' => now(),
                         ]);
@@ -688,44 +794,19 @@ class BillingService
                         return response()->json(['error' => 'Payment amount does not match the invoice balance.'], 409);
                     }
 
-                    // PayMongo retries webhooks. The provider event id is the accounting
-                    // idempotency key: only the first delivery may create a payment or post AR.
-                    $invoice = DB::transaction(function () use ($invoice, $amountPaidPHP, $eventId, $providerPaymentId) {
-                        $lockedInvoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
-                        $key = $eventId ? "paymongo:{$eventId}" : "paymongo-session:{$lockedInvoice->payment_id}";
-                        $existing = CollectionPayment::where('idempotency_key', $key)->first();
-                        if ($existing) {
-                            return $lockedInvoice;
-                        }
+                    $invoice = $paymentResult['invoice'];
+                    $duplicate = $paymentResult['duplicate'] ?? false;
 
-                        // Create the collection while the invoice is still outstanding; this
-                        // guarantees the gateway payment has the same AR posting path as cash.
-                        app(BillingCollectionService::class)->syncCollection($lockedInvoice);
-                        $collection = $lockedInvoice->fresh()->collection;
-                        if (! $collection) {
-                            throw new \RuntimeException('Unable to create collection for PayMongo payment.');
-                        }
+                    if (! $duplicate) {
+                        $freshInvoice = $invoice->fresh();
+                        app(SalesOrderService::class)->captureInvoice($freshInvoice, $freshInvoice->created_by);
+                        app(SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
+                    }
 
-                        $collection->payments()->create([
-                            'payment_date' => now()->toDateString(),
-                            'payment_method' => $lockedInvoice->payment_method,
-                            'amount' => $amountPaidPHP,
-                            'balance' => max(0, (float) $lockedInvoice->balance - $amountPaidPHP),
-                            'idempotency_key' => $key,
-                            'paymongo_payment_id' => $providerPaymentId,
-                        ]);
-                        $collection->recalculate();
-
-                        return $lockedInvoice->fresh();
-                    });
-
-                    $freshInvoice = $invoice->fresh();
-                    app(SalesOrderService::class)->captureInvoice($freshInvoice, $freshInvoice->created_by);
-                    app(SalesOrderService::class)->syncInvoiceFinancials($freshInvoice);
                     $eventReceipt->update(['status' => 'processed', 'invoice_id' => $invoice->id, 'processed_at' => now()]);
 
                     $notificationEmail = $invoice->notificationEmail();
-                    if ($notificationEmail) {
+                    if (! $duplicate && $notificationEmail) {
                         try {
                             @set_time_limit(120);
                             Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
@@ -735,7 +816,7 @@ class BillingService
                     }
 
                     // Send SystemAlert to admins/creator
-                    if ($invoice->creator) {
+                    if (! $duplicate && $invoice->creator) {
                         $invoice->creator->notify(new SystemAlert(
                             'Payment Received',
                             "Invoice #{$invoice->invoice_number} received a payment of {$amountPaidPHP} PHP. New balance: {$invoice->balance} PHP.",

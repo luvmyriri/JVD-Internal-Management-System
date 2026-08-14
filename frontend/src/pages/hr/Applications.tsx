@@ -20,9 +20,6 @@ import {
   LuTruck,
   LuBadgeCheck,
   LuUsers,
-  LuCopy,
-  LuCheckCheck,
-  LuKeyRound,
   LuUserCheck,
   LuTriangleAlert,
 } from 'react-icons/lu';
@@ -59,65 +56,14 @@ const DEPARTMENTS = [
   'Logistics',
 ];
 
-// ─── Temp Password Modal ──────────────────────────────────────────────────────
-interface TempPasswordEntry { name: string; email: string; password: string; }
-
-function TempPasswordModal({ entry, onClose }: { entry: TempPasswordEntry; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(entry.password);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <Modal isOpen onClose={onClose} title="Employee Account Created" size="md">
-      <div className="space-y-5 p-2">
-        <div className="flex items-start gap-3 p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/30 rounded-2xl">
-          <LuKeyRound className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-          <div>
-            <p className="text-sm font-black text-amber-800 dark:text-amber-300">✉️ Email sent + backup copy below</p>
-            <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5 font-medium">
-              Credentials were emailed. Save this backup. Employee will be forced to change their password on first login.
-            </p>
-          </div>
-        </div>
-
-        <div className="p-4 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-2xl shadow-sm space-y-3">
-          <div>
-            <p className="text-sm font-black text-gray-900 dark:text-white">{entry.name}</p>
-            <p className="text-[10px] text-gray-400 font-bold">{entry.email}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm font-mono font-bold text-blue-600 dark:text-blue-400 tracking-widest">
-              {entry.password}
-            </code>
-            <button
-              onClick={copy}
-              className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-500/10 hover:bg-blue-100 dark:hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors border border-blue-100 dark:border-blue-500/20"
-            >
-              {copied ? <LuCheckCheck className="w-4 h-4" /> : <LuCopy className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-2">
-          <Button onClick={onClose}>Done — I've Saved This</Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
 // ─── Account Setup Modal ──────────────────────────────────────────────────────
 interface AccountSetupModalProps {
   app: JobApplication;
   onClose: () => void;
-  onSuccess: (entry: TempPasswordEntry) => void;
 }
 
-function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) {
+function AccountSetupModal({ app, onClose }: AccountSetupModalProps) {
   const queryClient = useQueryClient();
-  const [sendInvitation, setSendInvitation] = useState(true);
 
   const { register, handleSubmit, formState: { errors } } = useForm<ConvertToEmployeePayload>({
     defaultValues: {
@@ -130,26 +76,16 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
 
   const convertMutation = useMutation({
     mutationFn: (data: ConvertToEmployeePayload) => jobApplicationsApi.convertToEmployee(app.id, data),
-    onSuccess: (res: any) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['job-applications'] });
-      const tempPw = res?.data?.temporary_password;
-      const invitationSent = res?.data?.invitation_sent;
       onClose();
-      if (!invitationSent && tempPw) {
-        onSuccess({
-          name: `${app.first_name} ${app.last_name}`,
-          email: app.email,
-          password: tempPw,
-        });
-      } else {
-        toast.success(`Employee account created! Invitation sent to ${app.email}`);
-      }
+      toast.success(`Employee account created! Secure setup link sent to ${app.email}`);
     },
     onError: (err: any) => toast.error(err.response?.data?.message || 'Failed to create employee account'),
   });
 
   const onSubmit = (data: ConvertToEmployeePayload) => {
-    convertMutation.mutate({ ...data, send_invitation: sendInvitation });
+    convertMutation.mutate({ ...data, send_invitation: true });
   };
 
   return (
@@ -239,36 +175,15 @@ function AccountSetupModal({ app, onClose, onSuccess }: AccountSetupModalProps) 
           {errors.department && <p className="text-[10px] font-bold text-red-500 mt-1 ml-1">{errors.department.message}</p>}
         </div>
 
-        {/* Send invitation toggle */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-2xl border border-gray-100 dark:border-gray-700 space-y-3">
+        {/* Secure account setup */}
+        <div className="p-4 bg-blue-50/60 dark:bg-blue-950/20 rounded-2xl border border-blue-100 dark:border-blue-900/40 space-y-2">
           <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Account Access Method</p>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setSendInvitation(true)}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${
-                sendInvitation
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300'
-                  : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-300'
-              }`}
-            >
-              <LuMail className="w-4 h-4 mb-1" />
-              <p className="text-xs font-black">Send Invitation</p>
-              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Email invite link</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSendInvitation(false)}
-              className={`p-3 rounded-xl border-2 text-sm font-bold transition-all text-left ${
-                !sendInvitation
-                  ? 'border-amber-500 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300'
-                  : 'border-gray-300 dark:border-gray-700 text-gray-500 hover:border-gray-300'
-              }`}
-            >
-              <LuKeyRound className="w-4 h-4 mb-1" />
-              <p className="text-xs font-black">Temp Password</p>
-              <p className="text-[10px] text-gray-400 font-medium mt-0.5">Generate password</p>
-            </button>
+          <div className="flex items-start gap-3 rounded-xl bg-white/70 p-3 dark:bg-gray-900/50">
+            <LuMail className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
+            <div>
+              <p className="text-xs font-black text-blue-700 dark:text-blue-300">Email secure setup link</p>
+              <p className="mt-0.5 text-[10px] font-medium text-gray-500">The employee chooses their own password through an expiring link. No password is shown to staff.</p>
+            </div>
           </div>
         </div>
 
@@ -312,7 +227,6 @@ export default function Applications() {
 
   // Recruit-to-employee state
   const [recruitApp, setRecruitApp] = useState<JobApplication | null>(null);
-  const [tempPasswordEntry, setTempPasswordEntry] = useState<TempPasswordEntry | null>(null);
 
   const { data: response, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['job-applications'],
@@ -1040,20 +954,9 @@ export default function Applications() {
         <AccountSetupModal
           app={recruitApp}
           onClose={() => setRecruitApp(null)}
-          onSuccess={(entry) => {
-            setRecruitApp(null);
-            setTempPasswordEntry(entry);
-          }}
         />
       )}
 
-      {/* Temp Password Modal */}
-      {tempPasswordEntry && (
-        <TempPasswordModal
-          entry={tempPasswordEntry}
-          onClose={() => setTempPasswordEntry(null)}
-        />
-      )}
     </div>
   );
 }

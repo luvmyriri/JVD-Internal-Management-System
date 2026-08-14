@@ -24,7 +24,6 @@ import {
   useUpdateUser,
   useDeactivateUser,
   useActivateUser,
-  useSetPassword,
 } from '../../hooks/useUsers';
 import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
 import { useQuery } from '@tanstack/react-query';
@@ -36,7 +35,6 @@ import { cn, fullName } from '../../utils';
 import { useForm } from 'react-hook-form';
 import { loadExcelJS } from '../../utils/lazyExport';
 import toast from 'react-hot-toast';
-import TempPasswordModal, { type TempPasswordEntry } from './TempPasswordModal';
 import UserFormModal from './UserFormModal';
 import UserProfileModal from './UserProfileModal';
 import { type User, PRESET_TAGS, ROLES, DEPARTMENTS } from './users.constants';
@@ -63,11 +61,6 @@ export default function Users() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [pendingUploads, setPendingUploads] = useState<any[] | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
-  const [tempPasswords, setTempPasswords] = useState<TempPasswordEntry[]>([]);
-  const [showTempPasswordModal, setShowTempPasswordModal] = useState(false);
-  const [newPassword, setNewPassword] = useState('');
-  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
-  const [showNewPw, setShowNewPw] = useState(false);
   const [assignedBusId, setAssignedBusId] = useState<number | ''>('');
   const [customPermissions, setCustomPermissions] = useState<Record<string, ModulePermission>>({});
   const [dashboardPreference, setDashboardPreference] = useState<string | null>(null);
@@ -129,7 +122,6 @@ export default function Users() {
   const updateUserMutation = useUpdateUser();
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
-  const setPasswordMutation = useSetPassword();
   const assignDriverToBus = useAssignDriverToBus();
 
   // Fetch all buses for the assignment dropdown
@@ -162,9 +154,6 @@ export default function Users() {
       setDashboardPreference(null);
     }
     setTagInput('');
-    setNewPassword('');
-    setNewPasswordConfirm('');
-    setShowNewPw(false);
     if (user) {
       const currentBus = allBuses.find((b: any) => b.driver?.id === user.id);
       setAssignedBusId(currentBus ? currentBus.id : '');
@@ -203,21 +192,6 @@ export default function Users() {
   const onSubmit = async (data: any) => {
     try {
       if (selectedUser) {
-        if (isSuperAdmin && newPassword.trim()) {
-          if (newPassword !== newPasswordConfirm) {
-            toast.error('Passwords do not match.');
-            return;
-          }
-          if (newPassword.length < 8) {
-            toast.error('Password must be at least 8 characters.');
-            return;
-          }
-          await setPasswordMutation.mutateAsync({
-            id: selectedUser.id,
-            data: { new_password: newPassword, new_password_confirmation: newPasswordConfirm },
-          });
-        }
-
         const updateData: any = { ...data, tags, dashboard_preference: dashboardPreference };
         if (isSuperAdmin) {
           updateData.custom_permissions = customPermissions;
@@ -241,29 +215,21 @@ export default function Users() {
           await assignDriverToBus.mutateAsync({ busId: prevBusId, driverId: null });
         }
         setIsModalOpen(false);
-        setNewPassword('');
-        setNewPasswordConfirm('');
         setCustomPermissions({});
         setDashboardPreference(null);
         setTags([]);
         reset();
       } else {
-        const sendInvite = data.send_invitation !== false;
-        const res = await createUserMutation.mutateAsync({
+        await createUserMutation.mutateAsync({
           ...data,
           tags,
           dashboard_preference: dashboardPreference,
-          send_invitation: sendInvite,
+          send_invitation: true,
         });
-        const tempPw = res?.data?.data?.temporary_password;
         setIsModalOpen(false);
         setTags([]);
         setDashboardPreference(null);
         reset();
-        if (!sendInvite && tempPw) {
-          setTempPasswords([{ name: `${data.first_name} ${data.last_name}`, email: data.email, password: tempPw }]);
-          setShowTempPasswordModal(true);
-        }
       }
     } catch (error) {
       console.error('Submit error:', error);
@@ -445,20 +411,10 @@ export default function Users() {
 
     const uploadToast = toast.loading(`Provisioning ${users.length} accounts...`);
     let successCount = 0;
-    const collectedPasswords: TempPasswordEntry[] = [];
-    
+
     for (const u of users) {
       try {
-        // Always use send_invitation: false for bulk — collect temp passwords
-        const res = await createUserMutation.mutateAsync({ ...u, send_invitation: false });
-        const tempPw = res?.data?.data?.temporary_password;
-        if (tempPw) {
-          collectedPasswords.push({
-            name: `${u.first_name} ${u.last_name}`,
-            email: u.email,
-            password: tempPw,
-          });
-        }
+        await createUserMutation.mutateAsync({ ...u, send_invitation: true });
         successCount++;
       } catch (err) {
         console.error(err);
@@ -468,11 +424,6 @@ export default function Users() {
     toast.dismiss(uploadToast);
     toast.success(`Registered ${successCount}/${users.length} accounts.`);
 
-    // Show temp passwords if any were generated
-    if (collectedPasswords.length > 0) {
-      setTempPasswords(collectedPasswords);
-      setShowTempPasswordModal(true);
-    }
   };
 
   const getRoleIcon = (role: string) => {
@@ -711,7 +662,6 @@ export default function Users() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         selectedUser={selectedUser}
-        isSuperAdmin={isSuperAdmin}
         allBuses={allBuses}
         modules={modules}
         configData={configData}
@@ -730,12 +680,6 @@ export default function Users() {
         addPresetTag={addPresetTag}
         assignedBusId={assignedBusId}
         setAssignedBusId={setAssignedBusId}
-        newPassword={newPassword}
-        setNewPassword={setNewPassword}
-        newPasswordConfirm={newPasswordConfirm}
-        setNewPasswordConfirm={setNewPasswordConfirm}
-        showNewPw={showNewPw}
-        setShowNewPw={setShowNewPw}
         customPermissions={customPermissions}
         setCustomPermissions={setCustomPermissions}
         dashboardPreference={dashboardPreference}
@@ -770,8 +714,7 @@ export default function Users() {
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-xl border border-amber-200 dark:border-amber-500/20 shadow-sm">
               <LuMail size={14} className="text-blue-500" />
-              {/* Bulk provisioning always generates temporary passwords (no invitation emails). */}
-              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Temp Passwords Generated</span>
+              <span className="text-[9px] font-black text-blue-600 dark:text-blue-500 uppercase tracking-widest">Secure setup links emailed</span>
             </div>
           </div>
 
@@ -820,12 +763,6 @@ export default function Users() {
           </div>
         </div>
       </Modal>
-      {showTempPasswordModal && tempPasswords.length > 0 && (
-        <TempPasswordModal
-          entries={tempPasswords}
-          onClose={() => { setShowTempPasswordModal(false); setTempPasswords([]); }}
-        />
-      )}
     </div>
   );
 }

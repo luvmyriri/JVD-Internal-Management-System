@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { AVAILABLE_WIDGETS, WIDGET_CATEGORIES } from '../config/dashboardWidgets';
@@ -52,6 +52,7 @@ export default function AccountSetupWizard() {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
   const email = searchParams.get('email');
+  const hasInvitationCredentials = Boolean(token && email);
 
   const [step, setStep] = useState<number>(1);
 
@@ -72,13 +73,6 @@ export default function AccountSetupWizard() {
   // General State
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    // If not arriving with token/email (e.g. launching from inside app), prefill email if user logged in
-    if (!token && !email) {
-      // User can still explore the wizard in demo/re-setup mode
-    }
-  }, [token, email]);
-
   const handleToggleWidget = (id: string) => {
     setSelectedWidgetIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -88,6 +82,11 @@ export default function AccountSetupWizard() {
   const handleStep1Next = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError('');
+
+    if (!token || !email) {
+      setPasswordError('This setup link is incomplete. Request a new invitation or password-reset email.');
+      return;
+    }
 
     if (password.length < 8) {
       setPasswordError('Password must be at least 8 characters long.');
@@ -99,26 +98,21 @@ export default function AccountSetupWizard() {
       return;
     }
 
-    // If token and email exist, submit password set call
-    if (token && email) {
-      setIsLoading(true);
-      try {
-        await authApi.setPassword({
-          token,
-          email,
-          password,
-          password_confirmation: passwordConfirmation,
-        });
-        toast.success('Password configured successfully!');
-        setStep(2);
-      } catch (err: any) {
-        console.error('Set password error:', err);
-        setPasswordError(err.response?.data?.message || 'Failed to set password. Link may be expired.');
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
+    setIsLoading(true);
+    try {
+      await authApi.setPassword({
+        token,
+        email,
+        password,
+        password_confirmation: passwordConfirmation,
+      });
+      toast.success('Password configured successfully!');
       setStep(2);
+    } catch (err: any) {
+      console.error('Set password error:', err);
+      setPasswordError(err.response?.data?.message || 'Failed to set password. Link may be expired.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -146,6 +140,34 @@ export default function AccountSetupWizard() {
   const filteredWidgets = AVAILABLE_WIDGETS.filter((widget) =>
     selectedCategory === 'all' ? true : widget.category === selectedCategory
   );
+
+  if (!hasInvitationCredentials) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <section
+          className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 text-center shadow-2xl"
+          aria-labelledby="invalid-setup-link-title"
+        >
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-500/10 text-rose-400">
+            <Lock className="h-7 w-7" aria-hidden="true" />
+          </div>
+          <h1 id="invalid-setup-link-title" className="text-2xl font-black tracking-tight text-white">
+            Invalid setup link
+          </h1>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            This link is missing the secure invitation details needed to set a password. Request a new invitation or password-reset email, then open the link from that message.
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/login', { replace: true })}
+            className="mt-7 w-full rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-blue-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900"
+          >
+            Return to sign in
+          </button>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-slate-950 text-slate-100 relative overflow-hidden">

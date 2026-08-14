@@ -23,8 +23,19 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
   const qc = useQueryClient();
   const { user } = useAuth();
 
-  const isAccountingOrAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('process:approve_cash_budget') || user?.tags?.includes('access:general'));
-  const isOperationsOrAdmin = !!(user?.role === 'super_admin' || user?.tags?.includes('process:disburse_cash_budget') || user?.tags?.includes('access:general'));
+  const canReviewAccounting = user?.role === 'super_admin' || user?.role === 'accounting_executive';
+  const canFinalize = user?.role === 'super_admin' || user?.role === 'executive_vice_president';
+  const canForwardDraft = !!user && [
+    'super_admin',
+    'executive_vice_president',
+    'operations_manager',
+    'dispatcher',
+    'service_adviser',
+    'logistics_in_charge',
+    'purchasing_manager',
+    'accounting_executive',
+  ].includes(user.role);
+  const isOwner = Number(budget.prepared_by) === Number(user?.id);
 
   const [form, setForm] = useState({
     diesel: budget.diesel ? formatMoneyInput(parseFloat(budget.diesel as any).toString()) : '',
@@ -39,10 +50,8 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
   const canEdit =
     !budget.purchase_order_id &&
     !budget.work_order_id &&
-    ((budget.status === 'draft' && isOperationsOrAdmin) ||
-     (budget.status === 'pending_accounting' && isAccountingOrAdmin) ||
-     ((budget.status as string) === 'pending_super_admin' && user?.role === 'super_admin') ||
-     (budget.status === 'approved' && isOperationsOrAdmin));
+    budget.status === 'draft' &&
+    (isOwner || canFinalize);
 
   // Compute live sum reactively
   const liveTotal =
@@ -62,12 +71,15 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
           : formatMoneyInput(liveTotal.toString()))
   );
 
-  // Sync disbursedAmount with liveTotal when it changes, only if the budget is not already disbursed.
+  // Draft edits follow the live breakdown. Once submitted, the approved total
+  // is the source of truth (linked PO/WO budgets may have no local breakdown).
   useEffect(() => {
-    if (budget.status !== 'disbursed') {
+    if (budget.status === 'draft' && canEdit) {
       setDisbursedAmount(formatMoneyInput(liveTotal.toString()));
+    } else if (budget.status !== 'disbursed') {
+      setDisbursedAmount(formatMoneyInput(Number(budget.total_amount || 0).toString()));
     }
-  }, [liveTotal, budget.status]);
+  }, [liveTotal, budget.status, budget.total_amount, canEdit]);
 
   const getPayload = () => ({
     diesel: Number(parseMoneyInput(form.diesel) || 0),
@@ -83,7 +95,7 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
   const forwardMutation = useMutation({
     mutationFn: () => cashBudgetApi.update(budget.id, {
       status: 'pending_accounting',
-      ...getPayload()
+      ...(canEdit ? getPayload() : {}),
     }),
     onSuccess: () => {
       toast.success('Budget forwarded to Accounting for approval.');
@@ -99,7 +111,6 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
   const approveMutation = useMutation({
     mutationFn: () => cashBudgetApi.update(budget.id, {
       status: 'approved',
-      ...getPayload()
     }),
     onSuccess: () => {
       toast.success('Budget approved! Ready for disbursement.');
@@ -116,7 +127,6 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
     mutationFn: () => cashBudgetApi.update(budget.id, {
       status: 'disbursed',
       disbursed_amount: Number(parseMoneyInput(disbursedAmount) || 0),
-      ...getPayload()
     }),
     onSuccess: () => {
       toast.success('Budget disbursed! Invoice created in Billing.');
@@ -162,9 +172,9 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
         {/* Pipeline Visualizer */}
         <div className="px-10 pt-6">
           <PipelineVisualizer
-            pipelineType={!!budget.purchase_order_id ? 'maintenance' : 'transaction'}
+            pipelineType={budget.purchase_order_id ? 'maintenance' : 'transaction'}
             currentStatus={
-              !!budget.purchase_order_id
+              budget.purchase_order_id
                 ? (budget.status === 'disbursed' ? 'disbursed' : 'budget_pending')
                 : (budget.status === 'draft' || budget.status === 'pending_accounting' || (budget.status as string) === 'pending_super_admin'
                     ? 'budget_pending'
@@ -505,7 +515,7 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
               </div>
 
           {/* Disbursement Details Input (For Disbursing Users) */}
-          {budget.status === 'approved' && isOperationsOrAdmin && (
+          {budget.status === 'approved' && canFinalize && (
             <div className="bg-emerald-50/50 dark:bg-emerald-950/20 p-5 rounded-2xl border border-emerald-100 dark:border-emerald-900/50 space-y-3">
               <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest">Disbursement Details</p>
               <div className="space-y-1">
@@ -602,15 +612,17 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
         </div>
         <div className="p-8 px-10 border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 flex justify-end gap-3 flex-wrap">
           {/* Operations: Approve (forward to accounting) */}
-          {budget.status === 'draft' && isOperationsOrAdmin && (
+          {budget.status === 'draft' && canForwardDraft && (
             <>
-              <button
-                onClick={() => declineMutation.mutate()}
-                disabled={isPending}
-                className="px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer"
-              >
-                {declineMutation.isPending ? 'Declining...' : 'Decline'}
-              </button>
+              {(isOwner || canFinalize) && (
+                <button
+                  onClick={() => declineMutation.mutate()}
+                  disabled={isPending}
+                  className="px-6 py-3 bg-red-50 text-red-600 hover:bg-red-100 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer"
+                >
+                  {declineMutation.isPending ? 'Deleting...' : 'Delete Draft'}
+                </button>
+              )}
               <button
                 onClick={() => forwardMutation.mutate()}
                 disabled={isPending}
@@ -622,7 +634,7 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
           )}
 
           {/* Accounting: Approve */}
-          {budget.status === 'pending_accounting' && isAccountingOrAdmin && (
+          {budget.status === 'pending_accounting' && canReviewAccounting && (
             <button
               onClick={() => approveMutation.mutate()}
               disabled={isPending}
@@ -633,18 +645,18 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
           )}
 
           {/* Super Admin: Approve */}
-          {(budget.status as string) === 'pending_super_admin' && user?.role === 'super_admin' && (
+          {(budget.status as string) === 'pending_super_admin' && canFinalize && (
             <button
               onClick={() => approveMutation.mutate()}
               disabled={isPending}
               className="px-6 py-3 bg-fuchsia-600 text-white hover:bg-fuchsia-700 rounded-2xl font-black text-xs uppercase tracking-widest transition-all disabled:opacity-50 cursor-pointer shadow-lg shadow-fuchsia-600/20 active:scale-95"
             >
-              {approveMutation.isPending ? 'Approving...' : 'Super Admin Approve'}
+              {approveMutation.isPending ? 'Approving...' : 'Final Approval'}
             </button>
           )}
 
           {/* Operations / Cash Budgets: Disburse */}
-          {budget.status === 'approved' && isOperationsOrAdmin && (
+          {budget.status === 'approved' && canFinalize && (
             <button
               onClick={() => disburseMutation.mutate()}
               disabled={isPending}

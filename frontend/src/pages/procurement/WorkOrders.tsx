@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import { 
   LuWrench, LuPlus, LuSearch, LuLoaderCircle, LuX, LuChevronDown,
   LuCheck, LuBan, LuTriangleAlert, LuClock,
@@ -490,6 +491,8 @@ export default function WorkOrders() {
   const qc = useQueryClient();
   const { user } = useAuth();
   const canApproveOrEdit = user?.role === 'super_admin' || user?.role === 'executive_vice_president' || user?.role === 'operations_manager' || user?.role === 'head_mechanic' || user?.role === 'service_adviser';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledReviewLink = useRef<string | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
@@ -515,6 +518,48 @@ export default function WorkOrders() {
     staleTime: 10_000,
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    if (searchParams.get('review_type') !== 'work_order') {
+      handledReviewLink.current = null;
+      return;
+    }
+
+    const rawId = searchParams.get('review_id');
+    const reviewKey = `work_order:${rawId ?? ''}`;
+    if (handledReviewLink.current === reviewKey) return;
+    handledReviewLink.current = reviewKey;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('review_type');
+    nextParams.delete('review_id');
+    setSearchParams(nextParams, { replace: true });
+
+    const reviewId = Number(rawId);
+    if (!Number.isSafeInteger(reviewId) || reviewId <= 0) {
+      toast.error('This work-order review link is invalid.');
+      return;
+    }
+
+    workOrderApi.get(reviewId)
+      .then((response) => {
+        const workOrder = response.data.data;
+        const isReviewable = ['pending_validation', 'pending_approval', 'verified'].includes(workOrder.status);
+        if (canApproveOrEdit && isReviewable) {
+          setReviewWO(workOrder);
+        } else {
+          setDetailWO(workOrder);
+        }
+      })
+      .catch((error) => {
+        const statusCode = error?.response?.status;
+        toast.error(statusCode === 403
+          ? 'You do not have permission to review this work order.'
+          : statusCode === 404
+            ? 'This work order no longer exists.'
+            : 'The linked work order could not be opened. Try the notification again.');
+      });
+  }, [canApproveOrEdit, searchParams, setSearchParams]);
 
   const completeMutation = useMutation({
     mutationFn: (id: number) => workOrderApi.complete(id, {}),

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -9,6 +10,19 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
+        $actor = $this->user();
+        $target = $this->route('user');
+
+        if (! $actor || ! $target instanceof User || ! $actor->can('update', $target)) {
+            return false;
+        }
+
+        if ($this->has('role')) {
+            $role = $this->input('role');
+
+            return is_string($role) && $actor->can('assignRole', [$target, $role]);
+        }
+
         return true;
     }
 
@@ -30,7 +44,6 @@ class UpdateUserRequest extends FormRequest
             'tags.*' => ['string', 'max:100'],
             'dashboard_preference' => ['nullable', 'string', 'in:admin,accounting,operations,logistics,procurement,maintenance,hr,agent,driver'],
             'avatar_url' => ['nullable', 'string', 'max:2048'],
-            'is_active' => ['sometimes', 'boolean'],
         ];
     }
 }

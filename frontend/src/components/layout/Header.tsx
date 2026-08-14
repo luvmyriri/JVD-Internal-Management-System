@@ -19,7 +19,7 @@ import {
   LuExternalLink,
   LuTriangleAlert,
   LuCircleAlert,
-  LuSparkles,
+  LuShieldCheck,
   LuMessageCircle,
   LuSearch,
   LuSend,
@@ -1625,10 +1625,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
                   Settings
                 </button>
                 <button
-                  id="header-setup-wizard"
+                  id="header-password-security"
                   onClick={() => {
                     setDropdownOpen(false);
-                    navigate('/set-password');
+                    navigate('/profile');
                   }}
                   className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition ${
                     theme === 'dark' 
@@ -1636,8 +1636,8 @@ export default function Header({ onMenuClick }: HeaderProps) {
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <LuSparkles className="w-4 h-4 text-amber-500" />
-                  Account Setup Wizard
+                  <LuShieldCheck className="w-4 h-4 text-emerald-600" />
+                  Security &amp; Password
                 </button>
                 <div className="border-t border-gray-100 my-1" />
                 <button

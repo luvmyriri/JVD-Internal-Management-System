@@ -6,7 +6,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Notification;
 use Illuminate\Notifications\Messages\MailMessage;
-use Illuminate\Support\Facades\URL;
 
 class ActionableApprovalNotification extends Notification implements ShouldQueue
 {
@@ -23,6 +22,7 @@ class ActionableApprovalNotification extends Notification implements ShouldQueue
      */
     public function __construct(string $title, string $summary, string $modelType, int $modelId, array $details)
     {
+        $this->afterCommit();
         $this->title = $title;
         $this->summary = $summary;
         $this->modelType = $modelType;
@@ -49,39 +49,15 @@ class ActionableApprovalNotification extends Notification implements ShouldQueue
      */
     public function toMail(object $notifiable): MailMessage
     {
-        // 1. Determine targeted approval action based on role
-        $approveAction = 'approve';
-        if ($this->modelType === 'purchase_order' && $notifiable->role === 'accounting_executive') {
-            $approveAction = 'verify';
-        }
-        if ($this->modelType === 'cash_budget' && $notifiable->role === 'accounting_executive') {
-            $approveAction = 'approve';
-        }
+        $reviewPath = $this->reviewPath();
 
-        // 2. Generate cryptographically signed URLs (valid for 3 days)
-        $approveUrl = URL::temporarySignedRoute(
-            'public.action-request',
-            now()->addDays(3),
-            [
-                'model_type' => $this->modelType,
-                'model_id'   => $this->modelId,
-                'action'     => $approveAction,
-                'user_id'    => $notifiable->id,
-            ]
-        );
-
-        $rejectUrl = URL::temporarySignedRoute(
-            'public.action-request',
-            now()->addDays(3),
-            [
-                'model_type' => $this->modelType,
-                'model_id'   => $this->modelId,
-                'action'     => 'reject',
-                'user_id'    => $notifiable->id,
-            ]
-        );
-
-        $actionLabel = $approveAction === 'verify' ? 'Verify Request' : 'Approve Request';
+        $reviewUrl = rtrim((string) config('app.frontend_url'), '/')
+            . $reviewPath
+            . '?'
+            . http_build_query([
+                'review_type' => $this->modelType,
+                'review_id' => $this->modelId,
+            ]);
 
         return (new MailMessage)
             ->subject($this->title)
@@ -89,9 +65,7 @@ class ActionableApprovalNotification extends Notification implements ShouldQueue
                 'title'       => $this->title,
                 'summary'     => $this->summary,
                 'details'     => $this->details,
-                'approveUrl'  => $approveUrl,
-                'rejectUrl'   => $rejectUrl,
-                'actionLabel' => $actionLabel,
+                'reviewUrl'   => $reviewUrl,
                 'modelType'   => $this->modelType,
                 'userName'    => $notifiable->first_name . ' ' . $notifiable->last_name,
             ]);
@@ -106,13 +80,22 @@ class ActionableApprovalNotification extends Notification implements ShouldQueue
             'title' => $this->title,
             'message' => $this->summary,
             'type' => 'warning',
-            'link' => match ($this->modelType) {
-                'purchase_order' => '/procurement/purchase-orders',
-                'cash_budget' => '/operations/cash-budgets',
-                default => '/fleet/maintenance',
-            },
+            'link' => $this->reviewPath() . '?' . http_build_query([
+                'review_type' => $this->modelType,
+                'review_id' => $this->modelId,
+            ]),
             'model_type' => $this->modelType,
             'model_id' => $this->modelId,
         ];
+    }
+
+    private function reviewPath(): string
+    {
+        return match ($this->modelType) {
+            'purchase_order' => '/procurement/purchase-orders',
+            'cash_budget' => '/accounting/cash-budgets',
+            'work_order' => '/procurement/work-orders',
+            default => '/dashboard',
+        };
     }
 }

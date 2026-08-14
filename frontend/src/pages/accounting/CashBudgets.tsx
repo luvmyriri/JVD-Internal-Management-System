@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   LuSearch, LuEye, LuClock,
   LuActivity, LuPlus,
@@ -45,11 +46,13 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 
-type StatusFilter = 'all' | 'draft' | 'pending_accounting' | 'approved' | 'disbursed';
-const STATUS_FILTERS: StatusFilter[] = ['all', 'draft', 'pending_accounting', 'approved', 'disbursed'];
+type StatusFilter = 'all' | 'draft' | 'pending_accounting' | 'pending_super_admin' | 'approved' | 'disbursed';
+const STATUS_FILTERS: StatusFilter[] = ['all', 'draft', 'pending_accounting', 'pending_super_admin', 'approved', 'disbursed'];
 
 export default function CashBudgets() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledReviewLink = useRef<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
@@ -65,7 +68,44 @@ export default function CashBudgets() {
 
   const budgets: CashBudgetRequest[] = Array.isArray(response) ? response : (response as any)?.data || [];
 
-  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:cash_budgets:general'));
+  const hasGeneralAccess = !!(
+    user
+    && ['super_admin', 'executive_vice_president', 'accounting_executive', 'operations_manager'].includes(user.role)
+  );
+
+  useEffect(() => {
+    if (searchParams.get('review_type') !== 'cash_budget') {
+      handledReviewLink.current = null;
+      return;
+    }
+
+    const rawId = searchParams.get('review_id');
+    const reviewKey = `cash_budget:${rawId ?? ''}`;
+    if (handledReviewLink.current === reviewKey) return;
+    handledReviewLink.current = reviewKey;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('review_type');
+    nextParams.delete('review_id');
+    setSearchParams(nextParams, { replace: true });
+
+    const reviewId = Number(rawId);
+    if (!Number.isSafeInteger(reviewId) || reviewId <= 0) {
+      toast.error('This cash-budget review link is invalid.');
+      return;
+    }
+
+    cashBudgetApi.getById(reviewId)
+      .then((budget) => setSelectedBudget(budget))
+      .catch((error) => {
+        const statusCode = error?.response?.status;
+        toast.error(statusCode === 403
+          ? 'You do not have permission to review this cash budget.'
+          : statusCode === 404
+            ? 'This cash budget no longer exists.'
+            : 'The linked cash budget could not be opened. Try the notification again.');
+      });
+  }, [searchParams, setSearchParams]);
 
   const filtered = budgets.filter((b) => {
     if (!hasGeneralAccess && b.prepared_by !== user?.id) {
@@ -88,6 +128,8 @@ export default function CashBudgets() {
   const counts = {
     all: budgets.length,
     draft: budgets.filter(b => b.status === 'draft').length,
+    pending_accounting: budgets.filter(b => b.status === 'pending_accounting').length,
+    pending_super_admin: budgets.filter(b => b.status === 'pending_super_admin').length,
     approved: budgets.filter(b => b.status === 'approved').length,
     disbursed: budgets.filter(b => b.status === 'disbursed').length,
   };
@@ -197,7 +239,7 @@ export default function CashBudgets() {
       {/* Top Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 shrink-0 relative z-20 no-print">
 
-        {/* KPI 1: Draft */}
+        {/* KPI 1: awaiting any approval stage */}
         <div className="relative overflow-hidden rounded-2xl p-2.5 bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-300/30 dark:shadow-amber-900/30 flex flex-col justify-between group hover:scale-[1.01] transition-all cursor-default h-[90px]">
           <div className="absolute -top-5 -right-5 w-20 h-20 rounded-full bg-white/10" />
           <div className="flex items-start justify-between">
@@ -205,12 +247,12 @@ export default function CashBudgets() {
               <LuClock className="w-3.5 h-3.5 text-white" />
             </div>
             <div className="px-1.5 py-0.5 rounded-full text-[7.5px] font-black bg-white/25 text-white shadow-sm uppercase tracking-wider">
-              Draft
+               Approval queue
             </div>
           </div>
           <div className="mt-1">
-            <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Pending Approval</p>
-            <p className="text-2xl font-black leading-none">{counts.draft || 0}</p>
+             <p className="text-[8px] font-black uppercase tracking-widest opacity-70 mb-0.5">Draft + Review Stages</p>
+             <p className="text-2xl font-black leading-none">{counts.draft + counts.pending_accounting + counts.pending_super_admin}</p>
           </div>
         </div>
 

@@ -32,7 +32,6 @@ class QueuedDispatchTest extends TestCase
             'AccountInvitation',
             'ActionableApprovalNotification',
             'SystemAlert',
-            'TempPasswordNotification',
         ]);
     }
 

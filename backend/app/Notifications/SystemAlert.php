@@ -28,6 +28,7 @@ class SystemAlert extends Notification implements ShouldQueue
         ?string $modelType = null,
         ?int $modelId = null
     ) {
+        $this->afterCommit();
         $this->title     = $title;
         $this->message   = $message;
         $this->type      = $type;

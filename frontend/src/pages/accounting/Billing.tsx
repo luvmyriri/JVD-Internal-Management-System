@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import {
   LuSearch, LuPrinter, LuEye, LuFileCheck,
   LuClock, LuX, LuChevronLeft, LuChevronRight, LuDollarSign,
@@ -12,6 +12,7 @@ import { Dropdown } from '../../components/ui';
 import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
 import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useEntityPreview } from '../../context/EntityPreviewContext';
+import { useAuth } from '../../context/AuthContext';
 import RefundWorkflowPanel from '../../components/accounting/RefundWorkflowPanel';
 
 const refundableAmount = (invoice: Invoice) => Math.max(
@@ -24,7 +25,11 @@ const refundableAmount = (invoice: Invoice) => Math.max(
 
 export default function Billing() {
   const { showPreview } = useEntityPreview();
-  const queryClient = useQueryClient();
+  const { user, hasPermission } = useAuth();
+  const canViewCollections = ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive'].includes(user?.role || '')
+    || hasPermission('accounting', 'can_view');
+  const canRecordPayments = ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user?.role || '')
+    || hasPermission('accounting', 'can_create');
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateRange, setDateRange] = useState<DateRangeValue>({ from: '', to: '' });
@@ -95,18 +100,13 @@ export default function Billing() {
   const stats = invoiceData?.stats || null;
   const pagination = invoiceData?.meta || null;
 
-  const handleMarkAsPaid = async (id: number) => {
-    if (!confirm('Mark this invoice as paid?')) return;
-    try {
-      await billingApi.updateStatus(id, 'paid');
-      queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
-      if (selectedInvoice?.id === id) {
-        setSelectedInvoice({ ...selectedInvoice, status: 'paid' });
-      }
-      toast.success('Invoice marked as paid');
-    } catch (err) {
-      toast.error('Failed to update status');
+  const openCollection = (invoice: Invoice) => {
+    if (!invoice.collection?.id) {
+      toast.error('This invoice does not have a linked receivable record yet.');
+      return;
     }
+
+    window.location.href = `/accounting/collections?collection_id=${invoice.collection.id}`;
   };
 
   const StatusBadge = ({ status }: { status: string }) => {
@@ -246,8 +246,13 @@ export default function Billing() {
               ...(!invoice.cash_budget_request_id && refundableAmount(invoice) > 0
                 ? [{ label: 'Manage Refund', icon: <LuDollarSign className="w-4 h-4" />, onClick: () => { setSelectedInvoice(invoice); setShowModal(true); } }]
                 : []),
-              ...(invoice.status === 'pending_payment' ? [{ label: 'Mark as Paid', icon: <LuFileCheck className="w-4 h-4" />, onClick: () => handleMarkAsPaid(invoice.id) }] : []),
-              ...(invoice.collection ? [{ label: 'View Collection', icon: <LuBanknote className="w-4 h-4" />, onClick: () => window.location.href = '/accounting/collections' }] : [])
+              ...(invoice.collection && canViewCollections
+                ? [{
+                    label: canRecordPayments && invoice.status !== 'paid' ? 'Record Payment' : 'View Collection',
+                    icon: <LuBanknote className="w-4 h-4" />,
+                    onClick: () => openCollection(invoice),
+                  }]
+                : [])
             ]}
           />
         </div>
@@ -538,12 +543,12 @@ export default function Billing() {
                 >
                   <LuMail className="w-4 h-4" /> Send Email
                 </button>
-                {selectedInvoice.status === 'pending_payment' && (
+                {canRecordPayments && selectedInvoice.collection && !['paid', 'cancelled', 'disbursed_budget'].includes(selectedInvoice.status) && (
                   <button
-                    onClick={() => handleMarkAsPaid(selectedInvoice.id)}
+                    onClick={() => openCollection(selectedInvoice)}
                     className="p-3 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 rounded-2xl hover:bg-emerald-600 hover:text-white dark:hover:bg-emerald-600 dark:hover:text-white transition-all border border-emerald-100 dark:border-emerald-900/50 flex items-center gap-2 font-bold text-xs uppercase tracking-widest"
                   >
-                    Mark Paid
+                    <LuBanknote className="w-4 h-4" /> Record Payment
                   </button>
                 )}
                 <button

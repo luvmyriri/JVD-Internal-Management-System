@@ -7,7 +7,6 @@ import { customerApi } from '../../api/customers';
 import { salesQuotationApi } from '../../api/salesQuotations';
 import {
   buildServiceQuotationHtml,
-  computeQuotationLineItems,
   type QuotationPricingInput,
 } from './FixedPackageQuotationPrint';
 
@@ -52,7 +51,19 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
 
   const mutation = useMutation({
     mutationFn: () => {
-      const items = computeQuotationLineItems(pricing);
+      const pricingContext = service.is_tour
+        ? {
+            vehicle: pricing.bookingTourVehicle.toLowerCase() as 'bus' | 'coaster',
+            extra_days: pricing.bookingTourExtraDays,
+            extra_hours: pricing.bookingTourExtraHours,
+          }
+        : service.has_booking_fields
+          ? {
+              adults: pricing.bookingAdults,
+              children: pricing.bookingChildren,
+            }
+          : undefined;
+
       return salesQuotationApi.create({
         customer_id: customerId,
         client_name: name.trim(),
@@ -64,7 +75,7 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
         service_id: service.id,
         service_name: service.name,
         category: service.category,
-        line_items: items.map((li) => ({ description: li.description, unit_price: li.unit_price, quantity: li.quantity })),
+        pricing_context: pricingContext,
         description: service.description || undefined,
         inclusions: service.inclusions || undefined,
         exclusions: service.exclusions || undefined,
@@ -90,6 +101,7 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
         buildServiceQuotationHtml({
           ...pricing,
           agentName,
+          lineItems: q.line_items,
           recipient: {
             client_name: name.trim(),
             client_company: company.trim(),

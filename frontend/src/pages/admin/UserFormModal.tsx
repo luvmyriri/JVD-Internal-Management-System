@@ -1,11 +1,10 @@
 import {
   LuShieldCheck,
+  LuShield,
   LuBus,
   LuChevronRight,
   LuX,
   LuKeyRound,
-  LuEyeOff,
-  LuEye as LuEyeOn,
 } from 'react-icons/lu';
 import type { UseFormRegister, UseFormHandleSubmit, FieldErrors } from 'react-hook-form';
 import { Modal, Button } from '../../components/ui';
@@ -18,7 +17,6 @@ interface UserFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   selectedUser: User | null;
-  isSuperAdmin: boolean;
   allBuses: any[];
   modules: string[];
   configData: any;
@@ -41,13 +39,6 @@ interface UserFormModalProps {
   assignedBusId: number | '';
   setAssignedBusId: (v: number | '') => void;
 
-  newPassword: string;
-  setNewPassword: (v: string) => void;
-  newPasswordConfirm: string;
-  setNewPasswordConfirm: (v: string) => void;
-  showNewPw: boolean;
-  setShowNewPw: React.Dispatch<React.SetStateAction<boolean>>;
-
   customPermissions: Record<string, ModulePermission>;
   setCustomPermissions: React.Dispatch<React.SetStateAction<Record<string, ModulePermission>>>;
   dashboardPreference?: string | null;
@@ -58,7 +49,6 @@ export default function UserFormModal({
   isOpen,
   onClose,
   selectedUser,
-  isSuperAdmin,
   allBuses,
   modules,
   configData,
@@ -77,12 +67,6 @@ export default function UserFormModal({
   addPresetTag,
   assignedBusId,
   setAssignedBusId,
-  newPassword,
-  setNewPassword,
-  newPasswordConfirm,
-  setNewPasswordConfirm,
-  showNewPw,
-  setShowNewPw,
   customPermissions,
   setCustomPermissions,
   dashboardPreference,
@@ -316,64 +300,6 @@ export default function UserFormModal({
           </details>
         )}
 
-        {/* ── Super Admin: Set Password (edit mode only) ── */}
-        {selectedUser && isSuperAdmin && (
-          <details className="group" open>
-            <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl mt-4">
-              <span className="flex items-center gap-1.5 text-rose-500"><LuKeyRound className="text-rose-500" /> Super Admin — Set Password</span>
-              <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
-            </summary>
-            <div className="pt-4 px-1 space-y-3">
-              <div className="space-y-3 p-4 bg-rose-50/50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/20 rounded-2xl">
-                <p className="text-[10px] text-rose-500 font-bold uppercase tracking-widest">
-                  Leave blank to keep the existing password unchanged.
-                </p>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">New Password</label>
-                  <div className="relative">
-                    <input
-                      type={showNewPw ? 'text' : 'password'}
-                      value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
-                      className="w-full px-4 py-3 pr-11 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
-                      placeholder="Min. 8 characters"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowNewPw(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showNewPw ? <LuEyeOff size={16} /> : <LuEyeOn size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-1">Confirm Password</label>
-                  <input
-                    type={showNewPw ? 'text' : 'password'}
-                    value={newPasswordConfirm}
-                    onChange={e => setNewPasswordConfirm(e.target.value)}
-                    className="w-full px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rose-400/20"
-                    placeholder="Re-enter new password"
-                  />
-                </div>
-
-                {newPassword && newPasswordConfirm && newPassword !== newPasswordConfirm && (
-                  <p className="text-[10px] font-bold text-rose-500 ml-1">⚠ Passwords do not match.</p>
-                )}
-                {newPassword && newPassword.length < 8 && (
-                  <p className="text-[10px] font-bold text-amber-500 ml-1">⚠ Must be at least 8 characters.</p>
-                )}
-                {newPassword && newPassword.length >= 8 && newPassword === newPasswordConfirm && (
-                  <p className="text-[10px] font-bold text-emerald-500 ml-1">✓ Passwords match.</p>
-                )}
-              </div>
-            </div>
-          </details>
-        )}
-
         {/* ── Access & Dashboard Overrides ── */}
         {selectedUser && (
           <details className="group" open>
@@ -398,32 +324,21 @@ export default function UserFormModal({
 
         {!selectedUser && (
           <div className="space-y-4">
-            <label htmlFor="send_invitation" className="flex items-center gap-4 px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700 rounded-2xl hover:bg-blue-50/50 dark:hover:bg-gray-700 transition-colors cursor-pointer group">
+            <div className="flex items-center gap-4 px-4 py-3 bg-blue-50/60 dark:bg-blue-950/20 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
               <div className="flex-1">
                 <div className="text-xs font-black text-gray-700 dark:text-gray-200 uppercase tracking-widest">
-                  Send Account Invitation
+                  Secure Account Setup
                 </div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight mt-0.5">
-                  Invite user via email to set their own password
+                  A one-time setup link is emailed to the employee
                 </p>
               </div>
-              <div className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  {...register('send_invitation')}
-                  id="send_invitation"
-                  className="sr-only peer"
-                  defaultChecked={true}
-                />
-                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-              </div>
-            </label>
+              <LuKeyRound size={18} className="shrink-0 text-blue-600" />
+            </div>
 
-            <div className="p-4 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 rounded-[1.5rem] flex items-start gap-3">
-              <LuKeyRound size={18} className="text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-xs text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                <span className="font-black">Unchecked = Temp Password.</span> If invitation is disabled, a temporary password will be generated and shown to you immediately after account creation.
-              </p>
+            <div className="p-4 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-[1.5rem] flex items-start gap-3">
+              <LuShield size={18} className="text-emerald-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 leading-relaxed font-medium">Passwords are chosen by employees through the expiring setup link and are never shown to administrators.</p>
             </div>
           </div>
         )}

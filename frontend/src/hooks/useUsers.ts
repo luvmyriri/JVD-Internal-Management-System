@@ -93,18 +93,3 @@ export function useToggleStatus() {
     isLoading: deactivate.isPending || activate.isPending,
   };
 }
-
-export function useSetPassword() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: { new_password: string; new_password_confirmation: string } }) =>
-      userApi.setPassword(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['users'] });
-      toast.success('Password updated. The user must log in again.');
-    },
-    onError: (error: any) => {
-      toast.error(error.response?.data?.message || 'Failed to update password.');
-    },
-  });
-}

@@ -10,10 +10,10 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Password;
 use App\Services\AuditLogService;
 use App\Notifications\AccountInvitation;
-use App\Notifications\TempPasswordNotification;
 
 class UserController extends Controller
 {
@@ -84,14 +84,12 @@ class UserController extends Controller
 
     /**
      * Create a new user account.
-     * Admin creates account → assigns role → system generates temp password
+     * Admin creates account, assigns a permitted role, and the employee receives
+     * a one-time password-setup link.
      * (Account Lifecycle — Architecture § 2.1)
      */
     public function store(StoreUserRequest $request): JsonResponse
     {
-        $sendInvitation = $request->boolean('send_invitation');
-        $tempPassword = null;
-
         $employeeId = $request->employee_id;
         if (!$employeeId) {
             $latest = User::withTrashed()->orderBy('id', 'desc')->first();
@@ -109,26 +107,18 @@ class UserController extends Controller
             'department' => $request->department,
             'tags' => $request->tags,
             'is_active' => true,
-            'must_change_password' => !$sendInvitation,
+            // Keep login impossible until the employee completes the signed
+            // password-setup flow. This value is never disclosed or sent.
+            'password' => Hash::make(Str::random(64)),
+            'must_change_password' => true,
             'created_by' => auth()->id(),
         ];
 
-        if (!$sendInvitation) {
-            $tempPassword = Str::random(16);
-            $userData['password'] = Hash::make($tempPassword);
-        }
-
         $user = User::create($userData);
 
-        if ($sendInvitation) {
-            // Generate password reset token for the new user
-            // @phpstan-ignore-next-line — createToken() exists on the concrete broker at runtime
-            $token = Password::broker()->createToken($user);
-            $user->notify(new AccountInvitation($token, $user->email));
-        } else {
-            // Send temporary password to the employee's email
-            $user->notify(new TempPasswordNotification($tempPassword));
-        }
+        // @phpstan-ignore-next-line - createToken() exists on the concrete broker at runtime.
+        $token = Password::broker()->createToken($user);
+        $user->notify(new AccountInvitation($token, $user->email));
 
         // Explicit Audit Log
         AuditLogService::log(
@@ -143,12 +133,10 @@ class UserController extends Controller
             'success' => true,
             'data' => [
                 'user' => new UserResource($user),
-                'temporary_password' => $tempPassword,
-                'invitation_sent' => $sendInvitation,
+                'invitation_sent' => true,
+                'setup_required' => true,
             ],
-            'message' => $sendInvitation 
-                ? 'Account created and invitation email sent to ' . $user->email 
-                : 'Account created. Provide the temporary password to the employee securely.',
+            'message' => 'Account created and a secure password-setup link was sent to ' . $user->email,
         ], 201);
     }
 
@@ -157,14 +145,11 @@ class UserController extends Controller
      */
     public function update(\App\Http\Requests\UpdateUserRequest $request, User $user): JsonResponse
     {
-        // Only super_admin can assign the super_admin role
-        if ($request->has('role') && $request->role === 'super_admin' && $request->user()->role !== 'super_admin') {
-            abort(403, 'Unauthorized role assignment. Only a Super Admin can assign the Super Admin role.');
-        }
-
-        // Only super_admin can update a super_admin user
-        if ($user->role === 'super_admin' && $request->user()->role !== 'super_admin') {
-            abort(403, 'Unauthorized update of Super Admin user.');
+        // The request applies the same policy checks before validation. Keep
+        // controller-level authorization as defense in depth for future routes.
+        Gate::authorize('update', $user);
+        if ($request->has('role')) {
+            Gate::authorize('assignRole', [$user, (string) $request->input('role')]);
         }
 
         // Only super_admin can grant/modify custom module permissions — this field
@@ -205,12 +190,7 @@ class UserController extends Controller
      */
     public function deactivate(User $user): JsonResponse
     {
-        if ($user->role === 'super_admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Cannot deactivate the Super Admin account.',
-            ], 403);
-        }
+        Gate::authorize('deactivate', $user);
 
         $user->update(['is_active' => false]);
 
@@ -236,6 +216,8 @@ class UserController extends Controller
      */
     public function activate(User $user): JsonResponse
     {
+        Gate::authorize('activate', $user);
+
         $user->update(['is_active' => true]);
 
         // Explicit Audit Log
@@ -253,23 +235,36 @@ class UserController extends Controller
     }
 
     /**
-     * Reset a user's password (generates new temp password).
+     * Invalidate the current credential and send a one-time setup link.
      */
     public function resetPassword(User $user): JsonResponse
     {
-        $tempPassword = Str::random(16);
+        Gate::authorize('resetPassword', $user);
+
+        if (! $user->is_active) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Activate this account before sending a password-reset link.',
+            ], 422);
+        }
 
         $user->update([
-            'password' => Hash::make($tempPassword),
+            // Immediately invalidate a potentially compromised password. This
+            // replacement is never returned or sent to any person.
+            'password' => Hash::make(Str::random(64)),
             'must_change_password' => true,
         ]);
 
         // Revoke all tokens so user must re-login
         $user->tokens()->delete();
 
+        // @phpstan-ignore-next-line - createToken() exists on the concrete broker at runtime.
+        $token = Password::broker()->createToken($user);
+        $user->notify(new AccountInvitation($token, $user->email, true));
+
         // Explicit Audit Log
         AuditLogService::log(
-            action: 'RESET_PASSWORD',
+            action: 'REQUEST_PASSWORD_RESET',
             module: 'hr',
             entityType: 'user',
             entityId: $user->id
@@ -278,39 +273,10 @@ class UserController extends Controller
         return response()->json([
             'success' => true,
             'data' => [
-                'temporary_password' => $tempPassword,
+                'setup_link_sent' => true,
             ],
-            'message' => 'Password reset. Provide the new temporary password securely.',
+            'message' => 'The existing credential was invalidated and a secure password-reset link was sent to the employee.',
         ]);
     }
 
-    /**
-     * Super Admin: directly set a specific password for any user.
-     * Only accessible by super_admin (enforced at route level).
-     */
-    public function setPassword(\App\Http\Requests\SetPasswordRequest $request, User $user): JsonResponse
-    {
-        $validated = $request->validated();
-
-        $user->update([
-            'password'             => Hash::make($validated['new_password']),
-            'must_change_password' => false,
-        ]);
-
-        // Revoke all active tokens so the user must re-login with the new password
-        $user->tokens()->delete();
-
-        // Audit log
-        AuditLogService::log(
-            action: 'SET_PASSWORD',
-            module: 'hr',
-            entityType: 'user',
-            entityId: $user->id
-        );
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Password updated. The user must log in again with the new password.',
-        ]);
-    }
 }

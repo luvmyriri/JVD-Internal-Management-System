@@ -2,9 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Resources\UserResource;
 use App\Models\JobApplication;
+use App\Models\JobApplicationDocument;
+use App\Models\User;
+use App\Notifications\AccountInvitation;
+use App\Services\AuditLogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class JobApplicationController extends Controller
 {
@@ -28,7 +37,7 @@ class JobApplicationController extends Controller
             'checklist' => 'nullable|array',
         ]);
 
-        if (!isset($validated['checklist'])) {
+        if (! isset($validated['checklist'])) {
             $validated['checklist'] = [
                 'Resume/CV' => false,
                 'Police Clearance/NBI' => false,
@@ -36,6 +45,7 @@ class JobApplicationController extends Controller
         }
 
         $application = JobApplication::create($validated);
+
         return response()->json($application, 201);
     }
 
@@ -60,25 +70,27 @@ class JobApplicationController extends Controller
         ]);
 
         $jobApplication->update($validated);
+
         return response()->json($jobApplication);
     }
 
     public function destroy(JobApplication $jobApplication)
     {
         $jobApplication->delete();
+
         return response()->noContent();
     }
 
     public function getDocuments(JobApplication $jobApplication)
     {
-        $documents = \App\Models\JobApplicationDocument::with('uploader:id,first_name,last_name,email')
+        $documents = JobApplicationDocument::with('uploader:id,first_name,last_name,email')
             ->where('job_application_id', $jobApplication->id)
             ->orderByDesc('created_at')
             ->get();
 
         return response()->json([
             'success' => true,
-            'data'    => $documents,
+            'data' => $documents,
         ]);
     }
 
@@ -86,25 +98,25 @@ class JobApplicationController extends Controller
     {
         $request->validate([
             'title' => ['required', 'string', 'max:255'],
-            'file'  => ['required', 'file', 'mimes:pdf,jpeg,jpg,png,doc,docx', 'max:10240'], // Max 10MB
+            'file' => ['required', 'file', 'mimes:pdf,jpeg,jpg,png,doc,docx', 'max:10240'], // Max 10MB
         ]);
 
         $file = $request->file('file');
         $extension = strtolower($file->extension() ?: $file->getClientOriginalExtension());
-        if (!in_array($extension, ['pdf', 'jpeg', 'jpg', 'png', 'doc', 'docx'])) {
+        if (! in_array($extension, ['pdf', 'jpeg', 'jpg', 'png', 'doc', 'docx'])) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid file extension resolved.'
+                'message' => 'Invalid file extension resolved.',
             ], 422);
         }
-        $fileName = 'job_applications/' . $jobApplication->id . '/' . \Illuminate\Support\Str::random(20) . '.' . $extension;
-        \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, file_get_contents($file));
+        $fileName = 'job_applications/'.$jobApplication->id.'/'.Str::random(20).'.'.$extension;
+        Storage::disk('public')->put($fileName, file_get_contents($file));
 
-        $document = \App\Models\JobApplicationDocument::create([
+        $document = JobApplicationDocument::create([
             'job_application_id' => $jobApplication->id,
-            'title'            => $request->input('title'),
-            'file_path'        => $fileName,
-            'uploaded_by'      => auth()->id() ?? 1,
+            'title' => $request->input('title'),
+            'file_path' => $fileName,
+            'uploaded_by' => auth()->id() ?? 1,
         ]);
 
         // Automatically check corresponding checklist item if match found
@@ -118,32 +130,32 @@ class JobApplicationController extends Controller
                 $updatedChecklist[$key] = $value;
             }
         }
-        if (!empty($updatedChecklist)) {
+        if (! empty($updatedChecklist)) {
             $jobApplication->update(['checklist' => $updatedChecklist]);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Document uploaded and linked successfully.',
-            'data'    => $document->load('uploader:id,first_name,last_name,email'),
+            'data' => $document->load('uploader:id,first_name,last_name,email'),
         ], 201);
     }
 
     public function deleteDocument(JobApplication $jobApplication, $documentId)
     {
-        $document = \App\Models\JobApplicationDocument::where('id', $documentId)
+        $document = JobApplicationDocument::where('id', $documentId)
             ->where('job_application_id', $jobApplication->id)
             ->first();
 
-        if (!$document) {
+        if (! $document) {
             return response()->json([
                 'success' => false,
                 'message' => 'Document not found or does not belong to this application.',
             ], 404);
         }
 
-        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($document->file_path)) {
-            \Illuminate\Support\Facades\Storage::disk('public')->delete($document->file_path);
+        if (Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
         }
 
         $title = $document->title;
@@ -160,7 +172,7 @@ class JobApplicationController extends Controller
                 $updatedChecklist[$key] = $value;
             }
         }
-        if (!empty($updatedChecklist)) {
+        if (! empty($updatedChecklist)) {
             $jobApplication->update(['checklist' => $updatedChecklist]);
         }
 
@@ -178,7 +190,7 @@ class JobApplicationController extends Controller
 
         return response()->json([
             'success' => true,
-            'data'    => $jobApplication->fresh(),
+            'data' => $jobApplication->fresh(),
             'message' => 'Checklist updated.',
         ]);
     }
@@ -202,63 +214,57 @@ class JobApplicationController extends Controller
         }
 
         $validated = $request->validate([
-            'employee_id'     => ['nullable', 'string', 'unique:users,employee_id'],
-            'role'            => ['required', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],
-            'department'      => ['required', 'string', 'max:100'],
+            'employee_id' => ['nullable', 'string', 'unique:users,employee_id'],
+            'role' => ['required', 'in:super_admin,executive_vice_president,driver,operations_manager,reservation_officer,office_staff,accounting_executive,corporate_secretary,logistics_in_charge,dispatcher,purchasing_manager,service_adviser,head_mechanic'],
+            'department' => ['required', 'string', 'max:100'],
             'send_invitation' => ['required', 'boolean'],
         ]);
 
+        if (! $request->user()->can('createWithRole', [User::class, $validated['role']])) {
+            abort(403, 'You are not authorized to provision an account with this role.');
+        }
+
         // Check if email already exists in users table (H-01)
-        if (\App\Models\User::where('email', $jobApplication->email)->exists()) {
+        if (User::where('email', $jobApplication->email)->exists()) {
             return response()->json([
                 'success' => false,
-                'message' => 'An employee account with this email (' . $jobApplication->email . ') already exists.',
+                'message' => 'An employee account with this email ('.$jobApplication->email.') already exists.',
             ], 422);
         }
 
         $employeeId = $validated['employee_id'] ?? $request->input('employee_id');
-        if (!$employeeId) {
-            $latest = \App\Models\User::withTrashed()->orderBy('id', 'desc')->first();
+        if (! $employeeId) {
+            $latest = User::withTrashed()->orderBy('id', 'desc')->first();
             $nextId = $latest ? ($latest->id + 1001) : 1001;
-            $employeeId = 'JVD-EMP-' . $nextId;
+            $employeeId = 'JVD-EMP-'.$nextId;
         }
-
-        $sendInvitation = (bool) $validated['send_invitation'];
-        $tempPassword = null;
 
         $userData = [
-            'employee_id'          => $employeeId,
-            'email'                => $jobApplication->email,
-            'first_name'           => $jobApplication->first_name,
-            'last_name'            => $jobApplication->last_name,
-            'role'                 => $validated['role'],
-            'department'           => $validated['department'],
-            'is_active'            => true,
+            'employee_id' => $employeeId,
+            'email' => $jobApplication->email,
+            'first_name' => $jobApplication->first_name,
+            'last_name' => $jobApplication->last_name,
+            'role' => $validated['role'],
+            'department' => $validated['department'],
+            'is_active' => true,
+            // Login remains impossible until the employee follows the signed
+            // password-setup link. This placeholder is never disclosed.
+            'password' => Hash::make(Str::random(64)),
             'must_change_password' => true,
-            'created_by'           => auth()->id(),
+            'created_by' => auth()->id(),
         ];
-
-        if (!$sendInvitation) {
-            $tempPassword = \Illuminate\Support\Str::random(16);
-            $userData['password'] = \Illuminate\Support\Facades\Hash::make($tempPassword);
-        }
 
         // Wrap db and notification dispatching in transaction (H-02)
         DB::beginTransaction();
         try {
-            $user = \App\Models\User::create($userData);
+            $user = User::create($userData);
 
-            if ($sendInvitation) {
-                $token = \Illuminate\Support\Facades\Password::broker()->createToken($user);
-                $user->notify(new \App\Notifications\AccountInvitation($token, $user->email));
-            } else {
-                $user->notify(new \App\Notifications\TempPasswordNotification($tempPassword));
-            }
+            $token = Password::broker()->createToken($user);
 
             // Mark the job application as converted
             $jobApplication->update(['converted_user_id' => $user->id]);
 
-            \App\Services\AuditLogService::log(
+            AuditLogService::log(
                 action: 'RECRUIT_APPLICANT_TO_EMPLOYEE',
                 module: 'hr',
                 entityType: 'user',
@@ -267,24 +273,28 @@ class JobApplicationController extends Controller
             );
 
             DB::commit();
-
-            return response()->json([
-                'success'            => true,
-                'message'            => $sendInvitation
-                    ? 'Employee account created and invitation email sent to ' . $user->email
-                    : 'Employee account created. Provide the temporary password securely.',
-                'data' => [
-                    'user'               => new \App\Http\Resources\UserResource($user),
-                    'temporary_password' => $tempPassword,
-                    'invitation_sent'    => $sendInvitation,
-                ],
-            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to convert applicant to employee: ' . $e->getMessage()
+                'message' => 'Failed to convert applicant to employee: '.$e->getMessage(),
             ], 500);
         }
+
+        // AccountInvitation is queued. Dispatch only after the user, reset
+        // token, application conversion, and audit record are committed so a
+        // fast worker can never observe a half-created employee account.
+        $user->notify(new AccountInvitation($token, $user->email));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Employee account created and a secure password-setup link was sent to '.$user->email,
+            'data' => [
+                'user' => new UserResource($user),
+                'invitation_sent' => true,
+                'setup_required' => true,
+            ],
+        ], 201);
     }
 }

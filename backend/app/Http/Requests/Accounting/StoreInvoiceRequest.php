@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Accounting;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreInvoiceRequest extends FormRequest
 {
@@ -97,6 +98,8 @@ class StoreInvoiceRequest extends FormRequest
             'bus_assignments.*.bus_id' => 'nullable|integer',
             'bus_assignments.*.driver_id' => 'nullable|integer',
             'seat_map' => 'nullable|array',
+            // Accepted for backwards-compatible clients, but the invoice service always
+            // applies the configured system VAT rate rather than this submitted value.
             'tax_rate' => 'nullable|numeric|min:0|max:1',
             'custom_transaction_detail' => 'nullable|array',
             'custom_transaction_detail.passport_case_id' => 'nullable|integer|exists:passport_cases,id',
@@ -152,6 +155,29 @@ class StoreInvoiceRequest extends FormRequest
             'passengers.*.emergency_contact' => 'nullable|string|max:255',
             'passengers.*.special_needs' => 'nullable|string',
         ];
+    }
+
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $validator): void {
+            foreach ((array) $this->input('items', []) as $index => $item) {
+                if (! is_array($item)) {
+                    continue;
+                }
+
+                $metadata = is_array($item['item_metadata'] ?? null) ? $item['item_metadata'] : [];
+                $isServerPriced = ! empty($item['service_id'])
+                    || ! empty($metadata['rate_plan_id'])
+                    || ! empty($metadata['program_id']);
+
+                if (! $isServerPriced && (! array_key_exists('unit_price', $item) || $item['unit_price'] === null)) {
+                    $validator->errors()->add(
+                        "items.{$index}.unit_price",
+                        'A bespoke invoice line requires an explicit unit price.'
+                    );
+                }
+            }
+        });
     }
 
     public function messages(): array

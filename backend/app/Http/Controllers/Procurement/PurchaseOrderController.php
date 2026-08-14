@@ -143,6 +143,13 @@ class PurchaseOrderController extends Controller
      */
     public function verify(ReviewPurchaseOrderRequest $request, PurchaseOrder $purchaseOrder): JsonResponse
     {
+        if (!$request->user()->hasRole('super_admin', 'executive_vice_president', 'accounting_executive')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized. Only accounting or executive approvers can verify P.O.s.',
+            ], 403);
+        }
+
         if ($purchaseOrder->status !== 'pending_accounting_review') {
             return response()->json([
                 'success' => false,

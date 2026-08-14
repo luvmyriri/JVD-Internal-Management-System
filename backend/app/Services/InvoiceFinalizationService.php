@@ -6,9 +6,11 @@ use App\Exceptions\MaxPaxExceededException;
 use App\Mail\BookingConfirmationMail;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Account;
+use App\Models\CharterRatePlan;
 use App\Models\Contract;
 use App\Models\Customer;
 use App\Models\CustomTransactionDetail;
+use App\Models\EducationalTourProgram;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
@@ -43,27 +45,176 @@ class InvoiceFinalizationService
      *
      * @return array{processedItems: array, subtotal: float, taxAmount: float, totalAmount: float}
      */
-    public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount, ?float $customTaxRate = null): array
+    public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount, ?float $untrustedTaxRate = null): array
     {
-        $subtotal = 0;
-        $taxRate = $customTaxRate !== null ? $customTaxRate : (float) SystemSetting::getValue('vat_rate', 0.12);
+        $subtotal = 0.0;
+        // Tax is configuration-owned. Keep the fourth argument for backwards-compatible
+        // callers, but never let checkout payloads choose the rate applied to an invoice.
+        $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
         $processedItems = [];
 
-        foreach ($items as $item) {
-            $service = ! empty($item['service_id']) ? Service::lockForUpdate()->find($item['service_id']) : null;
-            if (! empty($item['service_id']) && ! $service) {
-                throw ValidationException::withMessages(['items' => ['The selected catalog service no longer exists.']]);
+        foreach ($items as $index => $item) {
+            $metadata = is_array($item['item_metadata'] ?? null) ? $item['item_metadata'] : [];
+            $ratePlanId = $metadata['rate_plan_id'] ?? null;
+            $programId = $metadata['program_id'] ?? null;
+
+            if ($ratePlanId && $programId) {
+                throw ValidationException::withMessages([
+                    'items' => ['An invoice line cannot reference both a charter rate plan and an educational program.'],
+                ]);
             }
-            if (! $service && empty($item['item_name'])) {
-                throw ValidationException::withMessages(['items' => ['A bespoke line must include its item name.']]);
+
+            $service = null;
+            $serviceType = null;
+            $adults = isset($item['adults']) ? (int) $item['adults'] : null;
+            $children = isset($item['children']) ? (int) $item['children'] : null;
+            $adultUnit = null;
+            $childUnit = null;
+
+            if ($ratePlanId) {
+                $plan = CharterRatePlan::where('is_active', true)->lockForUpdate()->find($ratePlanId);
+                if (! $plan) {
+                    throw ValidationException::withMessages([
+                        'items' => ['The selected charter rate plan is no longer available.'],
+                    ]);
+                }
+
+                $service = Service::lockForUpdate()->find($plan->service_id);
+                if (! $service) {
+                    throw ValidationException::withMessages([
+                        'items' => ['The charter rate plan is not linked to a valid catalog service.'],
+                    ]);
+                }
+                if (! empty($item['service_id']) && (int) $item['service_id'] !== (int) $service->id) {
+                    throw ValidationException::withMessages([
+                        'items' => ['The selected catalog service does not match the charter rate plan.'],
+                    ]);
+                }
+
+                foreach (['starts_at', 'ends_at', 'estimated_kilometers'] as $requiredField) {
+                    if (! isset($metadata[$requiredField]) || $metadata[$requiredField] === '') {
+                        throw ValidationException::withMessages([
+                            "items.0.item_metadata.{$requiredField}" => ["Charter pricing requires {$requiredField}."],
+                        ]);
+                    }
+                }
+
+                $assignments = is_array($metadata['bus_assignments'] ?? null) ? $metadata['bus_assignments'] : [];
+                $effectiveQty = count($assignments) > 0
+                    ? count($assignments)
+                    : max(1, (int) ($metadata['requested_units'] ?? $metadata['buses_required'] ?? $item['quantity'] ?? 1));
+                $pricing = app(CharterBookingService::class)->calculate(
+                    $plan,
+                    (string) $metadata['starts_at'],
+                    (string) $metadata['ends_at'],
+                    (float) $metadata['estimated_kilometers']
+                );
+                $unitPrice = round((float) $pricing['subtotal'], 2);
+                $itemTotal = round($unitPrice * $effectiveQty, 2);
+                $serviceType = 'bus_rental';
+                $adults = null;
+                $children = null;
+                $metadata['requested_units'] = $effectiveQty;
+                $metadata['buses_required'] = $effectiveQty;
+                $metadata['pricing_snapshot'] = $pricing;
+            } elseif ($programId) {
+                $program = EducationalTourProgram::where('is_active', true)->lockForUpdate()->find($programId);
+                if (! $program) {
+                    throw ValidationException::withMessages([
+                        'items' => ['The selected educational program is no longer available.'],
+                    ]);
+                }
+
+                $service = $program->service_id
+                    ? Service::lockForUpdate()->find($program->service_id)
+                    : null;
+                if (! empty($item['service_id']) && (int) $item['service_id'] !== (int) ($service?->id ?? 0)) {
+                    throw ValidationException::withMessages([
+                        'items' => ['The selected catalog service does not match the educational program.'],
+                    ]);
+                }
+                if (! isset($metadata['student_count'])) {
+                    throw ValidationException::withMessages([
+                        'items.0.item_metadata.student_count' => ['Educational program pricing requires a student count.'],
+                    ]);
+                }
+
+                $pricing = app(EducationalTourBookingService::class)->calculate(
+                    $program,
+                    (int) $metadata['student_count'],
+                    (int) ($metadata['tour_guide_count'] ?? $metadata['chaperone_count'] ?? 0)
+                );
+                $effectiveQty = 1;
+                $unitPrice = round((float) $pricing['subtotal'], 2);
+                $itemTotal = $unitPrice;
+                $serviceType = 'educational_tour';
+                $adults = null;
+                $children = null;
+                $metadata['student_count'] = $pricing['student_count'];
+                $metadata['tour_guide_count'] = $pricing['tour_guide_count'];
+                $metadata['chaperone_count'] = $pricing['chaperone_count'];
+                $metadata['pricing_snapshot'] = $pricing;
+            } else {
+                $service = ! empty($item['service_id']) ? Service::lockForUpdate()->find($item['service_id']) : null;
+                if (! empty($item['service_id']) && ! $service) {
+                    throw ValidationException::withMessages(['items' => ['The selected catalog service no longer exists.']]);
+                }
+                if (! $service && empty($item['item_name'])) {
+                    throw ValidationException::withMessages(['items' => ['A bespoke line must include its item name.']]);
+                }
+
+                // Catalog lines always use the locked catalog snapshot. Only a true
+                // bespoke line may carry an explicit staff-entered price; that path is
+                // role-gated and request-audited by the API middleware.
+                if ($service) {
+                    if (! empty($item['service_type'])
+                        && ! empty($service->service_type)
+                        && $item['service_type'] !== $service->service_type) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.item_metadata.originating_catalog_service_id" => [
+                                'The selected catalog product does not support the submitted service engine.',
+                            ],
+                        ]);
+                    }
+                    $baseUnitPrice = round((float) $service->price, 2);
+                    $adultUnit = round((float) ($service->adult_price ?? $service->price), 2);
+                    $childUnit = round((float) ($service->child_price ?? $service->price), 2);
+                    // The catalog owns both its price and fulfillment engine. A caller
+                    // cannot relabel a package to bypass engine-specific validation.
+                    $serviceType = $service->service_type ?: ($item['service_type'] ?? null);
+                } else {
+                    if (! array_key_exists('unit_price', $item) || $item['unit_price'] === null) {
+                        throw ValidationException::withMessages([
+                            'items' => ['A bespoke invoice line requires an explicit unit price.'],
+                        ]);
+                    }
+                    $baseUnitPrice = round((float) $item['unit_price'], 2);
+                    $adultUnit = round((float) ($item['adult_price'] ?? $baseUnitPrice), 2);
+                    $childUnit = round((float) ($item['child_price'] ?? $baseUnitPrice), 2);
+                    $serviceType = $item['service_type'] ?? 'custom_arrangement';
+                }
+
+                if ($adults !== null || $children !== null) {
+                    $adultCount = (int) ($adults ?? 0);
+                    $childCount = (int) ($children ?? 0);
+                    $itemTotal = round(($adultCount * $adultUnit) + ($childCount * $childUnit), 2);
+                    $effectiveQty = $adultCount + $childCount;
+                    $unitPrice = $effectiveQty > 0
+                        ? round($itemTotal / $effectiveQty, 2)
+                        : $baseUnitPrice;
+                } else {
+                    $effectiveQty = (int) $item['quantity'];
+                    $unitPrice = $baseUnitPrice;
+                    $itemTotal = round($unitPrice * $effectiveQty, 2);
+                }
             }
 
             if ($service?->max_pax && $travelDate) {
                 $paxToAdd = 0;
-                if (isset($item['adults']) || isset($item['children'])) {
-                    $paxToAdd = ($item['adults'] ?? 0) + ($item['children'] ?? 0);
+                if ($adults !== null || $children !== null) {
+                    $paxToAdd = ($adults ?? 0) + ($children ?? 0);
                 } else {
-                    $paxToAdd = $item['quantity'];
+                    $paxToAdd = $effectiveQty;
                 }
 
                 if ($requestPaxCount && $requestPaxCount > $paxToAdd) {
@@ -85,48 +236,29 @@ class InvoiceFinalizationService
                 }
             }
 
-            $adults = $item['adults'] ?? null;
-            $children = $item['children'] ?? null;
-            $unitPrice = isset($item['unit_price']) ? (float) $item['unit_price'] : (float) ($service?->price ?? 0);
-
-            if ($adults !== null || $children !== null) {
-                $adultCount = (int) ($adults ?? 0);
-                $childCount = (int) ($children ?? 0);
-                $adultUnit = (float) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice);
-                $childUnit = (float) ($item['child_price'] ?? $service?->child_price ?? $unitPrice);
-                $itemTotal = ($adultCount * $adultUnit) + ($childCount * $childUnit);
-                $effectiveQty = $adultCount + $childCount;
-                if ($effectiveQty > 0) {
-                    $unitPrice = $itemTotal / $effectiveQty;
-                }
-            } else {
-                $itemTotal = $unitPrice * $item['quantity'];
-                $effectiveQty = $item['quantity'];
-            }
-
-            $subtotal += $itemTotal;
+            $subtotal = round($subtotal + $itemTotal, 2);
 
             $processedItems[] = [
                 'service_id' => $service?->id,
                 'passport_case_id' => $item['passport_case_id'] ?? null,
                 'item_name' => $item['item_name'] ?? $service?->name,
-                'service_type' => $item['service_type'] ?? $service?->service_type ?? 'custom_arrangement',
+                'service_type' => $serviceType ?? 'custom_arrangement',
                 'item_description' => $item['item_description'] ?? $item['description'] ?? $service?->description,
-                'item_metadata' => $item['item_metadata'] ?? null,
+                'item_metadata' => $metadata ?: null,
                 'quantity' => $effectiveQty ?? $item['quantity'],
                 'unit_price' => $unitPrice,
                 'total_price' => $itemTotal,
                 'adults' => $adults,
                 'children' => $children,
-                'adult_price' => isset($item['adults']) || isset($item['children']) ? (float) ($item['adult_price'] ?? $service?->adult_price ?? $unitPrice) : null,
-                'child_price' => isset($item['adults']) || isset($item['children']) ? (float) ($item['child_price'] ?? $service?->child_price ?? $unitPrice) : null,
+                'adult_price' => $adults !== null || $children !== null ? $adultUnit : null,
+                'child_price' => $adults !== null || $children !== null ? $childUnit : null,
                 'service_date' => $item['service_date'] ?? null,
                 'destination' => $item['destination'] ?? null,
             ];
         }
 
-        $taxAmount = $subtotal * $taxRate;
-        $totalAmount = $subtotal + $taxAmount;
+        $taxAmount = round($subtotal * $taxRate, 2);
+        $totalAmount = round($subtotal + $taxAmount, 2);
 
         return [
             'processedItems' => $processedItems,

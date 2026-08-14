@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\SalesOrderService;
 use Illuminate\Database\Eloquent\Model;
 
 class Collection extends Model
@@ -10,7 +11,7 @@ class Collection extends Model
         'client_name', 'service_type', 'other_service_type', 'date', 'travel_date',
         'pick_up', 'drop_off', 'rate', 'customer_id', 'billing_amount',
         'remaining_balance', 'due_date', 'collection_status', 'paid_amount',
-        'invoice_id', 'liquidation_id', 'employee_id', 'auto_generated', 'remarks'
+        'invoice_id', 'liquidation_id', 'employee_id', 'auto_generated', 'remarks',
     ];
 
     public function payments()
@@ -61,26 +62,33 @@ class Collection extends Model
         }
 
         $this->save();
-        
+
         // Also update the linked invoice balance and status
         if ($this->invoice_id) {
             $invoice = $this->invoice;
+            $terminalStatus = in_array($invoice->status, ['cancelled', 'voided', 'disbursed_budget'], true)
+                ? $invoice->status
+                : null;
             $invoice->balance = $this->remaining_balance;
             $invoice->amount_received = $this->paid_amount;
-            $invoice->status = $this->remaining_balance <= 0 ? 'paid' : ($this->paid_amount > 0 ? 'partial' : 'pending_payment');
+            if ($terminalStatus === null) {
+                $invoice->status = $this->remaining_balance <= 0 ? 'paid' : ($this->paid_amount > 0 ? 'partial' : 'pending_payment');
+            }
             $invoice->save();
-            app(\App\Services\SalesOrderService::class)->captureInvoice($invoice, $invoice->created_by);
-            app(\App\Services\SalesOrderService::class)->syncInvoiceFinancials($invoice);
+            if ($terminalStatus === null) {
+                app(SalesOrderService::class)->captureInvoice($invoice, $invoice->created_by);
+                app(SalesOrderService::class)->syncInvoiceFinancials($invoice);
+            }
         }
 
         // Update linked driver liquidation shortage if this is a driver shortage collection
         if ($this->liquidation_id) {
-            $liquidation = \App\Models\Liquidation::find($this->liquidation_id);
+            $liquidation = Liquidation::find($this->liquidation_id);
             if ($liquidation) {
                 $liquidation->shortage_amount = $this->remaining_balance;
                 if ($this->remaining_balance <= 0 && $liquidation->status === 'disputed') {
                     $hasDisputedItems = $liquidation->items()->where('status', 'disputed')->exists();
-                    if (!$hasDisputedItems) {
+                    if (! $hasDisputedItems) {
                         $liquidation->status = 'settled';
                     }
                 }

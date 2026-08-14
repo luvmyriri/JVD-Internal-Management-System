@@ -40,7 +40,7 @@ return new class extends Migration
             // Money — VAT-inclusive prices are decomposed into a BIR-standard breakdown.
             $table->decimal('subtotal', 15, 2);      // VAT-exclusive
             $table->decimal('vat_amount', 15, 2);
-            $table->decimal('total', 15, 2);          // VAT-inclusive grand total
+            $table->decimal('total', 15, 2);          // Grand total including VAT
             $table->decimal('vat_rate', 5, 2)->default(12);
 
             $table->date('travel_date')->nullable();

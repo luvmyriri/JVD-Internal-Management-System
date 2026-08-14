@@ -56,6 +56,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Server-generated links that require an authenticated in-app workflow
+    | must point to the React application, never to a state-changing public
+    | endpoint. When CORS accepts multiple origins, the first URL is the
+    | canonical link target used in outbound email.
+    |
+    */
+
+    'frontend_url' => trim(explode(',', env('FRONTEND_URL', 'http://localhost:3000'))[0]),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

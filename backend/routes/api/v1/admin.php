@@ -2,7 +2,6 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\SystemSettingController;
 use App\Http\Controllers\Procurement\PurchaseOrderController;
@@ -47,9 +46,6 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
     Route::middleware(['auth:sanctum', 'role:super_admin'])->group(function () {
         Route::post('/admin/settings/landing-page', [SystemSettingController::class, 'updateLandingPageSettings'])->name('settings.landing-page.update');
         Route::post('/admin/settings/2fa',          [SystemSettingController::class, 'update2FA'])->name('settings.2fa.update');
-        // Super Admin can directly set a specific password for any user
-        Route::patch('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
-
         // Role Permissions Management (Super Admin only)
         Route::get('/role-permissions',              [RolePermissionController::class, 'index'])->name('role-permissions.index');
         Route::get('/role-permissions/{role}',        [RolePermissionController::class, 'show'])->name('role-permissions.show');
@@ -82,4 +78,3 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         });
     });
 });
-

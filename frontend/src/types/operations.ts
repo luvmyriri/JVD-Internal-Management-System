@@ -128,7 +128,7 @@ export interface CashBudgetRequest {
   
   total_amount?: number;
   disbursed_amount?: number;
-  status: 'draft' | 'pending_accounting' | 'approved' | 'disbursed';
+  status: 'draft' | 'pending_accounting' | 'pending_super_admin' | 'approved' | 'disbursed';
   
   prepared_by: number;
   approved_by?: number;

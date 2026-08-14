@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   LuSearch, LuFileCheck, LuEye,
   LuClock, LuX,
@@ -271,8 +272,14 @@ function CreateCollectionModal({ onClose }: { onClose: () => void }) {
 }
 
 export default function Collections() {
-  const { user } = useAuth();
-  const hasGeneralAccess = !!(user?.role === 'super_admin' || user?.tags?.includes('access:general') || user?.tags?.includes('access:collections:general'));
+  const { user, hasPermission } = useAuth();
+  const [searchParams] = useSearchParams();
+  const canViewCollections = ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive'].includes(user?.role || '')
+    || hasPermission('accounting', 'can_view');
+  const canCreateCollections = ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user?.role || '')
+    || hasPermission('accounting', 'can_create');
+  const canEditCollections = ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user?.role || '')
+    || hasPermission('accounting', 'can_edit');
 
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -291,6 +298,7 @@ export default function Collections() {
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'Cash',
     amount: '',
+    idempotency_key: crypto.randomUUID(),
   });
 
   // Debounce search
@@ -305,7 +313,7 @@ export default function Collections() {
   const { data: responseData, isLoading, isPlaceholderData } = useQuery({
     queryKey: ['collections', { search: debouncedSearch, status: statusFilter, from: dateRange.from, to: dateRange.to }],
     queryFn: async () => {
-      if (!hasGeneralAccess) return { data: [], stats: null };
+      if (!canViewCollections) return { data: [], stats: null };
       const response = await collectionApi.getAll({
         search: debouncedSearch,
         status: statusFilter,
@@ -321,6 +329,26 @@ export default function Collections() {
   const collections: Collection[] = responseData?.data || [];
   const stats = responseData?.stats || null;
 
+  // Billing links preserve the exact receivable identity. Fetching by ID also
+  // works for completed records, which the default work queue intentionally hides.
+  useEffect(() => {
+    const collectionId = Number(searchParams.get('collection_id'));
+    if (!canViewCollections || !Number.isInteger(collectionId) || collectionId <= 0) return;
+
+    let active = true;
+    collectionApi.getById(collectionId)
+      .then((collection) => {
+        if (!active) return;
+        setSelectedCollection(collection);
+        setShowDetailModal(true);
+      })
+      .catch(() => {
+        if (active) toast.error('The linked collection could not be opened.');
+      });
+
+    return () => { active = false; };
+  }, [canViewCollections, searchParams]);
+
   const paymentMutation = useMutation({
     mutationFn: (data: any) => collectionApi.addPayment(selectedCollection!.id, data),
     onSuccess: (res) => {
@@ -333,6 +361,7 @@ export default function Collections() {
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
         amount: '',
+        idempotency_key: crypto.randomUUID(),
       });
     },
     onError: () => {
@@ -363,19 +392,6 @@ export default function Collections() {
     }
   });
 
-  const confirmMutation = useMutation({
-    mutationFn: (id: number) => collectionApi.confirm(id),
-    onSuccess: (res) => {
-      toast.success('Collection confirmed as fully paid');
-      queryClient.invalidateQueries({ queryKey: ['collections'] });
-      setSelectedCollection(res.data);
-      setShowDetailModal(false);
-    },
-    onError: () => {
-      toast.error('Failed to confirm collection');
-    }
-  });
-
   const sendSoaMutation = useMutation({
     mutationFn: (id: number) => collectionApi.sendSoa(id),
     onSuccess: (res: any) => {
@@ -386,12 +402,6 @@ export default function Collections() {
       toast.error(errMsg);
     }
   });
-
-  const handleConfirmCollection = (id: number) => {
-    if (window.confirm('Are you sure you want to confirm this transaction as fully paid? This will also mark the linked invoice as paid.')) {
-      confirmMutation.mutate(id);
-    }
-  };
 
   const handleSendSoaEmail = (id: number) => {
     sendSoaMutation.mutate(id);
@@ -549,7 +559,7 @@ export default function Collections() {
     <div className="space-y-8 pb-12">
       <div className="flex justify-between items-center no-print">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Collections</h1>
-        {hasGeneralAccess && (
+        {canCreateCollections && (
           <button
             onClick={() => setShowCreateModal(true)}
             className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-bold uppercase tracking-widest flex items-center gap-2 transition-all shadow-lg shadow-blue-600/30"
@@ -754,11 +764,12 @@ export default function Collections() {
                 rows={3}
                 defaultValue={selectedCollection.remarks || ''}
                 onBlur={(e) => {
-                  if (e.target.value !== selectedCollection.remarks) {
+                  if (canEditCollections && e.target.value !== selectedCollection.remarks) {
                     remarksMutation.mutate(e.target.value);
                   }
                 }}
-                placeholder="Add collection notes here... (Saves automatically on blur)"
+                readOnly={!canEditCollections}
+                placeholder={canEditCollections ? 'Add collection notes here... (Saves automatically on blur)' : 'No collection notes recorded.'}
               />
             </div>
 
@@ -786,29 +797,24 @@ export default function Collections() {
                   >
                     <LuDownload className="w-4 h-4 mr-1" /> Download SOA
                   </Button>
-                  {selectedCollection.collection_status !== 'completed' && hasGeneralAccess && (
+                  {selectedCollection.collection_status !== 'completed' && (canCreateCollections || canEditCollections) && (
                     <>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/20"
-                        onClick={() => handleSendSoaEmail(selectedCollection.id)}
-                        isLoading={sendSoaMutation.isPending}
-                      >
-                        <LuMail className="w-4 h-4 mr-1" /> Notify Customer
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="border-emerald-200 text-emerald-600 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950/20"
-                        onClick={() => handleConfirmCollection(selectedCollection.id)}
-                        isLoading={confirmMutation.isPending}
-                      >
-                        <LuFileCheck className="w-4 h-4 mr-1" /> Confirm Transaction
-                      </Button>
-                      <Button size="sm" onClick={() => setShowPaymentModal(true)}>
-                        <LuPlus className="w-4 h-4 mr-1" /> Add Payment
-                      </Button>
+                      {canEditCollections && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="border-blue-200 text-blue-600 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950/20"
+                          onClick={() => handleSendSoaEmail(selectedCollection.id)}
+                          isLoading={sendSoaMutation.isPending}
+                        >
+                          <LuMail className="w-4 h-4 mr-1" /> Notify Customer
+                        </Button>
+                      )}
+                      {canCreateCollections && (
+                        <Button size="sm" onClick={() => setShowPaymentModal(true)}>
+                          <LuPlus className="w-4 h-4 mr-1" /> Add Payment
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
@@ -832,7 +838,7 @@ export default function Collections() {
       )}
 
       {/* Add Payment Modal */}
-      {showPaymentModal && selectedCollection && (
+      {showPaymentModal && selectedCollection && canCreateCollections && (
         <Modal isOpen={true} onClose={() => setShowPaymentModal(false)} title="Record Payment" size="sm">
           <form onSubmit={handleAddPayment} className="p-6 space-y-6">
             <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-100 dark:border-blue-800 mb-6">
@@ -898,7 +904,7 @@ export default function Collections() {
       )}
 
       {/* Create Modal */}
-      {showCreateModal && <CreateCollectionModal onClose={() => setShowCreateModal(false)} />}
+      {showCreateModal && canCreateCollections && <CreateCollectionModal onClose={() => setShowCreateModal(false)} />}
 
     </div>
   );

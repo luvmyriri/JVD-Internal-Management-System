@@ -51,19 +51,12 @@
                                 </tr>
                             </table>
 
-                            <!-- Interactive remote actions block -->
+                            <!-- Authentication-gated review action -->
                             <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 35px; text-align: center;">
                                 <tr>
                                     <td align="center" style="padding-bottom: 15px;">
-                                        <a href="{{ $approveUrl }}" style="display: block; width: 80%; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: bold; padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -2px rgba(37, 99, 235, 0.2); border: 1px solid #1d4ed8; text-align: center;">
-                                            {{ $actionLabel }} (Secure Link)
-                                        </a>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td align="center">
-                                        <a href="{{ $rejectUrl }}" style="display: block; width: 80%; background-color: #ffffff; color: #dc2626; text-decoration: none; font-size: 14px; font-weight: 800; padding: 14px 20px; border-radius: 12px; border: 1px solid #fca5a5; text-align: center;">
-                                            Reject & Decline Request
+                                        <a href="{{ $reviewUrl }}" style="display: block; width: 80%; background-color: #2563eb; color: #ffffff; text-decoration: none; font-size: 15px; font-weight: bold; padding: 16px 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2), 0 2px 4px -2px rgba(37, 99, 235, 0.2); border: 1px solid #1d4ed8; text-align: center;">
+                                            Sign In to Review Request
                                         </a>
                                     </td>
                                 </tr>
@@ -72,8 +65,8 @@
                             <table width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color: #fffbeb; border: 1px solid #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px; margin-bottom: 25px;">
                                 <tr>
                                     <td style="padding: 12px 16px; font-size: 12px; color: #78350f; line-height: 1.5; font-weight: 600;">
-                                        <strong>ℹ️ Remote Action Notice</strong><br>
-                                        These links are unique to you, cryptographically signed, and valid for <strong>3 days</strong>. You can safely approve or reject this request directly from this email without logging into the portal.
+                                        <strong>Security Notice</strong><br>
+                                        Email links never approve, verify, or reject a request. Sign in, complete two-factor authentication, review the current record, and confirm your decision inside the JVD Management System.
                                     </td>
                                 </tr>
                             </table>

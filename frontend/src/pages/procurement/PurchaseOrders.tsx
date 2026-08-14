@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import {
   LuPlus, LuLoaderCircle, LuX,
   LuTrash2, LuChevronDown, LuSendHorizontal, LuCheck, LuTriangleAlert,
@@ -373,6 +374,8 @@ function PODetailModal({ po, onClose }: { po: PurchaseOrder; onClose: () => void
 
 export default function PurchaseOrders() {
   const qc = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const handledReviewLink = useRef<string | null>(null);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [dateFrom, setDateFrom] = useState('');
@@ -419,6 +422,40 @@ export default function PurchaseOrders() {
     staleTime: 10_000,
     placeholderData: keepPreviousData,
   });
+
+  useEffect(() => {
+    if (searchParams.get('review_type') !== 'purchase_order') {
+      handledReviewLink.current = null;
+      return;
+    }
+
+    const rawId = searchParams.get('review_id');
+    const reviewKey = `purchase_order:${rawId ?? ''}`;
+    if (handledReviewLink.current === reviewKey) return;
+    handledReviewLink.current = reviewKey;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('review_type');
+    nextParams.delete('review_id');
+    setSearchParams(nextParams, { replace: true });
+
+    const reviewId = Number(rawId);
+    if (!Number.isSafeInteger(reviewId) || reviewId <= 0) {
+      toast.error('This purchase-order review link is invalid.');
+      return;
+    }
+
+    purchaseOrderApi.get(reviewId)
+      .then((response) => setSelectedPO(response.data.data))
+      .catch((error) => {
+        const statusCode = error?.response?.status;
+        toast.error(statusCode === 403
+          ? 'You do not have permission to review this purchase order.'
+          : statusCode === 404
+            ? 'This purchase order no longer exists.'
+            : 'The linked purchase order could not be opened. Try the notification again.');
+      });
+  }, [searchParams, setSearchParams]);
 
   const submitMutation = useMutation({
     mutationFn: (id: number) => purchaseOrderApi.submit(id),

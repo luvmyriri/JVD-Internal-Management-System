@@ -22,4 +22,8 @@ Route::get('uploads/{path}', function ($path) {
     return response()->file($filePath);
 })->where('path', '.*');
 
-Route::get('/public/action-request', [App\Http\Controllers\PublicRequestActionController::class, 'handle'])->name('public.action-request');
+// Backward-compatible landing for approval links sent by older releases. The
+// controller never mutates a record; it only redirects to the authenticated UI.
+Route::get('/public/action-request', [App\Http\Controllers\PublicRequestActionController::class, 'handle'])
+    ->middleware('throttle:20,1')
+    ->name('public.action-request');

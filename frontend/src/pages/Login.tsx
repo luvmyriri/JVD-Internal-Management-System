@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authApi } from '../api/auth';
 import { settingsApi } from '../api/settings';
 import { getLandingPageForUser, isPathAllowedForUser } from '../utils/navigation';
+import type { RolePermissions, User } from '../types/auth';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, FileText, Download, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -60,17 +61,35 @@ const transitionVariants = {
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isAuthenticated, user, permissions } = useAuth();
+
+  const requestedLocation = (location.state as {
+    from?: { pathname?: string; search?: string; hash?: string };
+  } | null)?.from;
+  const requestedPathname = requestedLocation?.pathname;
+  const requestedPath = requestedPathname?.startsWith('/') && !requestedPathname.startsWith('//')
+    ? `${requestedPathname}${requestedLocation?.search || ''}${requestedLocation?.hash || ''}`
+    : null;
+
+  const postLoginPath = useCallback((loggedInUser: User, rolePermissions?: RolePermissions | null): string => {
+    if (requestedPath
+      && requestedPathname
+      && isPathAllowedForUser(requestedPathname, loggedInUser, rolePermissions)) {
+      return requestedPath;
+    }
+
+    const savedLandingPage = localStorage.getItem('jvd_landing_page');
+    return savedLandingPage && isPathAllowedForUser(savedLandingPage, loggedInUser, rolePermissions)
+      ? savedLandingPage
+      : getLandingPageForUser(loggedInUser, rolePermissions);
+  }, [requestedPath, requestedPathname]);
 
   useEffect(() => {
     if (isAuthenticated && user) {
-      const savedLandingPage = localStorage.getItem('jvd_landing_page');
-      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, user, permissions)
-        ? savedLandingPage
-        : getLandingPageForUser(user, permissions);
-      navigate(defaultLandingPage, { replace: true });
+      navigate(postLoginPath(user, permissions), { replace: true });
     }
-  }, [isAuthenticated, user, permissions, navigate]);
+  }, [isAuthenticated, user, permissions, navigate, postLoginPath]);
 
   const [step, setStep] = useState<'credentials' | '2fa' | 'setup2fa'>('credentials');
   const [email, setEmail] = useState('');
@@ -147,7 +166,9 @@ export default function Login() {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch {
+      // Ignore corrupt cached branding data and use the bundled defaults.
+    }
     return DEFAULT_DOCUMENTS;
   });
 
@@ -230,11 +251,7 @@ export default function Login() {
           localStorage.setItem('auth_token', data.token);
         }
         login(data.user, data.permissions);
-        let defaultLandingPage = localStorage.getItem('jvd_landing_page');
-        if (!defaultLandingPage || !isPathAllowedForUser(defaultLandingPage, data.user, data.permissions)) {
-          defaultLandingPage = getLandingPageForUser(data.user, data.permissions);
-        }
-        navigate(defaultLandingPage);
+        navigate(postLoginPath(data.user, data.permissions));
       }
     } catch (err: any) {
       console.error('Login error:', err);
@@ -266,11 +283,7 @@ export default function Login() {
         localStorage.setItem('auth_token', data.token);
       }
       login(data.user, data.permissions);
-      const savedLandingPage = localStorage.getItem('jvd_landing_page');
-      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
-        ? savedLandingPage
-        : getLandingPageForUser(data.user, data.permissions);
-      navigate(defaultLandingPage);
+      navigate(postLoginPath(data.user, data.permissions));
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Invalid code');
@@ -292,11 +305,7 @@ export default function Login() {
       });
       const { data } = response.data;
       login(data.user, data.permissions);
-      const savedLandingPage = localStorage.getItem('jvd_landing_page');
-      const defaultLandingPage = savedLandingPage && isPathAllowedForUser(savedLandingPage, data.user, data.permissions)
-        ? savedLandingPage
-        : getLandingPageForUser(data.user, data.permissions);
-      navigate(defaultLandingPage);
+      navigate(postLoginPath(data.user, data.permissions));
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
       setError(error.response?.data?.message || 'Invalid code');
