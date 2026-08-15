@@ -527,7 +527,7 @@ class InvoiceFinalizationService
 
         foreach ($caseIds as $caseId) {
             $passportCase = $cases->get($caseId);
-            $errorKey = $itemCaseIds->contains($caseId)
+            $errorKey = in_array($caseId, $itemCaseIds, true)
                 ? 'items'
                 : 'custom_transaction_detail.passport_case_id';
 
