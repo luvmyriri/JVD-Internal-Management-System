@@ -18,6 +18,7 @@ use App\Models\JoinerDepartureSeat;
 use App\Models\PassportCase;
 use App\Models\Service;
 use App\Models\SystemSetting;
+use App\Models\TripTicket;
 use App\Models\User;
 use App\Notifications\SystemAlert;
 use Illuminate\Support\Facades\DB;

@@ -29,7 +29,7 @@ class UpdateUserRequest extends FormRequest
     public function rules(): array
     {
         $user = $this->route('user');
-        $userId = $user instanceof \App\Models\User ? $user->id : $user;
+        $userId = $user instanceof User ? $user->id : $user;
 
         return [
             'employee_id' => ['sometimes', 'string', 'max:50', Rule::unique('users', 'employee_id')->ignore($userId)],
