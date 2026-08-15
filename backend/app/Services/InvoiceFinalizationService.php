@@ -898,7 +898,7 @@ class InvoiceFinalizationService
                 'POS Transaction Completed',
                 "Invoice #{$invoice->invoice_number} was successfully created for {$invoice->total_amount} PHP.",
                 'success',
-                '/accounting/billing'
+                "/accounting/transactions/{$invoice->id}"
             ));
         }
     }

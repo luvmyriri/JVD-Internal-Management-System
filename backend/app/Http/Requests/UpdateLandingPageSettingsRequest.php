@@ -23,7 +23,7 @@ class UpdateLandingPageSettingsRequest extends FormRequest
             'landing_page_slide_duration' => 'nullable|integer|min:2|max:60',
             'landing_page_title' => 'nullable|string|max:100',
             'landing_page_slide_transition' => 'nullable|string|in:fade,slide,zoom,none',
-            'existing_documents' => 'nullable|string', // JSON string of retained documents
+            'existing_documents' => 'nullable', // JSON string or array of retained documents
             'new_document_files' => 'nullable|array',
             'new_document_files.*' => 'file',
             'new_document_titles' => 'nullable|array',

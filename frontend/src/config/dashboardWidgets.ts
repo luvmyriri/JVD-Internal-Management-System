@@ -33,7 +33,7 @@ export const AVAILABLE_WIDGETS: DashboardWidgetDefinition[] = [
     id: 'accounting_invoices',
     title: 'Recent Invoices & Liquidations',
     category: 'accounting',
-    description: 'Monitor pending customer invoices, liquidation vouchers, and billing statuses.',
+    description: 'Monitor customer transactions, payments, balances, and refunds.',
     defaultColSpan: 'col-span-1',
     iconName: 'LuFileText',
   },

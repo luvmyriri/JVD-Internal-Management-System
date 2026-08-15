@@ -56,4 +56,12 @@ return [
 
     'traces_sample_rate' => (float) env('SENTRY_TRACES_SAMPLE_RATE', 0.0),
 
+    'before_send' => function (\Sentry\Event $event, ?\Sentry\EventHint $hint): ?\Sentry\Event {
+        if (app()->runningUnitTests() || request()?->is('api/v1/testing/*')) {
+            return null;
+        }
+
+        return $event;
+    },
+
 ];

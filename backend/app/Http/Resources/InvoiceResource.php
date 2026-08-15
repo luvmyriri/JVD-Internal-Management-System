@@ -217,7 +217,32 @@ class InvoiceResource extends JsonResource
                 'special_needs' => $passenger->special_needs,
             ])),
             'custom_transaction_detail' => $this->whenLoaded('customTransactionDetail'),
-            'collection' => $this->whenLoaded('collection'),
+            'collection' => $this->whenLoaded('collection', function () {
+                if (! $this->collection) {
+                    return null;
+                }
+
+                return [
+                    'id' => $this->collection->id,
+                    'invoice_id' => $this->collection->invoice_id,
+                    'billing_amount' => (float) $this->collection->billing_amount,
+                    'paid_amount' => (float) $this->collection->paid_amount,
+                    'remaining_balance' => (float) $this->collection->remaining_balance,
+                    'due_date' => $this->collection->due_date,
+                    'collection_status' => $this->collection->collection_status,
+                    'payments' => $this->collection->relationLoaded('payments')
+                        ? $this->collection->payments->map(fn ($payment) => [
+                            'id' => $payment->id,
+                            'payment_date' => $payment->payment_date,
+                            'payment_method' => $payment->payment_method,
+                            'amount' => (float) $payment->amount,
+                            'balance' => $payment->balance !== null ? (float) $payment->balance : null,
+                            'paymongo_payment_id' => $payment->paymongo_payment_id,
+                            'created_at' => $payment->created_at?->toISOString(),
+                        ])->values()
+                        : [],
+                ];
+            }),
             'sales_order' => $this->whenLoaded('salesOrder', function () use ($salesOrder) {
                 if (! $salesOrder) {
                     return null;

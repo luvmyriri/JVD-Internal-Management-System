@@ -483,9 +483,9 @@ class CashBudgetRequestService
                     if ($budget->preparedBy) {
                         $budget->preparedBy->notify(new SystemAlert(
                             "Cash Budget Disbursed — {$invoiceNumber}",
-                            'Your cash budget request has been approved and disbursed. Requested: ₱'.number_format((float) ($budget->total_amount ?? 0), 2).', Disbursed: ₱'.number_format((float) ($disbursedAmount ?? 0), 2).". Invoice {$invoiceNumber} has been created in Billing.",
+                            'Your cash budget request has been approved and disbursed. Requested: ₱'.number_format((float) ($budget->total_amount ?? 0), 2).', Disbursed: ₱'.number_format((float) ($disbursedAmount ?? 0), 2).". Internal invoice {$invoiceNumber} has been recorded.",
                             'success',
-                            '/accounting/billing',
+                            '/accounting/cash-budgets',
                             'cash_budget',
                             $budget->id
                         ));

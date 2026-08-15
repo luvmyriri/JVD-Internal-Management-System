@@ -15,8 +15,17 @@
                 <table width="600" border="0" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);">
                     <tr>
                         <td style="padding: 40px 40px 30px; text-align: center; border-bottom: 1px solid #f3f4f6; background-color: #ffffff;">
-                            @if(file_exists(base_path('../frontend/public/JVD 3D.png')))
-                                <img src="{{ $message->embed(base_path('../frontend/public/JVD 3D.png')) }}" alt="JVD Logo" height="64" style="display: block; margin: 0 auto 15px auto;">
+                            @php
+                                $logoPath = file_exists(public_path('JVD 3D.png'))
+                                    ? public_path('JVD 3D.png')
+                                    : (file_exists(public_path('JVDlogo-removebg-preview.png'))
+                                        ? public_path('JVDlogo-removebg-preview.png')
+                                        : (file_exists(base_path('../frontend/public/JVD 3D.png'))
+                                            ? base_path('../frontend/public/JVD 3D.png')
+                                            : null));
+                            @endphp
+                            @if($logoPath && isset($message))
+                                <img src="{{ $message->embed($logoPath) }}" alt="JVD Logo" height="64" style="display: block; margin: 0 auto 15px auto;">
                             @endif
                             <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: 950; letter-spacing: -0.5px;">JVD</h1>
                             <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 2px;">Event and Travel Management Company</p>

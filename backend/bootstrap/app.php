@@ -68,6 +68,11 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         Integration::handles($exceptions);
+        $exceptions->reportable(function (\Throwable $e) {
+            if (app()->runningUnitTests() || request()?->is('api/v1/testing/*')) {
+                return false;
+            }
+        });
         $exceptions->respond(function (Response $response) {
             return ApiErrorSanitizer::sanitize(request(), $response);
         });

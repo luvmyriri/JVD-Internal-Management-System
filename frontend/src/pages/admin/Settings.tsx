@@ -361,7 +361,7 @@ export default function Settings() {
                 className="appearance-none bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-sm font-medium rounded-xl focus:ring-indigo-500 focus:border-indigo-500 block w-full pl-4 pr-10 py-2 transition-colors cursor-pointer outline-none"
               >
                 <option value="/dashboard">Dashboard</option>
-                <option value="/accounting/billing">Accounting / Billing</option>
+                <option value="/accounting/transactions">Accounting / Transactions</option>
                 <option value="/accounting/liquidations">Accounting / Liquidations</option>
                 <option value="/procurement/overview">Procurement / Overview</option>
                 <option value="/inventory/supplies">Inventory / Supplies</option>

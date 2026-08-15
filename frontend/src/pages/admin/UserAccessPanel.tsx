@@ -43,7 +43,7 @@ const MODULE_ICONS: Record<string, React.FC<{ className?: string }>> = {
 const MODULE_PAGES: Record<string, Record<string, string>> = {
   dashboard:   {},
   accounting:  {
-    'accounting.billing': 'Billing', 'accounting.reports': 'Reports',
+    'accounting.billing': 'Transactions', 'accounting.reports': 'Reports',
     'accounting.collections': 'Collections', 'accounting.cash_budgets': 'Cash Budgets',
     'accounting.commissions': 'Commissions', 'accounting.liquidations': 'Liquidations',
     'accounting.employee_soa': 'Employee SOA',

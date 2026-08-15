@@ -26,8 +26,9 @@ import CharterSales from './pages/sales/CharterSales';
 import EducationalTours from './pages/sales/EducationalTours';
 import CustomTransactions from './pages/sales/CustomTransactions';
 import SalesOrders from './pages/sales/SalesOrders';
-import { EducationalProgramDetails, SalesServiceDetails, SalesTransactionDetails } from './pages/sales/SalesDetails';
-import Billing from './pages/accounting/Billing';
+import { EducationalProgramDetails, SalesServiceDetails } from './pages/sales/SalesDetails';
+import Transactions from './pages/accounting/Transactions';
+import TransactionDetails from './pages/accounting/TransactionDetails';
 import Reports from './pages/accounting/Reports';
 import JournalEntries from './pages/accounting/JournalEntries';
 import Liquidations from './pages/accounting/Liquidations';
@@ -132,8 +133,10 @@ export default function App() {
                     <Route path="/profile" element={<Profile />} />
 
                     {/* Accounting */}
-                    <Route path="/accounting" element={<Navigate to="/accounting/billing" replace />} />
-                    <Route path="/accounting/billing" element={<Billing />} />
+                    <Route path="/accounting" element={<Navigate to="/accounting/transactions" replace />} />
+                    <Route path="/accounting/transactions" element={<Transactions />} />
+                    <Route path="/accounting/transactions/:invoiceId" element={<TransactionDetails />} />
+                    <Route path="/accounting/billing" element={<Navigate to="/accounting/transactions" replace />} />
                     <Route path="/accounting/reports" element={<Reports />} />
                     <Route path="/accounting/journal-entries" element={<JournalEntries />} />
                     <Route path="/accounting/collections" element={<Collections />} />
@@ -186,7 +189,7 @@ export default function App() {
                     <Route path="/sales/orders" element={<SalesOrders />} />
                     <Route path="/sales/services/:serviceId/details" element={<SalesServiceDetails />} />
                     <Route path="/sales/educational-programs/:programId/details" element={<EducationalProgramDetails />} />
-                    <Route path="/sales/transactions/:invoiceId" element={<SalesTransactionDetails />} />
+                    <Route path="/sales/transactions/:invoiceId" element={<TransactionDetails />} />
 
                     {/* Travel Assistance */}
                     <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />

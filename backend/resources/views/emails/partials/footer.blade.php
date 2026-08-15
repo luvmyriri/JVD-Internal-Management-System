@@ -16,7 +16,7 @@
     </tr>
 
     {{-- DOT Quality Seal accreditation banner (left-aligned) --}}
-    @if(file_exists(public_path('dot-quality-seal.png')))
+    @if(file_exists(public_path('dot-quality-seal.png')) && isset($message))
     <tr>
         <td align="left" style="padding: 0 0 18px 0;">
             <img src="{{ $message->embed(public_path('dot-quality-seal.png')) }}"

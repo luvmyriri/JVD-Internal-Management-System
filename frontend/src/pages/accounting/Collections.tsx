@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   LuSearch, LuFileCheck, LuEye,
   LuClock, LuX,
@@ -329,7 +329,7 @@ export default function Collections() {
   const collections: Collection[] = responseData?.data || [];
   const stats = responseData?.stats || null;
 
-  // Billing links preserve the exact receivable identity. Fetching by ID also
+  // Transaction links preserve the exact receivable identity. Fetching by ID also
   // works for completed records, which the default work queue intentionally hides.
   useEffect(() => {
     const collectionId = Number(searchParams.get('collection_id'));
@@ -355,6 +355,10 @@ export default function Collections() {
       toast.success('Payment added successfully');
       queryClient.invalidateQueries({ queryKey: ['collections'] });
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] });
+      queryClient.invalidateQueries({ queryKey: ['transactions-360'] });
+      if (selectedCollection?.invoice_id) {
+        queryClient.invalidateQueries({ queryKey: ['transaction-360', Number(selectedCollection.invoice_id)] });
+      }
       setSelectedCollection(res.data);
       setShowPaymentModal(false);
       setPaymentForm({
@@ -462,10 +466,14 @@ export default function Collections() {
           </div>
           <div>
             <p className="font-bold text-gray-950 dark:text-white tracking-tight leading-tight">{coll.client_name}</p>
-            {coll.auto_generated && coll.invoice ? (
-              <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 uppercase tracking-widest">
-                From: {coll.invoice.invoice_number}
-              </span>
+            {coll.invoice_id ? (
+              <Link
+                to={`/accounting/transactions/${coll.invoice_id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="mt-1 inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-blue-700 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand dark:text-blue-300"
+              >
+                From: {coll.invoice?.invoice_number || `Invoice #${coll.invoice_id}`}
+              </Link>
             ) : coll.liquidation_id ? (
               <span className="inline-flex mt-1 items-center gap-1 px-1.5 py-0.5 rounded text-[8px] font-black bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400 uppercase tracking-widest">
                 From: Liquidation #{coll.liquidation_id}
@@ -541,6 +549,14 @@ export default function Collections() {
       align: 'right',
       render: (coll) => (
         <div onClick={(e) => e.stopPropagation()} className="flex items-center justify-end gap-2">
+          {coll.invoice_id && (
+            <Link
+              to={`/accounting/transactions/${coll.invoice_id}`}
+              className="inline-flex h-9 items-center rounded-xl border border-border px-3 text-xs font-black text-ink outline-none hover:border-brand hover:text-brand focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              Transaction
+            </Link>
+          )}
           <Button
             size="sm"
             variant="secondary"
@@ -556,7 +572,7 @@ export default function Collections() {
   ];
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="jvd space-y-8 pb-12">
       <div className="flex justify-between items-center no-print">
         <h1 className="text-2xl font-black text-gray-900 dark:text-white uppercase tracking-tight">Collections</h1>
         {canCreateCollections && (
@@ -695,7 +711,7 @@ export default function Collections() {
         <div className={`jvd relative hidden md:block ${collections.length > 0 ? 'min-h-[350px]' : ''}`}>
           {isPlaceholderData && (
             <div className="absolute top-0 left-0 w-full h-0.5 z-10 overflow-hidden bg-blue-100/50 dark:bg-blue-950/50">
-              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] w-1/2 rounded-full" />
+              <div className="h-full bg-blue-600 dark:bg-blue-500 animate-[loading_1.5s_infinite_ease-in-out] motion-reduce:animate-none w-1/2 rounded-full" />
             </div>
           )}
           <DataTable
@@ -714,6 +730,31 @@ export default function Collections() {
             }
           />
         </div>
+
+        <div className="space-y-3 md:hidden">
+          {isLoading ? (
+            <div className="grid min-h-56 place-items-center rounded-2xl border border-border bg-surface"><LuActivity className="h-6 w-6 animate-spin text-brand motion-reduce:animate-none" /></div>
+          ) : collections.length === 0 ? (
+            <div className="rounded-2xl border border-border bg-surface"><EmptyState icon={<LuBanknote size={22} />} title="No records found" description="Collections will appear here once invoices are issued." /></div>
+          ) : collections.map((collection) => (
+            <article key={collection.id} className="rounded-2xl border border-border bg-surface p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0"><h2 className="truncate font-black text-ink">{collection.client_name}</h2><p className="mt-1 truncate text-xs text-muted">{collection.service_type === 'Other' ? collection.other_service_type : collection.service_type || 'Service not recorded'}</p></div>
+                <StatusBadge status={collection.collection_status || 'pending'} />
+              </div>
+              <div className="mt-4 grid grid-cols-3 divide-x divide-border rounded-xl bg-surface-alt py-3 text-center">
+                <div className="px-2"><p className="text-[9px] font-bold uppercase text-muted">Billed</p><p className="mt-1 truncate text-xs font-black text-ink">₱{Number(collection.billing_amount || collection.rate || 0).toLocaleString()}</p></div>
+                <div className="px-2"><p className="text-[9px] font-bold uppercase text-muted">Paid</p><p className="mt-1 truncate text-xs font-black text-emerald-700 dark:text-emerald-300">₱{Number(collection.paid_amount || 0).toLocaleString()}</p></div>
+                <div className="px-2"><p className="text-[9px] font-bold uppercase text-muted">Balance</p><p className="mt-1 truncate text-xs font-black text-amber-700 dark:text-amber-300">₱{Number(collection.remaining_balance ?? collection.rate ?? 0).toLocaleString()}</p></div>
+              </div>
+              <p className="mt-3 text-xs text-muted">Due {collection.due_date ? new Date(collection.due_date).toLocaleDateString('en-PH') : 'date not recorded'}</p>
+              <div className="mt-4 flex gap-2">
+                <button type="button" onClick={() => { setSelectedCollection(collection); setShowDetailModal(true); }} className="inline-flex h-10 flex-1 items-center justify-center gap-2 rounded-xl border border-border text-xs font-black text-ink outline-none hover:border-brand hover:text-brand focus-visible:ring-2 focus-visible:ring-brand"><LuEye className="h-4 w-4" />Collection details</button>
+                {collection.invoice_id && <Link to={`/accounting/transactions/${collection.invoice_id}`} className="inline-flex h-10 flex-1 items-center justify-center rounded-xl bg-[#071b33] text-xs font-black text-white outline-none hover:bg-[#0d3159] focus-visible:ring-2 focus-visible:ring-brand">Open transaction</Link>}
+              </div>
+            </article>
+          ))}
+        </div>
       </div>
 
       {/* Detail Modal */}
@@ -727,8 +768,10 @@ export default function Collections() {
                 <p className="text-sm font-bold text-gray-500">
                   {selectedCollection.service_type === 'Other' ? selectedCollection.other_service_type : selectedCollection.service_type}
                 </p>
-                {selectedCollection.auto_generated && selectedCollection.invoice && (
-                  <p className="text-xs font-bold text-blue-600 mt-2">Linked to Invoice: {selectedCollection.invoice.invoice_number}</p>
+                {selectedCollection.invoice_id && (
+                  <Link to={`/accounting/transactions/${selectedCollection.invoice_id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-blue-700 outline-none hover:underline focus-visible:ring-2 focus-visible:ring-brand dark:text-blue-300">
+                    Linked transaction: {selectedCollection.invoice?.invoice_number || `Invoice #${selectedCollection.invoice_id}`} <LuExternalLink className="h-3.5 w-3.5" />
+                  </Link>
                 )}
                 {selectedCollection.liquidation_id && (
                   <p className="text-xs font-bold text-amber-600 mt-2">Linked to Driver Liquidation #{selectedCollection.liquidation_id}</p>

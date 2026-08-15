@@ -14,7 +14,7 @@ export function isPathAllowedForUser(path: string, user?: User | null, permissio
   if (checkPath === '/procurement/overview') {
     checkPath = '/logistics';
   } else if (checkPath === '/accounting') {
-    checkPath = '/accounting/billing';
+    checkPath = '/accounting/transactions';
   } else if (checkPath === '/operations') {
     checkPath = '/operations/customers';
   } else if (checkPath === '/procurement') {

@@ -54,3 +54,15 @@ frontend/playwright-report/
 
 # Laravel published mail theme (customized JVD footer) — collides with the broad vendor/ rule above
 !backend/resources/views/vendor/
+
+# Agent skills and local scratch
+.agents/
+.claude/
+.codex/
+.github/agents/
+.github/hooks/
+.github/skills/
+output/
+tmp/
+backend/storage/framework/testing-temp/
+

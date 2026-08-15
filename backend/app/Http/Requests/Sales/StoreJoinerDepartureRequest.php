@@ -13,7 +13,7 @@ class StoreJoinerDepartureRequest extends FormRequest
     {
         return [
             'service_id' => ['required', 'integer', 'exists:services,id'],
-            'code' => ['nullable', 'string', 'max:100'],
+            'code' => ['nullable', 'string', 'max:100', Rule::unique('joiner_departures', 'code')],
             'starts_at' => ['required', 'date', 'after:now'],
 
             'ends_at' => ['required', 'date', 'after:starts_at'],

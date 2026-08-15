@@ -30,8 +30,8 @@ const ALL_ACTIONS: QuickAction[] = [
     tint: 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
   },
   {
-    label: 'Create Invoice',
-    path: '/accounting/billing',
+    label: 'View Transactions',
+    path: '/accounting/transactions',
     module: 'accounting',
     icon: <LuReceipt className="w-4 h-4" />,
     tint: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400',

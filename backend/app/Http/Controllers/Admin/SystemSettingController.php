@@ -137,7 +137,8 @@ class SystemSettingController extends Controller
         // 7. Handle Landing Page Documents
         $documents = [];
         if ($request->has('existing_documents')) {
-            $existing = json_decode($request->input('existing_documents'), true);
+            $input = $request->input('existing_documents');
+            $existing = is_string($input) ? json_decode($input, true) : $input;
             if (is_array($existing)) {
                 $documents = $existing;
             }
@@ -162,6 +163,9 @@ class SystemSettingController extends Controller
         }
         SystemSetting::setValue('landing_page_documents', json_encode($documents));
 
+        $savedDocs = SystemSetting::getValue('landing_page_documents', []);
+        $savedDocsArray = is_string($savedDocs) ? (json_decode($savedDocs, true) ?? []) : (is_array($savedDocs) ? $savedDocs : []);
+
         return response()->json([
             'status' => 'success',
             'message' => 'Landing page configuration updated successfully.',
@@ -172,7 +176,7 @@ class SystemSettingController extends Controller
                 'landing_page_slide_duration' => intval(SystemSetting::getValue('landing_page_slide_duration', 6)),
                 'landing_page_title' => SystemSetting::getValue('landing_page_title', 'JVD ETMC'),
                 'landing_page_slide_transition' => SystemSetting::getValue('landing_page_slide_transition', 'fade'),
-                'landing_page_documents' => json_decode(SystemSetting::getValue('landing_page_documents', '[]'), true) ?? [],
+                'landing_page_documents' => $savedDocsArray,
             ]
         ]);
     }

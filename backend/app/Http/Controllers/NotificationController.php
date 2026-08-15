@@ -125,7 +125,7 @@ class NotificationController extends Controller
             '/procurement/accreditations',
             '/fleet/maintenance',
             '/procurement/accreditations',
-            '/accounting/billing'
+            '/accounting/transactions'
         ];
 
         $index = rand(0, count($titles) - 1);

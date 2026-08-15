@@ -147,6 +147,9 @@ class TripTicketService
     /** @return array{starts_at:mixed,ends_at:mixed,pickup:string,destination:string,passengers:int,assignments:array<int,array<string,mixed>>,allowances?:array<string,float>}|null */
     private function dispatchPlan(SalesOrderItem $item): ?array
     {
+        if (! $item->relationLoaded('fulfillment')) {
+            $item->load('fulfillment');
+        }
         $fulfillment = $item->fulfillment;
         $snapshot = $item->details_snapshot ?? [];
 

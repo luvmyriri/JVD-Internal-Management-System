@@ -67,6 +67,8 @@ export default function RefundWorkflowPanel({ invoiceId, className = '' }: Refun
       queryClient.invalidateQueries({ queryKey: ['refund-workflow-invoice', invoiceId] }),
       queryClient.invalidateQueries({ queryKey: ['billing-invoices'] }),
       queryClient.invalidateQueries({ queryKey: ['collections'] }),
+      queryClient.invalidateQueries({ queryKey: ['transaction-360', invoiceId] }),
+      queryClient.invalidateQueries({ queryKey: ['transactions-360'] }),
     ]);
   };
 

@@ -355,6 +355,10 @@ class SalesOrderService
 
     private function associateLegacyFulfillment(SalesOrder $order, SalesOrderItem $item, Model $fulfillment): void
     {
+        if (! $item->relationLoaded('fulfillment')) {
+            $item->load('fulfillment');
+        }
+
         if (! $item->fulfillment) {
             $alreadyAttached = $order->items()
                 ->where('id', '!=', $item->id)
@@ -399,6 +403,10 @@ class SalesOrderService
             throw ValidationException::withMessages([
                 "items.{$index}.item_metadata" => 'Invoice line '.($index + 1).' operational metadata must be a structured object.',
             ]);
+        }
+
+        if (! $item->relationLoaded('fulfillment')) {
+            $item->load('fulfillment');
         }
 
         // Repair invoices captured by the former generalized path: a generic Booking
@@ -483,7 +491,13 @@ class SalesOrderService
 
     private function reserveAndConfirm(SalesOrderItem $item): void
     {
+        if (! $item->relationLoaded('fulfillment')) {
+            $item->load('fulfillment');
+        }
         $fulfillment = $item->fulfillment;
+        if (! $fulfillment) {
+            return;
+        }
         if (in_array($item->service_type, ['private_tour', 'transfer_service'], true)) {
             $busId = $fulfillment->bus_id;
             $driverId = $fulfillment->driver_id;

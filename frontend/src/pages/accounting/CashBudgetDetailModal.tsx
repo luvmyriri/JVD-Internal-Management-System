@@ -129,7 +129,7 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
       disbursed_amount: Number(parseMoneyInput(disbursedAmount) || 0),
     }),
     onSuccess: () => {
-      toast.success('Budget disbursed! Invoice created in Billing.');
+      toast.success('Budget disbursed! Financial transaction created.');
       qc.invalidateQueries({ queryKey: ['cash-budgets'] });
       qc.invalidateQueries({ queryKey: ['billing-invoices'] });
       onClose();
@@ -591,7 +591,7 @@ export default function CashBudgetDetailModal({ budget, onClose }: { budget: Cas
                   </div>
                   <div className="text-right">
                     <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">₱ {budget.invoice.total_amount?.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                    <p className="text-[9px] text-gray-400 mt-0.5 uppercase tracking-widest">Check Accounting › Billing</p>
+                    <p className="text-[9px] text-gray-400 mt-0.5 uppercase tracking-widest">Internal disbursement invoice</p>
                   </div>
                 </div>
               </div>

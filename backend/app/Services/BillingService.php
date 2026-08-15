@@ -304,6 +304,22 @@ class BillingService
     {
         $service = Service::findOrFail($id);
 
+        $hasDependencies = \App\Models\JoinerDeparture::where('service_id', $service->id)->exists()
+            || \App\Models\InvoiceItem::where('service_id', $service->id)->exists()
+            || \App\Models\SalesOrderItem::where('service_id', $service->id)->exists()
+            || \App\Models\EducationalTourProgram::where('service_id', $service->id)->exists()
+            || \App\Models\CharterRatePlan::where('service_id', $service->id)->exists();
+
+        if ($hasDependencies) {
+            $service->update(['is_active' => false]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Service is referenced by existing transactions or departures and cannot be deleted. It has been deactivated instead.',
+                'deactivated' => true,
+            ]);
+        }
+
         // Delete associated images
         if ($service->images) {
             foreach ($service->images as $path) {
@@ -821,7 +837,7 @@ class BillingService
                             'Payment Received',
                             "Invoice #{$invoice->invoice_number} received a payment of {$amountPaidPHP} PHP. New balance: {$invoice->balance} PHP.",
                             'success',
-                            '/accounting/billing'
+                            "/accounting/transactions/{$invoice->id}"
                         ));
                     }
                 } else {

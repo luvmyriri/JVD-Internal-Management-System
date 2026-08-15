@@ -70,7 +70,7 @@ export const navigation: NavSection[] = [
   {
     title: 'Accounting',
     items: [
-      { label: 'Billing', path: '/accounting/billing', icon: <LuFileText />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.billing' },
+      { label: 'Transactions', path: '/accounting/transactions', icon: <LuFileText />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.billing' },
       { label: 'Reports', path: '/accounting/reports', icon: <LuClipboardList />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.reports' },
       { label: 'General Ledger', path: '/accounting/journal-entries', icon: <LuScrollText />, roles: ['super_admin', 'executive_vice_president', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.reports' },
       { label: 'Collections', path: '/accounting/collections', icon: <LuBanknote />, roles: ['super_admin', 'executive_vice_president', 'operations_manager', 'accounting_executive'], module: 'accounting', pageKey: 'accounting.collections' },

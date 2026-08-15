@@ -166,7 +166,18 @@
     <div class="email-container">
         <!-- Brand Header -->
         <div class="header">
-            <img src="{{ $message->embed(public_path('JVDlogo-removebg-preview.png')) }}" alt="JVD Logo" class="logo-img">
+            @php
+                $receiptLogo = file_exists(public_path('JVDlogo-removebg-preview.png'))
+                    ? public_path('JVDlogo-removebg-preview.png')
+                    : (file_exists(public_path('JVD 3D.png'))
+                        ? public_path('JVD 3D.png')
+                        : (file_exists(base_path('../frontend/public/JVD 3D.png'))
+                            ? base_path('../frontend/public/JVD 3D.png')
+                            : null));
+            @endphp
+            @if($receiptLogo && isset($message))
+                <img src="{{ $message->embed($receiptLogo) }}" alt="JVD Logo" class="logo-img">
+            @endif
             <div class="brand-name">JVD Event & Travel</div>
             <div class="brand-sub">Management Company</div>
         </div>

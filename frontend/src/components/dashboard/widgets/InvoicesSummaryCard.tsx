@@ -21,12 +21,12 @@ export default function InvoicesSummaryCard() {
             <LuFileText className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">Invoices & Billing</h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Customer billing and liquidations status</p>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-tight">Transactions & Receivables</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Customer payments, balances, and refunds</p>
           </div>
         </div>
         <button
-          onClick={() => navigate('/accounting/billing')}
+          onClick={() => navigate('/accounting/transactions')}
           className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 uppercase tracking-wider"
         >
           View All &rarr;

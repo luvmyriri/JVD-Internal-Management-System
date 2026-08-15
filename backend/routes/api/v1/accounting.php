@@ -6,6 +6,7 @@ use App\Http\Controllers\Accounting\FinancialReadinessController;
 use App\Http\Controllers\Accounting\JournalEntryController;
 use App\Http\Controllers\Accounting\LiquidationController;
 use App\Http\Controllers\Accounting\ReportController;
+use App\Http\Controllers\Accounting\TransactionController;
 use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\Sales\ContractController;
 use Illuminate\Support\Facades\Route;
@@ -63,6 +64,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         });
         Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
         Route::get('/billing/{billing}', [BillingController::class, 'show'])->name('billing.show');
+        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/{invoice}', [TransactionController::class, 'show'])->name('transactions.show');
 
         // Optional Sales contracts. Legacy signature routes remain for already-issued signing links.
         Route::get('/contracts', [ContractController::class, 'index'])->name('contracts.index');

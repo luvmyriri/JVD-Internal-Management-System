@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->group(function () {
     Route::prefix('sales')->group(function () {
-        Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:view')->group(function () {
+        Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,sales:view')->group(function () {
             Route::get('/catalog', [CatalogController::class, 'index'])->name('sales.catalog');
             Route::get('/bus-availability', [CatalogController::class, 'busAvailability'])->name('sales.bus-availability');
             Route::get('/joiner-departures', [JoinerDepartureController::class, 'index'])->name('sales.joiner-departures.index');

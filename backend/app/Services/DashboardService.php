@@ -430,7 +430,7 @@ class DashboardService
                     'subtitle' => ($inv->customer_name ?? 'Unknown') . ' · ₱' . number_format($inv->total_amount ?? 0, 0),
                     'status'   => 'pending',
                     'type'     => 'invoice',
-                    'url'      => '/accounting/billing',
+                    'url'      => "/accounting/transactions/{$inv->id}",
                 ]);
             $pendingBudgets = CashBudgetRequest::where('status', 'pending_accounting')
                 ->orderByDesc('created_at')
