@@ -122,7 +122,8 @@ class CashBudgetRequestService
             'disbursed_amount' => 'sometimes|numeric|min:0|nullable',
         ]);
 
-        return DB::transaction(function () use ($id, $request, $user, $validated) {
+        /** @return \Illuminate\Http\JsonResponse|\App\Models\CashBudgetRequest */
+        $callback = function () use ($id, $request, $user, $validated) {
             // Serialize state changes so two approvers cannot advance the same
             // request from the same state concurrently.
             $budget = CashBudgetRequest::with(['tripTicket', 'purchaseOrder.supplier', 'workOrder'])
@@ -494,7 +495,9 @@ class CashBudgetRequestService
             }
 
             return $budget->load(['preparedBy', 'approvedBy', 'superAdminApprovedBy', 'disbursedBy', 'purchaseOrder.lineItems', 'tripTicket.driver', 'tripTicket.bus', 'workOrder', 'invoice']);
-        });
+        };
+
+        return DB::transaction($callback);
     }
 
     /**

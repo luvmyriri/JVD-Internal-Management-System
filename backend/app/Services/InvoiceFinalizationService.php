@@ -495,24 +495,26 @@ class InvoiceFinalizationService
         ?int $currentInvoiceId = null,
         ?int $legacyPassportCaseId = null
     ): void {
-        $itemCaseIds = collect($itemPassportCaseIds)
-            ->filter(fn ($id) => $id !== null && $id !== '')
-            ->map(fn ($id) => (int) $id)
-            ->values();
+        /** @var array<int, int> $itemCaseIds */
+        $itemCaseIds = array_values(array_filter(
+            array_map(fn ($id) => is_numeric($id) ? (int) $id : 0, $itemPassportCaseIds),
+            fn (int $id) => $id > 0
+        ));
 
-        if ($itemCaseIds->duplicates()->isNotEmpty()) {
+        if (count($itemCaseIds) !== count(array_unique($itemCaseIds))) {
             throw ValidationException::withMessages([
                 'items' => ['A passport or visa case can only appear once on an invoice.'],
             ]);
         }
 
-        $caseIds = $itemCaseIds
-            ->when($legacyPassportCaseId, fn ($ids) => $ids->push((int) $legacyPassportCaseId))
-            ->unique()
-            ->sort()
-            ->values();
+        $allIds = $itemCaseIds;
+        if ($legacyPassportCaseId !== null && (int) $legacyPassportCaseId > 0) {
+            $allIds[] = (int) $legacyPassportCaseId;
+        }
+        $caseIds = array_values(array_unique($allIds));
+        sort($caseIds);
 
-        if ($caseIds->isEmpty()) {
+        if (empty($caseIds)) {
             return;
         }
 
