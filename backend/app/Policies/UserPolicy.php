@@ -101,7 +101,11 @@ class UserPolicy
      */
     public function assignRole(User $authUser, User $targetUser, string $role): bool
     {
-        if ($authUser->is($targetUser) && $role !== $targetUser->role) {
+        if ($role === $targetUser->role) {
+            return $this->update($authUser, $targetUser);
+        }
+
+        if ($authUser->is($targetUser)) {
             return false;
         }
 

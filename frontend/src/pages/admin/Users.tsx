@@ -194,6 +194,9 @@ export default function Users() {
     try {
       if (selectedUser) {
         const updateData: any = { ...data, tags, dashboard_preference: dashboardPreference };
+        if (updateData.phone === '') {
+          updateData.phone = null;
+        }
         if (isSuperAdmin) {
           updateData.custom_permissions = customPermissions;
         }

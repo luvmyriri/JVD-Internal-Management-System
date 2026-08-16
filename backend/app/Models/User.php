@@ -158,15 +158,21 @@ class User extends Authenticatable
     {
         $rolePermissions = RolePermission::getForRole($this->role);
         $custom = $this->custom_permissions ?? [];
+        if (is_string($custom)) {
+            $custom = json_decode($custom, true) ?: [];
+        }
 
         // If no custom permissions, just return role permissions
-        if (empty($custom)) {
+        if (empty($custom) || !is_array($custom)) {
             return $rolePermissions;
         }
 
         // Merge custom permissions overriding role permissions
         // Loop through custom permissions and override the boolean flags
         foreach ($custom as $module => $actions) {
+            if (!is_array($actions)) {
+                continue;
+            }
             if (!isset($rolePermissions[$module])) {
                 $rolePermissions[$module] = [
                     'can_view' => false,
