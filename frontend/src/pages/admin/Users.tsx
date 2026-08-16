@@ -739,6 +739,10 @@ export default function Users() {
         dashboardPreference={dashboardPreference}
         setDashboardPreference={setDashboardPreference}
         onResetPassword={handleResetPassword}
+        onSetPassword={async (userId, password, passwordConfirmation) => {
+          await setPasswordMutation.mutateAsync({ id: userId, password, passwordConfirmation });
+        }}
+        isSettingPassword={setPasswordMutation.isPending}
       />
 
       {/* View User Modal */}

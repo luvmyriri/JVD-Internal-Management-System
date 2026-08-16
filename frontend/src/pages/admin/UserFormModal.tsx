@@ -5,7 +5,10 @@ import {
   LuChevronRight,
   LuX,
   LuKeyRound,
+  LuEye,
+  LuLoaderCircle,
 } from 'react-icons/lu';
+import { useState } from 'react';
 import type { UseFormRegister, UseFormHandleSubmit, FieldErrors } from 'react-hook-form';
 import { Modal, Button } from '../../components/ui';
 import { cn } from '../../utils';
@@ -44,6 +47,8 @@ interface UserFormModalProps {
   dashboardPreference?: string | null;
   setDashboardPreference?: (v: string | null) => void;
   onResetPassword?: (user: User) => void;
+  onSetPassword?: (userId: number, password: string, passwordConfirmation: string) => Promise<void>;
+  isSettingPassword?: boolean;
 }
 
 export default function UserFormModal({
@@ -73,7 +78,21 @@ export default function UserFormModal({
   dashboardPreference,
   setDashboardPreference,
   onResetPassword,
+  onSetPassword,
+  isSettingPassword,
 }: UserFormModalProps) {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
+
+  const handleSetPassword = async () => {
+    if (!selectedUser || !onSetPassword) return;
+    await onSetPassword(selectedUser.id, newPassword, confirmPassword);
+    setNewPassword('');
+    setConfirmPassword('');
+  };
+
   return (
     <Modal
       isOpen={isOpen}
@@ -212,33 +231,66 @@ export default function UserFormModal({
           </details>
 
           {/* ── Security & Password Management (for existing employees) ── */}
-          {selectedUser && onResetPassword && (
+          {selectedUser && (
             <details className="group" open>
               <summary className="flex items-center justify-between font-bold text-sm text-gray-700 dark:text-gray-200 cursor-pointer list-none p-3 bg-gray-50 dark:bg-gray-800 rounded-xl">
                 <span className="flex items-center gap-2">
                   <LuKeyRound className="text-amber-500" />
-                  <span>Security & Password Management</span>
+                  <span>Security &amp; Password Management</span>
                 </span>
                 <LuChevronRight className="transition-transform group-open:rotate-90 text-gray-400" />
               </summary>
               <div className="pt-4 px-1 space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl">
+                <div className="p-4 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-100 dark:border-amber-900/40 rounded-2xl space-y-3">
                   <div>
-                    <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider">
-                      Reset Employee Password
-                    </h4>
+                    <h4 className="text-xs font-black text-gray-800 dark:text-gray-200 uppercase tracking-wider">Set Employee Password</h4>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Send a secure password-reset link to <strong className="text-gray-700 dark:text-gray-300">{selectedUser.email}</strong>. This invalidates current credentials immediately and lets the employee set their new password.
+                      Directly set a new password for <strong className="text-gray-700 dark:text-gray-300">{selectedUser.email}</strong>. Their existing sessions will be revoked immediately.
                     </p>
                   </div>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => onResetPassword(selectedUser)}
-                    className="shrink-0 flex items-center gap-2 text-xs font-bold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100/50"
-                  >
-                    <LuKeyRound size={14} /> Send Reset Link
-                  </Button>
+
+                  <div className="space-y-2">
+                    <div className="relative">
+                      <input
+                        type={showNewPw ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="New password (min. 8 chars)"
+                        className="w-full px-4 py-2.5 pr-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                      />
+                      <button type="button" onClick={() => setShowNewPw(!showNewPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <LuEye size={15} />
+                      </button>
+                    </div>
+
+                    <div className="relative">
+                      <input
+                        type={showConfirmPw ? 'text' : 'password'}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm password"
+                        className="w-full px-4 py-2.5 pr-10 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-700 dark:text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400/30"
+                      />
+                      <button type="button" onClick={() => setShowConfirmPw(!showConfirmPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                        <LuEye size={15} />
+                      </button>
+                    </div>
+
+                    {confirmPassword && newPassword !== confirmPassword && (
+                      <p className="text-[10px] text-red-500 font-bold">Passwords do not match</p>
+                    )}
+
+                    <Button
+                      type="button"
+                      onClick={handleSetPassword}
+                      disabled={isSettingPassword || !newPassword || newPassword !== confirmPassword || newPassword.length < 8}
+                      className="w-full flex items-center justify-center gap-2 text-xs"
+                    >
+                      {isSettingPassword
+                        ? <><LuLoaderCircle size={14} className="animate-spin" /> Updating Password...</>
+                        : <><LuKeyRound size={14} /> Set Password</>}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </details>
