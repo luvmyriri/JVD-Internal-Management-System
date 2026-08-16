@@ -16,6 +16,7 @@ import {
   LuLock,
   LuTriangleAlert,
   LuBriefcase,
+  LuKeyRound,
 } from 'react-icons/lu';
 import { motion } from 'framer-motion';
 import {
@@ -24,11 +25,11 @@ import {
   useUpdateUser,
   useDeactivateUser,
   useActivateUser,
+  useResetPassword,
 } from '../../hooks/useUsers';
 import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
 import { useQuery } from '@tanstack/react-query';
 import { rolePermissionsApi, type ModulePermission } from '../../api/rolePermissions';
-
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { EmployeeName, DataTable, type Column } from '../../components/ds';
 import { cn, fullName } from '../../utils';
@@ -45,16 +46,6 @@ export default function Users() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-
-  // Debounce search input to avoid redundant API queries
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      setSearch(searchInput);
-      setPage(1); // Reset page on search change
-    }, 300);
-    return () => clearTimeout(handler);
-  }, [searchInput]);
-
   const [page, setPage] = useState(1);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -67,6 +58,15 @@ export default function Users() {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Debounce search input to avoid redundant API queries
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setSearch(searchInput);
+      setPage(1); // Reset page on search change
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [searchInput]);
 
   const addCustomTag = () => {
     const trimmed = tagInput.trim().toLowerCase();
@@ -122,6 +122,7 @@ export default function Users() {
   const updateUserMutation = useUpdateUser();
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
+  const resetPasswordMutation = useResetPassword();
   const assignDriverToBus = useAssignDriverToBus();
 
   // Fetch all buses for the assignment dropdown
@@ -241,6 +242,16 @@ export default function Users() {
       await deactivateMutation.mutateAsync(user.id);
     } else {
       await activateMutation.mutateAsync(user.id);
+    }
+  };
+
+  const handleResetPassword = async (user: User) => {
+    if (!user.is_active) {
+      toast.error('Activate this account before sending a password-reset link.');
+      return;
+    }
+    if (confirm(`Send a secure password reset link to ${user.email}? This will invalidate their current password and email them a one-time setup link.`)) {
+      await resetPasswordMutation.mutateAsync(user.id);
     }
   };
 
@@ -497,6 +508,11 @@ export default function Users() {
                   onClick: () => handleOpenModal(user)
                 },
                 {
+                  label: 'Reset Password',
+                  icon: <LuKeyRound size={16} />,
+                  onClick: () => handleResetPassword(user),
+                },
+                {
                   label: user.is_active ? 'Deactivate' : 'Activate',
                   icon: user.is_active ? <LuUserMinus size={16} /> : <LuUserCheck size={16} />,
                   onClick: () => toggleUserStatus(user),
@@ -684,6 +700,7 @@ export default function Users() {
         setCustomPermissions={setCustomPermissions}
         dashboardPreference={dashboardPreference}
         setDashboardPreference={setDashboardPreference}
+        onResetPassword={handleResetPassword}
       />
 
       {/* View User Modal */}
@@ -697,7 +714,9 @@ export default function Users() {
         watchedRole={watchedRole}
         canEditUser={canEditUser}
         onEdit={handleOpenModal}
+        onResetPassword={handleResetPassword}
       />
+
       <Modal 
         isOpen={isPreviewModalOpen} 
         onClose={() => setIsPreviewModalOpen(false)}
@@ -766,4 +785,3 @@ export default function Users() {
     </div>
   );
 }
-

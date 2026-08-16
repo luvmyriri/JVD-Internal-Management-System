@@ -9,6 +9,7 @@ import {
   LuUserCheck,
   LuUserMinus,
   LuPencil,
+  LuKeyRound,
 } from 'react-icons/lu';
 import { Modal, Button } from '../../components/ui';
 import { cn, fullName, formatDate } from '../../utils';
@@ -25,6 +26,7 @@ interface UserProfileModalProps {
   watchedRole: string;
   canEditUser: boolean;
   onEdit: (user: User) => void;
+  onResetPassword?: (user: User) => void;
 }
 
 export default function UserProfileModal({
@@ -37,6 +39,7 @@ export default function UserProfileModal({
   watchedRole,
   canEditUser,
   onEdit,
+  onResetPassword,
 }: UserProfileModalProps) {
   return (
     <Modal
@@ -78,17 +81,28 @@ export default function UserProfileModal({
                     </span>
                   </div>
                 </div>
-                {canEditUser && (
-                  <Button
-                    onClick={() => {
-                      onClose();
-                      onEdit(user);
-                    }}
-                    className="flex items-center gap-2 px-5 py-2.5 shadow-md self-center md:self-auto"
-                  >
-                    <LuPencil size={16} /> Edit User Details
-                  </Button>
-                )}
+                <div className="flex flex-wrap items-center gap-2 self-center md:self-auto">
+                  {onResetPassword && (
+                    <Button
+                      variant="secondary"
+                      onClick={() => onResetPassword(user)}
+                      className="flex items-center gap-2 px-4 py-2.5 text-xs font-bold border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 hover:bg-amber-100/50"
+                    >
+                      <LuKeyRound size={15} /> Reset Password
+                    </Button>
+                  )}
+                  {canEditUser && (
+                    <Button
+                      onClick={() => {
+                        onClose();
+                        onEdit(user);
+                      }}
+                      className="flex items-center gap-2 px-5 py-2.5 shadow-md"
+                    >
+                      <LuPencil size={16} /> Edit User Details
+                    </Button>
+                  )}
+                </div>
               </div>
               <div className="mt-6 flex flex-wrap justify-center md:justify-start gap-4">
                 <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-100 dark:border-gray-800 shadow-sm text-sm font-bold text-gray-600 dark:text-gray-300">

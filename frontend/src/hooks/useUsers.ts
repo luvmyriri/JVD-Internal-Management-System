@@ -78,6 +78,7 @@ export function useActivateUser() {
     },
   });
 }
+
 export function useToggleStatus() {
   const deactivate = useDeactivateUser();
   const activate = useActivateUser();
@@ -92,4 +93,18 @@ export function useToggleStatus() {
     },
     isLoading: deactivate.isPending || activate.isPending,
   };
+}
+
+export function useResetPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => userApi.resetPassword(id),
+    onSuccess: (response: any) => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      toast.success(response?.data?.message || 'Password reset link sent to employee email');
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to send password reset link');
+    },
+  });
 }
