@@ -220,7 +220,7 @@ class TripTicketService
 
             return [
                 'starts_at' => $fulfillment->departure_datetime ?? $fulfillment->travel_date,
-                'ends_at' => $fulfillment->arrival_datetime ?? ($travelDate ? Carbon::parse($travelDate)->addDay() : null),
+                'ends_at' => $fulfillment->arrival_datetime ?? ($travelDate ? Carbon::parse((string) $travelDate)->addDay() : null),
                 'pickup' => $fulfillment->pickup_location ?: 'To be confirmed by Logistics',
                 'destination' => $fulfillment->tour_code ?: 'To be confirmed by Logistics',
                 'passengers' => (int) ($fulfillment->pax_count ?: 1),
