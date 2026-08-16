@@ -26,6 +26,7 @@ import {
   useDeactivateUser,
   useActivateUser,
   useResetPassword,
+  useSetPassword,
 } from '../../hooks/useUsers';
 import { useBuses, useAssignDriverToBus } from '../../hooks/useFleet';
 import { useQuery } from '@tanstack/react-query';
@@ -57,6 +58,11 @@ export default function Users() {
   const [dashboardPreference, setDashboardPreference] = useState<string | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
+  const [setPasswordUser, setSetPasswordUser] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Debounce search input to avoid redundant API queries
@@ -123,6 +129,7 @@ export default function Users() {
   const deactivateMutation = useDeactivateUser();
   const activateMutation = useActivateUser();
   const resetPasswordMutation = useResetPassword();
+  const setPasswordMutation = useSetPassword();
   const assignDriverToBus = useAssignDriverToBus();
 
   // Fetch all buses for the assignment dropdown
@@ -255,6 +262,34 @@ export default function Users() {
     }
     if (confirm(`Send a secure password reset link to ${user.email}? This will invalidate their current password and email them a one-time setup link.`)) {
       await resetPasswordMutation.mutateAsync(user.id);
+    }
+  };
+
+  const openSetPassword = (user: User) => {
+    setSetPasswordUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowNewPw(false);
+    setShowConfirmPw(false);
+  };
+
+  const handleSetPassword = async () => {
+    if (!setPasswordUser) return;
+    if (newPassword !== confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      toast.error('Password must be at least 8 characters');
+      return;
+    }
+    await setPasswordMutation.mutateAsync({
+      id: setPasswordUser.id,
+      password: newPassword,
+      passwordConfirmation: confirmPassword,
+    });
+    if (!setPasswordMutation.isError) {
+      setSetPasswordUser(null);
     }
   };
 
@@ -511,9 +546,9 @@ export default function Users() {
                   onClick: () => handleOpenModal(user)
                 },
                 {
-                  label: 'Reset Password',
+                  label: 'Set Password',
                   icon: <LuKeyRound size={16} />,
-                  onClick: () => handleResetPassword(user),
+                  onClick: () => openSetPassword(user),
                 },
                 {
                   label: user.is_active ? 'Deactivate' : 'Activate',
@@ -784,6 +819,79 @@ export default function Users() {
             </Button>
           </div>
         </div>
+      </Modal>
+      {/* Set Password Modal */}
+      <Modal
+        isOpen={!!setPasswordUser}
+        onClose={() => setSetPasswordUser(null)}
+        title="Set Employee Password"
+        size="sm"
+      >
+        {setPasswordUser && (
+          <div className="space-y-5">
+            <div className="p-3 bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 rounded-2xl">
+              <p className="text-xs font-bold text-blue-700 dark:text-blue-400">
+                Setting password for: <span className="font-black">{setPasswordUser.first_name} {setPasswordUser.last_name}</span>
+              </p>
+              <p className="text-[11px] text-blue-500 dark:text-blue-400/70 mt-0.5">{setPasswordUser.email}</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">New Password</label>
+              <div className="relative">
+                <input
+                  type={showNewPw ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Min. 8 chars, uppercase, number, symbol"
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPw(!showNewPw)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <LuEye size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Confirm Password</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPw ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Re-enter password"
+                  className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl text-sm font-medium text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPw(!showConfirmPw)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <LuEye size={16} />
+                </button>
+              </div>
+              {confirmPassword && newPassword !== confirmPassword && (
+                <p className="text-[10px] text-red-500 font-bold mt-1">Passwords do not match</p>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-100 dark:border-gray-800">
+              <Button variant="secondary" onClick={() => setSetPasswordUser(null)}>Cancel</Button>
+              <Button
+                onClick={handleSetPassword}
+                disabled={setPasswordMutation.isPending || !newPassword || newPassword !== confirmPassword}
+                className="flex items-center gap-2"
+              >
+                {setPasswordMutation.isPending ? <LuLoaderCircle size={16} className="animate-spin" /> : <LuKeyRound size={16} />}
+                Set Password
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

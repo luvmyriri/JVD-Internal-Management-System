@@ -108,3 +108,21 @@ export function useResetPassword() {
     },
   });
 }
+
+export function useSetPassword() {
+  return useMutation({
+    mutationFn: ({ id, password, passwordConfirmation }: { id: number; password: string; passwordConfirmation: string }) =>
+      userApi.setPassword(id, password, passwordConfirmation),
+    onSuccess: (response: any) => {
+      toast.success(response?.data?.message || 'Password updated successfully');
+    },
+    onError: (error: any) => {
+      const errors = error.response?.data?.errors;
+      if (errors?.password) {
+        toast.error(errors.password[0]);
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to update password');
+      }
+    },
+  });
+}

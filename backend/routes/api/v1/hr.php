@@ -67,6 +67,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::post('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
         Route::post('/users/{user}/activate', [UserController::class, 'activate'])->name('users.activate');
         Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+        Route::post('/users/{user}/set-password', [UserController::class, 'setPassword'])->name('users.set-password');
         
         Route::put('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'update'])->name('job-applications.update');
         Route::patch('/job-applications/{jobApplication}', [\App\Http\Controllers\JobApplicationController::class, 'update']);

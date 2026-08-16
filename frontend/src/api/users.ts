@@ -21,4 +21,10 @@ export const userApi = {
 
   resetPassword: (id: number) =>
     client.post(`/users/${id}/reset-password`),
+
+  setPassword: (id: number, password: string, passwordConfirmation: string) =>
+    client.post(`/users/${id}/set-password`, {
+      password,
+      password_confirmation: passwordConfirmation,
+    }),
 };

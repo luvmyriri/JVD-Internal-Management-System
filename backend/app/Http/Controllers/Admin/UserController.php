@@ -287,4 +287,47 @@ class UserController extends Controller
         ]);
     }
 
+    /**
+     * Admin override: directly set a new password for any employee.
+     * Does NOT require the employee's current password.
+     * Requires the same HR edit permission as resetPassword.
+     */
+    public function setPassword(Request $request, User $user): JsonResponse
+    {
+        Gate::authorize('resetPassword', $user);
+
+        $request->validate([
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'confirmed',
+                \Illuminate\Validation\Rules\Password::min(8)
+                    ->mixedCase()
+                    ->numbers()
+                    ->symbols(),
+            ],
+        ]);
+
+        $user->update([
+            'password'             => Hash::make($request->input('password')),
+            'must_change_password' => false,
+        ]);
+
+        // Revoke all existing tokens so user must re-login with the new password
+        $user->tokens()->delete();
+
+        AuditLogService::log(
+            action: 'ADMIN_SET_PASSWORD',
+            module: 'hr',
+            entityType: 'user',
+            entityId: $user->id
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password updated successfully. The employee must log in again with the new password.',
+        ]);
+    }
+
 }
