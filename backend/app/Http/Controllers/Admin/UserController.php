@@ -164,7 +164,13 @@ class UserController extends Controller
             $validated['email'] = strtolower(trim($validated['email']));
         }
 
-        $oldValues = $user->getOriginal();
+        // Use getRawOriginal() to avoid triggering decryption of encrypted columns
+        // (e.g. totp_secret) which would throw a DecryptException if the APP_KEY
+        // was rotated since the value was stored.
+        $oldValues = collect($user->getRawOriginal())
+            ->except(['totp_secret', 'password', 'remember_token'])
+            ->toArray();
+
         $user->update($validated);
 
         // Explicit Audit Log
@@ -174,7 +180,9 @@ class UserController extends Controller
             entityType: 'user',
             entityId: $user->id,
             old: $oldValues,
-            new: $user->fresh()->toArray()
+            new: collect($user->fresh()->getRawOriginal())
+                ->except(['totp_secret', 'password', 'remember_token'])
+                ->toArray()
         );
 
         return response()->json([
