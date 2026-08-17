@@ -16,7 +16,7 @@ import { Modal, Button } from '../../components/ui';
 import { DataTable, EmptyState, TimeframeFilter, ExportButton, type Column, type DateRangeValue } from '../../components/ds';
 import { exportToCsv, datedFilename } from '../../utils/exportCsv';
 import { useAuth } from '../../context/AuthContext';
-import { formatMoneyInput, parseMoneyInput } from '../../utils';
+import { formatMoneyInput, parseMoneyInput, generateUUID } from '../../utils';
 import RefundWorkflowPanel from '../../components/accounting/RefundWorkflowPanel';
 
 const SERVICE_TYPES = [
@@ -298,7 +298,7 @@ export default function Collections() {
     payment_date: new Date().toISOString().split('T')[0],
     payment_method: 'Cash',
     amount: '',
-    idempotency_key: crypto.randomUUID(),
+    idempotency_key: generateUUID(),
   });
 
   // Debounce search
@@ -365,7 +365,7 @@ export default function Collections() {
         payment_date: new Date().toISOString().split('T')[0],
         payment_method: 'Cash',
         amount: '',
-        idempotency_key: crypto.randomUUID(),
+        idempotency_key: generateUUID(),
       });
     },
     onError: () => {
@@ -376,7 +376,6 @@ export default function Collections() {
   const handleAddPayment = (e: React.FormEvent) => {
     e.preventDefault();
     const cleanAmount = parseMoneyInput(paymentForm.amount);
-    if (paymentForm.amount === '' || Number(cleanAmount) <= 0) return toast.error('Amount must be greater than 0');
     const maxVal = selectedCollection ? (selectedCollection.remaining_balance ?? selectedCollection.rate) : 0;
     if (Number(cleanAmount) > Number(maxVal)) {
       return toast.error(`Amount cannot exceed the remaining balance of ₱${Number(maxVal).toLocaleString()}`);
