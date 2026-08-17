@@ -139,6 +139,7 @@ class BillingJournalGuardrailTest extends TestCase
                 'ends_at' => '2030-01-15T20:00:00+08:00',
                 'estimated_kilometers' => 150,
                 'requested_units' => 2,
+                'is_fixed_rate' => false,
             ],
         ]], null, null, 0);
 

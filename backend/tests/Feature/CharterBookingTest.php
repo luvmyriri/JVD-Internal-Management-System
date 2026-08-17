@@ -41,16 +41,18 @@ class CharterBookingTest extends TestCase
         ]);
     }
 
-    public function test_server_calculates_extra_hours_kilometers_and_overnight_from_rate_plan(): void
+    public function test_packages_default_to_as_is_pricing_without_automatic_overnight_charges(): void
     {
         $start = now()->addMonth()->startOfDay();
+        // Package calculation: priced as-is flat rate (10,000)
         $pricing = app(CharterBookingService::class)->calculate($this->plan, $start->toIso8601String(), $start->copy()->addDay()->toIso8601String(), 150);
 
         $this->assertSame(24, $pricing['duration_hours']);
-        $this->assertSame(12, $pricing['extra_hours']);
-        $this->assertEquals(50, $pricing['extra_kilometers']);
+        $this->assertSame(0, $pricing['extra_hours']);
+        $this->assertEquals(0, $pricing['extra_kilometers']);
         $this->assertSame(1, $pricing['overnights']);
-        $this->assertEquals(17500, $pricing['subtotal']);
+        $this->assertEquals(0, $pricing['overnight_amount']);
+        $this->assertEquals(10000, $pricing['subtotal']);
     }
 
     public function test_agent_checkout_creates_charter_invoice_and_resource_reservation_atomically(): void
@@ -60,7 +62,7 @@ class CharterBookingTest extends TestCase
         $response->assertCreated()->assertJsonPath('data.status', 'confirmed')->assertJsonPath('data.invoice.status', 'paid');
         $bookingId = $response->json('data.id');
         $this->assertDatabaseHas('charter_bookings', ['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id, 'pickup_location' => 'JVD Office']);
-        $this->assertDatabaseHas('invoices', ['customer_name' => 'Corporate Client', 'total_amount' => 19600]);
+        $this->assertDatabaseHas('invoices', ['customer_name' => 'Corporate Client', 'total_amount' => 11200]);
         $this->assertDatabaseHas('trip_tickets', [
             'invoice_id' => $response->json('data.invoice.id'),
             'bus_id' => $this->bus->id,
@@ -204,7 +206,7 @@ class CharterBookingTest extends TestCase
             'customer_contact' => '09171234567',
             'payment_method' => 'Cash',
             'payment_type' => 'full',
-            'amount_received' => 39200,
+            'amount_received' => 22400,
             'tax_rate' => 0.12,
             'bus_id' => $this->bus->id,
             'driver_id' => $this->driver->id,
@@ -218,7 +220,7 @@ class CharterBookingTest extends TestCase
                 'item_name' => 'Bus Charter - 2 units',
                 'service_type' => 'bus_rental',
                 'quantity' => 2,
-                'unit_price' => 17500,
+                'unit_price' => 10000,
                 'item_metadata' => [
                     'rate_plan_id' => $this->plan->id,
                     'starts_at' => $start->toIso8601String(),
@@ -243,8 +245,8 @@ class CharterBookingTest extends TestCase
         $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $invoiceId,
             'quantity' => 2,
-            'unit_price' => 17500,
-            'total_price' => 35000,
+            'unit_price' => 10000,
+            'total_price' => 20000,
         ]);
         $booking = CharterBooking::where('invoice_id', $invoiceId)->firstOrFail();
         $this->assertCount(2, $booking->fleet_assignments);
@@ -311,7 +313,7 @@ class CharterBookingTest extends TestCase
             'starts_at' => $start->toIso8601String(), 'ends_at' => $start->copy()->addDay()->toIso8601String(),
             'pickup_location' => 'JVD Office', 'destination' => 'Baguio City', 'stops' => ['NLEX Stopover'],
             'passenger_count' => 40, 'estimated_kilometers' => 150, 'operations_notes' => 'Report 30 minutes early.',
-            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 19600,
+            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 11200,
         ];
     }
 }

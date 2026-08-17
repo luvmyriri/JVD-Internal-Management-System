@@ -104,11 +104,18 @@ class InvoiceFinalizationService
                 $effectiveQty = count($assignments) > 0
                     ? count($assignments)
                     : max(1, (int) ($metadata['requested_units'] ?? $metadata['buses_required'] ?? $item['quantity'] ?? 1));
+                $isFixedRate = isset($metadata['is_fixed_rate'])
+                    ? (bool) $metadata['is_fixed_rate']
+                    : (isset($metadata['pricing_snapshot']['is_fixed_rate'])
+                        ? (bool) $metadata['pricing_snapshot']['is_fixed_rate']
+                        : null);
+
                 $pricing = app(CharterBookingService::class)->calculate(
                     $plan,
                     (string) $metadata['starts_at'],
                     (string) $metadata['ends_at'],
-                    (float) $metadata['estimated_kilometers']
+                    (float) $metadata['estimated_kilometers'],
+                    $isFixedRate
                 );
                 $unitPrice = round((float) $pricing['subtotal'], 2);
                 $itemTotal = round($unitPrice * $effectiveQty, 2);

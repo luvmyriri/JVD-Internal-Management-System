@@ -14,7 +14,7 @@ import SalesCheckout, { type CartItem } from './SalesCheckout';
 import SeatSelectorModal, { type SeatSelectionResult, type VehicleBookingMode } from '../../components/travel/SeatSelectorModal';
 import PassengerManifestModal, { type PassengerManifestRow } from '../../components/travel/PassengerManifestModal';
 import InclusionsExclusionsEditor from '../../components/travel/InclusionsExclusionsEditor';
-import { LuChevronDown, LuSearch, LuFilter, LuMapPin, LuCalendar, LuBus } from 'react-icons/lu';
+import { LuChevronDown, LuSearch, LuFilter, LuMapPin, LuCalendar, LuBus, LuFileText } from 'react-icons/lu';
 import { BusSeatAllocationModal } from '../../components/ui';
 import type { AllocatedBus } from '../../components/ui/BusSeatAllocationModal';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
@@ -24,8 +24,6 @@ import PackageCatalogCard from './components/PackageCatalogCard';
 import BookingWorkspaceHeader from './components/BookingWorkspaceHeader';
 import BusCharterQuotationModal from './components/BusCharterQuotationModal';
 import TollMatrixPicker from './components/TollMatrixPicker';
-import { LuFileText } from 'react-icons/lu';
-
 
 const getTomorrowStartEnd = () => {
   const tomorrow = new Date();
@@ -36,12 +34,13 @@ const getTomorrowStartEnd = () => {
 
 const bookingInitial = { rate_plan_id: '', starts_at: getTomorrowStartEnd().starts_at, ends_at: getTomorrowStartEnd().ends_at, pickup_location: 'Manila Office', destination: 'Tagaytay City', stops: [] as string[], passenger_count: '25', requested_units: '1', estimated_kilometers: '120', bus_id: '', driver_id: '', lead_name: '', lead_email: '', lead_contact: '', payment_method: 'Cash', payment_type: 'full', amount_received: '', operations_notes: '' };
 const GARAGE_LOCATION = 'Unit 6 Aryanna Village Center, Barangay 175, Susano Road, Camarin, Caloocan, 1400 Metro Manila';
-const planInitial = { service_id: '', name: '', vehicle_class: 'bus', rate_per_km: '', min_km_basis: '0', pickup_location: '', drop_off_location: '', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
+const planInitial = { service_id: '', name: '', vehicle_class: 'bus' as string, rate_per_km: '', min_km_basis: '0', pickup_location: '', drop_off_location: '', included_hours: '12', extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0', is_fixed_rate: true, includes_driver: true, includes_fuel: true, includes_tolls: false, includes_parking: false };
 
 export default function CharterSales() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [booking, setBooking] = useState(bookingInitial);
+  const [pricingModeOverride, setPricingModeOverride] = useState<'fixed' | 'metered' | null>(null);
   const [planForm, setPlanForm] = useState(planInitial);
   const [planOpen, setPlanOpen] = useState(false);
   const [expandedPlanId, setExpandedPlanId] = useState<number | null>(null);
@@ -212,7 +211,19 @@ export default function CharterSales() {
     toast.success(`Selected ${result.bookingMode === 'entire_vehicle' ? 'Entire Vehicle Charter' : `${result.selectedSeats.length} seats`}`);
   };
 
-  const { data: pricing } = useQuery({ queryKey: ['charter-quote', booking.rate_plan_id, booking.starts_at, booking.ends_at, booking.estimated_kilometers], queryFn: () => charterApi.quote({ rate_plan_id: Number(booking.rate_plan_id), starts_at: booking.starts_at, ends_at: booking.ends_at, estimated_kilometers: Number(booking.estimated_kilometers) }), enabled: validInterval && Boolean(booking.rate_plan_id) });
+  const isFixedRate = true;
+
+  const { data: pricing } = useQuery({
+    queryKey: ['charter-quote', booking.rate_plan_id, booking.starts_at, booking.ends_at, booking.estimated_kilometers],
+    queryFn: () => charterApi.quote({
+      rate_plan_id: Number(booking.rate_plan_id),
+      starts_at: booking.starts_at,
+      ends_at: booking.ends_at,
+      estimated_kilometers: Number(booking.estimated_kilometers),
+      is_fixed_rate: true,
+    }),
+    enabled: validInterval && Boolean(booking.rate_plan_id)
+  });
 
   const totalExpenses = useMemo(() => [dieselCost, tollFeeEst, easytripEst, autosweepEst, mealAllowanceEst, agentCommissionEst]
     .reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0), [dieselCost, tollFeeEst, easytripEst, autosweepEst, mealAllowanceEst, agentCommissionEst]);
@@ -245,13 +256,14 @@ export default function CharterSales() {
       name: plan.name,
       vehicle_class: plan.vehicle_class,
       rate_per_km: String(ratePerKm),
-      min_km_basis: String(plan.included_kilometers || 50),
+      min_km_basis: String(plan.included_kilometers ?? 50),
       pickup_location: plan.pickup_location || '',
       drop_off_location: plan.destination || '',
-      included_hours: String(plan.included_hours || 10),
-      extra_hour_rate: String(plan.extra_hour_rate || 500),
-      extra_kilometer_rate: String(plan.extra_kilometer_rate || 80),
-      overnight_rate: String(plan.overnight_rate || 2500),
+      included_hours: String(plan.included_hours ?? 12),
+      extra_hour_rate: String(plan.extra_hour_rate ?? 0),
+      extra_kilometer_rate: String(plan.extra_kilometer_rate ?? 0),
+      overnight_rate: String(plan.overnight_rate ?? 0),
+      is_fixed_rate: Boolean(plan.pricing_metadata?.is_fixed_rate ?? true),
       includes_driver: plan.includes_driver ?? true,
       includes_fuel: plan.includes_fuel ?? true,
       includes_tolls: plan.includes_tolls ?? false,
@@ -313,6 +325,7 @@ export default function CharterSales() {
         desired_profit: Number(desiredProfit),
         auto_adjust_rate: autoAdjustRate,
         pricing_metadata: {
+          is_fixed_rate: Boolean(planForm.is_fixed_rate),
           routing_provider: routeEstimate?.routing_provider,
           geocoding_provider: routeEstimate?.geocoding_provider,
           route_toll_provider: routeEstimate?.toll_estimate.provider,
@@ -356,14 +369,22 @@ export default function CharterSales() {
   // Uniform Cart item construction
   const cart: CartItem[] = useMemo(() => {
     if (!selectedPlan) return [];
-    const baseSubtotal = pricing?.subtotal ?? Number(selectedPlan.base_price);
+    const baseSubtotal = isFixedRate
+      ? Number(selectedPlan.base_price)
+      : (pricing?.subtotal ?? Number(selectedPlan.base_price));
     const totalCharterSubtotal = baseSubtotal * busesRequired;
 
     const assignedBusesList = busAssignments
+      .slice(0, busesRequired)
       .map(a => resources?.buses.find(b => b.id === Number(a.bus_id)))
       .filter(Boolean);
     
     const assignedPlates = assignedBusesList.map(b => b?.plate_number).join(', ') || 'TBD';
+
+    const sanitizedAssignments = busAssignments.slice(0, busesRequired).map(a => ({
+      bus_id: Number(a.bus_id) || null,
+      driver_id: a.driver_id ? Number(a.driver_id) : null,
+    }));
 
     return [{
       cartId: `charter-${selectedPlan.id}`,
@@ -396,6 +417,7 @@ export default function CharterSales() {
         starts_at: booking.starts_at,
         ends_at: booking.ends_at,
         estimated_kilometers: Number(booking.estimated_kilometers),
+        is_fixed_rate: isFixedRate,
         passenger_count: paxCount,
         pickup_location: booking.pickup_location,
         destination: booking.destination,
@@ -403,7 +425,7 @@ export default function CharterSales() {
         buses_required: busesRequired,
         requested_units: busesRequired,
         includes_driver: Boolean(selectedPlan.includes_driver),
-        bus_assignments: busAssignments,
+        bus_assignments: sanitizedAssignments,
         selected_seats: selectedSeats,
         booking_mode: bookingMode,
         passengers: manifestPassengers,
@@ -412,7 +434,7 @@ export default function CharterSales() {
         operations_notes: booking.operations_notes,
       }
     }];
-  }, [selectedPlan, pricing, booking, busesRequired, busAssignments, resources, selectedDriver, paxCount, primaryCapacity, selectedSeats, bookingMode, manifestPassengers, inclusions, exclusions]);
+  }, [selectedPlan, pricing, isFixedRate, booking, busesRequired, busAssignments, resources, selectedDriver, paxCount, primaryCapacity, selectedSeats, bookingMode, manifestPassengers, inclusions, exclusions]);
 
   const customerPreset = useMemo(() => ({
     name: booking.lead_name,
@@ -472,10 +494,41 @@ export default function CharterSales() {
               <div className={`mt-4 flex gap-2 rounded-xl border p-3 text-xs leading-5 ${(tollPricingMode === 'matrix' && matrixTollResult) || (tollPricingMode === 'route' && routeEstimate && routeEstimate.toll_estimate.mode !== 'manual_reference') ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}><TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" /><span>{tollPricingMode === 'manual' ? 'Manual toll override is active. Editing any toll field switches to this mode.' : tollPricingMode === 'matrix' ? matrixTollResult ? `Class 2 toll matrix applied for ${matrixTollResult.segments.length} segment${matrixTollResult.segments.length === 1 ? '' : 's'} (₱${matrixTollResult.total.toLocaleString()}). Values remain editable.` : 'Select each expressway entry and exit in the Class 2 calculator. Multiple segments are supported.' : routeEstimate && routeEstimate.toll_estimate.mode !== 'manual_reference' ? routeEstimate.toll_estimate.message : 'Map the route to calculate tolls locally. If no confident match is found, choose matrix entries or enter a manual amount.'} {(matrixTollResult?.official_verification_url || routeEstimate?.toll_source.url) && <a href={matrixTollResult?.official_verification_url || routeEstimate?.toll_source.url} target="_blank" rel="noreferrer" className="ml-1 font-black underline">Open TRB reference</a>}</span></div>
             </section>
 
-            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <summary className="flex cursor-pointer list-none items-center justify-between p-5"><div><h2 className="font-black text-slate-950">Advanced package rules</h2><p className="text-xs text-slate-500">Overtime, excess distance, overnight, and inclusions.</p></div><ChevronDown className="h-5 w-5 text-slate-400 transition group-open:rotate-180" /></summary>
+            <details className="group rounded-2xl border border-slate-200 bg-white shadow-sm" open>
+              <summary className="flex cursor-pointer list-none items-center justify-between p-5"><div><h2 className="font-black text-slate-950">Package rules & pricing strategy</h2><p className="text-xs text-slate-500">Fixed all-in package vs hourly & overnight surcharges.</p></div><ChevronDown className="h-5 w-5 text-slate-400 transition group-open:rotate-180" /></summary>
               <div className="grid gap-4 border-t border-slate-200 p-5 md:grid-cols-4">
-                {([['included_hours', 'Included hours'], ['extra_hour_rate', 'Extra hour rate'], ['extra_kilometer_rate', 'Extra km rate'], ['overnight_rate', 'Overnight rate']] as [keyof typeof planForm, string][]).map(([key, label]) => <label key={key} className="text-xs font-bold text-slate-600">{label}<input type="number" min="0" value={String(planForm[key])} onChange={event => setPlanForm(current => ({ ...current, [key]: event.target.value }))} className={inputClass} /></label>)}
+                <div className="md:col-span-4 p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <label className="text-xs font-black text-slate-800 mb-2 block">Rate Plan Pricing Strategy</label>
+                  <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${planForm.is_fixed_rate ? 'bg-blue-50/80 border-blue-300 text-blue-900 font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-600'}`}>
+                      <input
+                        type="radio"
+                        name="plan_is_fixed_rate"
+                        checked={Boolean(planForm.is_fixed_rate)}
+                        onChange={() => setPlanForm(curr => ({ ...curr, is_fixed_rate: true, extra_hour_rate: '0', extra_kilometer_rate: '0', overnight_rate: '0' }))}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <strong>Fixed All-In Package (Recommended)</strong>
+                        <p className="text-[11px] font-normal text-slate-500 mt-0.5">Price stays fixed at the base rate. No extra overtime or overnight fees when trip dates/times span overnight.</p>
+                      </div>
+                    </label>
+                    <label className={`flex items-start gap-2.5 p-3 rounded-xl border cursor-pointer transition ${!planForm.is_fixed_rate ? 'bg-amber-50/80 border-amber-300 text-amber-900 font-bold shadow-sm' : 'bg-white border-slate-200 text-slate-600'}`}>
+                      <input
+                        type="radio"
+                        name="plan_is_fixed_rate"
+                        checked={!Boolean(planForm.is_fixed_rate)}
+                        onChange={() => setPlanForm(curr => ({ ...curr, is_fixed_rate: false }))}
+                        className="mt-0.5"
+                      />
+                      <div>
+                        <strong>Metered Surcharges</strong>
+                        <p className="text-[11px] font-normal text-slate-500 mt-0.5">Calculates extra hours beyond included hours and overnight fee per night.</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                {([['included_hours', 'Included hours'], ['extra_hour_rate', 'Extra hour rate'], ['extra_kilometer_rate', 'Extra km rate'], ['overnight_rate', 'Overnight rate']] as [keyof typeof planForm, string][]).map(([key, label]) => <label key={key} className="text-xs font-bold text-slate-600">{label}<input type="number" min="0" value={String(planForm[key])} onChange={event => setPlanForm(current => ({ ...current, [key]: event.target.value }))} className={inputClass} disabled={planForm.is_fixed_rate && key !== 'included_hours'} /></label>)}
                 <div className="grid gap-3 md:col-span-4 sm:grid-cols-4">{([['includes_driver', 'Driver fee'], ['includes_fuel', 'Fuel'], ['includes_tolls', 'Toll fees'], ['includes_parking', 'Parking fees']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 rounded-xl bg-slate-50 p-3 text-xs font-bold text-slate-700"><input type="checkbox" checked={planForm[key]} onChange={event => setPlanForm(current => ({ ...current, [key]: event.target.checked }))} />{label}</label>)}</div>
               </div>
             </details>
@@ -540,7 +593,13 @@ export default function CharterSales() {
               { label: 'Distance', value: `${plan.included_kilometers} km`, icon: <LuMapPin className="h-4 w-4" /> },
             ]}
             actionLabel="Select package & continue"
-            onAction={() => setBooking(current => ({ ...current, rate_plan_id: String(plan.id) }))}
+            onAction={() => setBooking(current => ({
+              ...current,
+              rate_plan_id: String(plan.id),
+              estimated_kilometers: String(plan.included_kilometers || current.estimated_kilometers || '120'),
+              pickup_location: plan.pickup_location || current.pickup_location,
+              destination: plan.destination || current.destination,
+            }))}
             controls={<div className="flex gap-1"><button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button><button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button></div>}
           />)}
         </div>}
@@ -785,6 +844,62 @@ export default function CharterSales() {
             <label className="text-xs font-bold text-muted">Passenger Count<input type="number" min="1" max="500" value={booking.passenger_count} onChange={e => setBooking({ ...booking, passenger_count: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Bus Units Requested<input type="number" min={minimumBuses} max="100" value={booking.requested_units} onChange={e => setBooking({ ...booking, requested_units: e.target.value })} aria-describedby="charter-unit-help" className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
             <label className="text-xs font-bold text-muted">Est. Distance (KM)<input type="number" min="0" value={booking.estimated_kilometers} onChange={e => setBooking({ ...booking, estimated_kilometers: e.target.value })} className="mt-1 h-11 w-full rounded-xl border border-border bg-surface px-3 text-sm font-semibold text-ink" /></label>
+          </div>
+
+          {/* Trip Pricing Mode Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-black uppercase text-blue-700 dark:text-blue-300">
+                  Trip Pricing Policy
+                </span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-700 text-blue-600">
+                  Flat Package Rate Active
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-0.5">
+                Base package price of ₱{Number(selectedPlan.base_price).toLocaleString()} is fixed per vehicle. No automated surcharges for extended trip dates or operating hours.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-3 py-2 rounded-xl text-xs font-black bg-blue-600 text-white shadow-sm ring-2 ring-blue-500/20">
+                🔒 Fixed Package (All-in)
+              </span>
+            </div>
+          </div>
+
+          {/* Pricing Computation Breakdown Card */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+              <p className="text-xs font-black uppercase text-slate-700 dark:text-slate-300 tracking-wider">Rate Calculation Breakdown</p>
+              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400">
+                {busesRequired} × {selectedPlan.vehicle_class || 'Vehicle'} ({paxCount} Pax Total)
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Base Rate / Unit</p>
+                <p className="text-sm font-black text-ink mt-0.5">₱{Number(selectedPlan.base_price).toLocaleString()}</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Date / Hour Surcharges</p>
+                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  ₱0 (Flat Package)
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60">
+                <p className="text-[10px] font-bold text-slate-400 uppercase">Per Unit Subtotal</p>
+                <p className="text-sm font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  ₱{Number(selectedPlan.base_price).toLocaleString()}
+                </p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800">
+                <p className="text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase">Total Subtotal ({busesRequired} {busesRequired === 1 ? 'Bus' : 'Buses'})</p>
+                <p className="text-base font-black text-blue-700 dark:text-blue-300 mt-0.5">
+                  ₱{(Number(selectedPlan.base_price) * busesRequired).toLocaleString()}
+                </p>
+              </div>
+            </div>
           </div>
 
           <p id="charter-unit-help" className="rounded-xl bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-800 dark:bg-blue-950/40 dark:text-blue-200">

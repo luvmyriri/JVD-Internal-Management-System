@@ -45,6 +45,8 @@ class StoreCharterRatePlanRequest extends FormRequest
             'desired_profit' => ['nullable', 'numeric', 'min:0'],
             'auto_adjust_rate' => ['nullable', 'boolean'],
             'pricing_metadata' => ['nullable', 'array'],
+            'pricing_metadata.is_fixed_rate' => ['nullable', 'boolean'],
+            'pricing_metadata.pricing_type' => ['nullable', 'string', 'max:50'],
             'pricing_metadata.routing_provider' => ['nullable', 'string', 'max:100'],
             'pricing_metadata.geocoding_provider' => ['nullable', 'string', 'max:100'],
             'pricing_metadata.route_toll_provider' => ['nullable', 'string', 'max:100'],

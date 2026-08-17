@@ -35,6 +35,8 @@ export interface CharterRatePlan {
   projected_profit?: number;
   auto_adjust_rate?: boolean;
   pricing_metadata?: {
+    is_fixed_rate?: boolean;
+    pricing_type?: string;
     toll_pricing_mode?: 'route' | 'matrix' | 'manual';
     include_garage_travel?: boolean;
     trip_type?: CharterTripType;
@@ -153,6 +155,7 @@ export interface CharterPricing {
   extra_hours_amount: number;
   extra_kilometers_amount: number;
   overnight_amount: number;
+  is_fixed_rate?: boolean;
   subtotal: number;
   tax_rate: number;
   tax_amount: number;
@@ -193,7 +196,7 @@ export const charterApi = {
   ratePlans: () => client.get('/sales/charter-rate-plans').then(res => res.data.data as CharterRatePlan[]),
   bookings: () => client.get('/sales/charter-bookings').then(res => res.data.data as CharterBooking[]),
   resources: (startsAt: string, endsAt: string) => client.get('/sales/charter-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as CharterResources),
-  quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
+  quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number; is_fixed_rate?: boolean }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
   searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   searchOfficialLocations: (q: string) => client.get('/sales/official-location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   reverseLocation: (latitude: number, longitude: number) => client.get('/sales/reverse-location', { params: { latitude, longitude } }).then(res => res.data.data as LocationSuggestion),

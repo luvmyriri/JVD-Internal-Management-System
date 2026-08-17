@@ -159,9 +159,10 @@ class CharterController extends Controller
             'rate_plan_id' => ['required', 'integer', 'exists:charter_rate_plans,id'],
             'starts_at' => ['required', 'date'], 'ends_at' => ['required', 'date', 'after:starts_at'],
             'estimated_kilometers' => ['required', 'numeric', 'min:0', 'max:10000'],
+            'is_fixed_rate' => ['nullable', 'boolean'],
         ]);
         $plan = CharterRatePlan::where('is_active', true)->findOrFail($data['rate_plan_id']);
-        $pricing = $this->charters->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers']);
+        $pricing = $this->charters->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers'], isset($data['is_fixed_rate']) ? (bool) $data['is_fixed_rate'] : null);
         $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
 
         return response()->json(['data' => [...$pricing, 'tax_rate' => $taxRate, 'tax_amount' => round($pricing['subtotal'] * $taxRate, 2), 'total' => round($pricing['subtotal'] * (1 + $taxRate), 2)]]);

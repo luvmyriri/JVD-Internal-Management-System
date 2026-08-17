@@ -23,7 +23,7 @@ class GroupBookingCaptureService
             app(CharterBookingService::class)->createFromInvoice($invoice, [
                 'rate_plan_id' => $metadata['rate_plan_id'],
                 'bus_id' => $primary['bus_id'],
-                'driver_id' => $primary['driver_id'] ?? null,
+                'driver_id' => ! empty($primary['driver_id']) ? $primary['driver_id'] : null,
                 'assignments' => $assignments ?: [$primary],
                 'starts_at' => $metadata['starts_at'] ?? $context['departure_datetime'],
                 'ends_at' => $metadata['ends_at'] ?? $context['arrival_datetime'],
@@ -32,6 +32,7 @@ class GroupBookingCaptureService
                 'stops' => $stops,
                 'passenger_count' => $metadata['passenger_count'] ?? $context['pax_count'],
                 'estimated_kilometers' => $metadata['estimated_kilometers'] ?? 0,
+                'is_fixed_rate' => $metadata['is_fixed_rate'] ?? null,
                 'requested_units' => $metadata['requested_units'] ?? $metadata['buses_required'] ?? count($assignments),
                 'booking_mode' => $metadata['booking_mode'] ?? 'entire_vehicle',
                 'selected_seats' => $metadata['selected_seats'] ?? [],

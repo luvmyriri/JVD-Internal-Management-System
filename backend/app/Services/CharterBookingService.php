@@ -19,18 +19,20 @@ use Illuminate\Validation\ValidationException;
 
 class CharterBookingService
 {
-    public function calculate(CharterRatePlan $plan, string $startsAt, string $endsAt, float $kilometers): array
+    public function calculate(CharterRatePlan $plan, string $startsAt, string $endsAt, float $kilometers, ?bool $isFixedRate = null): array
     {
         $start = Carbon::parse($startsAt);
         $end = Carbon::parse($endsAt);
         $hours = max(1, (int) ceil($start->floatDiffInHours($end)));
-        $extraHours = max(0, $hours - $plan->included_hours);
-        $extraKilometers = max(0, $kilometers - $plan->included_kilometers);
         $overnights = max(0, (int) $start->startOfDay()->diffInDays($end->copy()->startOfDay()));
         $base = (float) $plan->base_price;
-        $extraHoursAmount = round($extraHours * (float) $plan->extra_hour_rate, 2);
-        $extraKilometersAmount = round($extraKilometers * (float) $plan->extra_kilometer_rate, 2);
-        $overnightAmount = round($overnights * (float) $plan->overnight_rate, 2);
+
+        // Charter packages are priced as-is by default; surcharges are never applied automatically for exceeding hours or dates
+        $extraHours = 0;
+        $extraKilometers = 0;
+        $extraHoursAmount = 0.0;
+        $extraKilometersAmount = 0.0;
+        $overnightAmount = 0.0;
 
         return [
             'duration_hours' => $hours,
@@ -42,7 +44,8 @@ class CharterBookingService
             'extra_hours_amount' => $extraHoursAmount,
             'extra_kilometers_amount' => $extraKilometersAmount,
             'overnight_amount' => $overnightAmount,
-            'subtotal' => round($base + $extraHoursAmount + $extraKilometersAmount + $overnightAmount, 2),
+            'is_fixed_rate' => true,
+            'subtotal' => round($base, 2),
         ];
     }
 
@@ -56,7 +59,7 @@ class CharterBookingService
             if ($bus->status !== 'available') {
                 throw ValidationException::withMessages(['bus_id' => 'The selected vehicle is not in available status.']);
             }
-            if (($bus->vehicle_type ?? 'bus') !== $plan->vehicle_class) {
+            if (strtolower($bus->vehicle_type ?? 'bus') !== strtolower($plan->vehicle_class)) {
                 throw ValidationException::withMessages(['bus_id' => "Select a {$plan->vehicle_class} for this rate plan."]);
             }
             if ($data['passenger_count'] > $bus->seating_capacity) {
@@ -70,7 +73,7 @@ class CharterBookingService
             }
             $this->assertAvailable($bus->id, $driver?->id, $data['starts_at'], $data['ends_at']);
 
-            $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers']);
+            $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers'], isset($data['is_fixed_rate']) ? (bool) $data['is_fixed_rate'] : null);
             $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
             $tax = round($pricing['subtotal'] * $taxRate, 2);
             $total = round($pricing['subtotal'] + $tax, 2);
@@ -202,7 +205,10 @@ class CharterBookingService
             $this->assertAvailable($assignedBus->id, $assignedDriver?->id, $data['starts_at'], $data['ends_at']);
         }
         [$bus, $driver] = $assignments[0];
-        $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers']);
+        $isFixedRate = array_key_exists('is_fixed_rate', $data) && $data['is_fixed_rate'] !== null
+            ? (bool) $data['is_fixed_rate']
+            : null;
+        $pricing = $this->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers'], $isFixedRate);
 
         $booking = CharterBooking::create([
             'reference' => SalesReferenceService::generate('CHR', $data['destination'], $data['starts_at']),
@@ -255,7 +261,7 @@ class CharterBookingService
             if ($bus->status !== 'available') {
                 throw ValidationException::withMessages(["assignments.$index.bus_id" => 'The selected vehicle is not in available status.']);
             }
-            if (($bus->vehicle_type ?? 'bus') !== $plan->vehicle_class) {
+            if (strtolower($bus->vehicle_type ?? 'bus') !== strtolower($plan->vehicle_class)) {
                 throw ValidationException::withMessages(["assignments.$index.bus_id" => "Select a {$plan->vehicle_class} for this rate plan."]);
             }
             if ($driver && ($driver->role !== 'driver' || ! $driver->is_active)) {
