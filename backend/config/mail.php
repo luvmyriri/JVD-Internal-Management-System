@@ -18,7 +18,7 @@ return [
 
     // Customer-facing financial documents must use a real delivery transport.
     // Never silently treat the log mailer as successful customer delivery.
-    'transactional_mailer' => env('MAIL_TRANSACTIONAL_MAILER', 'smtp'),
+    'transactional_mailer' => env('MAIL_TRANSACTIONAL_MAILER', env('MAIL_MAILER', 'smtp')),
 
     /*
     |--------------------------------------------------------------------------
@@ -47,11 +47,12 @@ return [
             'url' => env('MAIL_URL'),
             'host' => env('MAIL_HOST', '127.0.0.1'),
             'port' => env('MAIL_PORT', 2525),
+            'encryption' => env('MAIL_ENCRYPTION', 'tls'),
             'username' => env('MAIL_USERNAME'),
             'password' => env('MAIL_PASSWORD'),
             // Keep notification workers responsive when an SMTP endpoint is unavailable.
             // Sales and payment requests must never wait on this transport.
-            'timeout' => env('MAIL_TIMEOUT', 5),
+            'timeout' => env('MAIL_TIMEOUT', 15),
             'source_ip' => env('MAIL_SOURCE_IP', '0.0.0.0'),
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
