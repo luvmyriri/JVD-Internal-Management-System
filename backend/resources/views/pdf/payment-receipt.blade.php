@@ -75,7 +75,13 @@
                 <span class="label">Payment status</span>
                 <strong>{{ strtoupper($invoice->status) }}</strong><br>
                 <span class="label" style="margin-top: 6px;">Payment method / type</span>
-                {{ strtoupper($invoice->payment_method) }} / {{ strtoupper($invoice->payment_type ?: 'FULL') }}
+                @php
+                    $effectivePaymentMethod = $invoice->collection?->payments?->last()?->payment_method 
+                        ?? $invoice->educationalTourParticipantBooking?->payments?->last()?->payment_method 
+                        ?? $invoice->payment_method 
+                        ?? 'Cash';
+                @endphp
+                {{ strtoupper($effectivePaymentMethod) }} / {{ strtoupper($invoice->payment_type ?: 'FULL') }}
                 @if($invoice->payment_id)<br>Reference: {{ $invoice->payment_id }}@endif
             </td>
         </tr>

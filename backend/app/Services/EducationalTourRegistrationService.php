@@ -196,7 +196,7 @@ class EducationalTourRegistrationService
                 'total_amount' => $amountDue,
                 'amount_received' => 0.00,
                 'change' => 0,
-                'payment_method' => 'Bank Transfer',
+                'payment_method' => $data['payment_method'] ?? 'Bank Transfer',
                 'payment_type' => $paymentPlan,
                 'balance' => $amountDue,
                 'due_date' => $dueDate,

@@ -129,6 +129,8 @@ class EducationalTourPaymentService
             ]);
 
             $collection->recalculate();
+            $paymentMethod = $data['payment_method'] ?? 'Cash';
+            $invoice->update(['payment_method' => $paymentMethod]);
             $invoice->refresh();
 
             $paymentRef = SalesReferenceService::generate('PAY-EDT', $booking->reference, now());
