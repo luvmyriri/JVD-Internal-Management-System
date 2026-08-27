@@ -35,18 +35,36 @@ const packageImageUrl = (path?: string): string | null => {
   if (!path) return null;
   if (path.startsWith('data:')) return path;
 
-  // Strip any absolute backend origin (e.g. http://localhost:8001) so the Vite
-  // proxy's /storage route can serve it instead of hitting port 8001 directly.
-  const normalized = path
+  let normalized = path
     .replace(/^https?:\/\/[^/]+/, '')
     .replace(/^\/storage\/public\//, '/storage/')
-    .replace(/^\/public\//, '/');
+    .replace(/^\/public\//, '/')
+    .replace(/^\/+/, '/');
 
-  // Ensure it starts with /storage/ (in case the DB has a bare path)
-  if (normalized.startsWith('/storage/')) return normalized;
+  if (normalized.startsWith('/storage/uploads/')) {
+    normalized = normalized.replace('/storage/uploads/', '/uploads/');
+  }
 
-  // bare path like "public/educational-tour-images/xxx.jpg" → /storage/...
-  return `/storage/${normalized.replace(/^\/?storage\//, '')}`;
+  if (normalized.startsWith('/storage/') || normalized.startsWith('/uploads/')) {
+    return normalized;
+  }
+
+  return `/storage/${normalized.replace(/^\/?(storage|uploads)\//, '')}`;
+};
+
+const PackageCardImage = ({ src, name }: { src: string | null; name: string }) => {
+  const [error, setError] = useState(false);
+  if (!src || error) {
+    return <PackageImagePlaceholder name={name} />;
+  }
+  return (
+    <img
+      src={src}
+      alt={name}
+      className="h-44 w-full object-cover"
+      onError={() => setError(true)}
+    />
+  );
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -419,11 +437,7 @@ export default function EducationalTours() {
                 >
                   {/* Hero image */}
                   <div className="relative">
-                    {heroUrl ? (
-                      <img src={heroUrl} alt={pkg.name} className="h-44 w-full object-cover" />
-                    ) : (
-                      <PackageImagePlaceholder name={pkg.name} />
-                    )}
+                    <PackageCardImage src={heroUrl} name={pkg.name} />
 
                     {/* Status badge */}
                     <span

@@ -42,13 +42,21 @@ interface Props {
 const packageImageUrl = (path?: string) => {
   if (!path) return null;
   if (path.startsWith('data:')) return path;
-  const normalized = path
+  let normalized = path
     .replace(/^https?:\/\/[^/]+/, '')
     .replace(/^\/storage\/public\//, '/storage/')
-    .replace(/^\/?public\//, '');
-  return normalized.startsWith('/storage/')
-    ? normalized
-    : `/storage/${normalized.replace(/^\/?storage\//, '')}`;
+    .replace(/^\/public\//, '/')
+    .replace(/^\/+/, '/');
+
+  if (normalized.startsWith('/storage/uploads/')) {
+    normalized = normalized.replace('/storage/uploads/', '/uploads/');
+  }
+
+  if (normalized.startsWith('/storage/') || normalized.startsWith('/uploads/')) {
+    return normalized;
+  }
+
+  return `/storage/${normalized.replace(/^\/?(storage|uploads)\//, '')}`;
 };
 
 const initialParticipantForm = {
