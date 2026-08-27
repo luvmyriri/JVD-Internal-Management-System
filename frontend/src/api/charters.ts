@@ -197,7 +197,11 @@ export const charterApi = {
   bookings: () => client.get('/sales/charter-bookings').then(res => res.data.data as CharterBooking[]),
   resources: (startsAt: string, endsAt: string) => client.get('/sales/charter-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as CharterResources),
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number; is_fixed_rate?: boolean }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
-  searchLocations: (q: string) => client.get('/sales/location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
+  searchLocations: (q: string, signal?: AbortSignal) => client.get('/sales/location-search', {
+    params: { q },
+    signal,
+    timeout: 7_000,
+  }).then(res => res.data.data as LocationSuggestion[]),
   searchOfficialLocations: (q: string) => client.get('/sales/official-location-search', { params: { q } }).then(res => res.data.data as LocationSuggestion[]),
   reverseLocation: (latitude: number, longitude: number) => client.get('/sales/reverse-location', { params: { latitude, longitude } }).then(res => res.data.data as LocationSuggestion),
   estimateRoute: (data: Record<string, unknown>) => client.post('/sales/charter-route-estimate', data).then(res => res.data.data as RouteEstimate),

@@ -124,7 +124,7 @@ export default function EducationalBookingManager({ bookings, targetId }: { book
             <div className="flex items-start justify-between gap-3"><strong className="text-sm text-ink">{booking.school_name}</strong><Pencil className="h-4 w-4 text-emerald-600" /></div>
             <p className="mt-1 text-xs font-bold text-muted">{booking.reference} · {booking.program?.name}</p>
             <p className="mt-3 flex items-center gap-2 text-xs text-muted"><CalendarClock className="h-4 w-4" /> {new Date(booking.starts_at).toLocaleString()}</p>
-            <p className="mt-1 flex items-center gap-2 text-xs text-muted"><Bus className="h-4 w-4" /> {booking.vehicles.length} vehicle(s) · {booking.student_count + booking.chaperone_count} travelers</p>
+            <p className="mt-1 flex items-center gap-2 text-xs text-muted"><Bus className="h-4 w-4" /> {booking.vehicles.length} vehicle(s) · {booking.student_count + (booking.adult_count ?? (booking as any).chaperone_count ?? 0)} travelers</p>
           </button>
         ))}
       </div>
@@ -156,7 +156,7 @@ export default function EducationalBookingManager({ bookings, targetId }: { book
               </div>
             ))}
           </div>
-          <p className="mt-2 text-xs font-bold text-muted">Allocated travelers: {assignments.reduce((sum, item) => sum + Number(item.planned_passengers || 0), 0)} / {(selected?.student_count ?? 0) + (selected?.chaperone_count ?? 0)}</p>
+          <p className="mt-2 text-xs font-bold text-muted">Allocated travelers: {assignments.reduce((sum, item) => sum + Number(item.planned_passengers || 0), 0)} / {(selected?.student_count ?? 0) + ((selected as any)?.adult_count ?? selected?.chaperone_count ?? 0)}</p>
         </div>
 
         <label className="mt-4 block text-xs font-bold text-muted">Operations notes<textarea rows={3} value={form.operations_notes ?? ''} onChange={e => setForm({ ...form, operations_notes: e.target.value })} className="mt-1 w-full rounded-xl border border-border bg-surface p-3 text-ink" /></label>

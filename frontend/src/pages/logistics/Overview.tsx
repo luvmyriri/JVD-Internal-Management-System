@@ -181,9 +181,10 @@ export default function LogisticsOverview() {
       key: 'control_no',
       header: 'Control No.',
       render: (trip) => (
-        <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">
-          #{trip.control_no}
-        </span>
+        <div>
+          <span className="font-bold text-gray-900 dark:text-white font-mono text-sm">#{trip.control_no}</span>
+          {trip.tour_name && <div className="mt-1 max-w-52 truncate text-xs font-bold text-blue-600 dark:text-blue-400">{trip.tour_name}</div>}
+        </div>
       ),
     },
     {

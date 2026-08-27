@@ -20,10 +20,11 @@ class CollectionPaymentObserver
         $method = strtolower($collectionPayment->payment_method ?? 'cash');
         $cashAccountCode = in_array($method, ['gcash', 'card', 'bank', 'bank transfer']) ? '1000' : '1100';
         $cashAccount = \App\Models\Account::where('code', $cashAccountCode)->first();
+        $paymentDate = $collectionPayment->payment_date ?: now()->setTimezone(config('app.timezone', 'Asia/Manila'))->toDateString();
 
         if ($arAccount && $cashAccount && $collectionPayment->amount > 0) {
             $ledger->recordEntry(
-                $collectionPayment->payment_date ?? now()->toDateString(),
+                $paymentDate,
                 "Payment received for Collection #{$collectionPayment->collection_id}",
                 [
                     [

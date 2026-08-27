@@ -1,16 +1,45 @@
-﻿import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 import { profileApi } from '../api/profile';
 
-
-import { LuUser, LuMail, LuPhone, LuCamera, LuCheck, LuX, LuZoomIn, LuZoomOut, LuLock, LuEye, LuEyeOff, LuShieldCheck } from 'react-icons/lu';
+import { 
+  LuUser, 
+  LuMail, 
+  LuPhone, 
+  LuCamera, 
+  LuCheck, 
+  LuX, 
+  LuZoomIn, 
+  LuZoomOut, 
+  LuLock, 
+  LuEye, 
+  LuEyeOff, 
+  LuShieldCheck,
+  LuSun,
+  LuMoon,
+  LuPalette,
+  LuHouse,
+  LuSparkles
+} from 'react-icons/lu';
 import Cropper from 'react-easy-crop';
 import { getCroppedImg } from '../utils/cropImage';
 import { getAvatarUrl } from '../utils';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
+  const navigate = useNavigate();
   const { user, setUser } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [landingPage, setLandingPage] = useState(() => localStorage.getItem('default_landing_page') || '/dashboard');
+
+  const handleLandingPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newPage = e.target.value;
+    setLandingPage(newPage);
+    localStorage.setItem('default_landing_page', newPage);
+    toast.success(`Default landing page set to ${newPage}`);
+  };
 
 
   const [loading, setLoading] = useState(false);
@@ -306,6 +335,86 @@ export default function Profile() {
               </div>
             )}
           </form>
+
+          {/* Appearance & Preferences Section */}
+          <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">
+            <div>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <LuPalette className="w-5 h-5 text-indigo-500" />
+                Appearance &amp; Preferences
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Personalize your portal theme and startup preferences.</p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Dark Mode Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-100 dark:border-gray-700/60 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${theme === 'dark' ? 'bg-indigo-600 text-white' : 'bg-amber-500 text-white'}`}>
+                    {theme === 'dark' ? <LuMoon className="w-5 h-5" /> : <LuSun className="w-5 h-5" />}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight">Dark Mode</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Currently: {theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${theme === 'dark' ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-700'}`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${theme === 'dark' ? 'translate-x-6' : 'translate-x-0'}`}
+                  />
+                </button>
+              </div>
+
+              {/* Default Landing Page */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/60 rounded-xl border border-gray-100 dark:border-gray-700/60 transition-all">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center transition-all bg-emerald-500 text-white">
+                    <LuHouse className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight">Landing Page</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Startup page upon login</p>
+                  </div>
+                </div>
+                <select
+                  value={landingPage}
+                  onChange={handleLandingPageChange}
+                  className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 text-gray-900 dark:text-white text-xs font-medium rounded-lg px-3 py-1.5 cursor-pointer outline-none"
+                >
+                  <option value="/dashboard">Dashboard</option>
+                  <option value="/accounting/transactions">Accounting</option>
+                  <option value="/procurement/overview">Procurement</option>
+                  <option value="/inventory/supplies">Inventory</option>
+                  <option value="/travel/passporting">Travel</option>
+                  <option value="/hr/employees">HR</option>
+                </select>
+              </div>
+
+              {/* Dashboard Customizer Button */}
+              <div className="flex items-center justify-between p-4 bg-blue-50/60 dark:bg-blue-950/20 rounded-xl border border-blue-100 dark:border-blue-900/30 transition-all md:col-span-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-blue-600 text-white">
+                    <LuSparkles className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-tight">Personal Dashboard Cards</p>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">Choose and arrange dashboard cards for your role.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => navigate('/settings/dashboard-customizer')}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition cursor-pointer shadow-sm"
+                >
+                  Customize Cards
+                </button>
+              </div>
+            </div>
+          </div>
 
           {/* Change Password Section */}
           <div className="bg-white dark:bg-gray-800 p-8 rounded-2xl border border-gray-100 dark:border-gray-800 shadow-sm space-y-6">

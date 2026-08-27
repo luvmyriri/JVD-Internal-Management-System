@@ -35,6 +35,7 @@ export default function TripDrawer({ ticket, isOpen, onClose, onCustomizeApprove
       title={
         <div>
           <h2 className="text-lg font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
+          {ticket.tour_name && <p className="text-xs font-bold text-blue-600 dark:text-blue-400">{ticket.tour_name}</p>}
           <div className="flex items-center gap-2 mt-0.5">
             <StatusBadge status={ticket.status} />
           </div>

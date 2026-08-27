@@ -19,20 +19,22 @@ class ReportController extends Controller
         $range = $request->range ?? 'month'; // day, week, month, year, all
         $now = Carbon::now();
         $startDate = null;
-        $trendFormat = "CAST(created_at AS date)";
+        $isPgsql = DB::getDriverName() === 'pgsql';
 
         if ($range === 'day') {
             $startDate = $now->copy()->startOfDay();
-            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-DD HH24:00:00')";
+            $trendFormat = $isPgsql ? "TO_CHAR(created_at, 'YYYY-MM-DD HH24:00:00')" : "strftime('%Y-%m-%d %H:00:00', created_at)";
         } elseif ($range === 'week') {
             $startDate = $now->copy()->startOfWeek();
-            $trendFormat = "CAST(created_at AS date)";
+            $trendFormat = $isPgsql ? "CAST(created_at AS date)" : "strftime('%Y-%m-%d', created_at)";
         } elseif ($range === 'month') {
             $startDate = $now->copy()->startOfMonth();
-            $trendFormat = "CAST(created_at AS date)";
+            $trendFormat = $isPgsql ? "CAST(created_at AS date)" : "strftime('%Y-%m-%d', created_at)";
         } elseif ($range === 'year') {
             $startDate = $now->copy()->startOfYear();
-            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-01')";
+            $trendFormat = $isPgsql ? "TO_CHAR(created_at, 'YYYY-MM-01')" : "strftime('%Y-%m-01', created_at)";
+        } else {
+            $trendFormat = $isPgsql ? "TO_CHAR(created_at, 'YYYY-MM-01')" : "strftime('%Y-%m-01', created_at)";
         }
 
         // KPIs (Independent query builder instance to avoid query reuse pollution)
@@ -71,16 +73,9 @@ class ReportController extends Controller
 
         if ($startDate) {
             $trendQuery->where('created_at', '>=', $startDate);
-        } else {
-            // For 'all' range, group by month
-            $trendFormat = "TO_CHAR(created_at, 'YYYY-MM-01')";
-            $trendQuery = Invoice::select(
-                DB::raw("{$trendFormat} as date"),
-                DB::raw('SUM(' . Invoice::COLLECTED_REVENUE_SQL . ') as total')
-            )->revenueBearing();
         }
 
-        $trend = $trendQuery->groupBy('date')
+        $trend = $trendQuery->groupBy(DB::raw($trendFormat))
             ->orderBy('date')
             ->get();
 
@@ -134,7 +129,12 @@ class ReportController extends Controller
             $startDate = $now->copy()->startOfYear();
         }
 
-        $query = Invoice::with(['customer', 'items.service', 'creator'])->whereIn('status', ['paid', 'partial']);
+        $query = Invoice::with(['customer', 'items.service', 'creator'])
+            ->where(function ($q) {
+                $q->whereIn('status', ['paid', 'partial'])
+                    ->orWhere('amount_received', '>', 0);
+            })
+            ->whereNull('cash_budget_request_id');
         if ($startDate) {
             $query->where('created_at', '>=', $startDate);
         }

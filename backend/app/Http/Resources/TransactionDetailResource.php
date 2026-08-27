@@ -142,9 +142,29 @@ class TransactionDetailResource extends TransactionSummaryResource
                 ->map(fn ($passenger, $index) => $this->normalizePassenger($passenger, 'educational_tour_booking', $index)));
         }
 
+        $participant = $invoice->relationLoaded('educationalTourParticipantBooking') ? $invoice->educationalTourParticipantBooking : null;
+        if ($participant) {
+            $passengers->push([
+                'id' => $participant->id,
+                'source' => 'educational_tour_participant',
+                'name' => trim("{$participant->participant_first_name} {$participant->participant_last_name}"),
+                'first_name' => $participant->participant_first_name,
+                'last_name' => $participant->participant_last_name,
+                'type' => $participant->grade_level ? "Grade {$participant->grade_level}" : 'Student',
+                'date_of_birth' => $participant->date_of_birth,
+                'passport_number' => null,
+                'seat_code' => $participant->seat_number,
+                'emergency_contact' => $participant->emergency_contact_phone ?: $participant->guardian_phone,
+                'special_needs' => $participant->medical_or_accessibility_notes,
+                'dietary_restrictions' => $participant->dietary_restrictions,
+            ]);
+        }
+
         return $passengers
             ->filter(fn (array $passenger) => filled($passenger['name']))
-            ->unique(fn (array $passenger) => $passenger['source'].'|'.$passenger['id'])
+            ->reverse()
+            ->unique(fn (array $passenger) => strtolower(trim($passenger['name'])))
+            ->reverse()
             ->values()->all();
     }
 
@@ -179,10 +199,20 @@ class TransactionDetailResource extends TransactionSummaryResource
             return [];
         }
 
-        return $invoice->tripTickets->map(fn ($ticket) => [
+        $tickets = $invoice->tripTickets;
+        $participantPackage = $invoice->educationalTourParticipantBooking?->package;
+        if ($participantPackage?->relationLoaded('tripTickets')) {
+            $tickets = $tickets->merge($participantPackage->tripTickets)->unique('id');
+        }
+
+        return $tickets->map(fn ($ticket) => [
             'id' => $ticket->id,
             'control_no' => $ticket->control_no,
             'sales_order_item_id' => $ticket->sales_order_item_id,
+            'educational_tour_package_id' => $ticket->educational_tour_package_id,
+            'educational_tour_bus_assignment_id' => $ticket->educational_tour_bus_assignment_id,
+            'tour_name' => $ticket->tour_name,
+            'tour_code' => $ticket->tour_code,
             'assignment_index' => (int) ($ticket->assignment_index ?? 0),
             'status' => $ticket->status,
             'date_of_travel' => $ticket->date_of_travel,
@@ -230,25 +260,50 @@ class TransactionDetailResource extends TransactionSummaryResource
                     'driver_id' => $booking->driver_id,
                 ];
             } elseif ($context['type'] === 'educational_tour') {
-                $booking = $invoice->educationalTourBooking;
-                $context['details'] = [
-                    'school_name' => $booking->school_name,
-                    'grade_level' => $booking->grade_level,
-                    'starts_at' => $booking->starts_at?->toISOString(),
-                    'ends_at' => $booking->ends_at?->toISOString(),
-                    'pickup' => $booking->pickup_location,
-                    'student_count' => (int) $booking->student_count,
-                    'chaperone_count' => (int) $booking->chaperone_count,
-                    'vehicles' => $booking->vehicles->map(fn ($assignment) => [
-                        'bus_id' => $assignment->bus_id,
-                        'plate_number' => $assignment->bus?->plate_number,
-                        'driver_id' => $assignment->driver_id,
-                        'driver_name' => $assignment->driver
-                            ? trim($assignment->driver->first_name.' '.$assignment->driver->last_name)
-                            : null,
-                        'planned_passengers' => (int) $assignment->planned_passengers,
-                    ])->values(),
-                ];
+                if ($invoice->relationLoaded('educationalTourParticipantBooking') && $invoice->educationalTourParticipantBooking) {
+                    $pb = $invoice->educationalTourParticipantBooking;
+                    $pkg = $pb->relationLoaded('package') ? $pb->package : null;
+                    $assignment = $pb->relationLoaded('busAssignment') ? $pb->busAssignment : null;
+                    $bus = $assignment && $assignment->relationLoaded('bus') ? $assignment->bus : null;
+                    $driver = $assignment && $assignment->relationLoaded('driver') ? $assignment->driver : null;
+                    $context['details'] = [
+                        'school_name' => $pkg?->school_name,
+                        'grade_level' => $pb->grade_level ?? $pkg?->grade_level,
+                        'starts_at' => $pkg?->starts_at?->toISOString(),
+                        'ends_at' => $pkg?->ends_at?->toISOString(),
+                        'pickup' => $pkg?->pickup_location,
+                        'destination' => $pkg?->destination ?? $pkg?->name,
+                        'student_count' => 1,
+                        'seat_number' => $pb->seat_number,
+                        'vehicles' => $bus ? [[
+                            'bus_id' => $bus->id,
+                            'plate_number' => $bus->plate_number,
+                            'driver_id' => $driver?->id,
+                            'driver_name' => $driver ? trim($driver->first_name.' '.$driver->last_name) : null,
+                            'planned_passengers' => 1,
+                        ]] : [],
+                    ];
+                } elseif ($invoice->relationLoaded('educationalTourBooking') && $invoice->educationalTourBooking) {
+                    $booking = $invoice->educationalTourBooking;
+                    $context['details'] = [
+                        'school_name' => $booking->school_name,
+                        'grade_level' => $booking->grade_level,
+                        'starts_at' => $booking->starts_at?->toISOString(),
+                        'ends_at' => $booking->ends_at?->toISOString(),
+                        'pickup' => $booking->pickup_location,
+                        'student_count' => (int) $booking->student_count,
+                        'chaperone_count' => (int) $booking->chaperone_count,
+                        'vehicles' => $booking->vehicles->map(fn ($assignment) => [
+                            'bus_id' => $assignment->bus_id,
+                            'plate_number' => $assignment->bus?->plate_number,
+                            'driver_id' => $assignment->driver_id,
+                            'driver_name' => $assignment->driver
+                                ? trim($assignment->driver->first_name.' '.$assignment->driver->last_name)
+                                : null,
+                            'planned_passengers' => (int) $assignment->planned_passengers,
+                        ])->values(),
+                    ];
+                }
             } elseif ($context['type'] === 'private_tour') {
                 $item = $invoice->salesOrder?->items?->firstWhere('id', $context['parent_id']);
                 $fulfillment = $item?->fulfillment;

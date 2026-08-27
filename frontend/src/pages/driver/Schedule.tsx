@@ -306,6 +306,11 @@ export default function DriverSchedule() {
                       <p className="font-black text-gray-900 dark:text-white text-base">
                         {trip._is_jo ? trip.jo_number : trip.control_no}
                       </p>
+                      {trip._is_ticket && trip.tour_name && (
+                        <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                          {trip.tour_name}{trip.tour_code ? ` · ${trip.tour_code}` : ''}
+                        </p>
+                      )}
 
                       <div className="flex items-center gap-1.5 mt-2 text-gray-500 dark:text-gray-400 text-sm">
                         <LuMapPin size={14} className="shrink-0 text-blue-400" />

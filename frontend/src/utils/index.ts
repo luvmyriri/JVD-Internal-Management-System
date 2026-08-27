@@ -144,12 +144,16 @@ export function getAvatarUrl(path: string | null | undefined): string | null {
  */
 export function getStorageUrl(path: string | null | undefined): string {
   if (!path) return '';
-  if (path.startsWith('http://') || path.startsWith('https://')) return path;
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path.replace('/storage/public/', '/storage/');
+  }
   
   const apiBase = import.meta.env.VITE_API_URL || '';
   const baseUrl = apiBase === '/' ? '' : apiBase.replace(/\/+$/, '');
   
-  const relativePath = path.startsWith('/') ? path : `/${path}`;
+  const relativePath = (path.startsWith('/') ? path : `/${path}`)
+    .replace(/^\/storage\/public\//, '/storage/')
+    .replace(/^\/public\//, '/');
   
   if (relativePath.startsWith('/storage/')) {
     return `${baseUrl}${relativePath}`;

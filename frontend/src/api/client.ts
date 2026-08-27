@@ -41,6 +41,11 @@ const client = axios.create({
 
 client.interceptors.request.use(
   (config) => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
     if (config.method?.toLowerCase() === 'get') {
       config.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
       config.headers['Pragma'] = 'no-cache';

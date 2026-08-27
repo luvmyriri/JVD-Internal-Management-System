@@ -50,6 +50,11 @@ function TripTicketDetailModal({ ticket, onClose }: { ticket: any; onClose: () =
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
+            {ticket.tour_name && (
+              <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                {ticket.tour_name}{ticket.tour_code ? ` · ${ticket.tour_code}` : ''}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge status={ticket.status} />
             </div>
@@ -240,6 +245,8 @@ export default function DriverTrips() {
         return (
           t.jo_number?.toLowerCase().includes(q) ||
           t.control_no?.toLowerCase().includes(q) ||
+          t.tour_name?.toLowerCase().includes(q) ||
+          t.tour_code?.toLowerCase().includes(q) ||
           t.destination?.toLowerCase().includes(q) ||
           t.pick_up?.toLowerCase().includes(q) ||
           t.drop_off?.toLowerCase().includes(q) ||
@@ -382,6 +389,11 @@ export default function DriverTrips() {
                           <p className="font-black text-gray-900 dark:text-white text-base">
                             {trip._is_jo ? trip.jo_number : trip.control_no}
                           </p>
+                          {trip._is_ticket && trip.tour_name && (
+                            <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                              {trip.tour_name}{trip.tour_code ? ` · ${trip.tour_code}` : ''}
+                            </p>
+                          )}
 
                           <div className="flex items-center mt-2 text-gray-500 dark:text-gray-400 text-sm">
                             <span className="font-bold text-xs uppercase tracking-wider text-blue-500 mr-2">Route:</span>

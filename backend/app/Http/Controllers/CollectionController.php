@@ -2,17 +2,17 @@
 
 namespace App\Http\Controllers;
 
-use App\Mail\TransactionNotificationMail;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Invoice;
 use App\Services\AuditLogService;
+use App\Services\InvoiceDocumentMailService;
 use App\Services\SalesLifecycleService;
 use App\Services\SalesOrderService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 class CollectionController extends Controller
@@ -41,6 +41,9 @@ class CollectionController extends Controller
 
         if ($request->has('status') && $request->status !== 'all') {
             $query->where('collection_status', $request->status);
+        } elseif (! $request->filled('search') && $request->status !== 'all') {
+            // Hide fully-settled records only on default listing without a search query
+            $query->where('remaining_balance', '>', 0);
         }
 
         // Filter by created date range (inclusive) for the shared timeframe filter.
@@ -49,12 +52,6 @@ class CollectionController extends Controller
         }
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
-        }
-
-        // Hide fully-settled (zero balance) records unless the user explicitly views 'completed'
-        $isViewingCompleted = $request->has('status') && $request->status === 'completed';
-        if (! $isViewingCompleted) {
-            $query->where('remaining_balance', '>', 0);
         }
 
         $collections = $query->latest()->get();
@@ -154,8 +151,7 @@ class CollectionController extends Controller
                 $notificationEmail = $invoice?->notificationEmail();
                 if ($invoice && $notificationEmail) {
                     try {
-                        @set_time_limit(120);
-                        Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
+                        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
                     } catch (\Exception $mailEx) {
                         \Log::error("Failed to send updated collection email to {$notificationEmail}: ".$mailEx->getMessage());
                     }
@@ -271,8 +267,7 @@ class CollectionController extends Controller
             $notificationEmail = $invoice?->notificationEmail();
             if ($invoice && $notificationEmail) {
                 try {
-                    @set_time_limit(120);
-                    Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
+                    SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
                 } catch (\Exception $mailEx) {
                     \Log::error("Failed to send updated payment receipt email on addPayment to {$notificationEmail}: ".$mailEx->getMessage());
                 }
@@ -312,7 +307,7 @@ class CollectionController extends Controller
         ], 409);
     }
 
-    public function sendSoaNotification($id)
+    public function sendSoaNotification($id, InvoiceDocumentMailService $mail)
     {
         $collection = Collection::with(['invoice', 'customer', 'payments'])->findOrFail($id);
 
@@ -335,7 +330,7 @@ class CollectionController extends Controller
 
         try {
             @set_time_limit(120);
-            Mail::to($email)->send(new TransactionNotificationMail($invoice));
+            $mail->send($invoice, $email);
 
             return response()->json([
                 'success' => true,
@@ -380,8 +375,8 @@ class CollectionController extends Controller
                 'customer_email' => $email ?? '',
                 'customer_contact' => $collection->customer?->phone ?? '',
                 'customer_address' => $collection->customer?->address ?? '',
-                'subtotal' => ($collection->billing_amount ?? $collection->rate ?? 0) / 1.12,
-                'tax_amount' => ($collection->billing_amount ?? $collection->rate ?? 0) - (($collection->billing_amount ?? $collection->rate ?? 0) / 1.12),
+                'subtotal' => $collection->billing_amount ?? $collection->rate ?? 0,
+                'tax_amount' => 0,
                 'total_amount' => $collection->billing_amount ?? $collection->rate ?? 0,
                 'amount_received' => $collection->paid_amount ?? 0,
                 'change' => 0,
@@ -404,7 +399,7 @@ class CollectionController extends Controller
 
         return [
             'invoice' => $invoice,
-            'taxRate' => 0.12,
+            'taxRate' => 0,
         ];
     }
 

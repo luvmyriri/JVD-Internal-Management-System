@@ -92,7 +92,7 @@ class SalesOrderController extends Controller
         $invoice->load(Invoice::operationalDocumentRelations());
 
         if ($document === 'invoice') {
-            return $documents->render('pdf.invoice', ['invoice' => $invoice, 'taxRate' => 0.12])
+            return $documents->render('pdf.invoice', ['invoice' => $invoice, 'taxRate' => 0])
                 ->stream("Invoice_{$invoice->invoice_number}.pdf");
         }
 

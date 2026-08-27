@@ -29,12 +29,14 @@ class SalesReferenceService
      * Maps table name → column that holds the reference/code.
      */
     private const REF_COLUMNS = [
-        'joiner_departures'          => 'code',
-        'joiner_reservations'        => 'reference',
-        'charter_bookings'           => 'reference',
-        'educational_tour_bookings'  => 'reference',
-        'sales_orders'               => 'order_number',
-        'invoices'                   => 'invoice_number',
+        'joiner_departures'                     => 'code',
+        'joiner_reservations'                   => 'reference',
+        'charter_bookings'                      => 'reference',
+        'educational_tour_bookings'             => 'reference',
+        'educational_tour_participant_bookings' => 'reference',
+        'educational_tour_booking_payments'     => 'reference',
+        'sales_orders'                          => 'order_number',
+        'invoices'                              => 'invoice_number',
     ];
 
     /**

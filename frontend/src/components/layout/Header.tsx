@@ -32,7 +32,9 @@ import {
   LuDownload,
   LuMenu,
   LuSignature,
-  LuWallet
+  LuWallet,
+  LuSun,
+  LuMoon
 } from 'react-icons/lu';
 import { useState, useEffect, useRef } from 'react';
 import { CreateCommissionForm } from '../../pages/operations/Commissions';
@@ -138,7 +140,7 @@ interface HeaderProps {
 
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { openQuickRequest } = useQuickRequest();
   const navigate = useNavigate();
   const location = useLocation();
@@ -1052,6 +1054,21 @@ export default function Header({ onMenuClick }: HeaderProps) {
         </button>
         {/* Widgets menu (dashboard only) */}
         {location.pathname === '/dashboard' && <HeaderWidgetsMenu />}
+        {/* Quick Theme Toggle */}
+        <button
+          id="header-theme-toggle"
+          type="button"
+          onClick={toggleTheme}
+          className={`relative p-2 rounded-xl transition cursor-pointer ${
+            theme === 'dark' 
+              ? 'text-amber-400 hover:text-amber-300 hover:bg-gray-800' 
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+        >
+          {theme === 'dark' ? <LuSun className="w-5 h-5" /> : <LuMoon className="w-5 h-5" />}
+        </button>
         {/* Messages Dropdown */}
         <div className="relative">
           <button
@@ -1589,13 +1606,13 @@ export default function Header({ onMenuClick }: HeaderProps) {
                 className="fixed inset-0 z-10"
                 onClick={() => setDropdownOpen(false)}
               />
-              <div className={`absolute right-0 mt-2 w-48 rounded-xl shadow-lg border z-20 py-1 overflow-hidden ${
+              <div className={`absolute right-0 mt-2 w-56 rounded-xl shadow-lg border z-20 py-1 overflow-hidden ${
                 theme === 'dark' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-100'
               }`}>
-                <div className={`px-4 py-3 border-b ${
+                <div className={`px-4 py-3 border-b text-left ${
                   theme === 'dark' ? 'border-gray-800' : 'border-gray-100'
                 }`}>
-                  <p className={`text-sm font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.first_name} {user.last_name}</p>
+                  <p className={`text-sm font-semibold truncate ${theme === 'dark' ? 'text-white' : 'text-gray-800'}`}>{user.first_name} {user.last_name}</p>
                   <p className={`text-xs truncate ${theme === 'dark' ? 'text-gray-500' : 'text-gray-400'}`}>{user.email}</p>
                 </div>
                 <button
@@ -1604,25 +1621,47 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     setDropdownOpen(false);
                     navigate('/profile');
                   }}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition cursor-pointer whitespace-nowrap"
                 >
-                  <LuUser className="w-4 h-4 text-blue-600" />
-                  My Profile
+                  <LuUser className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>My Profile</span>
                 </button>
                 <button
-                  id="header-settings"
+                  id="header-theme-dropdown-toggle"
+                  type="button"
                   onClick={() => {
-                    setDropdownOpen(false);
-                    navigate('/admin/settings');
+                    toggleTheme();
                   }}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                  className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition cursor-pointer whitespace-nowrap ${
                     theme === 'dark' 
                       ? 'text-gray-300 hover:bg-gray-800' 
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <LuSettings className="w-4 h-4 text-blue-600" />
-                  Settings
+                  <div className="flex items-center gap-2.5">
+                    {theme === 'dark' ? <LuSun className="w-4 h-4 text-amber-400 shrink-0" /> : <LuMoon className="w-4 h-4 text-indigo-500 shrink-0" />}
+                    <span>Theme</span>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    theme === 'dark' ? 'bg-indigo-900/60 text-indigo-300' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {theme === 'dark' ? 'Dark' : 'Light'}
+                  </span>
+                </button>
+                <button
+                  id="header-settings"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/settings');
+                  }}
+                  className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition cursor-pointer whitespace-nowrap ${
+                    theme === 'dark' 
+                      ? 'text-gray-300 hover:bg-gray-800' 
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <LuSettings className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Settings</span>
                 </button>
                 <button
                   id="header-password-security"
@@ -1630,23 +1669,23 @@ export default function Header({ onMenuClick }: HeaderProps) {
                     setDropdownOpen(false);
                     navigate('/profile');
                   }}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-sm transition ${
+                  className={`w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left transition cursor-pointer whitespace-nowrap ${
                     theme === 'dark' 
                       ? 'text-gray-300 hover:bg-gray-800' 
                       : 'text-gray-700 hover:bg-gray-50'
                   }`}
                 >
-                  <LuShieldCheck className="w-4 h-4 text-emerald-600" />
-                  Security &amp; Password
+                  <LuShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Security &amp; Password</span>
                 </button>
-                <div className="border-t border-gray-100 my-1" />
+                <div className="border-t border-gray-100 dark:border-gray-800 my-1" />
                 <button
                   id="header-logout"
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-left text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 transition cursor-pointer whitespace-nowrap"
                 >
-                  <LuLogOut className="w-4 h-4" />
-                  Sign Out
+                  <LuLogOut className="w-4 h-4 shrink-0" />
+                  <span>Sign Out</span>
                 </button>
               </div>
             </>

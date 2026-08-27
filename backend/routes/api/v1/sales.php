@@ -3,6 +3,7 @@
 use App\Http\Controllers\Sales\CatalogController;
 use App\Http\Controllers\Sales\CharterController;
 use App\Http\Controllers\Sales\EducationalTourController;
+use App\Http\Controllers\Sales\EducationalTourPackageController;
 use App\Http\Controllers\Sales\JoinerDepartureController;
 use App\Http\Controllers\Sales\SalesOrderController;
 use App\Http\Controllers\Sales\SalesQuotationController;
@@ -31,6 +32,13 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::post('/toll-matrix/calculate', [CharterController::class, 'calculateTolls'])->name('sales.tolls.calculate');
             Route::get('/educational-programs', [EducationalTourController::class, 'programs'])->name('sales.educational.programs');
             Route::get('/educational-programs/{program}/details', [EducationalTourController::class, 'programDetails'])->name('sales.educational.programs.details');
+            Route::get('/educational-tour-packages', [EducationalTourPackageController::class, 'index'])->name('sales.educational.packages.index');
+            Route::get('/educational-tour-packages/{package}', [EducationalTourPackageController::class, 'show'])->name('sales.educational.packages.show');
+            Route::get('/educational-tour-packages/{package}/manifest', [EducationalTourPackageController::class, 'manifest'])->name('sales.educational.packages.manifest');
+            Route::get('/educational-tour-participant-bookings', [EducationalTourPackageController::class, 'participantBookings'])->name('sales.educational.participant-bookings.index');
+            Route::get('/educational-tour-participant-bookings/{booking}', [EducationalTourPackageController::class, 'showParticipantBooking'])->name('sales.educational.participant-bookings.show');
+            Route::get('/educational-tour-participant-bookings/{booking}/invoice', [EducationalTourPackageController::class, 'participantInvoice'])->name('sales.educational.participant-bookings.invoice');
+            Route::get('/educational-tour-participant-bookings/{booking}/statement', [EducationalTourPackageController::class, 'participantStatement'])->name('sales.educational.participant-bookings.statement');
             Route::get('/educational-bookings', [EducationalTourController::class, 'bookings'])->name('sales.educational.bookings');
             Route::get('/educational-bookings/{booking}/manifest', [EducationalTourController::class, 'manifest'])->name('sales.educational.manifest');
             Route::get('/educational-resources', [EducationalTourController::class, 'resources'])->name('sales.educational.resources');
@@ -59,6 +67,23 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::post('/educational-programs', [EducationalTourController::class, 'storeProgram'])->name('sales.educational.programs.store');
             Route::put('/educational-programs/{program}', [EducationalTourController::class, 'updateProgram'])->name('sales.educational.programs.update');
 
+            Route::post('/educational-tour-packages', [EducationalTourPackageController::class, 'store'])->name('sales.educational.packages.store');
+            Route::put('/educational-tour-packages/{package}', [EducationalTourPackageController::class, 'update'])->name('sales.educational.packages.update');
+            Route::post('/educational-tour-packages/{package}/publish', [EducationalTourPackageController::class, 'publish'])->name('sales.educational.packages.publish');
+            Route::post('/educational-tour-packages/{package}/participant-bookings', [EducationalTourPackageController::class, 'storeParticipantBooking'])->name('sales.educational.packages.participant-bookings.store');
+            Route::post('/educational-tour-packages/{package}/participant-bookings/bulk', [EducationalTourPackageController::class, 'bulkStoreParticipantBookings'])->name('sales.educational.packages.participant-bookings.bulk');
+            Route::post('/educational-tour-packages/{package}/bus-assignments', [EducationalTourPackageController::class, 'assignBus'])->name('sales.educational.packages.bus-assignments.store');
+            Route::post('/educational-tour-packages/{package}/allocate-buses', [EducationalTourPackageController::class, 'allocateBuses'])->name('sales.educational.packages.allocate-buses');
+            Route::post('/educational-tour-packages/{package}/image', [EducationalTourPackageController::class, 'uploadImage'])->name('sales.educational.packages.uploadImage');
+            Route::get('/educational-tour-packages/{package}/quotation', [EducationalTourPackageController::class, 'quotation'])->name('sales.educational.packages.quotation');
+            Route::get('/educational-tour-packages/{package}/contract', [EducationalTourPackageController::class, 'contract'])->name('sales.educational.packages.contract');
+            Route::get('/educational-tour-packages/export', [EducationalTourPackageController::class, 'exportExcel'])->name('sales.educational.packages.export');
+            Route::post('/educational-tour-packages/import', [EducationalTourPackageController::class, 'importExcel'])->name('sales.educational.packages.import');
+            Route::post('/educational-tour-packages/{package}/companions', [EducationalTourPackageController::class, 'addCompanion'])->name('sales.educational.packages.companions.store');
+            Route::post('/educational-tour-participant-bookings/{booking}/payments', [EducationalTourPackageController::class, 'recordPayment'])->name('sales.educational.participant-bookings.payments.store');
+            Route::post('/educational-tour-participant-bookings/{booking}/send-documents', [EducationalTourPackageController::class, 'sendParticipantDocuments'])->name('sales.educational.participant-bookings.documents.send');
+            Route::post('/educational-tour-participant-bookings/{booking}/cancel', [EducationalTourPackageController::class, 'cancelParticipantBooking'])->name('sales.educational.participant-bookings.cancel');
+
             Route::post('/educational-bookings', [EducationalTourController::class, 'storeBooking'])->name('sales.educational.bookings.store');
             Route::put('/educational-bookings/{booking}', [EducationalTourController::class, 'updateBooking'])->name('sales.educational.bookings.update');
             Route::post('/educational-bookings/{booking}/cancel', [EducationalTourController::class, 'requestCancellation'])->name('sales.educational.bookings.cancel');
@@ -73,6 +98,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:delete')->group(function () {
             Route::delete('/charter-rate-plans/{ratePlan}', [CharterController::class, 'destroyRatePlan'])->name('sales.charters.rate-plans.destroy');
             Route::delete('/educational-programs/{program}', [EducationalTourController::class, 'destroyProgram'])->name('sales.educational.programs.destroy');
+            Route::delete('/educational-tour-packages/{package}/bus-assignments/{assignment}', [EducationalTourPackageController::class, 'removeBus'])->name('sales.educational.packages.bus-assignments.destroy');
         });
 
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive,reservation_officer,office_staff,sales:create')->group(function () {
@@ -80,6 +106,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         });
 
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive,sales:edit')->group(function () {
+            Route::post('/educational-tour-participant-bookings/{booking}/move-seat', [EducationalTourPackageController::class, 'moveSeat'])->name('sales.educational.participant-bookings.move-seat');
             Route::post('/order-adjustments/{adjustment}/approve', [SalesOrderController::class, 'approveAdjustment'])->name('sales.adjustments.approve');
             Route::post('/order-adjustments/{adjustment}/reject', [SalesOrderController::class, 'rejectAdjustment'])->name('sales.adjustments.reject');
             Route::post('/credit-notes/{creditNote}/refunds', [SalesOrderController::class, 'requestRefund'])->name('sales.refunds.store');

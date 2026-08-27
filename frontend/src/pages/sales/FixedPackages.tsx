@@ -357,9 +357,9 @@ export default function FixedPackages() {
                 destination: dropoff,
                 pickupCoords: pCoords || current.pickupCoords,
                 dropoffCoords: dCoords || current.dropoffCoords,
-                routeDistanceKm: String(distanceKm),
-                estimatedDieselLiters: String(dieselLiters),
-                estimatedDieselCost: String(dieselCost),
+                routeDistanceKm: distanceKm ? String(Number(distanceKm.toFixed(2))) : '',
+                estimatedDieselLiters: dieselLiters ? String(Number(dieselLiters.toFixed(1))) : '',
+                estimatedDieselCost: dieselCost ? String(Number(dieselCost.toFixed(2))) : '',
               }));
             }}
           />

@@ -174,7 +174,7 @@ class SalesOrderLifecycleTest extends TestCase
 
         $invoiceId = $response->json('data.invoice_id');
         $this->assertDatabaseCount('invoice_items', 2);
-        $this->assertDatabaseHas('invoices', ['id' => $invoiceId, 'total_amount' => 16800, 'status' => 'paid']);
+        $this->assertDatabaseHas('invoices', ['id' => $invoiceId, 'tax_amount' => 0, 'total_amount' => 15000, 'status' => 'paid']);
         $this->assertDatabaseHas('private_tour_bookings', ['bus_id' => $bus->id, 'driver_id' => $driver->id, 'status' => 'confirmed']);
         $this->assertDatabaseHas('accommodation_bookings', ['property_name' => 'Baguio Hotel', 'status' => 'confirmed']);
         $this->assertDatabaseHas('resource_allocations', ['bus_id' => $bus->id, 'driver_id' => $driver->id, 'status' => 'confirmed']);
@@ -221,18 +221,18 @@ class SalesOrderLifecycleTest extends TestCase
         $this->actingAs($user)->postJson("/api/v1/sales/order-adjustments/{$adjustmentId}/approve")->assertOk();
 
         $credit = CreditNote::firstOrFail();
-        $this->assertSame(11200.0, (float) $credit->total_amount);
+        $this->assertSame(10000.0, (float) $credit->total_amount);
         $this->assertDatabaseHas('sales_orders', ['id' => $orderId, 'status' => 'cancelled']);
         $this->assertDatabaseHas('resource_allocations', ['bus_id' => $bus->id, 'status' => 'cancelled']);
 
         $refundId = $this->actingAs($user)->postJson("/api/v1/sales/credit-notes/{$credit->id}/refunds", [
-            'amount' => 11200, 'refund_method' => 'Cash', 'reason' => 'Return customer payment',
+            'amount' => 10000, 'refund_method' => 'Cash', 'reason' => 'Return customer payment',
         ])->assertCreated()->json('data.id');
         $this->actingAs($user)->postJson("/api/v1/sales/refunds/{$refundId}/approve")->assertOk();
         $this->actingAs($user)->postJson("/api/v1/sales/refunds/{$refundId}/process", ['destination_reference' => 'CASH-TEST'])->assertOk();
 
         $this->assertSame('processed', SalesRefund::findOrFail($refundId)->status);
-        $this->assertDatabaseHas('invoices', ['refunded_amount' => 11200, 'credited_amount' => 11200]);
+        $this->assertDatabaseHas('invoices', ['refunded_amount' => 10000, 'credited_amount' => 10000]);
         $this->assertDatabaseHas('journal_entries', ['reference_type' => SalesRefund::class, 'reference_id' => $refundId]);
     }
 

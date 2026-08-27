@@ -55,6 +55,16 @@ class TripTicket extends Model
         return $this->belongsTo(SalesOrderItem::class);
     }
 
+    public function educationalTourPackage()
+    {
+        return $this->belongsTo(EducationalTourPackage::class);
+    }
+
+    public function educationalTourBusAssignment()
+    {
+        return $this->belongsTo(EducationalTourBusAssignment::class);
+    }
+
     protected static function booted(): void
     {
         static::saved(function ($tripTicket) {
@@ -70,6 +80,11 @@ class TripTicket extends Model
                 ->first();
             if ($salesItem?->fulfillment) {
                 $allocations->release($tripTicket); // repairs any historical duplicate
+
+                if ($salesItem->fulfillment instanceof EducationalTourParticipantBooking) {
+                    return;
+                }
+
                 $allocationOwner = $salesItem->fulfillment instanceof JoinerReservation
                     ? $salesItem->fulfillment->departure
                     : $salesItem->fulfillment;
@@ -108,6 +123,24 @@ class TripTicket extends Model
 
                 return;
             }
+
+            // An educational tour package assignment already owns the resource allocation.
+            $hasEduAssignment = EducationalTourBusAssignment::where('bus_id', $tripTicket->bus_id)
+                ->where('driver_id', $tripTicket->driver_id)
+                ->whereHas('package', function ($q) use ($tripTicket) {
+                    $date = $tripTicket->date_of_travel;
+                    $q->whereDate('starts_at', '<=', $date)
+                        ->whereDate('ends_at', '>=', $date)
+                        ->whereNotIn('status', ['cancelled', 'completed']);
+                })
+                ->exists();
+
+            if ($hasEduAssignment) {
+                $allocations->release($tripTicket);
+
+                return;
+            }
+
             $start = Carbon::parse($tripTicket->date_of_travel);
             $end = $start->copy()->addDay();
             $allocations->reserve($tripTicket, $tripTicket->bus_id, $tripTicket->driver_id, $start, $end, $tripTicket->control_no, $tripTicket->status ?? 'draft');

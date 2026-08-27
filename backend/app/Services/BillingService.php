@@ -8,7 +8,7 @@ use App\Http\Requests\Accounting\StoreServiceRequest;
 use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
 use App\Http\Requests\Accounting\UpdateServiceRequest;
 use App\Http\Resources\InvoiceResource;
-use App\Mail\TransactionNotificationMail;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Booking;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
@@ -23,7 +23,6 @@ use App\Models\Service;
 use App\Notifications\SystemAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -608,8 +607,7 @@ class BillingService
         $notificationEmail = $invoice->notificationEmail();
         if ($notificationEmail) {
             try {
-                @set_time_limit(120);
-                Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
+                SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
             } catch (\Exception $mailEx) {
                 \Log::error("Failed to send POS status update email to {$notificationEmail}: ".$mailEx->getMessage());
             }
@@ -824,8 +822,7 @@ class BillingService
                     $notificationEmail = $invoice->notificationEmail();
                     if (! $duplicate && $notificationEmail) {
                         try {
-                            @set_time_limit(120);
-                            Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
+                            SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
                         } catch (\Exception $mailEx) {
                             \Log::error("Failed to send updated payment receipt email via webhook to {$notificationEmail}: ".$mailEx->getMessage());
                         }

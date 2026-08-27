@@ -119,8 +119,23 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader 
   }, [catalogService]);
 
   const durationDays = config?.duration_days;
+
+  const handleStartsAtChange = (newStart: string) => {
+    setStartsAt(newStart);
+    if (newStart && durationDays && durationDays > 0) {
+      setEndsAt(addDays(newStart, Math.max(0, durationDays - 1)));
+    }
+    if (newStart) {
+      setItinerary((current) => current.map((day, index) => ({
+        ...day,
+        day_number: index + 1,
+        date: addDays(newStart, index),
+      })));
+    }
+  };
+
   useEffect(() => {
-    if (!startsAt || !durationDays) return;
+    if (!startsAt || !durationDays || durationDays <= 0) return;
     setEndsAt(addDays(startsAt, Math.max(0, durationDays - 1)));
   }, [durationDays, startsAt]);
 
@@ -357,8 +372,8 @@ export function PrivateTourWorkflow({ catalogService, onAdd, onBack, hideHeader 
               <label className={labelClass}>Destination<input className={inputClass} value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Baguio City and Atok" /></label>
               <label className={labelClass}>Pickup or assembly point<input className={inputClass} value={pickupLocation} onChange={(event) => setPickupLocation(event.target.value)} placeholder="Confirmed pickup location" /></label>
               <div className="hidden sm:block" />
-              <label className={labelClass}>Departure date<input type="date" min={earliestStart} max={config?.valid_until} className={inputClass} value={startsAt} onChange={(event) => setStartsAt(event.target.value)} /></label>
-              <label className={labelClass}>Return date<input type="date" min={startsAt || earliestStart} className={inputClass} value={endsAt} onChange={(event) => setEndsAt(event.target.value)} readOnly={Boolean(durationDays)} /></label>
+              <label className={labelClass}>Departure date<input type="date" min={earliestStart} max={config?.valid_until} className={inputClass} value={startsAt} onChange={(event) => handleStartsAtChange(event.target.value)} /></label>
+              <label className={labelClass}>Return date<input type="date" min={startsAt || earliestStart} className={inputClass} value={endsAt} onChange={(event) => setEndsAt(event.target.value)} readOnly={Boolean(durationDays && durationDays > 0)} /></label>
             </div>
             <div className="mt-4 grid gap-2 rounded-2xl bg-surface-alt p-4 text-xs text-muted sm:grid-cols-3">
               <span><strong className="block text-ink">{durationDays ? `${durationDays} day${durationDays === 1 ? '' : 's'}` : 'Flexible'}</strong>Package duration</span>

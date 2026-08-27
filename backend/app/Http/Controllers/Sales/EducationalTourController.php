@@ -12,7 +12,6 @@ use App\Models\EducationalTourBooking;
 use App\Models\EducationalTourProgram;
 use App\Models\JoinerDeparture;
 use App\Models\PmsSchedule;
-use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\DocumentPdfService;
@@ -94,9 +93,7 @@ class EducationalTourController extends Controller
         ]);
         $guides = (int) ($data['tour_guide_count'] ?? $data['chaperone_count'] ?? 0);
         $pricing = $this->education->calculate(EducationalTourProgram::findOrFail($data['program_id']), $data['student_count'], $guides);
-        $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
-
-        return response()->json(['data' => [...$pricing, 'tax_rate' => $taxRate, 'tax_amount' => round($pricing['subtotal'] * $taxRate, 2), 'total' => round($pricing['subtotal'] * (1 + $taxRate), 2)]]);
+        return response()->json(['data' => [...$pricing, 'tax_rate' => 0, 'tax_amount' => 0, 'total' => $pricing['subtotal']]]);
     }
 
     public function resources(Request $request)

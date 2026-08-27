@@ -5,9 +5,17 @@ export function isPathAllowedForUser(path: string, user?: User | null, permissio
   if (!user) return false;
   if (user.role === 'super_admin') return true;
 
-  // Profile and Dashboard are always allowed for all authenticated users
+  // Profile, Dashboard, and Settings/Preferences are always allowed for all authenticated users
   const cleanPath = path.replace(/\/$/, '');
-  if (cleanPath === '/profile' || cleanPath === '/dashboard') return true;
+  if (
+    cleanPath === '/profile' ||
+    cleanPath === '/dashboard' ||
+    cleanPath === '/settings' ||
+    cleanPath === '/settings/dashboard-customizer' ||
+    cleanPath === '/dashboard/customize'
+  ) {
+    return true;
+  }
 
   // Normalize standard route redirects
   let checkPath = cleanPath;

@@ -76,6 +76,7 @@
 }
 
 .dark {
+  color-scheme: dark;
   --jvd-bg: #000000;
   --jvd-surface: #0D0D0D;
   --jvd-surface-muted: #171717;
@@ -260,20 +261,20 @@ body:not(.dark) .bg-white *:not(svg, path, rect, circle, line, polyline, polygon
   color: #000000 !important;
 }
 
-/* Keep input placeholders legible as a lighter color */
+/* Keep input placeholders legible */
 input::placeholder, textarea::placeholder {
   color: #9ca3af !important;
   opacity: 1 !important;
 }
 
 /* ─────────────────────────────────────────────────────────
-   GLOBAL BORDER VISIBILITY SYSTEM
-   Problem: border-gray-100 is near-invisible on white backgrounds.
-   Solution: Enforce a visible border on all interactive elements
-   and structural containers via CSS cascade — one rule, 50+ files fixed.
+   GLOBAL BORDER & TYPOGRAPHY SYSTEM FOR FORM CONTROLS
+   Problem: In dark mode, inputs have dark font colors resulting to invisibility.
+   Solution: Enforce clear, high-contrast font colors (#f9fafb) and dark backgrounds
+   across all inputs, textareas, selects, and options in dark mode.
    ───────────────────────────────────────────────────────── */
 
-/* ── Input fields, Textareas, Selects ───────────────────── */
+/* ── Input fields, Textareas, Selects (Light Mode) ───────── */
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
 textarea,
 select {
@@ -297,24 +298,72 @@ select:hover:not(:focus) {
   border-color: #9ca3af !important; /* gray-400 */
 }
 
-/* Dark mode overrides */
-.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
-.dark textarea,
-.dark select {
-  border-color: #4b5563 !important; /* gray-600 — visible on dark backgrounds */
+/* ── Dark Mode Input Typography, Background & Borders ───── */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not(#printable-invoice *),
+.dark textarea:not(#printable-invoice *),
+.dark select:not(#printable-invoice *) {
+  color: #f9fafb !important; /* crisp white text */
+  border-color: #374151 !important; /* gray-700 — visible on dark backgrounds */
+}
+
+/* Dark mode fallback background for inputs that lack dark:bg utility or have plain bg-white */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([class*="dark:bg-"]):not(#printable-invoice *),
+.dark textarea:not([class*="dark:bg-"]):not(#printable-invoice *),
+.dark select:not([class*="dark:bg-"]):not(#printable-invoice *) {
+  background-color: #111827 !important; /* gray-900 */
 }
 
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
 .dark textarea:focus,
 .dark select:focus {
   border-color: #60a5fa !important; /* blue-400 */
-  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.15) !important;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .dark input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):hover:not(:focus),
 .dark textarea:hover:not(:focus),
 .dark select:hover:not(:focus) {
-  border-color: #6b7280 !important; /* gray-500 */
+  border-color: #4b5563 !important; /* gray-600 */
+}
+
+/* Dark mode select options dropdown */
+.dark select option {
+  background-color: #111827 !important;
+  color: #f9fafb !important;
+}
+
+/* Dark mode input placeholder styling */
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #9ca3af !important; /* gray-400 */
+  opacity: 1 !important;
+}
+
+/* Native date/time picker calendar & clock icons */
+.dark input::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(0.95);
+  cursor: pointer;
+}
+
+/* Disabled & Read-only states in Dark Mode */
+.dark input:disabled,
+.dark textarea:disabled,
+.dark select:disabled {
+  color: #9ca3af !important;
+  background-color: rgba(31, 41, 55, 0.6) !important;
+  border-color: #374151 !important;
+  cursor: not-allowed;
+}
+
+.dark input:read-only:not(:disabled),
+.dark textarea:read-only:not(:disabled) {
+  color: #e5e7eb !important;
+}
+
+/* Unstyled label fallback in dark mode */
+.dark label:not([class*="text-"]) {
+  color: #d1d5db;
 }
 
 /* ── Cards / Panels (divs using light border-gray patterns) ──

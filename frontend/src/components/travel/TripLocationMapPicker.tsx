@@ -60,10 +60,11 @@ function SearchField({ label, value, onChange, onSelect, disabled }: {
       return;
     }
     let active = true;
+    const controller = new AbortController();
     const timer = window.setTimeout(async () => {
       setLoading(true);
       try {
-        const results = await charterApi.searchLocations(value.trim());
+        const results = await charterApi.searchLocations(value.trim(), controller.signal);
         if (active) { setSuggestions(results.filter(hasCoordinates)); setSearched(true); }
       } catch {
         if (active) { setSuggestions([]); setSearched(true); }
@@ -71,7 +72,7 @@ function SearchField({ label, value, onChange, onSelect, disabled }: {
         if (active) setLoading(false);
       }
     }, 450);
-    return () => { active = false; window.clearTimeout(timer); };
+    return () => { active = false; controller.abort(); window.clearTimeout(timer); };
   }, [disabled, editing, value]);
 
   return (
@@ -140,25 +141,41 @@ export default function TripLocationMapPicker({
     instance.on('click', async event => {
       const target = pinModeRef.current;
       if (!target || readOnlyRef.current) return;
-      setPinning(true); setError('');
+      setError('');
       const latitude = Number(event.latlng.lat.toFixed(7));
       const longitude = Number(event.latlng.lng.toFixed(7));
-      let mapped: MappedLocation;
-      try {
-        const result = await charterApi.reverseLocation(latitude, longitude);
-        mapped = { ...result, latitude, longitude };
-      } catch {
-        mapped = { label: `Pinned location (${latitude.toFixed(6)}, ${longitude.toFixed(6)})`, latitude, longitude, provider: 'Map pin' };
-      }
-      if (target.type === 'pickup') { setPickup(mapped.label); setPickupCoords(mapped); }
-      else if (target.type === 'dropoff') { setDropoff(mapped.label); setDropoffCoords(mapped); }
+      const initialLabel = `Pinned location (${latitude.toFixed(4)}, ${longitude.toFixed(4)})`;
+      const initialMapped: MappedLocation = { label: initialLabel, latitude, longitude, provider: 'Map pin' };
+
+      if (target.type === 'pickup') { setPickup(initialMapped.label); setPickupCoords(initialMapped); }
+      else if (target.type === 'dropoff') { setDropoff(initialMapped.label); setDropoffCoords(initialMapped); }
       else {
         const targetId = target.id;
-        const update = (stops: EditableWaypoint[]) => stops.map(stop => stop.id === targetId ? { ...mapped, id: stop.id } : stop);
+        const update = (stops: EditableWaypoint[]) => stops.map(stop => stop.id === targetId ? { ...initialMapped, id: stop.id } : stop);
         if (target.type === 'outbound_stop') setOutboundStops(update);
         else setReturnStops(update);
       }
-      setPinning(false); setPinMode(null);
+      setPinMode(null);
+
+      try {
+        setPinning(true);
+        const result = await charterApi.reverseLocation(latitude, longitude);
+        if (result && result.label) {
+          const enriched: MappedLocation = { ...result, latitude, longitude };
+          if (target.type === 'pickup') { setPickup(enriched.label); setPickupCoords(enriched); }
+          else if (target.type === 'dropoff') { setDropoff(enriched.label); setDropoffCoords(enriched); }
+          else {
+            const targetId = target.id;
+            const updateEnriched = (stops: EditableWaypoint[]) => stops.map(stop => stop.id === targetId ? { ...enriched, id: stop.id } : stop);
+            if (target.type === 'outbound_stop') setOutboundStops(updateEnriched);
+            else setReturnStops(updateEnriched);
+          }
+        }
+      } catch {
+        // Retain initial mapped pin
+      } finally {
+        setPinning(false);
+      }
     });
     return () => { instance.remove(); map.current = null; baseTiles.current = null; routeLayer.current = null; };
   }, []);

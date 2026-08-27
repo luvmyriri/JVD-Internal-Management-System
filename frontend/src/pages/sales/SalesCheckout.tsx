@@ -18,11 +18,10 @@ import {
   LuPenLine,
   LuSmartphone,
   LuCircleAlert,
-  LuSignature,
 } from 'react-icons/lu';
 import { billingApi, type Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
-import { contractsApi, type CustomTransactionDetailInput, type ItineraryDayInput, type PassengerInput } from '../../api/contracts';
+import { type CustomTransactionDetailInput, type ItineraryDayInput, type PassengerInput } from '../../api/contracts';
 import { formatMoneyInput, parseMoneyInput } from '../../utils';
 
 export interface CheckoutCustomerPreset {
@@ -133,7 +132,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     message: string;
   } | null>(null);
   const [paymentType, setPaymentType] = useState<'full' | 'half' | 'downpayment'>('full');
-  const [vatRate, setVatRate] = useState<number>(0.12);
   const [checkoutError, setCheckoutError] = useState<{
     message: string;
     reference?: string;
@@ -144,12 +142,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
-
-  const [generateContract, setGenerateContract] = useState(false);
-  const [contractGenerationFeedback, setContractGenerationFeedback] = useState<{
-    type: 'success' | 'warning';
-    message: string;
-  } | null>(null);
 
   // Sync customerPreset when provided by parent forms (Joiner, Charter, Educational, Visa)
   useEffect(() => {
@@ -219,8 +211,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     return cart.reduce((sum, item) => sum + calculateCartItemTotal(item), 0);
   }, [cart]);
 
-  const tax = subtotal * vatRate;
-  const total = subtotal + tax;
+  const total = subtotal;
 
   const change = amountReceived !== '' && !isNaN(Number(parseMoneyInput(String(amountReceived))))
     ? (paymentType === 'full' ? Math.max(0, Number(parseMoneyInput(String(amountReceived))) - total) : 0)
@@ -281,7 +272,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
     setSelectedCustomerId(null);
     setSearchResults([]);
     setCheckoutError(null);
-    setGenerateContract(false);
   };
 
   const handleCheckout = async () => {
@@ -341,7 +331,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             paymentMethod,
             paymentType: normalizedPaymentType,
             amountReceived: normalizedAmountReceived,
-            taxRate: vatRate,
+            taxRate: 0,
           })
         : (await billingApi.createInvoice({
             customer_id: selectedCustomerId || undefined,
@@ -353,7 +343,7 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             payment_type: normalizedPaymentType,
             amount_received: paymentMethod === 'Cash' ? normalizedAmountReceived : undefined,
             change: paymentMethod === 'Cash' ? Number(change) : undefined,
-            tax_rate: vatRate,
+            tax_rate: 0,
             items: invoiceItems(),
             bus_id: cart.find(item => item.busId)?.busId || null,
             driver_id: cart.find(item => item.driverId)?.driverId || null,
@@ -367,20 +357,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
             arrival_datetime: cart.find(item => item.arrivalDate)?.arrivalDate || null,
             departure_datetime: cart.find(item => item.departureDate)?.departureDate || null,
           } as any)).data.data;
-
-      setContractGenerationFeedback(null);
-      if (generateContract) {
-        try {
-          const result = await contractsApi.generateForInvoice(invoice.id, Boolean(customerEmail));
-          invoice.contract = result.data.contract;
-          setContractGenerationFeedback({ type: 'success', message: result.message });
-        } catch (contractError: any) {
-          setContractGenerationFeedback({
-            type: 'warning',
-            message: contractError?.response?.data?.message || 'Checkout succeeded, but the contract could not be generated. Retry from Transaction Details.',
-          });
-        }
-      }
 
       setLastInvoice(invoice);
       setReceiptAmountReceived(amountReceived);
@@ -849,36 +825,10 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
       </div>
 
       <div className="p-8 bg-gray-50 dark:bg-gray-800/50 border-t border-gray-100 dark:border-gray-700 shrink-0">
-        <label className="mb-5 flex cursor-pointer items-start gap-3 rounded-2xl bg-white p-4 ring-1 ring-inset ring-gray-200 transition hover:ring-blue-300 dark:bg-gray-900 dark:ring-gray-700">
-          <input
-            type="checkbox"
-            checked={generateContract}
-            onChange={(event) => setGenerateContract(event.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="min-w-0">
-            <span className="flex items-center gap-2 text-sm font-black text-gray-900 dark:text-white"><LuSignature className="h-4 w-4 text-blue-600" aria-hidden="true" />Generate contract</span>
-            <span className="mt-1 block break-words text-xs leading-5 text-gray-500 dark:text-gray-400">Optional. Checkout continues normally. {customerEmail ? `A PDF will be emailed to ${customerEmail}.` : 'Add an email to send the PDF automatically.'}</span>
-          </span>
-        </label>
         <div className="space-y-2 mb-6">
           <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
             <span>Subtotal</span>
             <span className="text-gray-900 dark:text-white">₱{subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-          </div>
-          <div className="flex justify-between items-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            <span className="flex items-center gap-2">
-              VAT
-              <select 
-                value={vatRate}
-                onChange={(e) => setVatRate(Number(e.target.value))}
-                className="bg-transparent border border-gray-200 dark:border-gray-700 rounded px-1 py-0.5 text-gray-900 dark:text-white"
-              >
-                <option value={0.12}>12%</option>
-                <option value={0}>0%</option>
-              </select>
-            </span>
-            <span className="text-gray-900 dark:text-white">₱{tax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
           </div>
           <div className="flex justify-between items-center pt-3 border-t border-dashed border-gray-100 dark:border-gray-700">
             <span className="text-xs font-black text-gray-900 dark:text-white uppercase tracking-widest">Total</span>
@@ -978,20 +928,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                 }`}
               >
                 {invoiceEmailFeedback.message}
-              </div>
-            )}
-
-            {contractGenerationFeedback && (
-              <div
-                role={contractGenerationFeedback.type === 'warning' ? 'alert' : 'status'}
-                aria-live="polite"
-                className={`no-print border-b px-6 py-3 text-sm font-semibold ${
-                  contractGenerationFeedback.type === 'success'
-                    ? 'border-emerald-100 bg-emerald-50 text-emerald-800'
-                    : 'border-amber-100 bg-amber-50 text-amber-900'
-                }`}
-              >
-                {contractGenerationFeedback.message}
               </div>
             )}
 
@@ -1167,10 +1103,6 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                     <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                       <span>Subtotal</span>
                       <span className="text-gray-900">₱{Number(lastInvoice?.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                    </div>
-                    <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                      <span>VAT (12%)</span>
-                      <span className="text-gray-900">₱{Number(lastInvoice?.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                     </div>
                     <div className="flex justify-between pt-3 border-t-2 border-gray-900 items-center">
                       <span className="text-xs font-black text-gray-900 uppercase tracking-tighter">Total Amount</span>

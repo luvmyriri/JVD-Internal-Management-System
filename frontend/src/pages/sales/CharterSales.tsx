@@ -357,9 +357,13 @@ export default function CharterSales() {
 
   const removeRatePlan = useMutation({
     mutationFn: (ratePlanId: number) => charterApi.deleteRatePlan(ratePlanId),
-    onSuccess: async () => {
+    onSuccess: async (_data, ratePlanId) => {
       await queryClient.invalidateQueries({ queryKey: ['charter-rate-plans'] });
       await queryClient.invalidateQueries({ queryKey: ['billing-services'] });
+      setBooking(current => current.rate_plan_id === String(ratePlanId) ? { ...current, rate_plan_id: '', bus_id: '', driver_id: '' } : current);
+      if (expandedPlanId === ratePlanId) {
+        setExpandedPlanId(null);
+      }
       toast.success('Charter rate plan removed');
     },
     onError: (error: any) => toast.error(error?.response?.data?.message || 'Rate plan could not be removed'),
@@ -600,7 +604,13 @@ export default function CharterSales() {
               pickup_location: plan.pickup_location || current.pickup_location,
               destination: plan.destination || current.destination,
             }))}
-            controls={<div className="flex gap-1"><button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button><button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button></div>}
+            controls={
+              <div className="flex gap-1">
+                <button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button>
+                <button type="button" onClick={() => openEditRatePlan(plan)} title="Edit rate plan" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Pencil className="h-4 w-4" /></button>
+                <button type="button" onClick={() => { if (window.confirm(`Deactivate charter rate plan "${plan.name}"? Existing bookings and the catalog service will be preserved.`)) removeRatePlan.mutate(plan.id); }} title="Deactivate rate plan" className="grid h-8 w-8 place-items-center rounded-lg text-rose-300 hover:bg-rose-500/30 hover:text-rose-100"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            }
           />)}
         </div>}
       </section>
@@ -1228,11 +1238,33 @@ export default function CharterSales() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 border-t border-border pt-4">
-          <Button type="button" variant="ghost" onClick={() => { setPlanOpen(false); setEditingRatePlanId(null); }}>Cancel</Button>
-          <Button type="submit" disabled={savePlan.isPending || computedBasePrice === 0}>
-            {savePlan.isPending ? (editingRatePlanId ? 'Saving…' : 'Creating…') : (editingRatePlanId ? `Save Changes — ₱${computedBasePrice.toLocaleString()} base` : `Create Rate Plan — ₱${computedBasePrice.toLocaleString()} base`)}
-          </Button>
+        <div className="flex items-center justify-between border-t border-border pt-4">
+          {editingRatePlanId ? (
+            <Button
+              type="button"
+              variant="danger"
+              disabled={removeRatePlan.isPending}
+              onClick={() => {
+                if (window.confirm(`Deactivate charter rate plan "${planForm.name}"? Existing bookings and the catalog service will be preserved.`)) {
+                  removeRatePlan.mutate(editingRatePlanId, {
+                    onSuccess: () => {
+                      setPlanOpen(false);
+                      setEditingRatePlanId(null);
+                    },
+                  });
+                }
+              }}
+            >
+              <Trash2 className="mr-1.5 h-4 w-4" />
+              {removeRatePlan.isPending ? 'Deactivating…' : 'Delete Rate Plan'}
+            </Button>
+          ) : <div />}
+          <div className="flex gap-3">
+            <Button type="button" variant="ghost" onClick={() => { setPlanOpen(false); setEditingRatePlanId(null); }}>Cancel</Button>
+            <Button type="submit" disabled={savePlan.isPending || computedBasePrice === 0}>
+              {savePlan.isPending ? (editingRatePlanId ? 'Saving…' : 'Creating…') : (editingRatePlanId ? `Save Changes — ₱${computedBasePrice.toLocaleString()} base` : `Create Rate Plan — ₱${computedBasePrice.toLocaleString()} base`)}
+            </Button>
+          </div>
         </div>
 
       </form>

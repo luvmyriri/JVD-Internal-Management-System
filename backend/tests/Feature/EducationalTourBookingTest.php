@@ -110,7 +110,12 @@ class EducationalTourBookingTest extends TestCase
         $bookingId = $response->json('data.id');
         $this->assertDatabaseCount('educational_tour_vehicles', 2);
         $this->assertDatabaseHas('educational_tour_bookings', ['school_name' => 'JVD Academy', 'student_count' => 60, 'chaperone_count' => 3]);
-        $this->assertDatabaseHas('invoices', ['customer_name' => 'JVD Academy', 'total_amount' => 139440]);
+        $this->assertDatabaseHas('invoices', [
+            'customer_name' => 'JVD Academy',
+            'subtotal' => 124500,
+            'tax_amount' => 0,
+            'total_amount' => 124500,
+        ]);
         $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $response->json('data.invoice.id'),
             'service_id' => null,

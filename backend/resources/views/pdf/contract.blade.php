@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Service Contract {{ $contract->contract_number }}</title>
+    <title>{{ !empty($generalCopy) ? 'Service Agreement and Terms' : 'Service Contract' }} {{ $contract->contract_number }}</title>
     <style>
         @page { size: A4; margin: 14mm 14mm 22mm; }
         body { font-family: 'DejaVu Sans', sans-serif; color: #243247; margin: 0; font-size: 10px; line-height: 1.45; }
@@ -30,8 +30,8 @@
     </style>
 </head>
 <body>
-    @include('pdf.partials.brand-header', ['documentTitle' => 'Contract Service Agreement', 'documentReference' => $contract->contract_number, 'documentDate' => $contract->created_at])
-    @include('pdf.partials.brand-footer', ['footerNote' => 'Contract service agreement. Changes are valid only when documented and approved by both parties.'])
+    @include('pdf.partials.brand-header', ['documentTitle' => !empty($generalCopy) ? 'Service Agreement and Terms' : 'Contract Service Agreement', 'documentReference' => $contract->contract_number, 'documentDate' => $contract->created_at])
+    @include('pdf.partials.brand-footer', ['footerNote' => 'Service agreement and terms. Changes are valid only when documented and approved by both parties.'])
     <table class="header-table">
         <tr>
             <td class="header-left">
@@ -43,14 +43,14 @@
                 </div>
             </td>
             <td class="header-right">
-                <div><span class="meta-label">Contract No:</span> {{ $contract->contract_number }}</div>
+                <div><span class="meta-label">Agreement No:</span> {{ $contract->contract_number }}</div>
                 <div><span class="meta-label">Invoice No:</span> {{ $invoice->invoice_number }}</div>
-                <div><span class="meta-label">Status:</span> {{ ucfirst(str_replace('_', ' ', $contract->status)) }}</div>
+                @if(empty($generalCopy))<div><span class="meta-label">Status:</span> {{ ucfirst(str_replace('_', ' ', $contract->status)) }}</div>@endif
             </td>
         </tr>
     </table>
 
-    <div class="document-title">Service Contract</div>
+    <div class="document-title">{{ !empty($generalCopy) ? 'Service Agreement and Terms' : 'Service Contract' }}</div>
 
     <div class="section-title">Customer</div>
     <div>{{ $invoice->customer_name }}</div>
@@ -79,8 +79,7 @@
     </table>
     <table class="totals">
         <tr><td>Subtotal</td><td class="amount">PHP {{ number_format($invoice->subtotal, 2) }}</td></tr>
-        <tr><td>VAT / Tax</td><td class="amount">PHP {{ number_format($invoice->tax_amount, 2) }}</td></tr>
-        <tr class="grand"><td>Contract Total</td><td class="amount">PHP {{ number_format($invoice->total_amount, 2) }}</td></tr>
+        <tr class="grand"><td>Package Total</td><td class="amount">PHP {{ number_format($invoice->total_amount, 2) }}</td></tr>
     </table>
 
     @if($contract->deposit_required_amount || $contract->deposit_required_percent)
@@ -176,6 +175,7 @@
         Liquor, illegal drugs, and unsafe conduct are prohibited inside the vehicle. JVD and its service providers may refuse transport to any person who creates a safety risk or serious disruption. The client is responsible for damage caused by members of the traveling party and for securing personal belongings before leaving the vehicle.
     </div>
 
+    @if(empty($generalCopy))
     <p style="margin: 18px 0 0; text-align: center; font-size: 9px;">By signing below, both parties confirm that they have reviewed and accepted this contract service agreement.</p>
     <table class="signature-block">
         <tr>
@@ -195,6 +195,11 @@
             </td>
         </tr>
     </table>
+    @else
+    <div class="terms-box" style="margin-top: 20px;">
+        This general service agreement and the attached invoice are issued together as the customer's booking documents. No separate contract-selection step is required.
+    </div>
+    @endif
     <div style="margin-top: 24px; text-align: center; font-weight: 900; font-size: 10px;">THANK YOU FOR TRUSTING US. WE ARE HAPPY TO SERVE YOU.</div>
 </body>
 </html>

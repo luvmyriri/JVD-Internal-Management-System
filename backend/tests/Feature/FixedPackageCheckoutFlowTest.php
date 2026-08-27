@@ -126,7 +126,8 @@ class FixedPackageCheckoutFlowTest extends TestCase
 
         $this->assertSame('Maria Santos', $invoice->customer_name);
         $this->assertSame(7500.0, (float) $invoice->subtotal);
-        $this->assertSame(8400.0, (float) $invoice->total_amount);
+        $this->assertSame(7500.0, (float) $invoice->total_amount);
+        $this->assertSame(0.0, (float) $invoice->tax_amount);
         $this->assertSame(1, $item->adults);
         $this->assertSame(1, $item->children);
         $this->assertSame(4000.0, (float) $item->adult_price);

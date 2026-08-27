@@ -12,7 +12,6 @@ use App\Models\InvoiceItem;
 use App\Models\JoinerDeparture;
 use App\Models\PmsSchedule;
 use App\Models\SalesOrderItem;
-use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
 use Carbon\Carbon;
@@ -80,9 +79,8 @@ class EducationalTourBookingService
                 $assignments[] = [$bus, $driver, $assignment['planned_passengers']];
             }
 
-            $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
-            $tax = round($pricing['subtotal'] * $taxRate, 2);
-            $total = round($pricing['subtotal'] + $tax, 2);
+            $tax = 0.0;
+            $total = $pricing['subtotal'];
             $received = (float) $data['amount_received'];
             if ($data['payment_method'] === 'Cash' && $data['payment_type'] === 'full' && $received < $total) {
                 throw ValidationException::withMessages(['amount_received' => 'Full cash payment must cover the invoice total.']);

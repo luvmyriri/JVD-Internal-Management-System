@@ -58,6 +58,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::middleware('role:super_admin,executive_vice_president,accounting_executive')->group(function () {
             Route::get('/billing/reports/summary', [ReportController::class, 'getSummary'])->name('billing.reports.summary');
             Route::get('/billing/reports/detailed', [ReportController::class, 'getDetailed'])->name('billing.reports.detailed');
+            Route::get('/accounting/reports/summary', [ReportController::class, 'getSummary'])->name('accounting.reports.summary');
+            Route::get('/accounting/reports/detailed', [ReportController::class, 'getDetailed'])->name('accounting.reports.detailed');
             Route::get('/accounting/reconciliation', [ReportController::class, 'reconciliation'])->name('accounting.reconciliation');
             Route::get('/accounting/readiness/runs', [FinancialReadinessController::class, 'runs'])->name('accounting.readiness.runs');
             Route::get('/accounting/opening-balances', [FinancialReadinessController::class, 'batches'])->name('accounting.opening-balances.index');

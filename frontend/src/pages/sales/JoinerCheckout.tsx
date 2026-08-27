@@ -10,7 +10,7 @@ import SalesCheckout, { type CartItem, type SalesCheckoutSubmission } from './Sa
 
 type Passenger = { seat_code: string; first_name: string; last_name: string; passenger_type: 'adult' | 'child'; date_of_birth: string; emergency_contact: string };
 
-const normalizeSeatCode = (code: string) => String(code || '').trim().replace(/^S/i, '');
+const normalizeSeatCode = (code: string) => String(code || '').trim().replace(/^(?:Seat|S)\s*/i, '');
 
 export default function JoinerCheckout() {
   const navigate = useNavigate();
@@ -245,10 +245,16 @@ export default function JoinerCheckout() {
         throw new Error('The reservation was confirmed but its invoice could not be loaded. Refresh the departure before retrying.');
       }
       setPendingHold(null);
+      await queryClient.invalidateQueries({ queryKey: ['joiner-departures'] });
+      if (departure?.id) {
+        await queryClient.invalidateQueries({ queryKey: ['joiner-departure-detail', departure.id] });
+      }
       return confirmed.invoice;
     } catch (error: any) {
-      if (error?.response?.data?.errors?.reservation) {
-        setPendingHold(null);
+      setPendingHold(null);
+      await queryClient.invalidateQueries({ queryKey: ['joiner-departures'] });
+      if (departure?.id) {
+        await queryClient.invalidateQueries({ queryKey: ['joiner-departure-detail', departure.id] });
       }
       throw error;
     }
@@ -259,8 +265,8 @@ export default function JoinerCheckout() {
   return <div className="w-full space-y-5 pb-12">
     <header className="flex items-end justify-between rounded-3xl bg-[#071b33] p-7 text-white"><div><button onClick={() => navigate('/sales/departures')} className="mb-5 flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-white"><ArrowLeft className="h-4 w-4" /> Departure board</button><p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#75b8ff]">Agent-assisted checkout</p><h1 className="mt-2 text-3xl font-black">Reserve joiner seats</h1></div><p className="hidden items-center gap-2 text-xs text-slate-300 md:flex"><ShieldCheck className="h-4 w-4 text-emerald-400" /> Seats are locked during confirmation</p></header>
 
-    <div className="grid gap-5 xl:grid-cols-[280px_minmax(0,1fr)_440px]">
-      <aside className="rounded-3xl border border-border bg-surface p-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">1 · Departure</p><div className="mt-4 space-y-2">{departures.map((item: JoinerDeparture) => <button key={item.id} onClick={() => { setDepartureId(item.id); setSelectedSeats([]); }} className={`w-full rounded-2xl border p-4 text-left ${departureId === item.id ? 'border-brand bg-blue-50 dark:bg-blue-950' : 'border-border'}`}><p className="text-[10px] font-black uppercase tracking-wider text-brand">{item.code}</p><p className="mt-1 font-black text-ink">{item.service?.name || item.code}</p><p className="mt-2 flex gap-2 text-xs text-muted"><Clock3 className="h-4 w-4" />{new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', hour: 'numeric' }).format(new Date(item.starts_at))}</p></button>)}</div></aside>
+    <div className="grid gap-5 2xl:grid-cols-[280px_minmax(0,1fr)_440px] xl:grid-cols-[250px_minmax(0,1fr)_390px] grid-cols-1">
+      <aside className="rounded-3xl border border-border bg-surface p-5"><p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">1 · Departure</p><div className="mt-4 space-y-2">{departures.map((item: JoinerDeparture) => <button key={item.id} onClick={() => { setDepartureId(item.id); setSelectedSeats([]); setPendingHold(null); }} className={`w-full rounded-2xl border p-4 text-left ${departureId === item.id ? 'border-brand bg-blue-50 dark:bg-blue-950' : 'border-border'}`}><p className="text-[10px] font-black uppercase tracking-wider text-brand">{item.code}</p><p className="mt-1 font-black text-ink">{item.service?.name || item.code}</p><p className="mt-2 flex gap-2 text-xs text-muted"><Clock3 className="h-4 w-4" />{new Intl.DateTimeFormat('en-PH', { month: 'short', day: 'numeric', hour: 'numeric' }).format(new Date(item.starts_at))}</p></button>)}</div></aside>
 
       <main className="space-y-5">
         <section className="rounded-3xl border border-border bg-surface p-6">

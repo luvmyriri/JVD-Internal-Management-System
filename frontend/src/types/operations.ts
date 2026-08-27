@@ -62,6 +62,10 @@ export interface TripTicket {
   invoice_id?: number | null;
   sales_order_item_id?: number | null;
   assignment_index?: number;
+  educational_tour_package_id?: number | null;
+  educational_tour_bus_assignment_id?: number | null;
+  tour_name?: string | null;
+  tour_code?: string | null;
   
   created_at?: string;
   updated_at?: string;
@@ -86,6 +90,12 @@ export interface TripTicket {
       order_number: string;
       invoice_id?: number | null;
     };
+  } | null;
+  educational_tour_package?: {
+    id: number;
+    tour_code: string;
+    name: string;
+    school_name: string;
   } | null;
   cash_budget_request?: CashBudgetRequest;
   work_orders?: Array<{

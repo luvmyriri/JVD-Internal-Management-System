@@ -9,6 +9,11 @@ export default function TripTicketDetailModal({ ticket, onClose }: { ticket: Tri
         <div className="p-10 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between bg-white dark:bg-gray-900 shrink-0">
           <div>
             <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Ticket #{ticket.control_no}</h2>
+            {ticket.tour_name && (
+              <p className="mt-1 text-sm font-bold text-blue-600 dark:text-blue-400">
+                {ticket.tour_name}{ticket.tour_code ? ` · ${ticket.tour_code}` : ''}
+              </p>
+            )}
             <div className="flex items-center gap-2 mt-1">
               <StatusBadge status={ticket.status} />
             </div>

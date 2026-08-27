@@ -18,9 +18,35 @@ class DocumentPdfService
         ];
     }
 
+    /**
+     * Render a PDF from a Blade view.
+     *
+     * @param string $view Blade view name (e.g. 'pdf.quotation-template')
+     * @param array $data Data to pass to the view
+     * @param string $paper Paper size (default a4)
+     * @param string $orientation Portrait or landscape
+     * @return \Barryvdh\DomPDF\PDF
+     */
     public function render(string $view, array $data = [], string $paper = 'a4', string $orientation = 'portrait')
     {
         return Pdf::loadView($view, [...$data, 'company' => $this->companyProfile(), 'generatedAt' => now()])
             ->setPaper($paper, $orientation);
     }
+
+    /**
+     * Render a PDF using a background PDF template.
+     * The template file should be placed under resources/views/pdf/templates/.
+     *
+     * @param string $templateFile Filename of the PDF template (e.g. 'quotation-template.pdf')
+     * @param array $data Data to inject into the view
+     * @return \Barryvdh\DomPDF\PDF
+     */
+    public function renderWithTemplate(string $templateFile, array $data = [], string $paper = 'a4', string $orientation = 'portrait')
+    {
+        // The Blade view `pdf.template-wrapper` applies the background image.
+        $view = 'pdf.template-wrapper';
+        $data = array_merge($data, ['templateFile' => $templateFile]);
+        return $this->render($view, $data, $paper, $orientation);
+    }
+
 }

@@ -222,6 +222,19 @@ class CharterRouteEstimateTest extends TestCase
             ->assertJsonPath('data.0.label', 'Ayala Triangle Gardens, Makati Avenue, Makati, Metro Manila, Philippines');
     }
 
+    public function test_known_landmark_search_does_not_wait_for_an_external_geocoder(): void
+    {
+        Http::fake();
+
+        $this->actingAs(User::factory()->superAdmin()->create())
+            ->getJson('/api/v1/sales/location-search?q=Tagaytay%20City')
+            ->assertOk()
+            ->assertJsonPath('data.0.label', 'Tagaytay City, Cavite')
+            ->assertJsonPath('data.0.provider', 'JVD Landmarks Directory');
+
+        Http::assertNothingSent();
+    }
+
     public function test_official_location_search_uses_psgc_reference_data(): void
     {
         config(['services.psgc.token' => 'test-token']);

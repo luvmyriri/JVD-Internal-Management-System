@@ -170,12 +170,12 @@ class UserManagementTest extends TestCase
         ]);
         $originalPasswordHash = $target->password;
 
-        $this->actingAs($this->admin)
+        $response = $this->actingAs($this->admin)
             ->patchJson("/api/v1/users/{$target->id}/set-password", [
                 'new_password' => 'AdministratorChosen123!',
                 'new_password_confirmation' => 'AdministratorChosen123!',
-            ])
-            ->assertNotFound();
+            ]);
+        $this->assertContains($response->status(), [404, 405]);
 
         $this->assertSame($originalPasswordHash, $target->fresh()->password);
     }

@@ -3,21 +3,15 @@
 namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
-use App\Services\BillingService;
+use App\Http\Requests\Accounting\StoreInvoiceRequest;
+use App\Http\Requests\Accounting\StoreServiceRequest;
+use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
+use App\Http\Requests\Accounting\UpdateServiceRequest;
 use App\Models\Invoice;
-use App\Models\InvoiceItem;
-use App\Models\Service;
+use App\Services\BillingService;
+use App\Services\InvoiceDocumentMailService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
-use App\Notifications\SystemAlert;
-use Illuminate\Support\Facades\Mail;
-use App\Mail\TransactionNotificationMail;
-use App\Http\Resources\InvoiceResource;
-use App\Exceptions\MaxPaxExceededException;
-use App\Services\InvoiceFinalizationService;
+use Illuminate\Support\Facades\Log;
 
 class BillingController extends Controller
 {
@@ -43,12 +37,12 @@ class BillingController extends Controller
         return $this->service->getServiceOccupancy($request, $id);
     }
 
-    public function storeService(\App\Http\Requests\Accounting\StoreServiceRequest $request)
+    public function storeService(StoreServiceRequest $request)
     {
         return $this->service->storeService($request);
     }
 
-    public function updateService(\App\Http\Requests\Accounting\UpdateServiceRequest $request, $id)
+    public function updateService(UpdateServiceRequest $request, $id)
     {
         return $this->service->updateService($request, $id);
     }
@@ -63,7 +57,7 @@ class BillingController extends Controller
         return $this->service->deleteService($id);
     }
 
-    public function store(\App\Http\Requests\Accounting\StoreInvoiceRequest $request)
+    public function store(StoreInvoiceRequest $request)
     {
         return $this->service->store($request);
     }
@@ -73,7 +67,7 @@ class BillingController extends Controller
         return $this->service->show($id);
     }
 
-    public function updateStatus(\App\Http\Requests\Accounting\UpdateInvoiceStatusRequest $request, $id)
+    public function updateStatus(UpdateInvoiceStatusRequest $request, $id)
     {
         return $this->service->updateStatus($request, $id);
     }
@@ -83,20 +77,40 @@ class BillingController extends Controller
         return $this->service->handleWebhook($request);
     }
 
-    public function sendEmail(Request $request, $id)
+    public function sendEmail(Request $request, $id, InvoiceDocumentMailService $mail)
     {
-        $invoice = Invoice::with(['items.service', 'payments'])->findOrFail($id);
-        $recipient = $request->input('email', $invoice->notificationEmail());
+        $validated = $request->validate([
+            'email' => ['nullable', 'email:rfc', 'max:255'],
+        ]);
+        $invoice = Invoice::with(Invoice::operationalDocumentRelations())->findOrFail($id);
+        $recipient = $validated['email'] ?? $invoice->notificationEmail();
 
         if (empty($recipient)) {
             return response()->json(['message' => 'Customer email address is required.'], 422);
         }
 
-        Mail::to($recipient)->queue(new TransactionNotificationMail($invoice));
+        if ($invoice->customer_email !== $recipient) {
+            $invoice->forceFill(['customer_email' => $recipient])->save();
+        }
+
+        try {
+            $mail->send($invoice, $recipient);
+        } catch (\Throwable $exception) {
+            Log::error('Invoice email delivery failed.', [
+                'invoice_id' => $invoice->id,
+                'recipient' => $recipient,
+                'exception' => $exception,
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'The invoice could not be delivered. Please check the mail configuration and try again.',
+            ], 502);
+        }
 
         return response()->json([
             'success' => true,
-            'message' => "Invoice #{$invoice->invoice_number} sent to {$recipient} successfully."
+            'message' => "Invoice #{$invoice->invoice_number} and customer documents were accepted for delivery to {$recipient}.",
         ]);
     }
 }

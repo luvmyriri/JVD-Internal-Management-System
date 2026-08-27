@@ -7,6 +7,8 @@ use App\Models\Bus;
 use App\Models\CashBudgetRequest;
 use App\Models\CharterBooking;
 use App\Models\EducationalTourBooking;
+use App\Models\EducationalTourPackage;
+use App\Models\EducationalTourParticipantBooking;
 use App\Models\JobOrder;
 use App\Models\JoinerReservation;
 use App\Models\PrivateTourBooking;
@@ -193,6 +195,35 @@ class TripTicketService
             ];
         }
 
+        if ($fulfillment instanceof EducationalTourParticipantBooking) {
+            $fulfillment->loadMissing(['busAssignment.bus', 'busAssignment.driver', 'package.busAssignments.bus', 'package.busAssignments.driver']);
+            $package = $fulfillment->package;
+            $assignment = $fulfillment->busAssignment;
+            $bus = $assignment?->bus;
+            $driver = $assignment?->driver;
+
+            $assignments = $assignment ? [[
+                'bus_id' => $assignment->bus_id,
+                'driver_id' => $assignment->driver_id,
+                'plate_number' => $bus?->plate_number,
+                'planned_passengers' => 1,
+            ]] : ($package && $package->busAssignments->isNotEmpty() ? $package->busAssignments->map(fn ($va) => [
+                'bus_id' => $va->bus_id,
+                'driver_id' => $va->driver_id,
+                'plate_number' => $va->bus?->plate_number,
+                'planned_passengers' => (int) ($va->capacity_snapshot ?: 49),
+            ])->all() : []);
+
+            return [
+                'starts_at' => $package?->starts_at ?? now(),
+                'ends_at' => $package?->ends_at ?? $package?->starts_at ?? now(),
+                'pickup' => $package?->pickup_location ?: 'To be confirmed by Logistics',
+                'destination' => $package?->destination ?? $package?->name ?? 'Educational Tour',
+                'passengers' => 1,
+                'assignments' => $assignments,
+            ];
+        }
+
         if ($fulfillment instanceof JoinerReservation) {
             $fulfillment->loadMissing(['departure.bus', 'departure.driver', 'departure.service']);
             $departure = $fulfillment->departure;
@@ -258,6 +289,38 @@ class TripTicketService
             return null;
         }
 
+        if ($item->service_type === 'educational_tour') {
+            $packageId = $snapshot['package_id'] ?? null;
+            $package = $packageId ? EducationalTourPackage::with(['busAssignments.bus', 'busAssignments.driver'])->find($packageId) : null;
+            if ($package) {
+                $busAssignmentId = $snapshot['bus_assignment_id'] ?? null;
+                $specificAssignment = $busAssignmentId ? $package->busAssignments->firstWhere('id', $busAssignmentId) : null;
+                $assignments = $specificAssignment ? [[
+                    'bus_id' => $specificAssignment->bus_id,
+                    'driver_id' => $specificAssignment->driver_id,
+                    'plate_number' => $specificAssignment->bus?->plate_number,
+                    'planned_passengers' => (int) ($item->traveler_count ?? 1),
+                ]] : $package->busAssignments->map(fn ($va) => [
+                    'bus_id' => $va->bus_id,
+                    'driver_id' => $va->driver_id,
+                    'plate_number' => $va->bus?->plate_number,
+                    'planned_passengers' => (int) ($va->capacity_snapshot ?: 49),
+                ])->all();
+
+                return [
+                    'starts_at' => $package->starts_at,
+                    'ends_at' => $package->ends_at ?? $package->starts_at,
+                    'pickup' => $package->pickup_location ?: 'To be confirmed by Logistics',
+                    'destination' => $package->destination ?? $package->name,
+                    'passengers' => (int) ($item->traveler_count ?? 1),
+                    'assignments' => $assignments ?: [[
+                        'bus_id' => $snapshot['bus_id'] ?? null,
+                        'driver_id' => $snapshot['driver_id'] ?? null,
+                    ]],
+                ];
+            }
+        }
+
         $start = $item->scheduled_start ?? $snapshot['starts_at'] ?? $snapshot['pickup_at'] ?? null;
         if (! $start) {
             return null;
@@ -274,6 +337,121 @@ class TripTicketService
                 'driver_id' => $snapshot['driver_id'] ?? null,
             ]],
         ];
+    }
+
+    /**
+     * Synchronize Logistics Trip Tickets for an Educational Tour package.
+     * Generates or updates one TripTicket per assigned bus/driver on the package.
+     *
+     * @return Collection<int, TripTicket>
+     */
+    public function synchronizeForEducationalTourPackage(EducationalTourPackage $package): Collection
+    {
+        $package->loadMissing(['busAssignments.bus', 'busAssignments.driver', 'schoolCustomer']);
+        if (! $package->starts_at) {
+            return collect();
+        }
+
+        return DB::transaction(function () use ($package) {
+            if (in_array($package->status, ['cancelled', 'completed'], true)) {
+                TripTicket::where('educational_tour_package_id', $package->id)
+                    ->where('status', '!=', 'completed')
+                    ->update(['status' => 'cancelled']);
+
+                return collect();
+            }
+
+            $start = Carbon::parse($package->starts_at);
+            $end = Carbon::parse($package->ends_at ?? $package->starts_at);
+            if ($end->lessThanOrEqualTo($start)) {
+                $end = $start->copy()->addDay();
+            }
+            $days = max(1, $start->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) + 1);
+            $tickets = collect();
+
+            $activeAssignmentIds = [];
+            foreach ($package->busAssignments as $index => $assignment) {
+                if (! $assignment->bus_id && ! $assignment->driver_id) {
+                    continue;
+                }
+
+                $activeAssignmentIds[] = $assignment->id;
+
+                $participantCount = $assignment->participantBookings()
+                    ->whereNotIn('status', ['cancelled', 'expired'])
+                    ->count();
+
+                $bus = $assignment->bus ?: ($assignment->bus_id ? Bus::find($assignment->bus_id) : null);
+
+                $attributes = [
+                    'issue_date' => now()->toDateString(),
+                    'date_of_travel' => $start->toDateString(),
+                    'duration' => "{$days} ".($days === 1 ? 'day' : 'days'),
+                    'pick_up' => $package->pickup_location ?: 'School Campus',
+                    'destination' => $package->destination ?? $package->name,
+                    'drop_off' => $package->destination ?? $package->name,
+                    'bus_id' => $assignment->bus_id,
+                    'plate_no' => $bus?->plate_number,
+                    'no_of_passengers' => $participantCount,
+                    'driver_id' => $assignment->driver_id,
+                    'passenger_name' => $package->school_name ? "{$package->school_name} — Bus #{$assignment->sequence_number}" : $package->name,
+                    'trip_type' => 'domestic',
+                    'assignment_index' => max(0, (int) $assignment->sequence_number - 1),
+                    'educational_tour_package_id' => $package->id,
+                    'educational_tour_bus_assignment_id' => $assignment->id,
+                    'tour_name' => $package->name,
+                    'tour_code' => $package->tour_code,
+                ];
+
+                $ticket = TripTicket::where('educational_tour_bus_assignment_id', $assignment->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                // Adopt a ticket generated by the former per-participant checkout path.
+                if (! $ticket) {
+                    $ticket = TripTicket::whereNull('educational_tour_bus_assignment_id')
+                        ->where('bus_id', $assignment->bus_id)
+                        ->where('date_of_travel', $start->toDateString())
+                        ->where(function ($query) use ($package) {
+                            $query->whereHas('invoice.educationalTourParticipantBooking', fn ($booking) => $booking->where('package_id', $package->id))
+                                ->orWhereHas('salesOrderItem', fn ($item) => $item->where('details_snapshot->package_id', $package->id));
+                        })
+                        ->lockForUpdate()
+                        ->first();
+                }
+
+                if ($ticket) {
+                    if ($ticket->status !== 'completed') {
+                        $ticket->update([
+                            ...$attributes,
+                            // A package DTT represents the whole assigned coach, not one student's sale.
+                            'invoice_id' => null,
+                            'sales_order_item_id' => null,
+                        ]);
+                    }
+                } else {
+                    $ticket = TripTicket::create([
+                        'control_no' => $this->nextControlNumber(),
+                        'status' => 'draft',
+                        'requested_by' => $package->created_by ?? 1,
+                        ...$attributes,
+                    ]);
+                }
+
+                $this->synchronizePreTripWorkOrder($ticket);
+                $tickets->push($ticket->load($this->relations()));
+            }
+
+            TripTicket::where('educational_tour_package_id', $package->id)
+                ->when($activeAssignmentIds, fn ($query) => $query->where(function ($stale) use ($activeAssignmentIds) {
+                    $stale->whereNull('educational_tour_bus_assignment_id')
+                        ->orWhereNotIn('educational_tour_bus_assignment_id', $activeAssignmentIds);
+                }))
+                ->where('status', '!=', 'completed')
+                ->update(['status' => 'cancelled']);
+
+            return $tickets;
+        });
     }
 
     /** Carry the per-unit Sales estimate into the operational document without overwriting later manual DTT edits. */
@@ -1187,6 +1365,8 @@ class TripTicketService
             'invoice:id,invoice_number,customer_name,status',
             'salesOrderItem:id,sales_order_id,service_type,title,fulfillment_type,fulfillment_id',
             'salesOrderItem.order:id,order_number,invoice_id',
+            'educationalTourPackage:id,tour_code,name,school_name',
+            'educationalTourBusAssignment:id,package_id,bus_id,driver_id,sequence_number',
             'workOrders.jobOrders',
             'cashBudgetRequest',
         ];

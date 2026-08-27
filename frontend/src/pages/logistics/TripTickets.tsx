@@ -591,6 +591,8 @@ export default function TripTickets() {
       t.control_no?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.pick_up?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.drop_off?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.tour_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      t.tour_code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.invoice?.invoice_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.invoice?.customer_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.sales_order_item?.title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -618,7 +620,13 @@ export default function TripTickets() {
     {
       key: 'origin',
       header: 'Origin',
-      render: (ticket) => ticket.sales_order_item ? (
+      render: (ticket) => ticket.educational_tour_package_id ? (
+        <div>
+          <div className="font-bold text-blue-700 dark:text-blue-300">Educational Tour</div>
+          <div className="text-xs font-semibold text-gray-600 dark:text-gray-300">{ticket.tour_name}</div>
+          <div className="text-xs text-gray-400">{ticket.tour_code}</div>
+        </div>
+      ) : ticket.sales_order_item ? (
         <div>
           <div className="font-bold text-blue-700 dark:text-blue-300">Sales handoff</div>
           <div className="text-xs text-gray-500">{ticket.invoice?.invoice_number || ticket.sales_order_item.order?.order_number}</div>

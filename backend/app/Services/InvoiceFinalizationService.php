@@ -3,8 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\MaxPaxExceededException;
-use App\Mail\BookingConfirmationMail;
-use App\Mail\TransactionNotificationMail;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Account;
 use App\Models\CharterRatePlan;
 use App\Models\Contract;
@@ -17,12 +16,11 @@ use App\Models\JoinerDeparture;
 use App\Models\JoinerDepartureSeat;
 use App\Models\PassportCase;
 use App\Models\Service;
-use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
 use App\Notifications\SystemAlert;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -49,9 +47,9 @@ class InvoiceFinalizationService
     public function calculateItems(array $items, ?string $travelDate, ?int $requestPaxCount, ?float $untrustedTaxRate = null): array
     {
         $subtotal = 0.0;
-        // Tax is configuration-owned. Keep the fourth argument for backwards-compatible
-        // callers, but never let checkout payloads choose the rate applied to an invoice.
-        $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
+        // Selling prices are final customer prices. The application no longer adds VAT.
+        // Keep the fourth argument for backwards-compatible callers, but ignore it.
+        $taxRate = 0.0;
         $processedItems = [];
 
         foreach ($items as $index => $item) {
@@ -265,8 +263,8 @@ class InvoiceFinalizationService
             ];
         }
 
-        $taxAmount = round($subtotal * $taxRate, 2);
-        $totalAmount = round($subtotal + $taxAmount, 2);
+        $taxAmount = 0.0;
+        $totalAmount = $subtotal;
 
         return [
             'processedItems' => $processedItems,
@@ -698,32 +696,47 @@ class InvoiceFinalizationService
             $revAccount = Account::where('code', '4000')->first();
             $vatAccount = Account::where('code', '2400')->first();
 
-            if ($arAccount && $revAccount && $vatAccount) {
-                $ledger->recordEntry(
-                    now()->toDateString(),
-                    "Invoice finalized: {$invoice->invoice_number}",
+            if ($arAccount && $revAccount) {
+                $taxAmount = round((float) ($invoice->tax_amount ?? 0), 2);
+                $netRevenue = round((float) $invoice->total_amount - $taxAmount, 2);
+                $lines = [
                     [
-                        [
-                            'account_id' => $arAccount->id,
-                            'debit' => $invoice->total_amount,
-                            'credit' => 0,
-                            'description' => "AR for Invoice {$invoice->invoice_number}",
-                        ],
-                        [
-                            'account_id' => $revAccount->id,
-                            'debit' => 0,
-                            'credit' => $invoice->subtotal,
-                            'description' => "Net service revenue for Invoice {$invoice->invoice_number}",
-                        ],
-                        [
-                            'account_id' => $vatAccount->id,
-                            'debit' => 0,
-                            'credit' => $invoice->tax_amount,
-                            'description' => "Output VAT for Invoice {$invoice->invoice_number}",
-                        ],
+                        'account_id' => $arAccount->id,
+                        'debit' => (float) $invoice->total_amount,
+                        'credit' => 0,
+                        'description' => "AR for Invoice {$invoice->invoice_number}",
                     ],
-                    $invoice
-                );
+                    [
+                        'account_id' => $revAccount->id,
+                        'debit' => 0,
+                        'credit' => $netRevenue,
+                        'description' => "Net service revenue for Invoice {$invoice->invoice_number}",
+                    ],
+                ];
+
+                if ($taxAmount > 0 && $vatAccount) {
+                    $lines[] = [
+                        'account_id' => $vatAccount->id,
+                        'debit' => 0,
+                        'credit' => $taxAmount,
+                        'description' => "Output VAT for Invoice {$invoice->invoice_number}",
+                    ];
+                }
+
+                $postingDate = $invoice->created_at
+                    ? Carbon::parse($invoice->created_at)->setTimezone(config('app.timezone', 'Asia/Manila'))->toDateString()
+                    : now()->setTimezone(config('app.timezone', 'Asia/Manila'))->toDateString();
+
+                try {
+                    $ledger->recordEntry(
+                        $postingDate,
+                        "Invoice finalized: {$invoice->invoice_number}",
+                        $lines,
+                        $invoice
+                    );
+                } catch (\Throwable $e) {
+                    \Log::error("Failed to record journal entry for invoice {$invoice->id}: ".$e->getMessage());
+                }
             }
         }
 
@@ -883,22 +896,13 @@ class InvoiceFinalizationService
         app(SalesOrderService::class)->captureInvoice($invoice, ($context['actor'] ?? null)?->id ?? $invoice->created_by);
         app(BillingCollectionService::class)->syncCollection($invoice);
 
-        $notificationEmail = $invoice->notificationEmail();
-        if ($notificationEmail) {
-            try {
-                @set_time_limit(120);
-                Mail::to($notificationEmail)->send(new TransactionNotificationMail($invoice));
-            } catch (\Exception $mailEx) {
-                \Log::error("Failed to send POS transaction email to {$notificationEmail}: ".$mailEx->getMessage());
-            }
-
-            if (($context['source'] ?? null) === 'contract') {
-                try {
-                    Mail::to($notificationEmail)->send(new BookingConfirmationMail($invoice, $context['contract'] ?? null));
-                } catch (\Exception $mailEx) {
-                    \Log::error("Failed to send booking confirmation email to {$notificationEmail}: ".$mailEx->getMessage());
-                }
-            }
+        if ($invoice->notificationEmail()) {
+            $contract = $context['contract'] ?? null;
+            SendInvoiceDocumentsJob::dispatch(
+                $invoice->id,
+                $contract?->id,
+                ($context['source'] ?? null) === 'contract',
+            )->afterResponse();
         }
 
         /** @var User|null $actor */

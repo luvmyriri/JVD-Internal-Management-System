@@ -42,12 +42,37 @@ class CatalogController extends Controller
             ->where('ends_at', '>', $start)
             ->get();
 
-        $tripTickets = \App\Models\TripTicket::where('bus_id', $bus->id)
+        $tripTickets = \App\Models\TripTicket::with(['invoice.educationalTourParticipantBooking', 'invoice.joinerReservation', 'salesOrderItem.fulfillment'])
+            ->where('bus_id', $bus->id)
             ->whereNotIn('status', ['cancelled', 'completed'])
             ->whereBetween('date_of_travel', [$start->toDateString(), $end->toDateString()])
             ->get();
 
-        $isWholeVehicleBooked = $resourceAllocations->isNotEmpty() || $tripTickets->isNotEmpty();
+        // Whole-vehicle booking is active only if there is a private charter or non-shared trip ticket
+        $isWholeVehicleBooked = $resourceAllocations->filter(function ($alloc) {
+            return !in_array($alloc->source_type, [
+                \App\Models\EducationalTourBusAssignment::class,
+                'App\Models\EducationalTourBusAssignment',
+                'educational_tour_bus_assignment',
+                \App\Models\JoinerDeparture::class,
+                'App\Models\JoinerDeparture',
+                'joiner_departure',
+            ]);
+        })->isNotEmpty() || $tripTickets->filter(function ($ticket) use ($bus, $start, $end) {
+            $isEdu = $ticket->invoice?->educationalTourParticipantBooking
+                || ($ticket->salesOrderItem?->fulfillment instanceof \App\Models\EducationalTourParticipantBooking)
+                || \App\Models\EducationalTourBusAssignment::where('bus_id', $bus->id)
+                    ->whereHas('package', fn ($q) => $q->where('starts_at', '<', $end)->where('ends_at', '>', $start))
+                    ->exists();
+            $isJoiner = $ticket->invoice?->joinerReservation
+                || ($ticket->salesOrderItem?->fulfillment instanceof \App\Models\JoinerReservation)
+                || \App\Models\JoinerDeparture::where('bus_id', $bus->id)
+                    ->where('starts_at', '<', $end)
+                    ->where('ends_at', '>', $start)
+                    ->exists();
+
+            return ! $isEdu && ! $isJoiner;
+        })->isNotEmpty();
 
         $occupiedSeats = [];
 
@@ -62,44 +87,35 @@ class CatalogController extends Controller
 
         foreach ($joinerDepartures as $dep) {
             foreach ($dep->seats as $seat) {
-                $code = preg_replace('/^S/i', '', trim($seat->seat_code));
+                $code = preg_replace('/^(?:Seat|S)\s*/i', '', trim((string) $seat->seat_code));
                 if ($code) $occupiedSeats[] = $code;
             }
         }
 
-        $invoices = \App\Models\Invoice::with('items')
-            ->where('bus_id', $bus->id)
-            ->whereNotIn('status', ['void', 'cancelled'])
-            ->where(function($q) use ($start, $end) {
-                $q->whereBetween('travel_date', [$start->toDateString(), $end->toDateString()])
-                  ->orWhereBetween('departure_date', [$start->toDateString(), $end->toDateString()]);
-            })
-            ->get();
-
-        foreach ($invoices as $inv) {
-            if ($inv->seat_map && is_array($inv->seat_map)) {
-                foreach ($inv->seat_map as $s) {
-                    $code = preg_replace('/^S/i', '', trim((string)$s));
-                    if ($code) $occupiedSeats[] = $code;
-                }
-            }
-            foreach ($inv->items as $item) {
-                if (is_array($item->item_metadata)) {
-                    $seats = $item->item_metadata['selected_seats'] ?? $item->item_metadata['seat_map'] ?? [];
-                    if (is_array($seats)) {
-                        foreach ($seats as $s) {
-                            $code = preg_replace('/^S/i', '', trim((string)$s));
-                            if ($code) $occupiedSeats[] = $code;
-                        }
-                    }
-                }
+        $tripTicketInvoiceIds = $tripTickets->pluck('invoice_id')->filter()->unique();
+        if ($tripTicketInvoiceIds->isNotEmpty()) {
+            $passengers = \App\Models\InvoicePassenger::whereIn('invoice_id', $tripTicketInvoiceIds)->get();
+            foreach ($passengers as $p) {
+                $code = preg_replace('/^(?:Seat|S)\s*/i', '', trim((string) ($p->seat_code ?? $p->seat_number ?? '')));
+                if ($code) $occupiedSeats[] = $code;
             }
         }
 
-        $passengers = \App\Models\InvoicePassenger::whereIn('invoice_id', $invoices->pluck('id'))->get();
-        foreach ($passengers as $p) {
-            $code = preg_replace('/^S/i', '', trim((string)($p->seat_code ?? $p->seat_number ?? '')));
-            if ($code) $occupiedSeats[] = $code;
+        $educationalBookings = \App\Models\EducationalTourParticipantBooking::whereHas('busAssignment', function ($q) use ($bus) {
+            $q->where('bus_id', $bus->id);
+        })
+            ->whereNotIn('status', ['cancelled', 'expired'])
+            ->whereHas('package', function ($q) use ($start, $end) {
+                $q->where('starts_at', '<', $end)
+                    ->where('ends_at', '>', $start);
+            })
+            ->get();
+
+        foreach ($educationalBookings as $eb) {
+            if ($eb->seat_number) {
+                $code = preg_replace('/^(?:Seat|S)\s*/i', '', trim((string) $eb->seat_number));
+                if ($code) $occupiedSeats[] = $code;
+            }
         }
 
         $occupiedSeats = array_values(array_unique($occupiedSeats));

@@ -300,6 +300,7 @@ class EmployeeSeeder extends Seeder
             }
             
             $employee['tags'] = $tags;
+            $employee['must_change_password'] = false;
 
             \App\Models\User::updateOrCreate(
                 ['email' => $employee['email']],

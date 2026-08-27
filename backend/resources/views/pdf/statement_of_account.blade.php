@@ -91,6 +91,8 @@
         $serviceLabel   = ($serviceType === 'Other' ? ($invoice->other_service_type ?? 'Other Service') : $serviceType) ?? 'General Service';
         $paymentHistory = $invoice->payments ?? collect([]);
         $travelDate     = isset($invoice->travel_date) ? $invoice->travel_date : ($invoice->due_date ?? null);
+        $educationParticipant = $invoice->educationalTourParticipantBooking;
+        $educationPackage = $educationParticipant?->package;
     @endphp
 
     {{-- ── HEADER ── --}}
@@ -200,6 +202,23 @@
     </div>
     @endif
 
+    @if($educationParticipant && $educationPackage)
+    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 12px 14px; margin-bottom: 20px; font-size: 10px;">
+        <div style="font-size: 8px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; margin-bottom: 8px;">Participant Billing Details</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <tr>
+                <td style="width:33.3%; padding:3px 0;"><strong>Participant:</strong> {{ $educationParticipant->full_name }}</td>
+                <td style="width:33.3%; padding:3px 0;"><strong>Booking:</strong> {{ $educationParticipant->reference }}</td>
+                <td style="width:33.3%; padding:3px 0;"><strong>Plan:</strong> {{ ucfirst(str_replace('_', ' ', $educationParticipant->payment_plan)) }}</td>
+            </tr>
+            <tr>
+                <td colspan="2" style="padding:3px 0;"><strong>Package:</strong> {{ $educationPackage->name }} &mdash; {{ $educationPackage->school_name }}</td>
+                <td style="padding:3px 0;"><strong>Bus / Seat:</strong> {{ $educationParticipant->busAssignment?->bus?->plate_number ?: 'Pending' }} / {{ $educationParticipant->seat_number ?: 'Pending' }}</td>
+            </tr>
+        </table>
+    </div>
+    @endif
+
     {{-- ── SERVICES / ITEMS TABLE ── --}}
     <div class="section-title">Services Rendered</div>
     <table class="items-table">
@@ -279,12 +298,6 @@
             <div class="summary-label">Invoice Total:</div>
             <div class="summary-value">PHP {{ number_format($invoice->total_amount, 2) }}</div>
         </div>
-        @if(isset($invoice->tax_amount) && $invoice->tax_amount > 0)
-        <div class="summary-row">
-            <div class="summary-label">VAT (12%) Included:</div>
-            <div class="summary-value">PHP {{ number_format($invoice->tax_amount, 2) }}</div>
-        </div>
-        @endif
         <hr class="summary-divider">
         <div class="summary-paid-row">
             <div class="summary-paid-label">Total Amount Paid:</div>

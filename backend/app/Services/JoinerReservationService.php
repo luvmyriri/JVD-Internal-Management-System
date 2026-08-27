@@ -20,7 +20,8 @@ class JoinerReservationService
         DB::transaction(function () use ($departure) {
             $expired = JoinerReservation::where('departure_id', $departure->id)
                 ->where('status', 'held')
-                ->where('hold_expires_at', '<=', now())
+                ->whereNotNull('hold_expires_at')
+                ->where('hold_expires_at', '<', now())
                 ->lockForUpdate()
                 ->get();
 
@@ -101,7 +102,7 @@ class JoinerReservationService
             if ($locked->status === 'confirmed' && $locked->invoice_id) {
                 return $locked->load(['departure.service', 'departure.bus', 'passengers.seat', 'invoice']);
             }
-            if ($locked->status !== 'held' || !$locked->hold_expires_at || $locked->hold_expires_at->isPast()) {
+            if ($locked->status !== 'held' || ($locked->hold_expires_at && $locked->hold_expires_at->isPast())) {
                 throw ValidationException::withMessages(['reservation' => 'This seat hold is no longer active.']);
             }
             if (count($passengers) !== $locked->passenger_count) {

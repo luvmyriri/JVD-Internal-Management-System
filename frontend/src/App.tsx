@@ -69,7 +69,6 @@ import SetPassword from './pages/SetPassword';
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
 import LogisticsOverview from './pages/logistics/Overview';
 
-
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -206,7 +205,8 @@ export default function App() {
                     <Route path="/hr/internships" element={<Internships />} />
                     <Route path="/hr/payroll" element={<Payroll />} />
 
-                    {/* Admin */}
+                    {/* Admin & Settings */}
+                    <Route path="/settings" element={<Settings />} />
                     <Route path="/admin/users" element={<AdminRoute path="/admin/users"><Users /></AdminRoute>} />
                     <Route path="/admin/audit-logs" element={<AdminRoute path="/admin/audit-logs"><AuditLogs /></AdminRoute>} />
                     <Route path="/admin/settings" element={<AdminRoute path="/admin/settings"><Settings /></AdminRoute>} />

@@ -254,6 +254,10 @@ export function printTripTicket(ticket: TripTicket) {
         <td class="val">${esc(plateNo)}</td>
       </tr>
       <tr>
+        <td class="label">Tour / Service:</td>
+        <td class="val" colspan="3">${esc(ticket.tour_name || ticket.sales_order_item?.title || ticket.passenger_name || '—')}${ticket.tour_code ? ' (' + esc(ticket.tour_code) + ')' : ''}</td>
+      </tr>
+      <tr>
         <td class="label">No of Passengers:</td>
         <td class="val">${esc(ticket.no_of_passengers)}${ticket.passenger_name ? ' - ' + esc(ticket.passenger_name) : ''}</td>
         <td class="label">Driver:</td>

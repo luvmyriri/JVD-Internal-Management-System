@@ -270,7 +270,7 @@
                         <td class="text-right" style="color: #0f172a;">#{{ $invoice->invoice_number }}</td>
                     </tr>
                     <tr>
-                        <td>Grand Total (VAT-inclusive):</td>
+                        <td>Grand Total:</td>
                         <td class="text-right" style="color: #0f172a;">PHP {{ number_format($invoice->total_amount, 2) }}</td>
                     </tr>
                     <tr>

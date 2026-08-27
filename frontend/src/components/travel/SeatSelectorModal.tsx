@@ -16,11 +16,20 @@ export interface SeatSelectionResult {
   driverName?: string;
 }
 
+export interface BusSelectorItem {
+  id: number;
+  plate_number: string;
+  model: string;
+  seating_capacity: number;
+  driver?: any;
+  occupiedSeats?: string[];
+}
+
 interface SeatSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: (result: SeatSelectionResult) => void;
-  buses: Array<{ id: number; plate_number: string; model: string; seating_capacity: number; driver?: any }>;
+  buses: BusSelectorItem[];
   initialBusId?: number;
   initialMode?: VehicleBookingMode;
   initialSeats?: string[];
@@ -28,6 +37,7 @@ interface SeatSelectorModalProps {
   returnDate?: string;
   paxCount?: number;
   packageName?: string;
+  allowWholeVehicle?: boolean;
 }
 
 export default function SeatSelectorModal({
@@ -42,16 +52,17 @@ export default function SeatSelectorModal({
   returnDate,
   paxCount = 1,
   packageName = 'Selected Package',
+  allowWholeVehicle = true,
 }: SeatSelectorModalProps) {
   const [selectedBusId, setSelectedBusId] = useState<number | null>(initialBusId || (buses[0]?.id ?? null));
-  const [bookingMode, setBookingMode] = useState<VehicleBookingMode>(initialMode);
+  const [bookingMode, setBookingMode] = useState<VehicleBookingMode>(allowWholeVehicle ? initialMode : 'selected_seats');
   const [selectedSeats, setSelectedSeats] = useState<string[]>(initialSeats);
 
   useEffect(() => {
     if (initialBusId) setSelectedBusId(initialBusId);
-    if (initialMode) setBookingMode(initialMode);
+    if (initialMode) setBookingMode(allowWholeVehicle ? initialMode : 'selected_seats');
     if (initialSeats) setSelectedSeats(initialSeats);
-  }, [initialBusId, initialMode, initialSeats, isOpen]);
+  }, [initialBusId, initialMode, initialSeats, isOpen, allowWholeVehicle]);
 
   // Set default bus if none selected
   useEffect(() => {
@@ -68,11 +79,11 @@ export default function SeatSelectorModal({
   const endDate = returnDate || startDate;
 
   // Fetch real-time bus & seat availability from backend API
-  const { data: availabilityResponse, isLoading, refetch } = useQuery({
+  const { data: availabilityResponse, isLoading } = useQuery({
     queryKey: ['bus-availability', selectedBusId, startDate, endDate],
     queryFn: async () => {
       if (!selectedBusId) return null;
-      const res = await client.get('/api/sales/bus-availability', {
+      const res = await client.get('/sales/bus-availability', {
         params: { bus_id: selectedBusId, starts_at: startDate, ends_at: endDate },
       });
       return res.data?.data;
@@ -80,27 +91,22 @@ export default function SeatSelectorModal({
     enabled: isOpen && !!selectedBusId,
   });
 
-  const occupiedSeats: string[] = availabilityResponse?.occupied_seats || [];
-  const isWholeVehicleBooked: boolean = availabilityResponse?.is_whole_vehicle_booked || false;
-  const seatingCapacity: number = availabilityResponse?.seating_capacity || activeBus?.seating_capacity || 49;
+  const occupiedSeats: string[] = useMemo(() => {
+    const fromBus = activeBus?.occupiedSeats || [];
+    const fromApi = availabilityResponse?.occupied_seats || [];
+    return Array.from(new Set([...fromBus, ...fromApi].map((s) => String(s).replace(/^(?:Seat|S)\s*/i, ''))));
+  }, [activeBus?.occupiedSeats, availabilityResponse?.occupied_seats]);
 
-  // Auto-select first available seat when opening modal in selected_seats mode
-  useEffect(() => {
-    if (isOpen && bookingMode === 'selected_seats' && selectedSeats.length === 0 && !isWholeVehicleBooked) {
-      for (let i = 1; i <= seatingCapacity; i++) {
-        const code = String(i);
-        if (!occupiedSeats.includes(code)) {
-          setSelectedSeats([code]);
-          break;
-        }
-      }
-    }
-  }, [isOpen, bookingMode, seatingCapacity, occupiedSeats, isWholeVehicleBooked]);
+  const isWholeVehicleBooked: boolean = availabilityResponse?.is_whole_vehicle_booked || false;
+  const seatingCapacity: number = activeBus?.seating_capacity || availabilityResponse?.seating_capacity || 49;
 
   const handleSeatToggle = (seatNumber: string) => {
     if (occupiedSeats.includes(seatNumber) || isWholeVehicleBooked) return;
 
     setSelectedSeats((prev) => {
+      if (paxCount === 1) {
+        return prev.includes(seatNumber) ? [] : [seatNumber];
+      }
       const exists = prev.includes(seatNumber);
       if (exists) {
         return prev.filter((s) => s !== seatNumber);
@@ -127,7 +133,7 @@ export default function SeatSelectorModal({
       });
     } else {
       if (selectedSeats.length === 0) {
-        alert('Please select at least 1 seat before proceeding to checkout.');
+        alert('Please select at least 1 seat before proceeding.');
         return;
       }
       onConfirm({
@@ -140,7 +146,6 @@ export default function SeatSelectorModal({
         driverName: activeBus.driver ? `${activeBus.driver.first_name} ${activeBus.driver.last_name}` : undefined,
       });
     }
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -200,35 +205,47 @@ export default function SeatSelectorModal({
             </div>
 
             {/* Mode Select */}
-            <div>
-              <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
-                Booking Option
-              </label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBookingMode('selected_seats')}
-                  className={`flex items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black transition-all border ${
-                    bookingMode === 'selected_seats'
-                      ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300'
-                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  }`}
-                >
-                  <LuUserCheck className="h-4 w-4" /> Specific Seats
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBookingMode('entire_vehicle')}
-                  className={`flex items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black transition-all border ${
-                    bookingMode === 'entire_vehicle'
-                      ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm dark:bg-amber-950/50 dark:text-amber-300'
-                      : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
-                  }`}
-                >
-                  <LuBus className="h-4 w-4" /> Entire Vehicle
-                </button>
+            {allowWholeVehicle ? (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Booking Option
+                </label>
+                <div className="mt-1 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBookingMode('selected_seats')}
+                    className={`flex items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black transition-all border ${
+                      bookingMode === 'selected_seats'
+                        ? 'border-blue-600 bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/50 dark:text-blue-300'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                  >
+                    <LuUserCheck className="h-4 w-4" /> Specific Seats
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBookingMode('entire_vehicle')}
+                    className={`flex items-center justify-center gap-2 rounded-2xl p-3 text-xs font-black transition-all border ${
+                      bookingMode === 'entire_vehicle'
+                        ? 'border-amber-500 bg-amber-50 text-amber-700 shadow-sm dark:bg-amber-950/50 dark:text-amber-300'
+                        : 'border-gray-200 bg-gray-50 text-gray-600 hover:bg-gray-100 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                    }`}
+                  >
+                    <LuBus className="h-4 w-4" /> Entire Vehicle
+                  </button>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                  Seat Selection Mode
+                </label>
+                <div className="mt-1 flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50/50 p-3 text-xs font-bold text-blue-800 dark:border-blue-900 dark:bg-blue-950/30 dark:text-blue-300">
+                  <LuUserCheck className="h-4 w-4 text-blue-600" />
+                  <span>Individual Participant Seat Assignment ({paxCount} Pax)</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Availability Alert Banner */}
@@ -283,7 +300,9 @@ export default function SeatSelectorModal({
           <div className="text-xs font-bold text-gray-500">
             {bookingMode === 'entire_vehicle'
               ? `Whole Vehicle Charter (${seatingCapacity} Pax Capacity)`
-              : `${selectedSeats.length} seat(s) selected`}
+              : selectedSeats.length > 0
+                ? `${selectedSeats.length} seat(s) selected: ${selectedSeats.join(', ')}`
+                : 'Click a seat on the coach blueprint to select'}
           </div>
           <div className="flex gap-3">
             <button
@@ -296,9 +315,9 @@ export default function SeatSelectorModal({
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={isWholeVehicleBooked}
+              disabled={isLoading || isWholeVehicleBooked || (bookingMode === 'selected_seats' && selectedSeats.length === 0)}
               className={`inline-flex items-center gap-2 rounded-2xl px-6 py-2.5 text-xs font-black uppercase tracking-wider text-white shadow-lg transition-all ${
-                isWholeVehicleBooked
+                isLoading || isWholeVehicleBooked || (bookingMode === 'selected_seats' && selectedSeats.length === 0)
                   ? 'bg-gray-300 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500'
                   : 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/20'
               }`}

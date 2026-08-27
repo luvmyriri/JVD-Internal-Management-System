@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\EducationalTourParticipantBooking;
 use App\Models\Invoice;
 use App\Models\PrivateTourBooking;
 use Illuminate\Database\Eloquent\Builder;
@@ -294,6 +295,11 @@ class TransactionQueryService
             'charterBooking.ratePlan.service:id,name,service_type',
             'educationalTourBooking:id,invoice_id,program_id,reference,school_name,starts_at,ends_at,student_count,chaperone_count,status',
             'educationalTourBooking.program:id,service_id,name',
+            'educationalTourParticipantBooking:id,invoice_id,package_id,bus_assignment_id,reference,student_number,seat_number,status',
+            'educationalTourParticipantBooking.package:id,tour_code,name,school_name,starts_at,ends_at,pickup_location,itinerary',
+            'educationalTourParticipantBooking.busAssignment:id,package_id,bus_id,driver_id,sequence_number',
+            'educationalTourParticipantBooking.busAssignment.bus:id,plate_number,model,seating_capacity',
+            'educationalTourParticipantBooking.busAssignment.driver:id,first_name,last_name,phone,email',
         ];
     }
 
@@ -309,7 +315,8 @@ class TransactionQueryService
                     && ! str_starts_with($relation, 'salesOrder.refunds:')
                     && ! str_starts_with($relation, 'booking:')
                     && ! str_starts_with($relation, 'charterBooking:')
-                    && ! str_starts_with($relation, 'educationalTourBooking:'))
+                    && ! str_starts_with($relation, 'educationalTourBooking:')
+                    && ! str_starts_with($relation, 'educationalTourParticipantBooking:'))
         ));
 
         return [
@@ -320,7 +327,7 @@ class TransactionQueryService
             'paymentSchedules:id,invoice_id,installment_number,due_date,amount_due,status,notes',
             'passengers:id,invoice_id,first_name,last_name,date_of_birth,passport_number,dietary_restrictions,emergency_contact,special_needs',
             'itineraries:id,invoice_id,day_number,date,location,activity_description,meal_plan,accommodation_name',
-            'tripTickets:id,invoice_id,sales_order_item_id,control_no,assignment_index,status,date_of_travel,duration,pick_up,drop_off,no_of_passengers,bus_id,driver_id',
+            'tripTickets:id,invoice_id,sales_order_item_id,educational_tour_package_id,educational_tour_bus_assignment_id,control_no,assignment_index,tour_name,tour_code,status,date_of_travel,duration,pick_up,drop_off,no_of_passengers,bus_id,driver_id',
             'tripTickets.bus:id,plate_number,model,seating_capacity',
             'tripTickets.driver:id,first_name,last_name,phone,email',
             'joinerReservation.passengers:id,reservation_id,departure_seat_id,first_name,last_name,passenger_type,date_of_birth,emergency_contact,special_needs',
@@ -333,11 +340,20 @@ class TransactionQueryService
             'educationalTourBooking.vehicles:id,booking_id,bus_id,driver_id,planned_passengers',
             'educationalTourBooking.vehicles.bus:id,plate_number,model,seating_capacity',
             'educationalTourBooking.vehicles.driver:id,first_name,last_name,phone,email',
+            'educationalTourParticipantBooking:id,invoice_id,package_id,bus_assignment_id,reference,student_number,seat_number,status,participant_first_name,participant_middle_name,participant_last_name,grade_level,section,date_of_birth,participant_email,participant_phone,guardian_name,guardian_email,guardian_phone,emergency_contact_name,emergency_contact_phone,dietary_restrictions,medical_or_accessibility_notes',
+            'educationalTourParticipantBooking.package:id,tour_code,name,school_name,starts_at,ends_at,pickup_location,itinerary,grade_level',
+            'educationalTourParticipantBooking.package.tripTickets:id,invoice_id,sales_order_item_id,educational_tour_package_id,educational_tour_bus_assignment_id,control_no,assignment_index,tour_name,tour_code,status,date_of_travel,duration,pick_up,drop_off,no_of_passengers,bus_id,driver_id',
+            'educationalTourParticipantBooking.package.tripTickets.bus:id,plate_number,model,seating_capacity',
+            'educationalTourParticipantBooking.package.tripTickets.driver:id,first_name,last_name,phone,email',
+            'educationalTourParticipantBooking.busAssignment:id,package_id,bus_id,driver_id,sequence_number',
+            'educationalTourParticipantBooking.busAssignment.bus:id,plate_number,model,seating_capacity',
+            'educationalTourParticipantBooking.busAssignment.driver:id,first_name,last_name,phone,email',
             'salesOrder.items:id,sales_order_id,line_number,service_id,service_type,fulfillment_type,fulfillment_id,status,title,description,quantity,unit_price,subtotal,tax_amount,total_amount,scheduled_start,scheduled_end,traveler_count,details_snapshot',
             'salesOrder.items.service:id,name,category,service_type',
             'salesOrder.items.fulfillment' => function (MorphTo $morphTo): void {
                 $morphTo->morphWith([
                     PrivateTourBooking::class => ['bus:id,plate_number,model,seating_capacity', 'driver:id,first_name,last_name,phone,email'],
+                    EducationalTourParticipantBooking::class => ['package:id,tour_code,name,school_name,starts_at,ends_at', 'busAssignment.bus:id,plate_number,model', 'busAssignment.driver:id,first_name,last_name,phone,email'],
                 ]);
             },
             'salesOrder.creditNotes:id,sales_order_id,invoice_id,credit_note_number,status,total_amount,reason,issued_at,posted_at',

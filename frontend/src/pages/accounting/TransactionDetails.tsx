@@ -180,7 +180,7 @@ export default function TransactionDetails() {
 
   const emailMutation = useMutation({
     mutationFn: () => billingApi.sendEmail(invoiceId, email.trim()),
-    onSuccess: () => toast.success(`Invoice sent to ${email.trim()}`),
+    onSuccess: (response) => toast.success(response.data?.message || `Invoice accepted for delivery to ${email.trim()}`),
     onError: (error: any) => toast.error(error?.response?.data?.message || 'The invoice email could not be sent.'),
   });
 

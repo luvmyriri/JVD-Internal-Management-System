@@ -42,8 +42,10 @@ class TransactionSummaryResource extends JsonResource
         $serviceTypes = $items->map(fn ($item) => $item->service_type ?? $item->service?->service_type)
             ->merge($orderItems->pluck('service_type'))
             ->filter()->unique()->values();
-        $paymentMethods = $this->payments($invoice)->pluck('payment_method')
-            ->push($invoice->payment_method)->filter()->unique()->values();
+        $postedPaymentMethods = $this->payments($invoice)->pluck('payment_method')->filter()->unique()->values();
+        $paymentMethods = $postedPaymentMethods->isNotEmpty()
+            ? $postedPaymentMethods
+            : collect([$invoice->payment_method])->filter()->unique()->values();
         $grossCollected = round((float) ($invoice->getAttribute('effective_collected') ?? 0), 2);
         $credited = round((float) ($invoice->credited_amount ?? 0), 2);
         $refunded = round((float) ($invoice->refunded_amount ?? 0), 2);
@@ -196,6 +198,27 @@ class TransactionSummaryResource extends JsonResource
             ]);
         }
 
+        $participantBooking = $invoice->relationLoaded('educationalTourParticipantBooking') ? $invoice->educationalTourParticipantBooking : null;
+        if ($participantBooking) {
+            $package = $participantBooking->relationLoaded('package') ? $participantBooking->package : null;
+            $contexts->push([
+                'type' => 'educational_tour',
+                'id' => $participantBooking->id,
+                'reference' => $participantBooking->reference,
+                'status' => $participantBooking->status,
+                'parent_id' => $package?->id,
+                'parent_reference' => $package?->tour_code ?? $package?->name,
+                'product_id' => $package?->id,
+                'context' => [
+                    'package_id' => $package?->id,
+                    'tour_code' => $package?->tour_code,
+                    'school_name' => $package?->school_name,
+                    'student_number' => $participantBooking->student_number,
+                    'seat_number' => $participantBooking->seat_number,
+                ],
+            ]);
+        }
+
         $order = $invoice->relationLoaded('salesOrder') ? $invoice->salesOrder : null;
         if ($order && $order->relationLoaded('items')) {
             $order->items->where('service_type', 'private_tour')->each(function (SalesOrderItem $item) use ($contexts): void {
@@ -299,8 +322,14 @@ class TransactionSummaryResource extends JsonResource
             $endsAt = $education->ends_at ?? $endsAt;
             $travelerCount = (int) $education->student_count + (int) $education->chaperone_count;
         }
+        $participantBooking = $invoice->relationLoaded('educationalTourParticipantBooking') ? $invoice->educationalTourParticipantBooking : null;
+        if ($participantBooking) {
+            $startsAt = $participantBooking->package?->starts_at ? Carbon::parse($participantBooking->package->starts_at) : $startsAt;
+            $endsAt = $participantBooking->package?->ends_at ? Carbon::parse($participantBooking->package->ends_at) : ($startsAt ? $startsAt->copy()->addDay() : $endsAt);
+            $travelerCount = 1;
+        }
         $legacy = $invoice->relationLoaded('booking') ? $invoice->booking : null;
-        if ($legacy && ! $joiner && ! $charter && ! $education) {
+        if ($legacy && ! $joiner && ! $charter && ! $education && ! $participantBooking) {
             $travelDate = $legacy->travel_date?->toDateString() ?? (string) $legacy->travel_date;
             $travelerCount = (int) ($legacy->pax_count ?? 0);
         }

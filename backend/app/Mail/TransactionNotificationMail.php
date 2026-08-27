@@ -2,6 +2,9 @@
 
 namespace App\Mail;
 
+use App\Models\Invoice;
+use App\Services\DocumentPdfService;
+use App\Services\GeneralServiceAgreementPdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -9,15 +12,13 @@ use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Invoice;
-use Barryvdh\DomPDF\Facade\Pdf;
-use App\Services\DocumentPdfService;
 
 class TransactionNotificationMail extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
     public $invoice;
+
     /**
      * Create a new message instance.
      */
@@ -60,7 +61,7 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
         $this->invoice->load(Invoice::operationalDocumentRelations());
         $pdfData = [
             'invoice' => $this->invoice,
-            'taxRate' => 0.12,
+            'taxRate' => 0,
         ];
 
         $attachments = [];
@@ -82,6 +83,14 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
             $soaName = "SOA_Collection_Form_{$this->invoice->invoice_number}.pdf";
             $attachments[] = Attachment::fromData(fn () => $soaPdf->output(), $soaName)
                 ->withMime('application/pdf');
+        }
+
+        if ($this->invoice->isPackageBooking()) {
+            $agreementPdf = app(GeneralServiceAgreementPdfService::class)->generate($this->invoice);
+            $attachments[] = Attachment::fromData(
+                fn () => $agreementPdf->output(),
+                "Service_Agreement_and_Terms_{$this->invoice->invoice_number}.pdf",
+            )->withMime('application/pdf');
         }
 
         return $attachments;

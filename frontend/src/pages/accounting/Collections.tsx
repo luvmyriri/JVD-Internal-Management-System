@@ -403,7 +403,7 @@ export default function Collections() {
     onError: (err: any) => {
       const errMsg = err?.response?.data?.message || 'Failed to send SOA email notification';
       toast.error(errMsg);
-    }
+    },
   });
 
   const handleSendSoaEmail = (id: number) => {
@@ -442,7 +442,7 @@ export default function Collections() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 60_000);
       toast.success('SOA PDF downloaded!');
     } catch (err: any) {
       console.error(err);

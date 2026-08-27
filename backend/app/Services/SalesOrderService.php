@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Bus;
 use App\Models\CharterBooking;
 use App\Models\EducationalTourBooking;
+use App\Models\EducationalTourParticipantBooking;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JoinerReservation;
@@ -14,7 +15,6 @@ use App\Models\SalesOrder;
 use App\Models\SalesOrderEvent;
 use App\Models\SalesOrderItem;
 use App\Models\Service;
-use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
@@ -92,15 +92,14 @@ class SalesOrderService
                 throw ValidationException::withMessages(['quantity' => 'Quantity and price must be valid non-negative values.']);
             }
             $subtotal = round($quantity * $unitPrice, 2);
-            $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
-            $tax = round($subtotal * $taxRate, 2);
+            $tax = 0.0;
             [$start, $end, $travelers] = $this->scheduleFor($type, $details);
 
             $item = SalesOrderItem::create([
                 'sales_order_id' => $order->id, 'line_number' => (int) $order->items()->reorder()->max('line_number') + 1,
                 'service_type' => $type, 'service_id' => $service->id, 'status' => 'draft', 'title' => $data['title'] ?? $service->name,
                 'description' => $data['description'] ?? $service->description, 'quantity' => $quantity, 'unit_price' => $unitPrice,
-                'subtotal' => $subtotal, 'tax_amount' => $tax, 'total_amount' => round($subtotal + $tax, 2),
+                'subtotal' => $subtotal, 'tax_amount' => $tax, 'total_amount' => $subtotal,
                 'supplier_cost' => $details['supplier_cost'] ?? null, 'scheduled_start' => $start, 'scheduled_end' => $end,
                 'traveler_count' => $travelers, 'details_snapshot' => $details,
             ]);
@@ -215,7 +214,7 @@ class SalesOrderService
     public function captureInvoice(Invoice $invoice, ?int $actorId = null): SalesOrder
     {
         return DB::transaction(function () use ($invoice, $actorId) {
-            $invoice = Invoice::lockForUpdate()->with(['items.service', 'joinerReservation', 'charterBooking', 'educationalTourBooking'])->findOrFail($invoice->id);
+            $invoice = Invoice::lockForUpdate()->with(['items.service', 'joinerReservation', 'charterBooking', 'educationalTourBooking', 'educationalTourParticipantBooking.package', 'educationalTourParticipantBooking.busAssignment.bus', 'educationalTourParticipantBooking.busAssignment.driver'])->findOrFail($invoice->id);
             $invoiceItems = $invoice->items->sortBy('id')->values();
             $legacy = $this->invoiceFulfillment($invoice);
             $order = SalesOrder::where('invoice_id', $invoice->id)->lockForUpdate()->first();
@@ -263,7 +262,15 @@ class SalesOrderService
                 $orderItem->load('fulfillment');
                 if ($isLegacyLine) {
                     $this->associateLegacyFulfillment($order, $orderItem, $legacy['model']);
-                    app(TripTicketService::class)->synchronizeForSalesItem($orderItem->fresh(['order.invoice', 'fulfillment', 'service']), $actorId ?? $invoice->created_by);
+                    if ($legacy['model'] instanceof EducationalTourParticipantBooking) {
+                        // Individual student invoices feed the package roster. Logistics
+                        // receives one DTT per assigned coach, never one DTT per student.
+                        app(TripTicketService::class)->synchronizeForEducationalTourPackage(
+                            $legacy['model']->package()->with(['busAssignments.bus', 'busAssignments.driver', 'schoolCustomer'])->firstOrFail()
+                        );
+                    } else {
+                        app(TripTicketService::class)->synchronizeForSalesItem($orderItem->fresh(['order.invoice', 'fulfillment', 'service']), $actorId ?? $invoice->created_by);
+                    }
 
                     continue;
                 }
@@ -375,6 +382,7 @@ class SalesOrderService
         [$start, $end, $travelers] = match (true) {
             $fulfillment instanceof CharterBooking => [$fulfillment->starts_at, $fulfillment->ends_at, $fulfillment->passenger_count],
             $fulfillment instanceof EducationalTourBooking => [$fulfillment->starts_at, $fulfillment->ends_at, (int) $fulfillment->student_count + (int) $fulfillment->chaperone_count],
+            $fulfillment instanceof EducationalTourParticipantBooking => [$fulfillment->package?->starts_at, $fulfillment->package?->ends_at ?? $fulfillment->package?->starts_at, 1],
             $fulfillment instanceof JoinerReservation => [$fulfillment->departure?->starts_at, $fulfillment->departure?->ends_at, $fulfillment->passenger_count],
             $fulfillment instanceof Booking => [$fulfillment->departure_datetime ?? $fulfillment->travel_date, $fulfillment->arrival_datetime, $fulfillment->pax_count],
             default => [$item->scheduled_start, $item->scheduled_end, $item->traveler_count],
@@ -560,7 +568,7 @@ class SalesOrderService
 
     private function invoiceFulfillment(Invoice $invoice): array
     {
-        foreach ([['joinerReservation', 'joiner_tour'], ['charterBooking', 'bus_rental'], ['educationalTourBooking', 'educational_tour'], ['booking', null]] as [$relation,$type]) {
+        foreach ([['joinerReservation', 'joiner_tour'], ['charterBooking', 'bus_rental'], ['educationalTourBooking', 'educational_tour'], ['educationalTourParticipantBooking', 'educational_tour'], ['booking', null]] as [$relation,$type]) {
             if ($invoice->{$relation}) {
                 return ['type' => $type, 'model' => $invoice->{$relation}];
             }

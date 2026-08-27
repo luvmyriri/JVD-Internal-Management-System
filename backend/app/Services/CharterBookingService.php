@@ -27,12 +27,13 @@ class CharterBookingService
         $overnights = max(0, (int) $start->startOfDay()->diffInDays($end->copy()->startOfDay()));
         $base = (float) $plan->base_price;
 
-        // Charter packages are priced as-is by default; surcharges are never applied automatically for exceeding hours or dates
-        $extraHours = 0;
-        $extraKilometers = 0;
-        $extraHoursAmount = 0.0;
-        $extraKilometersAmount = 0.0;
-        $overnightAmount = 0.0;
+        $fixed = $isFixedRate ?? true;
+        $extraHours = (! $fixed && $plan->included_hours !== null) ? max(0, $hours - (int) $plan->included_hours) : 0;
+        $extraKilometers = (! $fixed && $plan->included_kilometers !== null) ? max(0, (int) ceil($kilometers - (float) $plan->included_kilometers)) : 0;
+        $extraHoursAmount = $extraHours * (float) ($plan->extra_hour_rate ?? 0);
+        $extraKilometersAmount = $extraKilometers * (float) ($plan->extra_kilometer_rate ?? 0);
+        $overnightAmount = (! $fixed) ? $overnights * (float) ($plan->overnight_rate ?? 0) : 0.0;
+        $subtotal = $base + $extraHoursAmount + $extraKilometersAmount + $overnightAmount;
 
         return [
             'duration_hours' => $hours,
@@ -44,8 +45,8 @@ class CharterBookingService
             'extra_hours_amount' => $extraHoursAmount,
             'extra_kilometers_amount' => $extraKilometersAmount,
             'overnight_amount' => $overnightAmount,
-            'is_fixed_rate' => true,
-            'subtotal' => round($base, 2),
+            'is_fixed_rate' => $fixed,
+            'subtotal' => round($subtotal, 2),
         ];
     }
 

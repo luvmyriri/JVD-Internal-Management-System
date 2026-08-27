@@ -45,6 +45,7 @@ class DatabaseSeeder extends Seeder
                 AuditLogSeeder::class,
                 LegalDocumentSeeder::class,
                 SalesSystemSeeder::class,
+                LittleMastersEducationalTourSeeder::class,
             ]);
         }
     }

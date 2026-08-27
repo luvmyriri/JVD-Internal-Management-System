@@ -31,10 +31,10 @@
 
         .summary-table { width: 100%; border-collapse: collapse; margin-top: 8px; margin-bottom: 10px; }
         .summary-col { width: 33.33%; vertical-align: top; padding: 8px; background: #f8fafc; border-radius: 6px; border: 1px solid #f1f5f9; }
-        .summary-title { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.5px; margin-bottom: 5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
-        .summary-row { display: block; width: 100%; margin-bottom: 3px; clear: both; }
-        .summary-label { float: left; font-weight: 700; color: #475569; font-size: 9px; }
-        .summary-value { float: right; font-weight: 900; color: #0f172a; font-size: 9px; }
+        .summary-title { clear: both; font-size: 8px; font-weight: 900; text-transform: uppercase; color: #64748b; letter-spacing: 0.3px; white-space: nowrap; margin-bottom: 5px; border-bottom: 1px solid #cbd5e1; padding-bottom: 3px; }
+        .summary-row { display: table; table-layout: fixed; width: 100%; margin-bottom: 3px; clear: both; }
+        .summary-label { display: table-cell; width: 52%; font-weight: 700; color: #475569; font-size: 9px; vertical-align: top; }
+        .summary-value { display: table-cell; width: 48%; text-align: right; white-space: nowrap; font-weight: 900; color: #0f172a; font-size: 9px; vertical-align: top; }
 
         .footer { width: 100%; border-top: 1px solid #cbd5e1; padding-top: 8px; margin-top: 10px; font-size: 8px; color: #64748b; }
         .footer-table { width: 100%; border-collapse: collapse; }
@@ -105,6 +105,8 @@
         $joinerSeatNames = $joiner?->passengers?->map(fn($passenger) => ($passenger->seat?->seat_code ?: '?').' - '.$passenger->first_name.' '.$passenger->last_name.($passenger->passenger_type === 'child' ? ' (Child)' : ''))->filter()->values()->all() ?? [];
         $charter = $invoice->charterBooking;
         $education = $invoice->educationalTourBooking;
+        $educationParticipant = $invoice->educationalTourParticipantBooking;
+        $educationPackage = $educationParticipant?->package;
         $privateTourItem = $invoice->salesOrder?->items?->first(fn($item) => $item->service_type === 'private_tour' && $item->fulfillment instanceof \App\Models\PrivateTourBooking);
         $privateTour = $privateTourItem?->fulfillment;
         $privateTourBus = $privateTour?->bus;
@@ -268,6 +270,33 @@
     </div>
     @endif
 
+    @if($educationParticipant && $educationPackage)
+    <div class="details-box">
+        <div class="details-title">Educational Tour Participant Booking</div>
+        <table class="details-table">
+            <tr>
+                <td style="width:33.3%;"><span class="details-label">Booking Reference:</span> {{ $educationParticipant->reference }}</td>
+                <td style="width:33.3%;"><span class="details-label">Participant:</span> {{ $educationParticipant->full_name }}</td>
+                <td style="width:33.3%;"><span class="details-label">Student No.:</span> {{ $educationParticipant->student_number ?: 'Not provided' }}</td>
+            </tr>
+            <tr>
+                <td style="width:33.3%;"><span class="details-label">Package:</span> {{ $educationPackage->name }}</td>
+                <td style="width:33.3%;"><span class="details-label">School:</span> {{ $educationPackage->school_name }}</td>
+                <td style="width:33.3%;"><span class="details-label">Grade / Section:</span> {{ trim(($educationParticipant->grade_level ?: $educationPackage->grade_level ?: 'Not provided').' '.($educationParticipant->section ?: '')) }}</td>
+            </tr>
+            <tr>
+                <td colspan="2"><span class="details-label">Schedule:</span> {{ $educationPackage->starts_at->format('M d, Y h:i A') }} &ndash; {{ $educationPackage->ends_at->format('M d, Y h:i A') }}</td>
+                <td><span class="details-label">Payment Plan:</span> {{ ucfirst(str_replace('_', ' ', $educationParticipant->payment_plan)) }}</td>
+            </tr>
+            <tr>
+                <td><span class="details-label">Bus:</span> {{ $educationParticipant->busAssignment?->bus?->plate_number ?: 'Pending allocation' }}</td>
+                <td><span class="details-label">Seat:</span> {{ $educationParticipant->seat_number ?: 'Pending allocation' }}</td>
+                <td><span class="details-label">Pickup:</span> {{ $educationPackage->pickup_location }}</td>
+            </tr>
+        </table>
+    </div>
+    @endif
+
     <!-- Line Items Table -->
     <table class="items-table">
         <thead>
@@ -306,22 +335,22 @@
                     @if($item->adults !== null || $item->children !== null)
                     <div class="pax-row">
                         @if($item->adults)
-                        Adults: {{ $item->adults }} &times; &#8369;{{ number_format($item->adult_price ?? $item->unit_price, 2) }}
+                        Adults: {{ $item->adults }} &times; PHP&nbsp;{{ number_format($item->adult_price ?? $item->unit_price, 2) }}
                         @endif
                         @if($item->adults && $item->children)
                          |
                         @endif
                         @if($item->children)
-                        Children: {{ $item->children }} &times; &#8369;{{ number_format($item->child_price ?? $item->unit_price, 2) }}
+                        Children: {{ $item->children }} &times; PHP&nbsp;{{ number_format($item->child_price ?? $item->unit_price, 2) }}
                         @endif
                     </div>
                     @endif
                 </td>
                 <td>{{ $invoice->created_at->format('M d, Y') }}</td>
                 <td class="center">{{ $item->quantity }}</td>
-                <td class="right">&#8369;{{ number_format($item->unit_price, 2) }}</td>
+                <td class="right">PHP&nbsp;{{ number_format($item->unit_price, 2) }}</td>
                 <td class="right" style="font-weight: 900; color: #0f172a;">
-                    &#8369;{{ number_format($item->total_price, 2) }}
+                    PHP&nbsp;{{ number_format($item->total_price, 2) }}
                 </td>
             </tr>
             @endforeach
@@ -335,37 +364,33 @@
                 <div class="summary-title">Balances Summary</div>
                 <div class="summary-row">
                     <div class="summary-label">Grand Total:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->total_amount, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->total_amount, 2) }}</div>
                 </div>
                 <div class="summary-row" style="color: #16a34a;">
                     <div class="summary-label">Amount Paid:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->amount_received, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->amount_received, 2) }}</div>
                 </div>
                 @if($invoice->change > 0)
                 <div class="summary-row" style="color: #16a34a;">
                     <div class="summary-label">Change Given:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->change, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->change, 2) }}</div>
                 </div>
                 @endif
                 <div class="summary-row" style="border-top: 1px dashed #cbd5e1; padding-top: 3px; margin-top: 3px;">
                     <div class="summary-label">Unpaid Balance:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->balance, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->balance, 2) }}</div>
                 </div>
             </td>
 
             <td class="summary-col">
-                <div class="summary-title">Tax Breakdown</div>
+                <div class="summary-title">Package Pricing</div>
                 <div class="summary-row">
-                    <div class="summary-label">VATable (12%):</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->subtotal, 2) }}</div>
+                    <div class="summary-label">Service Amount:</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->subtotal, 2) }}</div>
                 </div>
                 <div class="summary-row">
-                    <div class="summary-label">VAT Amount:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->tax_amount, 2) }}</div>
-                </div>
-                <div class="summary-row">
-                    <div class="summary-label">VAT Exempt:</div>
-                    <div class="summary-value">&#8369;0.00</div>
+                    <div class="summary-label">Final Package Total:</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->total_amount, 2) }}</div>
                 </div>
             </td>
 
@@ -373,15 +398,15 @@
                 <div class="summary-title">Total Breakdown</div>
                 <div class="summary-row">
                     <div class="summary-label">Subtotal:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->subtotal, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->subtotal, 2) }}</div>
                 </div>
                 <div class="summary-row">
                     <div class="summary-label">Adjustments:</div>
-                    <div class="summary-value">&#8369;0.00</div>
+                    <div class="summary-value">PHP&nbsp;0.00</div>
                 </div>
                 <div class="summary-row" style="border-top: 1px dashed #cbd5e1; padding-top: 3px; margin-top: 3px;">
                     <div class="summary-label">Amount Tendered:</div>
-                    <div class="summary-value">&#8369;{{ number_format($invoice->amount_received, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->amount_received, 2) }}</div>
                 </div>
             </td>
         </tr>
@@ -396,9 +421,9 @@
                     @if($invoice->status === 'paid' || (float) $invoice->balance <= 0)
                         This transaction has been settled in full.<br>
                     @elseif($invoice->status === 'partial')
-                        Partial payment received. Outstanding balance: &#8369;{{ number_format($invoice->balance, 2) }}.<br>
+                        Partial payment received. Outstanding balance: PHP&nbsp;{{ number_format($invoice->balance, 2) }}.<br>
                     @else
-                        Payment is pending. Amount due: &#8369;{{ number_format($invoice->balance, 2) }}.<br>
+                        Payment is pending. Amount due: PHP&nbsp;{{ number_format($invoice->balance, 2) }}.<br>
                     @endif
                     <strong>Payment Method:</strong> {{ strtoupper($invoice->payment_method) }}<br>
                     <strong>Receipt Generated:</strong> {{ now()->format('Y-m-d H:i:s') }}

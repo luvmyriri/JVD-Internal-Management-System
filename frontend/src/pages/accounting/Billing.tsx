@@ -751,10 +751,6 @@ export default function Billing() {
                     <span>Subtotal</span>
                     <span className="text-gray-900 dark:text-white">₱{Number(selectedInvoice.subtotal).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
                   </div>
-                  <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                    <span>Tax (12%)</span>
-                    <span className="text-gray-900 dark:text-white">₱{Number(selectedInvoice.tax_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
                   <div className="flex justify-between pt-3 border-t-2 border-gray-900 dark:border-gray-100 items-center">
                     <span className="text-xs font-black text-gray-900 dark:text-white uppercase">Total Order</span>
                     <span className="text-xl font-black text-blue-600">₱{Number(selectedInvoice.total_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>

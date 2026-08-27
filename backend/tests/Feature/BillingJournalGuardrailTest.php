@@ -37,7 +37,7 @@ class BillingJournalGuardrailTest extends TestCase
         ]);
     }
 
-    public function test_catalog_price_and_client_tax_tampering_cannot_change_invoice_totals(): void
+    public function test_catalog_price_is_authoritative_and_checkout_never_adds_client_submitted_tax(): void
     {
         $admin = User::factory()->superAdmin()->create();
         SystemSetting::setValue('vat_rate', 0.12);
@@ -78,8 +78,8 @@ class BillingJournalGuardrailTest extends TestCase
         $this->assertDatabaseHas('invoices', [
             'id' => $invoiceId,
             'subtotal' => 1500,
-            'tax_amount' => 180,
-            'total_amount' => 1680,
+            'tax_amount' => 0,
+            'total_amount' => 1500,
         ]);
         $this->assertDatabaseHas('invoice_items', [
             'invoice_id' => $invoiceId,
@@ -145,7 +145,8 @@ class BillingJournalGuardrailTest extends TestCase
 
         $this->assertSame(1700.0, $charter['processedItems'][0]['unit_price']);
         $this->assertSame(3400.0, $charter['subtotal']);
-        $this->assertSame(408.0, $charter['taxAmount']);
+        $this->assertSame(0.0, $charter['taxAmount']);
+        $this->assertSame(3400.0, $charter['totalAmount']);
 
         $education = $finalizer->calculateItems([[
             'service_id' => null,
@@ -162,7 +163,8 @@ class BillingJournalGuardrailTest extends TestCase
 
         $this->assertSame(2100.0, $education['processedItems'][0]['unit_price']);
         $this->assertSame(2100.0, $education['subtotal']);
-        $this->assertSame(252.0, $education['taxAmount']);
+        $this->assertSame(0.0, $education['taxAmount']);
+        $this->assertSame(2100.0, $education['totalAmount']);
     }
 
     public function test_direct_mark_paid_cannot_fabricate_payment_state(): void
