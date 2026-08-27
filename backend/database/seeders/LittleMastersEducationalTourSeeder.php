@@ -170,10 +170,14 @@ class LittleMastersEducationalTourSeeder extends Seeder
             }
         }
 
+        // Optionally seed realistic participant bookings (Students & Adults) if explicitly enabled
+        if (! env('SEED_EDUCATIONAL_TOUR_PARTICIPANTS', false)) {
+            return;
+        }
+
         // Get bus assignment ID
         $busAssignment = $package->busAssignments()->first();
 
-        // Seed realistic participant bookings (Students & Adults)
         $participants = [
             // --- Students (₱1,300 each) ---
             [
