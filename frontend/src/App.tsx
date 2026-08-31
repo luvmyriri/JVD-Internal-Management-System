@@ -5,7 +5,7 @@ import { QuickRequestProvider } from './context/QuickRequestContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { EntityPreviewProvider } from './context/EntityPreviewContext';
 import QuickRequestModal from './components/layout/QuickRequestModal';
-import { AuthGuard } from './guards';
+import { AuthGuard, RoleGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
@@ -102,6 +102,12 @@ const AdminRoute = ({ path, children }: { path: string; children: React.ReactNod
   }
   return <>{children}</>;
 };
+
+const DriverOnlyRoute = ({ children }: { children: React.ReactNode }) => (
+  <RoleGuard roles={['driver']}>
+    {children}
+  </RoleGuard>
+);
 
 export default function App() {
   return (
@@ -215,10 +221,10 @@ export default function App() {
                     <Route path="/admin/role-permissions" element={<AdminRoute path="/admin/role-permissions"><RolePermissions /></AdminRoute>} />
 
                     {/* Driver */}
-                    <Route path="/driver/overview" element={<DriverTrips />} />
-                    <Route path="/driver/scheduled-trips" element={<DriverSchedule />} />
-                    <Route path="/driver/my-fleet" element={<DriverBus />} />
-                    <Route path="/driver/commissions" element={<Commissions />} />
+                    <Route path="/driver/overview" element={<DriverOnlyRoute><DriverTrips /></DriverOnlyRoute>} />
+                    <Route path="/driver/scheduled-trips" element={<DriverOnlyRoute><DriverSchedule /></DriverOnlyRoute>} />
+                    <Route path="/driver/my-fleet" element={<DriverOnlyRoute><DriverBus /></DriverOnlyRoute>} />
+                    <Route path="/driver/commissions" element={<DriverOnlyRoute><Commissions /></DriverOnlyRoute>} />
                     <Route path="/driver/schedule" element={<Navigate to="/driver/scheduled-trips" replace />} />
                     <Route path="/driver/trips" element={<Navigate to="/driver/overview" replace />} />
                     <Route path="/driver/bus" element={<Navigate to="/driver/my-fleet" replace />} />

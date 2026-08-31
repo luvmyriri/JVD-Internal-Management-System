@@ -26,11 +26,16 @@ export interface PassengerItem {
 
 export interface AllocatedBus {
   bus_id: number;
-  bus_name: string;
-  plate_number: string;
-  capacity: number;
+  bus_name?: string;
+  plate_number?: string;
+  capacity?: number;
   driver_id?: number;
   driver_name?: string;
+  sequence_number?: number;
+  assignment_id?: number;
+  model?: string;
+  seating_capacity?: number;
+  total_seats?: number;
   seat_assignments: Record<string, PassengerItem>; // seatCode -> PassengerItem
 }
 

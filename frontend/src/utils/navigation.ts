@@ -3,10 +3,18 @@ import type { User, RolePermissions } from '../types/auth';
 
 export function isPathAllowedForUser(path: string, user?: User | null, permissions?: RolePermissions | null): boolean {
   if (!user) return false;
+
+  const cleanPath = path.replace(/\/$/, '');
+
+  // The Driver namespace is an exact-role personal workspace. Dynamic permissions,
+  // general-access tags, and the super-admin bypass must not grant access to it.
+  if (cleanPath === '/driver' || cleanPath.startsWith('/driver/')) {
+    return user.role === 'driver';
+  }
+
   if (user.role === 'super_admin') return true;
 
   // Profile, Dashboard, and Settings/Preferences are always allowed for all authenticated users
-  const cleanPath = path.replace(/\/$/, '');
   if (
     cleanPath === '/profile' ||
     cleanPath === '/dashboard' ||

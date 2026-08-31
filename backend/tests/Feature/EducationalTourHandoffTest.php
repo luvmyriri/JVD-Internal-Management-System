@@ -146,6 +146,96 @@ class EducationalTourHandoffTest extends TestCase
         $this->assertNull($ticket->sales_order_item_id);
     }
 
+    public function test_package_edits_without_assignment_ids_update_the_same_trip_ticket(): void
+    {
+        $service = app(EducationalTourPackageService::class);
+        $assignment = $this->package->busAssignments()->firstOrFail();
+        $ticket = TripTicket::where('educational_tour_package_id', $this->package->id)->firstOrFail();
+        $originalTicketId = $ticket->id;
+        $originalControlNumber = $ticket->control_no;
+
+        $ticket->update([
+            'status' => 'approved',
+            'approved_by' => $this->admin->id,
+        ]);
+
+        // This is the payload shape used by older edit clients: the stable bus
+        // position is present, but the database assignment ID is not.
+        $service->updatePackage($this->package, [
+            'name' => 'Revised Browser QA Educational Tour',
+            'pickup_location' => 'Revised School Assembly Gate',
+            'bus_assignments' => [[
+                'bus_id' => $this->bus->id,
+                'driver_id' => $this->driver->id,
+                'sequence_number' => 1,
+            ]],
+        ]);
+
+        $this->assertSame(1, $this->package->busAssignments()->count());
+        $this->assertSame(1, TripTicket::where('educational_tour_package_id', $this->package->id)->count());
+
+        $ticket->refresh();
+        $this->assertSame($originalTicketId, $ticket->id);
+        $this->assertSame($originalControlNumber, $ticket->control_no);
+        $this->assertSame($assignment->id, $ticket->educational_tour_bus_assignment_id);
+        $this->assertSame('Revised Browser QA Educational Tour', $ticket->tour_name);
+        $this->assertSame('Revised School Assembly Gate', $ticket->pick_up);
+        $this->assertSame('draft', $ticket->status, 'Operational changes must return an approved ticket for re-approval.');
+        $this->assertNull($ticket->approved_by);
+
+        // A second identical save must remain a no-op for ticket identity.
+        $service->updatePackage($this->package->fresh(), [
+            'operations_notes' => 'Second desk edit',
+            'bus_assignments' => [[
+                'bus_id' => $this->bus->id,
+                'driver_id' => $this->driver->id,
+                'sequence_number' => 1,
+            ]],
+        ]);
+
+        $this->assertSame(1, $this->package->busAssignments()->count());
+        $this->assertSame(1, TripTicket::where('educational_tour_package_id', $this->package->id)->count());
+        $this->assertSame($originalTicketId, TripTicket::where('educational_tour_package_id', $this->package->id)->value('id'));
+    }
+
+    public function test_replacing_a_bus_assignment_rebinds_the_existing_trip_ticket(): void
+    {
+        $service = app(EducationalTourPackageService::class);
+        $oldAssignment = $this->package->busAssignments()->firstOrFail();
+        $ticket = TripTicket::where('educational_tour_package_id', $this->package->id)->firstOrFail();
+        $originalTicketId = $ticket->id;
+        $originalControlNumber = $ticket->control_no;
+
+        $replacementDriver = User::factory()->create([
+            'role' => 'driver',
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+        $replacementBus = Bus::create([
+            'plate_number' => 'REPLACEMENT-01',
+            'model' => 'Replacement 49-Seater',
+            'seating_capacity' => 49,
+            'status' => 'available',
+            'vehicle_type' => 'bus',
+        ]);
+
+        $service->removeBusAssignment($oldAssignment);
+        $newAssignment = $service->assignBus($this->package->fresh(), [
+            'bus_id' => $replacementBus->id,
+            'driver_id' => $replacementDriver->id,
+            'sequence_number' => 1,
+        ], $this->admin->id);
+
+        $this->assertSame(1, TripTicket::where('educational_tour_package_id', $this->package->id)->count());
+        $ticket->refresh();
+        $this->assertSame($originalTicketId, $ticket->id);
+        $this->assertSame($originalControlNumber, $ticket->control_no);
+        $this->assertSame($newAssignment->id, $ticket->educational_tour_bus_assignment_id);
+        $this->assertSame($replacementBus->id, $ticket->bus_id);
+        $this->assertSame($replacementDriver->id, $ticket->driver_id);
+        $this->assertSame('REPLACEMENT-01', $ticket->plate_no);
+    }
+
     public function test_end_to_end_educational_tour_sales_accounting_logistics_driver_handoff(): void
     {
         // 1. Register participant

@@ -28,7 +28,7 @@ export async function downloadEducationalRosterTemplate(pkg: EducationalTourPack
     'Passenger Type (student / adult / companion)',
     'Student ID / No.',
     'Grade Level',
-    'Section',
+    'Section / Branch',
     'Date of Birth (YYYY-MM-DD)',
     'Email Address',
     'Contact Phone',
@@ -99,7 +99,7 @@ export async function downloadEducationalRosterTemplate(pkg: EducationalTourPack
     'adult',
     '', // Adults do not require student ID
     '', // Adults do not require grade level
-    '', // Adults do not require section
+    'Fairview Branch', // Section or School Branch
     '1985-08-22',
     'maria.garcia@gmail.com',
     '09191234568',
@@ -316,7 +316,7 @@ export async function parseEducationalRosterExcel(file: File): Promise<ParseExce
       payload,
       displayName: `${lastName}, ${firstName} ${middleName}`.trim(),
       studentNumber: participantType === 'adult' ? 'Adult / Companion' : (studentNumber || '—'),
-      gradeAndSection: participantType === 'adult' ? 'Non-Student' : ([gradeLevel, section].filter(Boolean).join(' - ') || '—'),
+      gradeAndSection: participantType === 'adult' ? (section ? `Non-Student · ${section}` : 'Non-Student') : ([gradeLevel, section].filter(Boolean).join(' · ') || '—'),
       guardianName: guardianName || emergencyName || '—',
       paymentPlan,
       seatInfo: seatNumber ? `Coach ${busSequence || 1} · ${seatNumber}` : 'Auto-Assign',
@@ -382,7 +382,7 @@ export async function exportEducationalRosterToExcel(
     'Invoice #',
     'Participant Name',
     'Student ID',
-    'Grade & Section',
+    'Grade & Section / Branch',
     'Date of Birth',
     'Contact Info',
     'Guardian / Emergency',
@@ -433,7 +433,7 @@ export async function exportEducationalRosterToExcel(
       booking.invoice?.invoice_number || '—',
       booking.full_name || `${booking.participant_last_name}, ${booking.participant_first_name}`,
       isAdult ? '—' : (booking.student_number || '—'),
-      isAdult ? 'Non-Student' : ([booking.grade_level, booking.section].filter(Boolean).join(' - ') || '—'),
+      isAdult ? (booking.section ? `Non-Student · ${booking.section}` : 'Non-Student') : ([booking.grade_level, booking.section].filter(Boolean).join(' · ') || '—'),
       booking.date_of_birth || '—',
       booking.participant_email || booking.participant_phone || '—',
       [booking.guardian_name || booking.emergency_contact_name, booking.guardian_phone || booking.emergency_contact_phone].filter(Boolean).join(' | ') || '—',

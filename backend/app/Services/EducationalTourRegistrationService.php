@@ -142,6 +142,11 @@ class EducationalTourRegistrationService
                     ]);
                 }
 
+                $this->busAllocator->assertAssignmentAcceptsSection(
+                    $targetBusAssignment,
+                    $part['section'] ?? null,
+                );
+
                 $cleanSeatNum = preg_replace('/^(?:Seat|S)\s*/i', '', trim((string) $requestedSeatNumber));
                 $seatIndex = (int) $cleanSeatNum;
                 if ($seatIndex < 1 || $seatIndex > $targetBusAssignment->capacity_snapshot) {

@@ -33,6 +33,10 @@ class EducationalTourBusAllocator
                 ->get();
 
             foreach ($busAssignments as $assignment) {
+                if (! $this->assignmentAcceptsSection($assignment, $booking->section, $booking->id)) {
+                    continue;
+                }
+
                 $occupiedCount = EducationalTourParticipantBooking::where('bus_assignment_id', $assignment->id)
                     ->whereNotIn('status', ['cancelled', 'expired'])
                     ->where('id', '!=', $booking->id)
@@ -156,6 +160,8 @@ class EducationalTourBusAllocator
                 ]);
             }
 
+            $this->assertAssignmentAcceptsSection($assignment, $booking->section, $booking->id);
+
             $seatOccupied = EducationalTourParticipantBooking::where('bus_assignment_id', $assignment->id)
                 ->where('seat_number', $targetSeatNumber)
                 ->where('id', '!=', $booking->id)
@@ -178,6 +184,25 @@ class EducationalTourBusAllocator
     }
 
     /**
+     * Prevent branch-specific pickup groups from being mixed on one vehicle.
+     * Main Campus/Main Branch and Fairview intentionally share one pickup group;
+     * Tandang Sora is always separate. Classroom section names remain unrestricted.
+     */
+    public function assertAssignmentAcceptsSection(
+        EducationalTourBusAssignment $assignment,
+        ?string $section,
+        ?int $ignoreBookingId = null,
+    ): void {
+        if ($this->assignmentAcceptsSection($assignment, $section, $ignoreBookingId)) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'bus_assignment_id' => 'Passengers from different pickup branches cannot share one bus. Assign a separate bus for this branch.',
+        ]);
+    }
+
+    /**
      * Release seat upon cancellation/expiration.
      */
     public function release(EducationalTourParticipantBooking $booking): void
@@ -196,5 +221,55 @@ class EducationalTourBusAllocator
         if ($package) {
             $this->tripTickets->synchronizeForEducationalTourPackage($package);
         }
+    }
+
+    private function assignmentAcceptsSection(
+        EducationalTourBusAssignment $assignment,
+        ?string $section,
+        ?int $ignoreBookingId = null,
+    ): bool {
+        $requestedGroup = $this->pickupGroupForSection($section);
+        if ($requestedGroup === null) {
+            return true;
+        }
+
+        $existingGroups = EducationalTourParticipantBooking::query()
+            ->where('bus_assignment_id', $assignment->id)
+            ->whereNotIn('status', ['cancelled', 'expired'])
+            ->when($ignoreBookingId, fn ($query) => $query->where('id', '!=', $ignoreBookingId))
+            ->pluck('section')
+            ->map(fn ($existingSection) => $this->pickupGroupForSection($existingSection))
+            ->filter()
+            ->unique()
+            ->values();
+
+        return $existingGroups->isEmpty()
+            || ($existingGroups->count() === 1 && $existingGroups->first() === $requestedGroup);
+    }
+
+    private function pickupGroupForSection(?string $section): ?string
+    {
+        $normalized = strtolower(trim((string) $section));
+        if ($normalized === '') {
+            return null;
+        }
+
+        if (str_contains($normalized, 'tandang sora')) {
+            return 'tandang_sora';
+        }
+
+        if (str_contains($normalized, 'fairview')
+            || str_contains($normalized, 'main branch')
+            || str_contains($normalized, 'main campus')) {
+            return 'fairview_main';
+        }
+
+        // Only branch/pickup-looking values are operational grouping fields.
+        // Ordinary classroom section values (for example "KRP 2") are not.
+        if (str_contains($normalized, 'branch') || str_contains($normalized, 'pickup')) {
+            return preg_replace('/[^a-z0-9]+/', '_', $normalized);
+        }
+
+        return null;
     }
 }

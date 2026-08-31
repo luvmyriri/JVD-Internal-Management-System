@@ -116,13 +116,156 @@ class EducationalTourPackageService
                 $data['published_at'] = now();
             }
 
+            $busAssignmentsData = null;
+            if (array_key_exists('bus_assignments', $data)) {
+                $busAssignmentsData = $data['bus_assignments'];
+                unset($data['bus_assignments']);
+            }
+
             unset($data['is_tax_inclusive'], $data['vat_rate']);
             $package->update([...$data, 'is_tax_inclusive' => false, 'vat_rate' => 0]);
+
+            if (is_array($busAssignmentsData)) {
+                $actorId = auth()->id() ?? $package->created_by ?? 1;
+                $incomingAssignmentIds = [];
+
+                foreach ($busAssignmentsData as $idx => $busData) {
+                    $seq = $busData['sequence_number'] ?? ($idx + 1);
+                    $existing = null;
+                    if (! empty($busData['id'])) {
+                        $existing = EducationalTourBusAssignment::where('package_id', $package->id)
+                            ->find($busData['id']);
+                    }
+
+                    // Some clients historically omitted the assignment ID when
+                    // editing package details. Reconcile the stable bus position
+                    // before creating anything so a normal edit cannot multiply
+                    // assignments or their linked driver trip tickets.
+                    if (! $existing) {
+                        $existing = EducationalTourBusAssignment::where('package_id', $package->id)
+                            ->where('sequence_number', $seq)
+                            ->whereNotIn('id', $incomingAssignmentIds)
+                            ->first();
+                    }
+                    if (! $existing && ! empty($busData['bus_id'])) {
+                        $existing = EducationalTourBusAssignment::where('package_id', $package->id)
+                            ->where('bus_id', (int) $busData['bus_id'])
+                            ->whereNotIn('id', $incomingAssignmentIds)
+                            ->first();
+                    }
+
+                    if ($existing) {
+                        $this->updateBusAssignment($package, $existing, [
+                            'bus_id' => (int) ($busData['bus_id'] ?? $existing->bus_id),
+                            'driver_id' => array_key_exists('driver_id', $busData) ? (! empty($busData['driver_id']) ? (int) $busData['driver_id'] : null) : $existing->driver_id,
+                            'sequence_number' => $seq,
+                        ], $actorId);
+                        $incomingAssignmentIds[] = $existing->id;
+
+                        continue;
+                    }
+
+                    if (! empty($busData['bus_id'])) {
+                        $newAssignment = $this->assignBus($package, [
+                            'bus_id' => (int) $busData['bus_id'],
+                            'driver_id' => ! empty($busData['driver_id']) ? (int) $busData['driver_id'] : null,
+                            'sequence_number' => $seq,
+                        ], $actorId);
+                        $incomingAssignmentIds[] = $newAssignment->id;
+                    }
+                }
+
+                // If existing assignments were excluded in the update payload, release and remove them
+                $removedAssignments = EducationalTourBusAssignment::where('package_id', $package->id)
+                    ->whereNotIn('id', $incomingAssignmentIds)
+                    ->get();
+                foreach ($removedAssignments as $rem) {
+                    $this->removeBusAssignment($rem);
+                }
+            }
 
             $freshPackage = $package->fresh(['program', 'schoolCustomer', 'busAssignments.bus', 'busAssignments.driver']);
             $this->tripTickets->synchronizeForEducationalTourPackage($freshPackage);
 
             return $freshPackage;
+        });
+    }
+
+    public function updateBusAssignment(EducationalTourPackage $package, EducationalTourBusAssignment $assignment, array $data, int $actorId): EducationalTourBusAssignment
+    {
+        return DB::transaction(function () use ($package, $assignment, $data) {
+            $package = EducationalTourPackage::lockForUpdate()->findOrFail($package->id);
+            $assignment = EducationalTourBusAssignment::lockForUpdate()->findOrFail($assignment->id);
+
+            if ($assignment->package_id !== $package->id) {
+                throw ValidationException::withMessages(['assignment' => 'Bus assignment does not belong to this package.']);
+            }
+
+            $busId = isset($data['bus_id']) ? (int) $data['bus_id'] : $assignment->bus_id;
+            $driverId = array_key_exists('driver_id', $data)
+                ? (! empty($data['driver_id']) ? (int) $data['driver_id'] : null)
+                : $assignment->driver_id;
+            $sequence = isset($data['sequence_number']) ? (int) $data['sequence_number'] : $assignment->sequence_number;
+
+            $bus = Bus::lockForUpdate()->findOrFail($busId);
+            $driver = $driverId ? User::lockForUpdate()->findOrFail($driverId) : null;
+
+            if ($bus->id !== $assignment->bus_id && $bus->status !== 'available') {
+                throw ValidationException::withMessages(['bus_id' => 'Vehicle is not in available status.']);
+            }
+
+            if ($driver && ($driver->role !== 'driver' || ! $driver->is_active)) {
+                throw ValidationException::withMessages(['driver_id' => 'Driver must be an active driver.']);
+            }
+
+            $occupiedSeats = EducationalTourParticipantBooking::where('bus_assignment_id', $assignment->id)
+                ->whereNotIn('status', ['cancelled', 'expired'])
+                ->count();
+            if ($occupiedSeats > $bus->seating_capacity) {
+                throw ValidationException::withMessages([
+                    'bus_id' => "This bus has only {$bus->seating_capacity} seats, but {$occupiedSeats} active passengers are assigned to this allocation.",
+                ]);
+            }
+
+            // Always validate against the package's current schedule. This also
+            // covers edits where only the tour dates changed while the selected
+            // bus and driver stayed the same.
+            $this->assertVehicleAvailable(
+                $bus->id,
+                $driver?->id,
+                $package->starts_at->toDateTimeString(),
+                $package->ends_at->toDateTimeString(),
+                $package->id,
+                $assignment,
+            );
+
+            // Release previous resource allocation
+            $this->resourceAllocation->release($assignment);
+
+            // Update assignment
+            $assignment->update([
+                'bus_id' => $bus->id,
+                'driver_id' => $driver?->id,
+                'sequence_number' => $sequence,
+                'capacity_snapshot' => $bus->seating_capacity,
+            ]);
+
+            // Re-reserve resource allocation
+            if ($driver) {
+                $this->resourceAllocation->reserve(
+                    $assignment,
+                    $bus->id,
+                    $driver->id,
+                    $package->starts_at->toDateTimeString(),
+                    $package->ends_at->toDateTimeString(),
+                    "PKG-{$package->tour_code}-BUS-{$sequence}"
+                );
+            }
+
+            $freshAssignment = $assignment->fresh(['bus', 'driver']);
+            $this->tripTickets->synchronizeForEducationalTourPackage($package->fresh(['busAssignments.bus', 'busAssignments.driver', 'schoolCustomer']));
+
+            return $freshAssignment;
         });
     }
 
@@ -225,13 +368,18 @@ class EducationalTourPackageService
     {
         DB::transaction(function () use ($package) {
             // Load relationships to ensure cascade deletions if needed
-            $package->load(['busAssignments', 'participantBookings', 'program', 'schoolCustomer']);
+            $package->load(['busAssignments', 'participantBookings.payments', 'program', 'schoolCustomer']);
             TripTicket::where('educational_tour_package_id', $package->id)
                 ->where('status', '!=', 'completed')
                 ->update(['status' => 'cancelled']);
-            // Delete related participant bookings (will also delete payments via cascade)
+            // Delete related participant bookings and payments
             foreach ($package->participantBookings as $booking) {
+                $booking->payments()->delete();
+                $invoice = $booking->invoice;
                 $booking->delete();
+                if ($invoice && $invoice->status !== 'cancelled') {
+                    $invoice->update(['status' => 'cancelled']);
+                }
             }
             // Delete bus assignments
             foreach ($package->busAssignments as $assignment) {
@@ -346,7 +494,14 @@ class EducationalTourPackageService
         ];
     }
 
-    private function assertVehicleAvailable(int $busId, ?int $driverId, string $startsAt, string $endsAt, ?int $currentPackageId = null): void
+    private function assertVehicleAvailable(
+        int $busId,
+        ?int $driverId,
+        string $startsAt,
+        string $endsAt,
+        ?int $currentPackageId = null,
+        ?EducationalTourBusAssignment $currentAssignment = null,
+    ): void
     {
         $startsAt = Carbon::parse($startsAt)->toDateTimeString();
         $endsAt = Carbon::parse($endsAt)->toDateTimeString();
@@ -374,20 +529,31 @@ class EducationalTourPackageService
             }
         }
 
-        $central = $this->resourceAllocation->conflicts($startsAt, $endsAt);
-        if (collect($central['bus_ids'] ?? [])->contains($busId)) {
-            throw ValidationException::withMessages(['bus_id' => 'Vehicle is already reserved by central scheduling.']);
-        }
-        if ($driverId && collect($central['driver_ids'] ?? [])->contains($driverId)) {
-            throw ValidationException::withMessages(['driver_id' => 'Driver is already reserved by central scheduling.']);
-        }
+        // Exclude the assignment being edited so its own central allocation is
+        // not mistaken for a conflicting reservation.
+        $this->resourceAllocation->assertAvailable(
+            $busId,
+            $driverId,
+            Carbon::parse($startsAt),
+            Carbon::parse($endsAt),
+            $currentAssignment?->getMorphClass(),
+            $currentAssignment?->id,
+        );
 
         $startDate = Carbon::parse($startsAt)->toDateString();
         $endDate = Carbon::parse($endsAt)->toDateString();
-        if (TripTicket::where('bus_id', $busId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
+        $tripTickets = TripTicket::query()
+            ->where('status', '!=', 'cancelled')
+            ->whereBetween('date_of_travel', [$startDate, $endDate])
+            ->when($currentPackageId, fn ($query) => $query->where(function ($nested) use ($currentPackageId) {
+                $nested->whereNull('educational_tour_package_id')
+                    ->orWhere('educational_tour_package_id', '!=', $currentPackageId);
+            }));
+
+        if ((clone $tripTickets)->where('bus_id', $busId)->exists()) {
             throw ValidationException::withMessages(['bus_id' => 'Vehicle has an active trip ticket during these dates.']);
         }
-        if ($driverId && TripTicket::where('driver_id', $driverId)->where('status', '!=', 'cancelled')->whereBetween('date_of_travel', [$startDate, $endDate])->exists()) {
+        if ($driverId && (clone $tripTickets)->where('driver_id', $driverId)->exists()) {
             throw ValidationException::withMessages(['driver_id' => 'Driver has an active trip ticket during these dates.']);
         }
     }

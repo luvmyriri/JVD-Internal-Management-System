@@ -118,6 +118,11 @@ class UpdateEducationalPackageRequest extends FormRequest
             'balance_due_at' => ['nullable', 'date'],
             'status' => ['nullable', 'string', 'in:draft,published,registration_closed,in_progress,completed,cancelled'],
             'operations_notes' => ['nullable', 'string', 'max:5000'],
+            'bus_assignments' => ['nullable', 'array'],
+            'bus_assignments.*.id' => ['nullable', 'integer'],
+            'bus_assignments.*.bus_id' => ['required', 'exists:buses,id'],
+            'bus_assignments.*.driver_id' => ['nullable', 'exists:users,id'],
+            'bus_assignments.*.sequence_number' => ['nullable', 'integer', 'min:1'],
         ];
     }
 }

@@ -64,7 +64,9 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/admin', [DashboardController::class, 'admin'])->name('dashboards.admin');
         Route::get('/accounting', [DashboardController::class, 'accounting'])->name('dashboards.accounting');
         Route::get('/agent', [DashboardController::class, 'agent'])->name('dashboards.agent');
-        Route::get('/driver', [DashboardController::class, 'driver'])->name('dashboards.driver');
+        Route::get('/driver', [DashboardController::class, 'driver'])
+            ->middleware('driver.only')
+            ->name('dashboards.driver');
         Route::get('/hr', [DashboardController::class, 'hr'])->name('dashboards.hr');
         
         Route::get('/approvals', [DashboardController::class, 'approvals'])->name('dashboards.approvals');

@@ -3,6 +3,7 @@
 use App\Http\Middleware\AuditLogger;
 use App\Http\Middleware\CheckRole;
 use App\Http\Middleware\EnforcePasswordChange;
+use App\Http\Middleware\EnsureDriverPortalAccess;
 use App\Http\Middleware\SanitizeApiErrorResponses;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\TrackUserOnlineStatus;
@@ -47,6 +48,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'audit' => AuditLogger::class,
             'verify.2fa' => VerifyTwoFactor::class,
             'enforce.password.change' => EnforcePasswordChange::class,
+            'driver.only' => EnsureDriverPortalAccess::class,
         ]);
 
         // Apply audit logging to all API routes

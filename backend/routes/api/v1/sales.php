@@ -73,6 +73,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::post('/educational-tour-packages/{package}/participant-bookings', [EducationalTourPackageController::class, 'storeParticipantBooking'])->name('sales.educational.packages.participant-bookings.store');
             Route::post('/educational-tour-packages/{package}/participant-bookings/bulk', [EducationalTourPackageController::class, 'bulkStoreParticipantBookings'])->name('sales.educational.packages.participant-bookings.bulk');
             Route::post('/educational-tour-packages/{package}/bus-assignments', [EducationalTourPackageController::class, 'assignBus'])->name('sales.educational.packages.bus-assignments.store');
+            Route::put('/educational-tour-packages/{package}/bus-assignments/{assignment}', [EducationalTourPackageController::class, 'updateBusAssignment'])->name('sales.educational.packages.bus-assignments.update');
             Route::post('/educational-tour-packages/{package}/allocate-buses', [EducationalTourPackageController::class, 'allocateBuses'])->name('sales.educational.packages.allocate-buses');
             Route::post('/educational-tour-packages/{package}/image', [EducationalTourPackageController::class, 'uploadImage'])->name('sales.educational.packages.uploadImage');
             Route::get('/educational-tour-packages/{package}/quotation', [EducationalTourPackageController::class, 'quotation'])->name('sales.educational.packages.quotation');
@@ -98,6 +99,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:delete')->group(function () {
             Route::delete('/charter-rate-plans/{ratePlan}', [CharterController::class, 'destroyRatePlan'])->name('sales.charters.rate-plans.destroy');
             Route::delete('/educational-programs/{program}', [EducationalTourController::class, 'destroyProgram'])->name('sales.educational.programs.destroy');
+            Route::delete('/educational-tour-packages/{package}', [EducationalTourPackageController::class, 'destroy'])->name('sales.educational.packages.destroy');
             Route::delete('/educational-tour-packages/{package}/bus-assignments/{assignment}', [EducationalTourPackageController::class, 'removeBus'])->name('sales.educational.packages.bus-assignments.destroy');
         });
 

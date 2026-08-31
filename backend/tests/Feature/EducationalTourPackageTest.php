@@ -419,13 +419,15 @@ class EducationalTourPackageTest extends TestCase
         $invoiceDocument = $this->actingAs($this->user)
             ->get("/api/v1/sales/educational-tour-participant-bookings/{$booking->id}/invoice")
             ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertDownload("Invoice_{$booking->invoice->invoice_number}.pdf");
         $this->assertStringStartsWith('%PDF', $invoiceDocument->getContent());
 
         $statementDocument = $this->actingAs($this->user)
             ->get("/api/v1/sales/educational-tour-participant-bookings/{$booking->id}/statement")
             ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            ->assertHeader('content-type', 'application/pdf')
+            ->assertDownload("SOA_{$booking->invoice->invoice_number}.pdf");
         $this->assertStringStartsWith('%PDF', $statementDocument->getContent());
 
         $this->actingAs($this->user)
@@ -552,6 +554,146 @@ class EducationalTourPackageTest extends TestCase
         $this->assertSame('Seat 1', $booking->seat_number);
     }
 
+    public function test_bus_allocation_keeps_tandang_sora_separate_from_fairview_and_main(): void
+    {
+        $result = app(EducationalTourPackageService::class)->createPackage([
+            'program_id' => $this->program->id,
+            'tour_code' => 'JVD-BRANCH-BUS-01',
+            'name' => 'Branch Safe Allocation Tour',
+            'school_name' => 'Branch School',
+            'starts_at' => now()->addMonth()->toIso8601String(),
+            'ends_at' => now()->addMonth()->addHours(12)->toIso8601String(),
+            'pickup_location' => 'Main, Fairview, and Tandang Sora',
+            'maximum_capacity' => 20,
+            'rate_per_head' => 3000,
+            'status' => 'published',
+        ], $this->user->id);
+
+        $package = $result['package'];
+        $mainBus = EducationalTourBusAssignment::create([
+            'package_id' => $package->id,
+            'bus_id' => $this->busOne->id,
+            'driver_id' => $this->driverOne->id,
+            'sequence_number' => 1,
+            'capacity_snapshot' => 10,
+            'status' => 'confirmed',
+            'created_by' => $this->user->id,
+        ]);
+        $tandangBus = EducationalTourBusAssignment::create([
+            'package_id' => $package->id,
+            'bus_id' => $this->busTwo->id,
+            'driver_id' => $this->driverTwo->id,
+            'sequence_number' => 2,
+            'capacity_snapshot' => 10,
+            'status' => 'confirmed',
+            'created_by' => $this->user->id,
+        ]);
+
+        $register = function (string $firstName, string $branch) use ($package): EducationalTourParticipantBooking {
+            $response = $this->actingAs($this->user)->postJson(
+                "/api/v1/sales/educational-tour-packages/{$package->id}/participant-bookings",
+                ['participant' => ['first_name' => $firstName, 'last_name' => 'Passenger', 'section' => $branch]],
+            )->assertCreated();
+
+            return EducationalTourParticipantBooking::where('reference', $response->json('data.booking_reference'))->firstOrFail();
+        };
+
+        $main = $register('Main', 'Main Branch');
+        $tandang = $register('Tandang', 'Tandang Sora Branch');
+        $fairview = $register('Fairview', 'Fairview Branch');
+
+        $this->assertSame($mainBus->id, $main->bus_assignment_id);
+        $this->assertSame($tandangBus->id, $tandang->bus_assignment_id);
+        $this->assertSame($mainBus->id, $fairview->bus_assignment_id);
+    }
+
+    public function test_existing_bus_assignment_can_change_driver_without_conflicting_with_its_own_trip_ticket(): void
+    {
+        $result = app(EducationalTourPackageService::class)->createPackage([
+            'program_id' => $this->program->id,
+            'tour_code' => 'JVD-EDIT-BUS-01',
+            'name' => 'Editable Bus Tour',
+            'school_name' => 'Edit School',
+            'starts_at' => now()->addMonth()->toIso8601String(),
+            'ends_at' => now()->addMonth()->addHours(12)->toIso8601String(),
+            'pickup_location' => 'School Gate',
+            'maximum_capacity' => 49,
+            'rate_per_head' => 3000,
+            'status' => 'published',
+        ], $this->user->id);
+
+        $package = $result['package'];
+        $assignment = app(EducationalTourPackageService::class)->assignBus($package, [
+            'bus_id' => $this->busOne->id,
+            'driver_id' => $this->driverOne->id,
+        ], $this->user->id);
+
+        $this->assertDatabaseHas('trip_tickets', [
+            'educational_tour_package_id' => $package->id,
+            'educational_tour_bus_assignment_id' => $assignment->id,
+            'bus_id' => $this->busOne->id,
+        ]);
+
+        $this->actingAs($this->user)
+            ->putJson("/api/v1/sales/educational-tour-packages/{$package->id}/bus-assignments/{$assignment->id}", [
+                'bus_id' => $this->busOne->id,
+                'driver_id' => $this->driverTwo->id,
+            ])
+            ->assertOk()
+            ->assertJsonPath('data.driver_id', $this->driverTwo->id);
+
+        $this->assertSame($this->driverTwo->id, $assignment->fresh()->driver_id);
+    }
+
+    public function test_package_edit_updates_bus_and_driver_without_creating_duplicate_assignments_or_trip_tickets(): void
+    {
+        $result = app(EducationalTourPackageService::class)->createPackage([
+            'program_id' => $this->program->id,
+            'tour_code' => 'JVD-EDIT-FLEET-01',
+            'name' => 'Fleet Edit Tour',
+            'school_name' => 'Fleet Edit School',
+            'starts_at' => now()->addMonth()->toIso8601String(),
+            'ends_at' => now()->addMonth()->addHours(12)->toIso8601String(),
+            'pickup_location' => 'School Gate',
+            'maximum_capacity' => 49,
+            'rate_per_head' => 3000,
+            'status' => 'published',
+        ], $this->user->id);
+
+        $package = $result['package'];
+        $assignment = app(EducationalTourPackageService::class)->assignBus($package, [
+            'bus_id' => $this->busOne->id,
+            'driver_id' => $this->driverOne->id,
+        ], $this->user->id);
+
+        $this->actingAs($this->user)
+            ->putJson("/api/v1/sales/educational-tour-packages/{$package->id}", [
+                'bus_assignments' => [[
+                    'id' => $assignment->id,
+                    'bus_id' => $this->busTwo->id,
+                    'driver_id' => $this->driverTwo->id,
+                    'sequence_number' => 1,
+                ]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(1, EducationalTourBusAssignment::where('package_id', $package->id)->count());
+        $this->assertDatabaseHas('educational_tour_bus_assignments', [
+            'id' => $assignment->id,
+            'package_id' => $package->id,
+            'bus_id' => $this->busTwo->id,
+            'driver_id' => $this->driverTwo->id,
+            'sequence_number' => 1,
+        ]);
+        $this->assertDatabaseCount('trip_tickets', 1);
+        $this->assertDatabaseHas('trip_tickets', [
+            'educational_tour_package_id' => $package->id,
+            'educational_tour_bus_assignment_id' => $assignment->id,
+            'bus_id' => $this->busTwo->id,
+            'driver_id' => $this->driverTwo->id,
+        ]);
+    }
+
     public function test_cancellation_releases_seat_without_altering_other_participants(): void
     {
         $packageService = app(EducationalTourPackageService::class);
@@ -648,4 +790,77 @@ class EducationalTourPackageTest extends TestCase
         $this->assertSame(1, $detailsRes->json('data.capacity.adults_count'));
         $this->assertEquals(1200.00, (float) $detailsRes->json('data.pricing.adult_rate_per_head'));
     }
+
+    public function test_delete_educational_tour_package_endpoint(): void
+    {
+        $packageService = app(EducationalTourPackageService::class);
+        $result = $packageService->createPackage([
+            'program_id' => $this->program->id,
+            'tour_code' => 'JVD-DEL-01',
+            'name' => 'Package To Delete',
+            'school_name' => 'Delete High',
+            'starts_at' => now()->addMonth()->toIso8601String(),
+            'ends_at' => now()->addMonth()->addHours(10)->toIso8601String(),
+            'pickup_location' => 'School Gate',
+            'maximum_capacity' => 40,
+            'rate_per_head' => 1500,
+            'status' => 'draft',
+        ], $this->user->id);
+
+        $package = $result['package'];
+
+        $deleteRes = $this->actingAs($this->user)->deleteJson("/api/v1/sales/educational-tour-packages/{$package->id}");
+        $deleteRes->assertOk();
+        $deleteRes->assertJson(['message' => 'Educational tour package deleted successfully.']);
+
+        $this->assertDatabaseMissing('educational_tour_packages', [
+            'id' => $package->id,
+        ]);
+    }
+
+    public function test_delete_educational_tour_package_with_bookings_and_buses(): void
+    {
+        $packageService = app(EducationalTourPackageService::class);
+        $result = $packageService->createPackage([
+            'program_id' => $this->program->id,
+            'tour_code' => 'JVD-DEL-02',
+            'name' => 'Package With Bookings To Delete',
+            'school_name' => 'Delete High 2',
+            'starts_at' => now()->addMonth()->toIso8601String(),
+            'ends_at' => now()->addMonth()->addHours(10)->toIso8601String(),
+            'pickup_location' => 'School Gate',
+            'maximum_capacity' => 50,
+            'rate_per_head' => 2000,
+            'status' => 'published',
+        ], $this->user->id);
+
+        $package = $result['package'];
+
+        // Assign a bus
+        $packageService->assignBus($package, [
+            'bus_id' => $this->busOne->id,
+            'driver_id' => $this->driverOne->id,
+        ], $this->user->id);
+
+        // Register participant
+        $regRes = $this->actingAs($this->user)->postJson("/api/v1/sales/educational-tour-packages/{$package->id}/participant-bookings", [
+            'participant' => [
+                'first_name' => 'Juan',
+                'last_name' => 'Dela Cruz',
+                'type' => 'student',
+            ],
+            'participant_type' => 'student',
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('educational_tour_packages', ['id' => $package->id]);
+        $this->assertDatabaseHas('educational_tour_participant_bookings', ['package_id' => $package->id]);
+
+        $deleteRes = $this->actingAs($this->user)->deleteJson("/api/v1/sales/educational-tour-packages/{$package->id}");
+        $deleteRes->assertOk();
+
+        $this->assertDatabaseMissing('educational_tour_packages', ['id' => $package->id]);
+        $this->assertDatabaseMissing('educational_tour_participant_bookings', ['package_id' => $package->id]);
+        $this->assertDatabaseMissing('educational_tour_bus_assignments', ['package_id' => $package->id]);
+    }
 }
+

@@ -436,8 +436,8 @@ export default function EducationalTourBuilder({ onBack, onCreated }: Props) {
               type: isAdult ? ('adult' as const) : ('student' as const),
               date_of_birth: p.date_of_birth || undefined,
               student_number: isAdult ? undefined : (p.student_number.trim() || undefined),
-              grade_level: isAdult ? undefined : (p.grade_level.trim() || gradeLevel || undefined),
-              section: isAdult ? undefined : (p.section.trim() || undefined),
+              grade_level: isAdult ? (p.grade_level.trim() || 'Non-Student') : (p.grade_level.trim() || gradeLevel || undefined),
+              section: p.section.trim() || undefined,
             },
             participant_type: isAdult ? ('adult' as const) : ('student' as const),
             guardian: {
@@ -1101,7 +1101,7 @@ export default function EducationalTourBuilder({ onBack, onCreated }: Props) {
                         />
                         <input
                           type="text"
-                          placeholder={isAdult ? "Department / Group (Optional)" : "Section / Class"}
+                          placeholder={isAdult ? "Section / Branch (e.g. Fairview Branch)" : "Section / Branch"}
                           value={p.section}
                           onChange={e => updateParticipantRow(idx, { section: e.target.value })}
                           className="h-10 rounded-xl border border-border bg-surface px-3 text-xs font-semibold text-ink"

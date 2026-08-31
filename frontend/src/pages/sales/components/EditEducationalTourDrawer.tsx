@@ -16,7 +16,6 @@ import {
   Pencil,
   Plus,
   Save,
-  SlidersHorizontal,
   Trash2,
   X,
 } from 'lucide-react';
@@ -25,11 +24,27 @@ import {
   educationalTourApi,
   type EducationalTourPackage,
   type CreateEducationalPackagePayload,
+  type EducationalResources,
 } from '../../../api/educationalTours';
 import { Button } from '../../../components/ds';
 import InclusionsExclusionsEditor from '../../../components/travel/InclusionsExclusionsEditor';
 import ItineraryBuilder from './ItineraryBuilder';
 import type { ItineraryDayInput } from '../../../api/contracts';
+
+type FleetBus = EducationalResources['buses'][number];
+type FleetDriver = EducationalResources['drivers'][number];
+
+interface EditableBusAssignment {
+  assignment_id?: number;
+  bus_id: number;
+  driver_id?: number;
+  driver_name?: string;
+  plate_number?: string;
+  model?: string;
+  seating_capacity: number;
+  sequence_number: number;
+  occupied?: number;
+}
 
 // ─── helpers ───────────────────────────────────────────────────────────────
 
@@ -137,6 +152,13 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
   // images
   const [images, setImages] = useState<string[]>((pkg as any).images ?? []);
 
+  // fleet & bus assignments
+  const [busAssignments, setBusAssignments] = useState<EditableBusAssignment[]>([]);
+  const [availableFleetBuses, setAvailableFleetBuses] = useState<FleetBus[]>([]);
+  const [availableDrivers, setAvailableDrivers] = useState<FleetDriver[]>([]);
+  const [isLoadingFleet, setIsLoadingFleet] = useState(false);
+  const [fleetLoadError, setFleetLoadError] = useState('');
+
   // itinerary & inclusions (load from package if available)
   const [itinerary, setItinerary] = useState<ItineraryDayInput[]>(
     Array.isArray((pkg as any).itinerary) && (pkg as any).itinerary.length > 0
@@ -168,7 +190,10 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
 
   // Load full package details to populate richer fields
   useEffect(() => {
+    let isCurrent = true;
+
     educationalTourApi.packageDetails(pkg.id).then((detail: any) => {
+      if (!isCurrent) return;
       if (detail.description) setDescription(detail.description);
       if (detail.learning_objectives) setLearningObjectives(detail.learning_objectives);
       if (detail.operations_notes) setOperationsNotes(detail.operations_notes);
@@ -176,6 +201,21 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
       if (Array.isArray(detail.images) && detail.images.length > 0) setImages(detail.images);
       if (Array.isArray(detail.inclusions) && detail.inclusions.length > 0) setInclusions(detail.inclusions);
       if (Array.isArray(detail.exclusions) && detail.exclusions.length > 0) setExclusions(detail.exclusions);
+      if (Array.isArray(detail.bus_assignments)) {
+        setBusAssignments(
+          detail.bus_assignments.map((b: any, idx: number) => ({
+            bus_id: b.bus_id,
+            driver_id: b.driver_id,
+            driver_name: b.driver_name,
+            plate_number: b.bus_plate,
+            model: b.bus_model,
+            seating_capacity: b.capacity,
+            sequence_number: b.sequence_number || (idx + 1),
+            assignment_id: b.id,
+            occupied: b.occupied ?? 0,
+          }))
+        );
+      }
       if (Array.isArray(detail.itinerary) && detail.itinerary.length > 0) {
         setItinerary(
           detail.itinerary.map((item: any) => ({
@@ -188,8 +228,40 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
           })),
         );
       }
-    }).catch(() => {/* silently fall back to data from list */});
+    }).catch(() => {/* Fall back to the package list data. */});
+
+    return () => { isCurrent = false; };
   }, [pkg.id]);
+
+  // Availability depends on the edited schedule. Keep this separate from the
+  // package-detail load so changing dates never resets staged fleet changes.
+  useEffect(() => {
+    const start = new Date(startsAt);
+    const end = new Date(endsAt);
+    if (!startsAt || !endsAt || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      setFleetLoadError('Enter a valid start and end schedule to check fleet availability.');
+      return;
+    }
+
+    let isCurrent = true;
+    setIsLoadingFleet(true);
+    setFleetLoadError('');
+    educationalTourApi.resources(startsAt, endsAt)
+      .then((res) => {
+        if (!isCurrent) return;
+        setAvailableFleetBuses(Array.isArray(res.buses) ? res.buses : []);
+        setAvailableDrivers(Array.isArray(res.drivers) ? res.drivers : []);
+      })
+      .catch((err: any) => {
+        if (!isCurrent) return;
+        setFleetLoadError(err?.response?.data?.message ?? 'Fleet availability could not be loaded.');
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoadingFleet(false);
+      });
+
+    return () => { isCurrent = false; };
+  }, [startsAt, endsAt]);
 
   const pickImages = () => {
     const input = document.createElement('input');
@@ -208,6 +280,55 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
     input.click();
   };
 
+  const handleAddBusAssignment = (busId: number) => {
+    const foundBus = availableFleetBuses.find(b => Number(b.id) === Number(busId));
+    if (!foundBus) return;
+    setBusAssignments(curr => [
+      ...curr,
+      {
+        bus_id: foundBus.id,
+        driver_id: undefined,
+        plate_number: foundBus.plate_number,
+        model: foundBus.model,
+        seating_capacity: foundBus.seating_capacity || 49,
+        sequence_number: curr.length + 1,
+      }
+    ]);
+  };
+
+  const handleUpdateBusAssignment = (idx: number, updates: Partial<EditableBusAssignment>) => {
+    setBusAssignments(curr => curr.map((item, i) => {
+      if (i !== idx) return item;
+      const updated = { ...item, ...updates };
+      if (updates.bus_id) {
+        const foundBus = availableFleetBuses.find(b => Number(b.id) === Number(updates.bus_id));
+        if (foundBus) {
+          updated.plate_number = foundBus.plate_number;
+          updated.model = foundBus.model;
+          updated.seating_capacity = foundBus.seating_capacity || 49;
+        }
+      }
+      if (updates.driver_id !== undefined) {
+        const foundDriver = availableDrivers.find(d => Number(d.id) === Number(updates.driver_id));
+        updated.driver_name = foundDriver ? `${foundDriver.first_name} ${foundDriver.last_name}` : undefined;
+      }
+      return updated;
+    }));
+  };
+
+  const handleRemoveBusAssignment = (idx: number) => {
+    const assignment = busAssignments[idx];
+    if ((assignment?.occupied ?? 0) > 0 && !window.confirm(
+      `This bus has ${assignment.occupied} passenger(s). Removing it will clear their seats so they can be reassigned. Continue?`,
+    )) return;
+
+    setBusAssignments(curr => curr.filter((_, i) => i !== idx).map((b, newIdx) => ({
+      ...b,
+      sequence_number: newIdx + 1,
+    })));
+  };
+
+  const totalFleetCapacity = busAssignments.reduce((sum, b) => sum + (b.seating_capacity || 49), 0);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -215,6 +336,21 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
     if (!name.trim()) { toast.error('Tour name is required.'); return; }
     if (!schoolName.trim()) { toast.error('School name is required.'); return; }
     if (ratePerHead <= 0) { toast.error('Rate per head must be greater than 0.'); return; }
+    if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt)) {
+      toast.error('Tour end schedule must be after the start schedule.');
+      return;
+    }
+
+    const selectedBusIds = busAssignments.map(a => Number(a.bus_id));
+    if (new Set(selectedBusIds).size !== selectedBusIds.length) {
+      toast.error('A bus can only be assigned once to the same tour.');
+      return;
+    }
+    const selectedDriverIds = busAssignments.map(a => a.driver_id).filter((id): id is number => Boolean(id));
+    if (new Set(selectedDriverIds).size !== selectedDriverIds.length) {
+      toast.error('A driver can only be assigned to one bus on the same tour.');
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -247,6 +383,12 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
         down_payment_amount: paymentPolicy !== 'full_only' ? Number(downPaymentAmount) : undefined,
         installment_count: ['installment', 'flexible'].includes(paymentPolicy) ? Number(installmentCount) : undefined,
         images: resolvedImages.length > 0 ? resolvedImages : undefined,
+        bus_assignments: busAssignments.map((b, idx) => ({
+          id: b.assignment_id,
+          bus_id: Number(b.bus_id),
+          driver_id: b.driver_id ? Number(b.driver_id) : null,
+          sequence_number: idx + 1,
+        })),
         inclusions: inclusions.filter(Boolean),
         exclusions: exclusions.filter(Boolean),
         itinerary: (itinerary
@@ -259,7 +401,7 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
           })) as CreateEducationalPackagePayload['itinerary']),
       });
 
-      toast.success('Package saved successfully.');
+      toast.success('Package and fleet allocations saved successfully.');
       queryClient.invalidateQueries({ queryKey: ['educational-tour-packages'] });
       queryClient.invalidateQueries({ queryKey: ['educational-package', pkg.id] });
       onSaved();
@@ -511,10 +653,186 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
             </div>
           </Section>
 
-          {/* 3. Package Images */}
+          {/* 3. Bus & Driver Allocation */}
+          <Section
+            icon={<Bus className="h-4 w-4" />}
+            badge="3 · Fleet & Dispatch"
+            title="Bus & Driver Allocation"
+            subtitle="Assign the vehicles and drivers that will operate this tour"
+          >
+            <div className="space-y-4">
+              <div className="rounded-xl border border-border bg-surface-alt p-3 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-950/60 text-blue-600 flex items-center justify-center font-black text-sm">
+                    {busAssignments.length}
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-ink">
+                      {busAssignments.length} Bus{busAssignments.length === 1 ? '' : 'es'} Assigned
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      Total Fleet: <span className="font-bold text-ink">{totalFleetCapacity} Seats</span> · Max Capacity: <span className="font-bold text-ink">{maxCapacity} Pax</span>
+                    </p>
+                  </div>
+                </div>
+
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    totalFleetCapacity >= maxCapacity
+                      ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : 'bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300'
+                  }`}
+                >
+                  {totalFleetCapacity >= maxCapacity ? (
+                    <>
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
+                      Capacity Covered ({totalFleetCapacity}/{maxCapacity})
+                    </>
+                  ) : (
+                    <>
+                      <Info className="h-3.5 w-3.5 text-amber-600" />
+                      Short by {maxCapacity - totalFleetCapacity} seat(s)
+                    </>
+                  )}
+                </span>
+              </div>
+
+              {fleetLoadError && (
+                <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-semibold text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
+                  {fleetLoadError}
+                </div>
+              )}
+
+              {busAssignments.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border p-6 text-center space-y-3">
+                  <Bus className="h-8 w-8 text-muted mx-auto" />
+                  <p className="text-xs font-bold text-muted">No bus or driver is assigned yet.</p>
+                  <p className="text-[11px] text-muted">Choose an available bus below, then select its driver.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {busAssignments.map((alloc, idx) => (
+                    <div
+                      key={alloc.assignment_id ?? `new-${alloc.bus_id}-${idx}`}
+                      className="rounded-xl border border-border bg-surface p-4 space-y-3 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="px-2 py-0.5 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase tracking-wider">
+                            Bus #{alloc.sequence_number || idx + 1}
+                          </span>
+                          <span className="text-xs font-bold text-ink">
+                            {alloc.plate_number || 'Coach Assignment'}
+                          </span>
+                          <span className="text-[11px] text-muted">
+                            ({alloc.seating_capacity || 49} Seats)
+                          </span>
+                          {(alloc.occupied ?? 0) > 0 && (
+                            <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
+                              {alloc.occupied} passenger{alloc.occupied === 1 ? '' : 's'} seated
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveBusAssignment(idx)}
+                          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-bold text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-950/40 transition"
+                          aria-label={`Remove bus ${alloc.plate_number || idx + 1}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Remove
+                        </button>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Field label="Assigned Vehicle / Plate">
+                          <select
+                            value={alloc.bus_id}
+                            onChange={e => handleUpdateBusAssignment(idx, { bus_id: Number(e.target.value) })}
+                            className={inputCls}
+                          >
+                            {availableFleetBuses.map(b => {
+                              const isCurrent = Number(b.id) === Number(alloc.bus_id);
+                              const isUsedElsewhere = busAssignments.some((item, itemIdx) => itemIdx !== idx && Number(item.bus_id) === Number(b.id));
+                              return <option key={b.id} value={b.id} disabled={!isCurrent && (!b.available || isUsedElsewhere)}>
+                                {b.plate_number} · {b.model || 'Tourist Coach'} ({b.seating_capacity || 49} seats) {!b.available && Number(b.id) !== Number(alloc.bus_id) ? '· In Use' : ''}
+                              </option>;
+                            })}
+                            {!availableFleetBuses.some(b => Number(b.id) === Number(alloc.bus_id)) && (
+                              <option value={alloc.bus_id}>
+                                {alloc.plate_number || `Bus ID #${alloc.bus_id}`} · ({alloc.seating_capacity || 49} seats)
+                              </option>
+                            )}
+                          </select>
+                        </Field>
+
+                        <Field label="Assigned Driver">
+                          <select
+                            value={alloc.driver_id ?? ''}
+                            onChange={e => handleUpdateBusAssignment(idx, { driver_id: e.target.value ? Number(e.target.value) : undefined })}
+                            className={inputCls}
+                          >
+                            <option value="">-- Unassigned Driver --</option>
+                            {availableDrivers.map(d => {
+                              const isCurrent = Number(d.id) === Number(alloc.driver_id);
+                              const isUsedElsewhere = busAssignments.some((item, itemIdx) => itemIdx !== idx && Number(item.driver_id) === Number(d.id));
+                              return <option key={d.id} value={d.id} disabled={!isCurrent && (!d.available || isUsedElsewhere)}>
+                                {d.first_name} {d.last_name} {!d.available && Number(d.id) !== Number(alloc.driver_id) ? '· In Use' : ''}
+                              </option>;
+                            })}
+                            {alloc.driver_id && !availableDrivers.some(d => Number(d.id) === Number(alloc.driver_id)) && (
+                              <option value={alloc.driver_id}>
+                                {alloc.driver_name || `Driver ID #${alloc.driver_id}`}
+                              </option>
+                            )}
+                          </select>
+                        </Field>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-border">
+                <label htmlFor="new-bus-select" className={labelCls}>Add another bus</label>
+                <select
+                  id="new-bus-select"
+                  defaultValue=""
+                  disabled={isLoadingFleet || Boolean(fleetLoadError)}
+                  onChange={e => {
+                    if (e.target.value) {
+                      handleAddBusAssignment(Number(e.target.value));
+                      e.target.value = '';
+                    }
+                  }}
+                  className={`${inputCls} mt-1 disabled:cursor-not-allowed disabled:opacity-60`}
+                >
+                  <option value="" disabled>
+                    {isLoadingFleet ? 'Checking fleet availability…' : 'Select an available bus…'}
+                  </option>
+                  {availableFleetBuses
+                    .filter(b => b.available && !busAssignments.some(a => Number(a.bus_id) === Number(b.id)))
+                    .map(b => (
+                      <option key={b.id} value={b.id}>
+                        {b.plate_number} · {b.model || 'Tourist Coach'} ({b.seating_capacity || 49} seats)
+                      </option>
+                    ))}
+                </select>
+                {!isLoadingFleet && !fleetLoadError && availableFleetBuses.filter(b => b.available && !busAssignments.some(a => Number(a.bus_id) === Number(b.id))).length === 0 && (
+                  <p className="mt-1.5 text-[11px] font-medium text-muted">No additional buses are available for the selected schedule.</p>
+                )}
+                <p className="mt-2 text-[11px] text-muted">
+                  Assignment edits are applied only after you select <span className="font-bold text-ink">Save Changes</span>. Trip-ticket bus and driver details will synchronize automatically.
+                </p>
+              </div>
+            </div>
+          </Section>
+
+          {/* 4. Package Images */}
           <Section
             icon={<ImageIcon className="h-4 w-4" />}
-            badge="3 · Media"
+            badge="4 · Media"
             title="Package Images"
             subtitle="Up to 8 photos shown on cards and manifests"
             defaultOpen={false}
@@ -555,20 +873,20 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
             )}
           </Section>
 
-          {/* 4. Itinerary */}
+          {/* 5. Itinerary */}
           <Section
             icon={<Calendar className="h-4 w-4" />}
-            badge="4 · Itinerary"
+            badge="5 · Itinerary"
             title="Day-by-Day Programme"
             defaultOpen={false}
           >
             <ItineraryBuilder value={itinerary} onChange={setItinerary} />
           </Section>
 
-          {/* 5. Inclusions & Exclusions */}
+          {/* 6. Inclusions & Exclusions */}
           <Section
             icon={<CheckCircle2 className="h-4 w-4" />}
-            badge="5 · Inclusions & Exclusions"
+            badge="6 · Inclusions & Exclusions"
             title="What's Covered"
             defaultOpen={false}
           >
@@ -609,6 +927,7 @@ export default function EditEducationalTourDrawer({ pkg, onClose, onSaved }: Pro
           </div>
         </div>
       </aside>
+
     </>
   );
 }

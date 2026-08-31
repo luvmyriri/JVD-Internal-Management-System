@@ -203,12 +203,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       ...section,
       items: section.items
         .filter((item) => {
+          // The Driver section is a personal workspace. Supervisors use Logistics.
+          if (section.title === 'Driver' && user.role !== 'driver') {
+            return false;
+          }
+
           // Hide commissions routes completely from sidebar for general employees
           if (!hasGeneralAccess && (item.path === '/accounting/commissions' || item.path === '/driver/commissions')) {
             return false;
           }
 
-          // Super admin always bypasses all permission checks
+          // Super admin bypasses permission checks except exact-role workspaces above.
           if (user.role === 'super_admin') return true;
 
           // Use page-level key if available, fall back to module key

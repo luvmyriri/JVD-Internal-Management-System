@@ -159,6 +159,38 @@ class EducationalTourPackageController extends Controller
         ], 201);
     }
 
+    public function updateBusAssignment(Request $request, EducationalTourPackage $package, EducationalTourBusAssignment $assignment)
+    {
+        $data = $request->validate([
+            'bus_id' => ['sometimes', 'required', 'exists:buses,id'],
+            'driver_id' => ['nullable', 'exists:users,id'],
+            'sequence_number' => ['nullable', 'integer', 'min:1'],
+        ]);
+
+        $updated = $this->packageService->updateBusAssignment($package, $assignment, $data, $request->user()->id);
+
+        $occupied = \App\Models\EducationalTourParticipantBooking::where('bus_assignment_id', $updated->id)
+            ->whereNotIn('status', ['cancelled', 'expired'])
+            ->count();
+
+        return response()->json([
+            'message' => 'Vehicle assignment updated successfully.',
+            'data' => [
+                'id' => $updated->id,
+                'sequence_number' => $updated->sequence_number,
+                'bus_id' => $updated->bus_id,
+                'bus_plate' => $updated->bus?->plate_number,
+                'bus_model' => $updated->bus?->model,
+                'driver_id' => $updated->driver_id,
+                'driver_name' => $updated->driver ? "{$updated->driver->first_name} {$updated->driver->last_name}" : null,
+                'capacity' => $updated->capacity_snapshot,
+                'occupied' => $occupied,
+                'available' => max(0, $updated->capacity_snapshot - $occupied),
+                'status' => $updated->status,
+            ],
+        ]);
+    }
+
     public function removeBus(EducationalTourPackage $package, EducationalTourBusAssignment $assignment)
     {
         if ($assignment->package_id !== $package->id) {
@@ -239,7 +271,7 @@ class EducationalTourPackageController extends Controller
         $invoice->load(Invoice::operationalDocumentRelations());
 
         return $documents->render('pdf.invoice', ['invoice' => $invoice, 'taxRate' => 0])
-            ->stream("Invoice_{$invoice->invoice_number}.pdf");
+            ->download("Invoice_{$invoice->invoice_number}.pdf");
     }
 
     public function participantStatement(EducationalTourParticipantBooking $booking, DocumentPdfService $documents)
@@ -250,7 +282,7 @@ class EducationalTourPackageController extends Controller
         $invoice->setRelation('payments', $invoice->collection?->payments ?? collect());
 
         return $documents->render('pdf.statement_of_account', ['invoice' => $invoice, 'taxRate' => 0])
-            ->stream("SOA_{$invoice->invoice_number}.pdf");
+            ->download("SOA_{$invoice->invoice_number}.pdf");
     }
 
     public function sendParticipantDocuments(Request $request, EducationalTourParticipantBooking $booking, InvoiceDocumentMailService $mail)

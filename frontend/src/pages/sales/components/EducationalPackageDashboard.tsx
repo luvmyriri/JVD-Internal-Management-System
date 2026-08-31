@@ -12,11 +12,14 @@ import {
   FileSpreadsheet,
   GraduationCap,
   Mail,
+  Pencil,
   Plus,
   Printer,
   RefreshCw,
   Search,
+  SlidersHorizontal,
   Sparkles,
+  Trash2,
   Upload,
   UserPlus,
   Users,
@@ -26,6 +29,8 @@ import toast from 'react-hot-toast';
 import { educationalTourApi, type EducationalTourParticipantBooking, type RegisterParticipantPayload } from '../../../api/educationalTours';
 import { Button, Modal } from '../../../components/ds';
 import SeatSelectorModal, { type SeatSelectionResult } from '../../../components/travel/SeatSelectorModal';
+import { BusSeatAllocationModal } from '../../../components/ui';
+import type { AllocatedBus } from '../../../components/ui/BusSeatAllocationModal';
 import {
   downloadEducationalRosterTemplate,
   exportEducationalRosterToExcel,
@@ -80,6 +85,24 @@ const initialParticipantForm = {
   seat_number: '',
 };
 
+const rosterActionButtonBase =
+  'inline-flex h-7 w-full items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-2 text-[11px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1 disabled:pointer-events-none disabled:opacity-50 dark:focus-visible:ring-offset-slate-950';
+
+const rosterActionButtonTone = {
+  invoice:
+    'border-blue-700 bg-blue-600 text-white hover:border-blue-800 hover:bg-blue-700 dark:border-blue-500 dark:bg-blue-600 dark:hover:bg-blue-500',
+  statement:
+    'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700',
+  email:
+    'border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/70',
+  payment:
+    'border-emerald-700 bg-emerald-600 text-white hover:border-emerald-800 hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500',
+  seat:
+    'border-indigo-300 bg-indigo-50 text-indigo-800 hover:border-indigo-400 hover:bg-indigo-100 dark:border-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-200 dark:hover:bg-indigo-900/70',
+  cancel:
+    'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-400 hover:bg-rose-100 dark:border-rose-800 dark:bg-rose-950/50 dark:text-rose-200 dark:hover:bg-rose-900/70',
+} as const;
+
 export default function EducationalPackageDashboard({ packageId, onBack }: Props) {
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<'roster' | 'fleet'>('roster');
@@ -111,6 +134,14 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
     bus_id: '',
     driver_id: '',
   });
+
+  // Edit Bus Modal State
+  const [editingBusAssignment, setEditingBusAssignment] = useState<any | null>(null);
+  const [editBusForm, setEditBusForm] = useState({
+    bus_id: '',
+    driver_id: '',
+  });
+  const [busSeatModalOpen, setBusSeatModalOpen] = useState(false);
 
   const { data: pkg, isLoading: pkgLoading } = useQuery({
     queryKey: ['educational-package', packageId],
@@ -285,6 +316,21 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
     onError: (err: any) => toast.error(err?.response?.data?.message || 'Vehicle could not be assigned.'),
   });
 
+  const updateBusAssignmentMutation = useMutation({
+    mutationFn: (data: { assignmentId: number; bus_id: number; driver_id?: number | null }) =>
+      educationalTourApi.updateBusAssignment(packageId, data.assignmentId, {
+        bus_id: data.bus_id,
+        driver_id: data.driver_id,
+      }),
+    onSuccess: () => {
+      toast.success('Bus & driver assignment updated successfully.');
+      queryClient.invalidateQueries({ queryKey: ['educational-package', packageId] });
+      queryClient.invalidateQueries({ queryKey: ['educational-tour-packages'] });
+      setEditingBusAssignment(null);
+    },
+    onError: (err: any) => toast.error(err?.response?.data?.message || 'Bus assignment could not be updated.'),
+  });
+
   const cancelBookingMutation = useMutation({
     mutationFn: (bookingId: number) => educationalTourApi.cancelParticipantBooking(bookingId, 'Admin cancelled'),
     onSuccess: () => {
@@ -305,8 +351,8 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
         type: participantForm.participant_type,
         participant_type: participantForm.participant_type,
         student_number: participantForm.participant_type === 'adult' ? undefined : (participantForm.student_number.trim() || undefined),
-        grade_level: participantForm.participant_type === 'adult' ? undefined : (participantForm.grade_level.trim() || pkg?.grade_level || undefined),
-        section: participantForm.participant_type === 'adult' ? undefined : (participantForm.section.trim() || undefined),
+        grade_level: participantForm.participant_type === 'adult' ? (participantForm.grade_level.trim() || 'Non-Student') : (participantForm.grade_level.trim() || pkg?.grade_level || undefined),
+        section: participantForm.section.trim() || undefined,
         email: participantForm.email.trim() || undefined,
         phone: participantForm.phone.trim() || undefined,
         dietary_restrictions: participantForm.dietary_restrictions.trim() || undefined,
@@ -646,7 +692,7 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
                 <input
                   type="text"
-                  placeholder="Search student, reference, section..."
+                  placeholder="Search student, reference, section/branch..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
                   className="h-10 w-full rounded-xl border border-border bg-surface pl-9 pr-3 text-xs font-bold text-ink"
@@ -662,71 +708,60 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                 <option value="pending_payment">Pending Payment</option>
                 <option value="partially_paid">Partially Paid</option>
                 <option value="confirmed">Confirmed</option>
+                <option value="completed">Completed</option>
                 <option value="cancelled">Cancelled</option>
               </select>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <span className="text-xs font-bold text-muted mr-1">
-                {filteredBookings.length} of {bookings.length} pax
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-muted mr-2">
+                {bookings.length} of {pkg.capacity.maximum} pax
               </span>
-
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
                 onClick={handleExportRoster}
                 disabled={isExportingExcel || bookings.length === 0}
-                className="text-xs font-bold"
+                className="text-xs font-black uppercase tracking-wider"
               >
-                <FileSpreadsheet className="h-3.5 w-3.5 mr-1" />
-                Export Excel
+                <FileSpreadsheet className="h-4 w-4" /> Export Excel
               </Button>
-
               <Button
                 type="button"
                 variant="secondary"
-                size="sm"
-                onClick={() => {
-                  setSelectedExcelFile(null);
-                  setParsedExcelResult(null);
-                  setBulkUploadModalOpen(true);
-                }}
+                onClick={() => setBulkUploadModalOpen(true)}
                 disabled={pkg.capacity.available <= 0}
-                className="text-xs font-bold"
+                className="text-xs font-black uppercase tracking-wider"
               >
-                <Upload className="h-3.5 w-3.5 mr-1" />
-                Bulk Import
+                <Upload className="h-4 w-4" /> Bulk Import
               </Button>
-
               <Button
                 type="button"
-                size="sm"
                 onClick={() => {
                   setParticipantForm({ ...initialParticipantForm, grade_level: pkg.grade_level || '' });
                   setParticipantModalOpen(true);
                 }}
                 disabled={pkg.capacity.available <= 0}
-                className="!bg-blue-600 !text-white text-xs font-bold"
+                className="!bg-blue-600 !text-white text-xs font-black uppercase tracking-wider"
               >
-                <UserPlus className="h-3.5 w-3.5 mr-1" />
-                Add Participant
+                <UserPlus className="h-4 w-4" /> Add Participant
               </Button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[940px] text-left text-xs">
+          {/* Roster Table */}
+          <div className="overflow-x-auto rounded-2xl border border-border">
+            <table className="w-full min-w-[1380px] text-left text-xs">
               <thead className="border-b border-border bg-slate-50 dark:bg-slate-900/50 text-[10px] font-black uppercase tracking-wider text-muted">
                 <tr>
                   <th className="py-3 px-4">Ref #</th>
                   <th className="py-3 px-4">Type</th>
                   <th className="py-3 px-4">Participant Name</th>
-                  <th className="py-3 px-4">Grade & Section</th>
+                  <th className="py-3 px-4">Grade & Section / Branch</th>
                   <th className="py-3 px-4">Billing & Paid</th>
                   <th className="py-3 px-4">Bus & Seat</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="w-[34rem] min-w-[34rem] py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border font-semibold text-ink">
@@ -774,7 +809,7 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                         </td>
                         <td className="py-3 px-4">
                           <div>{isAdult ? 'Non-Student' : (b.grade_level || 'Grade 10')}</div>
-                          <div className="text-[10px] text-muted">{isAdult ? (b.section || 'Companion') : (b.section || 'General')}</div>
+                          <div className="text-[10px] text-muted">{b.section || (isAdult ? 'Non-Student' : 'General')}</div>
                         </td>
                         <td className="py-3 px-4">
                           <div>₱{(b.invoice?.amount_received || 0).toLocaleString()} / ₱{b.amount_due.toLocaleString()}</div>
@@ -801,28 +836,38 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                             {b.status.replace('_', ' ')}
                           </span>
                         </td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="inline-flex max-w-[30rem] flex-wrap items-center justify-end gap-1.5">
-                          {b.invoice && (
-                            <>
+                        <td className="w-[34rem] min-w-[34rem] py-3 px-4 align-middle">
+                          <div className="grid grid-cols-[5rem_4rem_4.5rem_7.5rem_5.5rem_4.5rem] items-center justify-end gap-1.5">
+                          <div>
+                            {b.invoice && (
                               <button
                                 type="button"
                                 onClick={() => participantDocumentMutation.mutate({ booking: b, type: 'invoice' })}
                                 disabled={participantDocumentMutation.isPending}
-                                className="inline-flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-blue-500 disabled:opacity-50"
+                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.invoice}`}
                                 aria-label={`Download invoice ${b.invoice.invoice_number}`}
+                                title="Download invoice"
                               >
                                 <FileText className="h-3 w-3" /> Invoice
                               </button>
+                            )}
+                          </div>
+                          <div>
+                            {b.invoice && (
                               <button
                                 type="button"
                                 onClick={() => participantDocumentMutation.mutate({ booking: b, type: 'statement' })}
                                 disabled={participantDocumentMutation.isPending}
-                                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200"
+                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.statement}`}
                                 aria-label={`Download statement for ${b.invoice.invoice_number}`}
+                                title="Download statement of account"
                               >
                                 <Download className="h-3 w-3" /> SOA
                               </button>
+                            )}
+                          </div>
+                          <div>
+                            {b.invoice && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -835,16 +880,16 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                                   emailDocumentsMutation.mutate({ bookingId: b.id, email });
                                 }}
                                 disabled={emailDocumentsMutation.isPending}
-                                className="inline-flex items-center gap-1 rounded-lg bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50 dark:bg-amber-950/50 dark:text-amber-200"
+                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.email}`}
                                 aria-label={`Email documents for ${b.invoice.invoice_number}`}
+                                title="Email invoice documents"
                               >
                                 <Mail className="h-3 w-3" /> Email
                               </button>
-                            </>
-                          )}
-                          {b.status !== 'cancelled' && (
-                            <>
-                              {(b.invoice?.balance ?? b.amount_due) > 0 && (
+                            )}
+                          </div>
+                          <div>
+                            {b.status !== 'cancelled' && (b.invoice?.balance ?? b.amount_due) > 0 && (
                                 <button
                                   type="button"
                                   onClick={() => {
@@ -867,21 +912,30 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                                       idempotency_key: generateUUID(),
                                     });
                                   }}
-                                  className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-black uppercase tracking-wider text-white hover:bg-emerald-500"
+                                  className={`${rosterActionButtonBase} ${rosterActionButtonTone.payment}`}
+                                  title="Record participant payment"
                                 >
                                   Record Payment
                                 </button>
-                              )}
+                            )}
+                          </div>
+                          <div>
+                            {b.status !== 'cancelled' && (
                               <button
                                 type="button"
                                 onClick={() => {
                                   setSelectedBookingForMove(b);
                                   setSeatSelectorModalOpen(true);
                                 }}
-                                className="px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 text-blue-700 dark:text-blue-300 text-[11px] font-bold"
+                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.seat}`}
+                                title="Move participant to another seat"
                               >
                                 Move Seat
                               </button>
+                            )}
+                          </div>
+                          <div>
+                            {b.status !== 'cancelled' && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -889,14 +943,15 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                                     cancelBookingMutation.mutate(b.id);
                                   }
                                 }}
-                                className="px-2 py-1 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-bold"
+                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.cancel}`}
+                                title="Cancel participant registration"
                               >
                                 Cancel
                               </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
+                            )}
+                          </div>
+                          </div>
+                        </td>
                     </tr>
                   );
                 })
@@ -910,23 +965,33 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
       {/* Tab 2: Fleet & Assigned Buses */}
       {activeTab === 'fleet' && (
         <section className="rounded-3xl border border-border bg-surface shadow-sm p-6 space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h3 className="text-lg font-black text-ink">Assigned Tour Buses & Drivers</h3>
-              <p className="text-xs text-muted">Manage bus and driver assignments for this tour.</p>
+              <p className="text-xs text-muted">Manage fleet coaches, driver assignments, and seat layouts for this tour.</p>
             </div>
-            <Button
-              type="button"
-              onClick={() => setAddBusModalOpen(true)}
-              className="!bg-blue-600 !text-white text-xs font-black uppercase tracking-wider"
-            >
-              <Plus className="h-4 w-4" /> Add Vehicle Assignment
-            </Button>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setBusSeatModalOpen(true)}
+                className="text-xs font-black uppercase tracking-wider"
+              >
+                <SlidersHorizontal className="h-4 w-4" /> Visual Fleet & Seat Allocator
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setAddBusModalOpen(true)}
+                className="!bg-blue-600 !text-white text-xs font-black uppercase tracking-wider"
+              >
+                <Plus className="h-4 w-4" /> Add Vehicle Assignment
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {(pkg.bus_assignments || []).map((bus) => (
-              <div key={bus.id} className="rounded-2xl border border-border bg-surface-alt p-5 space-y-4">
+              <div key={bus.id} className="rounded-2xl border border-border bg-surface-alt p-5 space-y-4 shadow-xs">
                 <div className="flex items-center justify-between">
                   <span className="px-2.5 py-1 rounded-md bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest">
                     Bus #{bus.sequence_number}
@@ -948,23 +1013,38 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                   />
                 </div>
 
-                <div className="flex justify-between text-[11px] font-bold text-muted pt-2 border-t border-border">
+                <div className="flex items-center justify-between text-[11px] font-bold text-muted pt-2 border-t border-border">
                   <span>{bus.available} Seats Free</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (window.confirm(`Remove Bus #${bus.sequence_number} (${bus.bus_plate}) from this package?`)) {
-                        educationalTourApi.removeBus(pkg.id, bus.id).then(() => {
-                          toast.success('Bus removed from package.');
-                          queryClient.invalidateQueries({ queryKey: ['educational-package', packageId] });
-                          queryClient.invalidateQueries({ queryKey: ['educational-tour-packages'] });
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingBusAssignment(bus);
+                        setEditBusForm({
+                          bus_id: String(bus.bus_id || ''),
+                          driver_id: String(bus.driver_id || ''),
                         });
-                      }
-                    }}
-                    className="text-rose-500 hover:underline"
-                  >
-                    Remove Bus
-                  </button>
+                      }}
+                      className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline"
+                    >
+                      <Pencil className="h-3 w-3" /> Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm(`Remove Bus #${bus.sequence_number} (${bus.bus_plate}) from this package?`)) {
+                          educationalTourApi.removeBus(pkg.id, bus.id).then(() => {
+                            toast.success('Bus removed from package.');
+                            queryClient.invalidateQueries({ queryKey: ['educational-package', packageId] });
+                            queryClient.invalidateQueries({ queryKey: ['educational-tour-packages'] });
+                          });
+                        }
+                      }}
+                      className="text-rose-500 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -1088,9 +1168,9 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                   />
                 </label>
                 <label className="text-xs font-bold text-muted">
-                  {participantForm.participant_type === 'adult' ? 'Department / Group (Optional)' : 'Section'}
+                  Section / Branch
                   <input
-                    placeholder={participantForm.participant_type === 'adult' ? 'Optional' : ''}
+                    placeholder={participantForm.participant_type === 'adult' ? 'e.g. Fairview Branch' : 'e.g. Daisy / Fairview Branch'}
                     value={participantForm.section}
                     onChange={event => setParticipantForm(current => ({ ...current, section: event.target.value }))}
                     className="mt-1 h-10 w-full rounded-xl border border-border bg-surface px-3 text-xs font-bold text-ink"
@@ -1543,6 +1623,131 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
         </Modal>
       )}
 
+      {/* Edit Bus Assignment Modal */}
+      {editingBusAssignment && (
+        <Modal
+          isOpen={true}
+          onClose={() => setEditingBusAssignment(null)}
+          title={`Edit Bus #${editingBusAssignment.sequence_number} Allocation`}
+        >
+          <div className="space-y-4 p-2">
+            <label className="text-xs font-bold text-muted">
+              Select Bus Coach *
+              <select
+                value={editBusForm.bus_id}
+                onChange={e => setEditBusForm({ ...editBusForm, bus_id: e.target.value })}
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-surface px-3 text-xs font-bold text-ink"
+              >
+                {(resources?.buses || []).map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.plate_number} ({b.model}) - {b.seating_capacity} seats {!b.available && Number(b.id) !== Number(editingBusAssignment.bus_id) ? '· In Use' : ''}
+                  </option>
+                ))}
+                {editingBusAssignment.bus_id && !(resources?.buses || []).some(b => Number(b.id) === Number(editingBusAssignment.bus_id)) && (
+                  <option value={editingBusAssignment.bus_id}>
+                    {editingBusAssignment.bus_plate || `Bus #${editingBusAssignment.bus_id}`} ({editingBusAssignment.capacity || 49} seats)
+                  </option>
+                )}
+              </select>
+            </label>
+
+            <label className="text-xs font-bold text-muted">
+              Assign Active Driver
+              <select
+                value={editBusForm.driver_id}
+                onChange={e => setEditBusForm({ ...editBusForm, driver_id: e.target.value })}
+                className="mt-1 h-10 w-full rounded-xl border border-border bg-surface px-3 text-xs font-bold text-ink"
+              >
+                <option value="">-- Unassigned Driver --</option>
+                {(resources?.drivers || []).map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.first_name} {d.last_name} {!d.available && Number(d.id) !== Number(editingBusAssignment.driver_id) ? '· In Use' : ''}
+                  </option>
+                ))}
+                {editingBusAssignment.driver_id && !(resources?.drivers || []).some(d => Number(d.id) === Number(editingBusAssignment.driver_id)) && (
+                  <option value={editingBusAssignment.driver_id}>
+                    {editingBusAssignment.driver_name || `Driver #${editingBusAssignment.driver_id}`}
+                  </option>
+                )}
+              </select>
+            </label>
+
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <Button type="button" variant="secondary" onClick={() => setEditingBusAssignment(null)}>
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => {
+                  if (!editBusForm.bus_id) {
+                    toast.error('Please choose a bus unit.');
+                    return;
+                  }
+                  updateBusAssignmentMutation.mutate({
+                    assignmentId: editingBusAssignment.id,
+                    bus_id: Number(editBusForm.bus_id),
+                    driver_id: editBusForm.driver_id ? Number(editBusForm.driver_id) : null,
+                  });
+                }}
+                disabled={updateBusAssignmentMutation.isPending}
+                className="!bg-blue-600 !text-white text-xs font-black uppercase tracking-wider"
+              >
+                {updateBusAssignmentMutation.isPending ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Full Bus Seat Allocation Modal */}
+      {busSeatModalOpen && (
+        <BusSeatAllocationModal
+          isOpen={busSeatModalOpen}
+          onClose={() => setBusSeatModalOpen(false)}
+          requiredCapacity={pkg?.capacity?.maximum || 49}
+          passengers={bookings.map((b, idx) => ({
+            id: b.id || idx,
+            first_name: b.participant_first_name || 'Participant',
+            last_name: b.participant_last_name || `#${idx + 1}`,
+            role: b.participant_type === 'adult' ? 'adult' : 'student',
+            seat_code: b.seat_number ? b.seat_number.replace(/^(?:Seat|S)\s*/i, '') : undefined,
+            bus_index: b.bus_assignment_id
+              ? (pkg?.bus_assignments || []).findIndex(a => Number(a.id) === Number(b.bus_assignment_id))
+              : undefined,
+          }))}
+          initialAllocations={(pkg?.bus_assignments || []).map((b, idx) => ({
+            bus_id: b.bus_id,
+            driver_id: b.driver_id,
+            driver_name: b.driver_name,
+            plate_number: b.bus_plate,
+            model: b.bus_model,
+            seating_capacity: b.capacity,
+            total_seats: b.capacity,
+            sequence_number: b.sequence_number || (idx + 1),
+            assignment_id: b.id,
+            seat_assignments: {},
+          }))}
+          availableDrivers={resources?.drivers || []}
+          onSaveAllocations={(allocs: AllocatedBus[]) => {
+            educationalTourApi.updatePackage(packageId, {
+              bus_assignments: allocs.map((b, idx) => ({
+                id: b.assignment_id,
+                bus_id: Number(b.bus_id),
+                driver_id: b.driver_id ? Number(b.driver_id) : null,
+                sequence_number: idx + 1,
+              })),
+            }).then(() => {
+              toast.success(`Updated ${allocs.length} bus assignment(s).`);
+              queryClient.invalidateQueries({ queryKey: ['educational-package', packageId] });
+              queryClient.invalidateQueries({ queryKey: ['educational-tour-packages'] });
+              setBusSeatModalOpen(false);
+            }).catch((err: any) => {
+              toast.error(err?.response?.data?.message || 'Could not update fleet assignments.');
+            });
+          }}
+        />
+      )}
+
       {/* Bulk Upload Participants Modal */}
       {bulkUploadModalOpen && (
         <Modal
@@ -1684,7 +1889,7 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                               <th className="py-2 px-3">Row</th>
                               <th className="py-2 px-3">Student Name</th>
                               <th className="py-2 px-3">ID #</th>
-                              <th className="py-2 px-3">Grade & Section</th>
+                              <th className="py-2 px-3">Grade & Section / Branch</th>
                               <th className="py-2 px-3">Guardian</th>
                               <th className="py-2 px-3">Payment</th>
                               <th className="py-2 px-3">Seat</th>

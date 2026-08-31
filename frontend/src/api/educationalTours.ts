@@ -220,6 +220,12 @@ export interface CreateEducationalPackagePayload {
   balance_due_at?: string;
   status?: string;
   operations_notes?: string;
+  bus_assignments?: Array<{
+    id?: number;
+    bus_id: number;
+    driver_id?: number | null;
+    sequence_number?: number;
+  }>;
 }
 
 export interface RegisterParticipantPayload {
@@ -382,6 +388,7 @@ export const educationalTourApi = {
     { participants },
   ).then(res => res.data.data as BulkRegistrationResult),
   assignBus: (packageId: number, data: { bus_id: number; driver_id?: number; sequence_number?: number }) => client.post(`/sales/educational-tour-packages/${packageId}/bus-assignments`, data).then(res => res.data.data),
+  updateBusAssignment: (packageId: number, assignmentId: number, data: { bus_id?: number; driver_id?: number | null; sequence_number?: number }) => client.put(`/sales/educational-tour-packages/${packageId}/bus-assignments/${assignmentId}`, data).then(res => res.data.data),
   removeBus: (packageId: number, assignmentId: number) => client.delete(`/sales/educational-tour-packages/${packageId}/bus-assignments/${assignmentId}`).then(res => res.data),
   allocateBuses: (packageId: number, options?: { strategy?: string; include_statuses?: string[]; rebalance_existing?: boolean }) => client.post(`/sales/educational-tour-packages/${packageId}/allocate-buses`, options).then(res => res.data.data),
 

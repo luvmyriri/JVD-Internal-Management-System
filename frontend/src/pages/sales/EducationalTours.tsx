@@ -91,7 +91,10 @@ function DeletePackageDialog({ pkg, onClose, onDeleted }: DeleteDialogProps) {
       onDeleted();
       onClose();
     },
-    onError: () => toast.error('Failed to delete package.'),
+    onError: (err: any) => {
+      const message = err?.response?.data?.message || 'Failed to delete package.';
+      toast.error(message);
+    },
   });
 
   return (

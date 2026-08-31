@@ -78,12 +78,14 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
             $receiptPdf = $documents->render('pdf.payment-receipt', $pdfData);
             $attachments[] = Attachment::fromData(fn () => $receiptPdf->output(), "Payment_Receipt_{$this->invoice->invoice_number}.pdf")
                 ->withMime('application/pdf');
-        } else {
-            $soaPdf = $documents->render('pdf.statement_of_account', $pdfData);
-            $soaName = "SOA_Collection_Form_{$this->invoice->invoice_number}.pdf";
-            $attachments[] = Attachment::fromData(fn () => $soaPdf->output(), $soaName)
-                ->withMime('application/pdf');
         }
+
+        // The SOA remains useful after settlement because it confirms the full
+        // billing and payment history. Always include it with the invoice.
+        $soaPdf = $documents->render('pdf.statement_of_account', $pdfData);
+        $soaName = "SOA_Collection_Form_{$this->invoice->invoice_number}.pdf";
+        $attachments[] = Attachment::fromData(fn () => $soaPdf->output(), $soaName)
+            ->withMime('application/pdf');
 
         if ($this->invoice->isPackageBooking()) {
             $agreementPdf = app(GeneralServiceAgreementPdfService::class)->generate($this->invoice);
