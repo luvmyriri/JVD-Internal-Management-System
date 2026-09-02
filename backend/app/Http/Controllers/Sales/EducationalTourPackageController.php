@@ -12,7 +12,6 @@ use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\EducationalTourBusAssignment;
 use App\Models\EducationalTourPackage;
 use App\Models\EducationalTourParticipantBooking;
-use App\Models\Invoice;
 use App\Services\DocumentPdfService;
 use App\Services\EducationalTourBusAllocator;
 use App\Services\EducationalTourPackageService;
@@ -20,6 +19,7 @@ use App\Services\EducationalTourPaymentService;
 use App\Services\EducationalTourRegistrationService;
 use App\Services\ExcelExportService;
 use App\Services\ExcelImportService;
+use App\Services\InvoiceDocumentCacheService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -167,7 +167,7 @@ class EducationalTourPackageController extends Controller
 
         $updated = $this->packageService->updateBusAssignment($package, $assignment, $data, $request->user()->id);
 
-        $occupied = \App\Models\EducationalTourParticipantBooking::where('bus_assignment_id', $updated->id)
+        $occupied = EducationalTourParticipantBooking::where('bus_assignment_id', $updated->id)
             ->whereNotIn('status', ['cancelled', 'expired'])
             ->count();
 
@@ -262,29 +262,32 @@ class EducationalTourPackageController extends Controller
         return response()->json(['data' => $booking]);
     }
 
-    public function participantInvoice(EducationalTourParticipantBooking $booking, DocumentPdfService $documents)
+    public function participantInvoice(EducationalTourParticipantBooking $booking, InvoiceDocumentCacheService $documents)
     {
         @set_time_limit(120);
 
         $invoice = $booking->invoice;
         abort_unless($invoice, 404, 'This participant booking has no linked invoice.');
-        $invoice->load(Invoice::operationalDocumentRelations());
+        $contents = $documents->contents($invoice, InvoiceDocumentCacheService::INVOICE);
 
-        return $documents->render('pdf.invoice', ['invoice' => $invoice, 'taxRate' => 0])
-            ->download("Invoice_{$invoice->invoice_number}.pdf");
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$documents->fileName($invoice, InvoiceDocumentCacheService::INVOICE).'"',
+        ]);
     }
 
-    public function participantStatement(EducationalTourParticipantBooking $booking, DocumentPdfService $documents)
+    public function participantStatement(EducationalTourParticipantBooking $booking, InvoiceDocumentCacheService $documents)
     {
         @set_time_limit(120);
 
         $invoice = $booking->invoice;
         abort_unless($invoice, 404, 'This participant booking has no linked invoice.');
-        $invoice->load(Invoice::operationalDocumentRelations());
-        $invoice->setRelation('payments', $invoice->collection?->payments ?? collect());
+        $contents = $documents->contents($invoice, InvoiceDocumentCacheService::STATEMENT);
 
-        return $documents->render('pdf.statement_of_account', ['invoice' => $invoice, 'taxRate' => 0])
-            ->download("SOA_{$invoice->invoice_number}.pdf");
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="SOA_'.$invoice->invoice_number.'.pdf"',
+        ]);
     }
 
     public function sendParticipantDocuments(Request $request, EducationalTourParticipantBooking $booking)
@@ -310,11 +313,20 @@ class EducationalTourPackageController extends Controller
             $invoice->forceFill(['customer_email' => $recipient])->save();
         }
 
+        $booking->forceFill([
+            'document_delivery_status' => 'queued',
+            'document_delivery_recipient' => $recipient,
+            'document_delivery_queued_at' => now(),
+            'document_delivery_sent_at' => null,
+            'document_delivery_failed_at' => null,
+            'document_delivery_error' => null,
+        ])->save();
+
         // PDF rendering and SMTP delivery can take longer than a browser request,
         // especially when the mail server is temporarily unavailable. Queue the
         // same retryable job used by the rest of the billing flow so the button
         // can return immediately and delivery is retried safely in the worker.
-        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
+        SendInvoiceDocumentsJob::dispatch($invoice->id, recipient: $recipient)->afterResponse();
 
         return response()->json([
             'message' => "Invoice {$invoice->invoice_number} and customer documents were queued for delivery to {$recipient}.",
@@ -322,6 +334,7 @@ class EducationalTourPackageController extends Controller
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'recipient' => $recipient,
+                'delivery_status' => 'queued',
             ],
         ], 202);
     }

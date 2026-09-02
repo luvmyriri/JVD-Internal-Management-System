@@ -26,7 +26,7 @@ docker compose -f docker-compose.prod.yml exec -T app php artisan migrate --forc
 echo "==> Clearing application caches..."
 docker compose -f docker-compose.prod.yml exec -T app php artisan optimize:clear
 
-echo "==> Restarting background worker..."
-docker compose -f docker-compose.prod.yml restart worker
+echo "==> Restarting background workers..."
+docker compose -f docker-compose.prod.yml restart worker mail-worker
 
 echo "==> Deployment to Hostinger VPS complete!"

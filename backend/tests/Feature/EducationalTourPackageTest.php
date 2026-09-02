@@ -14,6 +14,7 @@ use App\Models\Invoice;
 use App\Models\User;
 use App\Services\EducationalTourPackageService;
 use App\Services\GeneralServiceAgreementPdfService;
+use App\Services\InvoiceDocumentMailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus as BusFacade;
@@ -325,6 +326,7 @@ class EducationalTourPackageTest extends TestCase
         $this->withoutExceptionHandling();
         BusFacade::fake([SendInvoiceDocumentsJob::class]);
         Mail::fake();
+        Storage::fake('local');
         $packageService = app(EducationalTourPackageService::class);
         $result = $packageService->createPackage([
             'program_id' => $this->program->id,
@@ -429,19 +431,47 @@ class EducationalTourPackageTest extends TestCase
             ->assertHeader('content-type', 'application/pdf')
             ->assertDownload("SOA_{$booking->invoice->invoice_number}.pdf");
         $this->assertStringStartsWith('%PDF', $statementDocument->getContent());
+        $this->assertCount(
+            2,
+            Storage::disk('local')->allFiles("invoice-documents/{$booking->invoice_id}"),
+            'Invoice and statement PDFs should be cached for later downloads and email delivery.',
+        );
 
         $this->actingAs($this->user)
             ->postJson("/api/v1/sales/educational-tour-participant-bookings/{$booking->id}/send-documents")
             ->assertAccepted()
             ->assertJsonPath('data.invoice_id', $booking->invoice_id)
-            ->assertJsonPath('data.recipient', 'maria@example.test');
+            ->assertJsonPath('data.recipient', 'maria@example.test')
+            ->assertJsonPath('data.delivery_status', 'queued');
+
+        $this->assertDatabaseHas('educational_tour_participant_bookings', [
+            'id' => $booking->id,
+            'document_delivery_status' => 'queued',
+            'document_delivery_recipient' => 'maria@example.test',
+        ]);
 
         Mail::assertNothingSent();
         BusFacade::assertDispatchedAfterResponse(
             SendInvoiceDocumentsJob::class,
             fn (SendInvoiceDocumentsJob $job) => $job->invoiceId === $booking->invoice_id
+                && $job->recipient === 'maria@example.test'
+                && $job->queue === 'mail'
         );
         BusFacade::assertDispatchedTimes(SendInvoiceDocumentsJob::class, 4);
+
+        $job = new SendInvoiceDocumentsJob($booking->invoice_id, recipient: 'maria@example.test');
+        $job->handle(app(InvoiceDocumentMailService::class));
+        $this->assertDatabaseHas('educational_tour_participant_bookings', [
+            'id' => $booking->id,
+            'document_delivery_status' => 'sent',
+            'document_delivery_recipient' => 'maria@example.test',
+        ]);
+
+        $job->failed(new \RuntimeException('SMTP unavailable'));
+        $this->assertDatabaseHas('educational_tour_participant_bookings', [
+            'id' => $booking->id,
+            'document_delivery_status' => 'failed',
+        ]);
     }
 
     public function test_fill_first_bus_allocation_strategy(): void

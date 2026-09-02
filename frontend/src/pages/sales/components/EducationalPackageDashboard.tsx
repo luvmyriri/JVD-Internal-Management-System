@@ -95,6 +95,12 @@ const rosterActionButtonTone = {
     'border-slate-300 bg-white text-slate-800 hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700',
   email:
     'border-amber-300 bg-amber-50 text-amber-900 hover:border-amber-400 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950/60 dark:text-amber-200 dark:hover:bg-amber-900/70',
+  emailSending:
+    'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-700 dark:bg-blue-950/60 dark:text-blue-200',
+  emailSent:
+    'border-emerald-300 bg-emerald-50 text-emerald-800 hover:border-emerald-400 hover:bg-emerald-100 dark:border-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-200 dark:hover:bg-emerald-900/70',
+  emailFailed:
+    'border-rose-300 bg-rose-50 text-rose-800 hover:border-rose-400 hover:bg-rose-100 dark:border-rose-700 dark:bg-rose-950/60 dark:text-rose-200 dark:hover:bg-rose-900/70',
   payment:
     'border-emerald-700 bg-emerald-600 text-white hover:border-emerald-800 hover:bg-emerald-700 dark:border-emerald-500 dark:bg-emerald-600 dark:hover:bg-emerald-500',
   seat:
@@ -151,6 +157,12 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
   const { data: bookings = [], isLoading: bookingsLoading } = useQuery({
     queryKey: ['educational-participant-bookings', packageId],
     queryFn: () => educationalTourApi.participantBookings({ package_id: packageId }),
+    refetchInterval: (query) => {
+      const currentBookings = query.state.data as EducationalTourParticipantBooking[] | undefined;
+      return currentBookings?.some((booking) => ['queued', 'sending'].includes(booking.document_delivery_status || ''))
+        ? 2_000
+        : false;
+    },
   });
 
   const { data: resources } = useQuery({
@@ -273,8 +285,41 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
   const emailDocumentsMutation = useMutation({
     mutationFn: (data: { bookingId: number; email?: string }) =>
       educationalTourApi.sendParticipantDocuments(data.bookingId, data.email),
-    onSuccess: (response) => toast.success(response.message || 'Invoice documents queued for email.'),
-    onError: (err: any) => toast.error(err?.response?.data?.message || 'The invoice documents could not be emailed.'),
+    onMutate: async ({ bookingId, email }) => {
+      const queryKey = ['educational-participant-bookings', packageId];
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<EducationalTourParticipantBooking[]>(queryKey);
+
+      queryClient.setQueryData<EducationalTourParticipantBooking[]>(queryKey, (current = []) =>
+        current.map((booking) => booking.id === bookingId ? {
+          ...booking,
+          document_delivery_status: 'queued',
+          document_delivery_recipient: email || booking.document_delivery_recipient,
+          document_delivery_queued_at: new Date().toISOString(),
+          document_delivery_sent_at: null,
+          document_delivery_failed_at: null,
+          document_delivery_error: null,
+        } : booking),
+      );
+
+      return { previous };
+    },
+    onSuccess: (response) => {
+      toast.success(response.message || 'Invoice documents are being sent.');
+      queryClient.invalidateQueries({ queryKey: ['educational-participant-bookings', packageId] });
+    },
+    onError: (err: any, { bookingId }) => {
+      queryClient.setQueryData<EducationalTourParticipantBooking[]>(
+        ['educational-participant-bookings', packageId],
+        (current = []) => current.map((booking) => booking.id === bookingId ? {
+          ...booking,
+          document_delivery_status: 'failed',
+          document_delivery_failed_at: new Date().toISOString(),
+          document_delivery_error: err?.response?.data?.message || 'The invoice documents could not be emailed.',
+        } : booking),
+      );
+      toast.error(err?.response?.data?.message || 'The invoice documents could not be emailed.');
+    },
   });
 
   const moveSeatMutation = useMutation({
@@ -789,6 +834,38 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                 ) : (
                   filteredBookings.map((b) => {
                     const isAdult = ['adult', 'companion', 'guardian', 'teacher'].includes(String(b.participant_type).toLowerCase());
+                    const emailRequestPending = emailDocumentsMutation.isPending
+                      && emailDocumentsMutation.variables?.bookingId === b.id;
+                    const deliveryStatus = emailRequestPending ? 'sending' : b.document_delivery_status;
+                    const deliveryInProgress = deliveryStatus === 'queued' || deliveryStatus === 'sending';
+                    const deliveryLabel = deliveryInProgress
+                      ? 'Sending'
+                      : deliveryStatus === 'sent'
+                        ? 'Sent'
+                        : deliveryStatus === 'failed'
+                          ? 'Failed'
+                          : 'Email';
+                    const DeliveryIcon = deliveryInProgress
+                      ? RefreshCw
+                      : deliveryStatus === 'sent'
+                        ? CheckCircle2
+                        : deliveryStatus === 'failed'
+                          ? AlertCircle
+                          : Mail;
+                    const deliveryTone = deliveryInProgress
+                      ? rosterActionButtonTone.emailSending
+                      : deliveryStatus === 'sent'
+                        ? rosterActionButtonTone.emailSent
+                        : deliveryStatus === 'failed'
+                          ? rosterActionButtonTone.emailFailed
+                          : rosterActionButtonTone.email;
+                    const deliveryTitle = deliveryStatus === 'sent'
+                      ? `Sent to ${b.document_delivery_recipient || 'the saved recipient'}. Click to send again.`
+                      : deliveryStatus === 'failed'
+                        ? `${b.document_delivery_error || 'Delivery failed.'} Click to retry.`
+                        : deliveryInProgress
+                          ? `Sending to ${b.document_delivery_recipient || 'the saved recipient'}`
+                          : 'Email invoice documents';
                     return (
                       <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/30 transition">
                         <td className="py-3 px-4 font-mono font-bold text-blue-600 dark:text-blue-400">
@@ -879,12 +956,13 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
                                   }
                                   emailDocumentsMutation.mutate({ bookingId: b.id, email });
                                 }}
-                                disabled={emailDocumentsMutation.isPending}
-                                className={`${rosterActionButtonBase} ${rosterActionButtonTone.email}`}
-                                aria-label={`Email documents for ${b.invoice.invoice_number}`}
-                                title="Email invoice documents"
+                                disabled={deliveryInProgress}
+                                className={`${rosterActionButtonBase} ${deliveryTone}`}
+                                aria-label={`${deliveryLabel} invoice documents for ${b.invoice.invoice_number}`}
+                                title={deliveryTitle}
                               >
-                                <Mail className="h-3 w-3" /> Email
+                                <DeliveryIcon className={`h-3 w-3 ${deliveryInProgress ? 'animate-spin' : ''}`} aria-hidden="true" />
+                                <span aria-live="polite">{deliveryLabel}</span>
                               </button>
                             )}
                           </div>

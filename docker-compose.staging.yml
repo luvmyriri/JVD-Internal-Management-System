@@ -18,6 +18,12 @@ services:
     env_file: [./backend/.env.staging]
     depends_on: [postgres, redis]
     command: php artisan queue:work redis --tries=3 --timeout=90 --sleep=3
+  mail-worker:
+    build: { context: ./backend, dockerfile: Dockerfile }
+    restart: unless-stopped
+    env_file: [./backend/.env.staging]
+    depends_on: [postgres, redis]
+    command: php artisan queue:work redis --queue=mail --tries=3 --timeout=180 --sleep=1
   scheduler:
     build: { context: ./backend, dockerfile: Dockerfile }
     restart: unless-stopped

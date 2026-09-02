@@ -75,6 +75,23 @@ services:
       - redis
     command: php artisan queue:work redis --tries=3 --timeout=90 --sleep=3
 
+  mail-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jvd_mail_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend/.env:/var/www/html/.env
+      - ./backend/storage:/var/www/html/storage
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+      - redis
+    command: php artisan queue:work redis --queue=mail --tries=3 --timeout=180 --sleep=1
+
   ws:
     image: node:20-alpine
     container_name: jvd_ws

@@ -69,7 +69,7 @@ services:
     depends_on:
       - postgres
       - redis
-    command: php artisan queue:work redis --tries=3 --timeout=90 --sleep=3
+    command: php artisan queue:work redis --queue=mail,default --tries=3 --timeout=180 --sleep=1
 
   frontend:
     build:

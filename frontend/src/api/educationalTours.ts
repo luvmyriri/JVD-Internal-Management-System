@@ -150,6 +150,12 @@ export interface EducationalTourParticipantBooking {
   currency: string;
   payment_plan: string;
   payment_status: 'unpaid' | 'partial' | 'paid' | 'overdue' | 'refunded';
+  document_delivery_status?: 'queued' | 'sending' | 'sent' | 'failed' | null;
+  document_delivery_recipient?: string | null;
+  document_delivery_queued_at?: string | null;
+  document_delivery_sent_at?: string | null;
+  document_delivery_failed_at?: string | null;
+  document_delivery_error?: string | null;
   status: 'pending_payment' | 'partially_paid' | 'confirmed' | 'cancelled' | 'expired' | 'completed';
   bus_assignment_id?: number;
   seat_number?: string;
