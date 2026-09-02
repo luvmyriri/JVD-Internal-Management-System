@@ -432,12 +432,16 @@ class EducationalTourPackageTest extends TestCase
 
         $this->actingAs($this->user)
             ->postJson("/api/v1/sales/educational-tour-participant-bookings/{$booking->id}/send-documents")
-            ->assertOk()
+            ->assertAccepted()
             ->assertJsonPath('data.invoice_id', $booking->invoice_id)
             ->assertJsonPath('data.recipient', 'maria@example.test');
 
-        Mail::assertSent(TransactionNotificationMail::class, fn (TransactionNotificationMail $mail) => $mail->hasTo('maria@example.test'));
-        BusFacade::assertDispatchedTimes(SendInvoiceDocumentsJob::class, 3);
+        Mail::assertNothingSent();
+        BusFacade::assertDispatchedAfterResponse(
+            SendInvoiceDocumentsJob::class,
+            fn (SendInvoiceDocumentsJob $job) => $job->invoiceId === $booking->invoice_id
+        );
+        BusFacade::assertDispatchedTimes(SendInvoiceDocumentsJob::class, 4);
     }
 
     public function test_fill_first_bus_allocation_strategy(): void
@@ -863,4 +867,3 @@ class EducationalTourPackageTest extends TestCase
         $this->assertDatabaseMissing('educational_tour_bus_assignments', ['package_id' => $package->id]);
     }
 }
-

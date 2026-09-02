@@ -20,9 +20,7 @@ use App\Services\EducationalTourPaymentService;
 use App\Services\EducationalTourRegistrationService;
 use App\Services\ExcelExportService;
 use App\Services\ExcelImportService;
-use App\Services\InvoiceDocumentMailService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 class EducationalTourPackageController extends Controller
@@ -266,6 +264,8 @@ class EducationalTourPackageController extends Controller
 
     public function participantInvoice(EducationalTourParticipantBooking $booking, DocumentPdfService $documents)
     {
+        @set_time_limit(120);
+
         $invoice = $booking->invoice;
         abort_unless($invoice, 404, 'This participant booking has no linked invoice.');
         $invoice->load(Invoice::operationalDocumentRelations());
@@ -276,6 +276,8 @@ class EducationalTourPackageController extends Controller
 
     public function participantStatement(EducationalTourParticipantBooking $booking, DocumentPdfService $documents)
     {
+        @set_time_limit(120);
+
         $invoice = $booking->invoice;
         abort_unless($invoice, 404, 'This participant booking has no linked invoice.');
         $invoice->load(Invoice::operationalDocumentRelations());
@@ -285,7 +287,7 @@ class EducationalTourPackageController extends Controller
             ->download("SOA_{$invoice->invoice_number}.pdf");
     }
 
-    public function sendParticipantDocuments(Request $request, EducationalTourParticipantBooking $booking, InvoiceDocumentMailService $mail)
+    public function sendParticipantDocuments(Request $request, EducationalTourParticipantBooking $booking)
     {
         $validated = $request->validate([
             'email' => ['nullable', 'email:rfc', 'max:255'],
@@ -308,29 +310,20 @@ class EducationalTourPackageController extends Controller
             $invoice->forceFill(['customer_email' => $recipient])->save();
         }
 
-        try {
-            $mail->send($invoice, $recipient);
-        } catch (\Throwable $exception) {
-            Log::error('Educational Tour invoice email delivery failed.', [
-                'invoice_id' => $invoice->id,
-                'booking_id' => $booking->id,
-                'recipient' => $recipient,
-                'exception' => $exception,
-            ]);
-
-            return response()->json([
-                'message' => 'The invoice documents could not be delivered. Please check the mail configuration and try again.',
-            ], 502);
-        }
+        // PDF rendering and SMTP delivery can take longer than a browser request,
+        // especially when the mail server is temporarily unavailable. Queue the
+        // same retryable job used by the rest of the billing flow so the button
+        // can return immediately and delivery is retried safely in the worker.
+        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
 
         return response()->json([
-            'message' => "Invoice {$invoice->invoice_number} and customer documents were accepted for delivery to {$recipient}.",
+            'message' => "Invoice {$invoice->invoice_number} and customer documents were queued for delivery to {$recipient}.",
             'data' => [
                 'invoice_id' => $invoice->id,
                 'invoice_number' => $invoice->invoice_number,
                 'recipient' => $recipient,
             ],
-        ]);
+        ], 202);
     }
 
     public function recordPayment(RecordEducationalPaymentRequest $request, EducationalTourParticipantBooking $booking)

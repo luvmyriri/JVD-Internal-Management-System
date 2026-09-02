@@ -62,7 +62,19 @@ client.interceptors.request.use(
 
 client.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    // Axios returns error bodies as Blob objects for PDF download requests.
+    // Decode JSON error blobs before sanitizing them so document failures keep
+    // their safe API message and support reference instead of becoming opaque.
+    if (error.response?.data instanceof Blob) {
+      try {
+        const errorText = await error.response.data.text();
+        error.response.data = errorText ? JSON.parse(errorText) : {};
+      } catch {
+        error.response.data = {};
+      }
+    }
+
     if (error.response?.status === 401) {
       error.response.data = sanitizeErrorPayload(error.response.data, error.response.status);
       const requestUrl = error.config?.url || '';

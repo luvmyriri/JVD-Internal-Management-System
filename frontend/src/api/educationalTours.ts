@@ -395,8 +395,14 @@ export const educationalTourApi = {
   // Participant Bookings & Payments
   participantBookings: (params?: { package_id?: number; status?: string; search?: string }) => client.get('/sales/educational-tour-participant-bookings', { params }).then(res => res.data.data as EducationalTourParticipantBooking[]),
   participantBookingDetails: (id: number) => client.get(`/sales/educational-tour-participant-bookings/${id}`).then(res => res.data.data as EducationalTourParticipantBooking),
-  participantInvoice: (id: number) => client.get(`/sales/educational-tour-participant-bookings/${id}/invoice`, { responseType: 'blob' }).then(res => res.data as Blob),
-  participantStatement: (id: number) => client.get(`/sales/educational-tour-participant-bookings/${id}/statement`, { responseType: 'blob' }).then(res => res.data as Blob),
+  participantInvoice: (id: number) => client.get(`/sales/educational-tour-participant-bookings/${id}/invoice`, {
+    responseType: 'blob',
+    timeout: 120_000,
+  }).then(res => res.data as Blob),
+  participantStatement: (id: number) => client.get(`/sales/educational-tour-participant-bookings/${id}/statement`, {
+    responseType: 'blob',
+    timeout: 120_000,
+  }).then(res => res.data as Blob),
   sendParticipantDocuments: (id: number, email?: string) => client.post(
     `/sales/educational-tour-participant-bookings/${id}/send-documents`,
     email ? { email } : {},
