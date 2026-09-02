@@ -6,10 +6,11 @@ use App\Models\Bus;
 use App\Models\EducationalTourBusAssignment;
 use App\Models\EducationalTourPackage;
 use App\Models\EducationalTourParticipantBooking;
-use App\Models\EducationalTourProgram;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Services\EducationalTourPackageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -370,6 +371,8 @@ class EducationalTourLiveQATest extends TestCase
      */
     public function test_complete_live_qa_workflow_multi_bus_seats_cancellation_payment_manifest(): void
     {
+        Storage::fake('local');
+
         // 1. Open an existing Educational Tour with at least 2 buses assigned
         $package = $this->createTestPackage('QA Comprehensive Live Tour');
         $busAssign1 = $this->createBusAssignment($package, $this->bus1, $this->driver1, 1, 49);
@@ -484,6 +487,15 @@ class EducationalTourLiveQATest extends TestCase
         $manifestResponse = $this->actingAs($this->salesStaff)->get("/api/v1/sales/educational-tour-packages/{$package->id}/manifest");
         $manifestResponse->assertStatus(200);
         $manifestResponse->assertHeader('content-type', 'application/pdf');
+        $manifestResponse->assertDownload("Educational_Tour_Package_Manifest_{$package->tour_code}.pdf");
+        $this->assertStringStartsWith('%PDF', $manifestResponse->getContent());
+        $this->assertCount(1, Storage::disk('local')->allFiles("educational-tour-manifests/{$package->id}"));
+
+        $cachedManifestResponse = $this->actingAs($this->salesStaff)
+            ->get("/api/v1/sales/educational-tour-packages/{$package->id}/manifest")
+            ->assertOk();
+        $this->assertSame($manifestResponse->getContent(), $cachedManifestResponse->getContent());
+        $this->assertCount(1, Storage::disk('local')->allFiles("educational-tour-manifests/{$package->id}"));
     }
 
     /**
@@ -668,7 +680,7 @@ class EducationalTourLiveQATest extends TestCase
      */
     public function test_generated_tour_code_has_no_double_hyphens(): void
     {
-        $packageService = app(\App\Services\EducationalTourPackageService::class);
+        $packageService = app(EducationalTourPackageService::class);
         $result = $packageService->createPackage([
             'school_name' => 'Browser QA Academy',
             'name' => 'Browser QA Educational Tour',
@@ -688,7 +700,7 @@ class EducationalTourLiveQATest extends TestCase
     {
         return EducationalTourPackage::create([
             'public_id' => Str::uuid()->toString(),
-            'tour_code' => 'QA-EDT-' . Str::upper(Str::random(6)),
+            'tour_code' => 'QA-EDT-'.Str::upper(Str::random(6)),
             'name' => $name,
             'school_name' => 'QA Heritage High',
             'grade_level' => 'Grade 11',

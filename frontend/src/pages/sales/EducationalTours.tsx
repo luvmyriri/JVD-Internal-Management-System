@@ -190,7 +190,9 @@ export default function EducationalTours() {
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       toast.success('Tour manifest downloaded.');
     },
-    onError: () => toast.error('Could not generate tour manifest.'),
+    onError: (err: any) => toast.error(
+      err?.response?.data?.message || err?.message || 'Could not generate tour manifest.',
+    ),
   });
 
   // Quotation download

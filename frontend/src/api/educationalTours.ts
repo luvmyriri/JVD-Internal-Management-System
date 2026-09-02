@@ -361,7 +361,10 @@ export const educationalTourApi = {
   // Scheduled Packages
   packages: (params?: { status?: string; search?: string }) => client.get('/sales/educational-tour-packages', { params }).then(res => res.data.data as EducationalTourPackage[]),
   packageDetails: (id: number) => client.get(`/sales/educational-tour-packages/${id}`).then(res => res.data.data as EducationalTourPackage),
-  packageManifest: (id: number) => client.get(`/sales/educational-tour-packages/${id}/manifest`, { responseType: 'blob' }).then(res => res.data as Blob),
+  packageManifest: (id: number) => client.get(`/sales/educational-tour-packages/${id}/manifest`, {
+    responseType: 'blob',
+    timeout: 120_000,
+  }).then(res => res.data as Blob),
   createPackage: (data: CreateEducationalPackagePayload) => client.post('/sales/educational-tour-packages', data).then(res => res.data.data as EducationalTourPackage),
   updatePackage: (id: number, data: Partial<CreateEducationalPackagePayload>) => client.put(`/sales/educational-tour-packages/${id}`, data).then(res => res.data.data as EducationalTourPackage),
   publishPackage: (id: number) => client.post(`/sales/educational-tour-packages/${id}/publish`).then(res => res.data.data as EducationalTourPackage),

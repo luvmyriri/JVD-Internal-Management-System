@@ -27,7 +27,6 @@
 </head>
 <body>
 @include('pdf.partials.brand-header', ['documentTitle' => 'Educational Tour Package Manifest', 'documentReference' => $package->tour_code, 'documentDate' => $package->starts_at])
-@include('pdf.partials.brand-footer', ['footerNote' => 'Confidential student manifest. Use only for the stated educational tour and protect personal information.'])
 
 <table class="header">
     <tr>
@@ -117,51 +116,86 @@
     </tbody>
 </table>
 
-<div class="section">Participant Roster</div>
-<table class="fleet">
-    <thead>
-        <tr>
-            <th>#</th>
-            <th>Booking Ref</th>
-            <th>Type</th>
-            <th>Participant Name</th>
-            <th>Student ID</th>
-            <th>Section</th>
-            <th>Assigned Bus & Seat</th>
-            <th>Rate</th>
-            <th>Status</th>
-            <th>Emergency / Contact</th>
-        </tr>
-    </thead>
-    <tbody>
-        @forelse($package->participantBookings as $index => $booking)
+@php
+    $participants = $package->participantBookings->values();
+    $firstPageCount = 8;
+    $continuationPageCount = 16;
+    $rosterPages = collect([$participants->take($firstPageCount)]);
+    foreach ($participants->skip($firstPageCount)->chunk($continuationPageCount) as $continuationPage) {
+        $rosterPages->push($continuationPage->values());
+    }
+@endphp
+
+@foreach($rosterPages as $pageIndex => $rosterPage)
+    <div style="{{ $pageIndex > 0 ? 'page-break-before: always;' : '' }}">
+      <div class="section">Participant Roster{{ $pageIndex > 0 ? ' - Continued' : '' }}</div>
+      <table class="fleet">
+        <thead>
             <tr>
-                <td>{{ $index + 1 }}</td>
-                <td>{{ $booking->reference }}</td>
-                <td><strong style="color: {{ in_array($booking->participant_type, ['adult', 'companion', 'guardian', 'teacher']) ? '#059669' : '#2563eb' }};">{{ in_array($booking->participant_type, ['adult', 'companion', 'guardian', 'teacher']) ? 'Adult / Companion' : 'Student' }}</strong></td>
-                <td><strong>{{ $booking->full_name }}</strong></td>
-                <td>{{ $booking->student_number ?: '-' }}</td>
-                <td>{{ $booking->section ?: '-' }}</td>
-                <td>
-                    @if($booking->busAssignment)
-                        Bus #{{ $booking->busAssignment->sequence_number }} ({{ $booking->seat_number ?: 'General' }})
-                    @else
-                        <span style="color:#d97706;">Unassigned</span>
-                    @endif
-                </td>
-                <td>₱{{ number_format($booking->rate_snapshot ?: $booking->amount_due, 2) }}</td>
-                <td>
-                    <span style="text-transform: capitalize;">{{ $booking->payment_status }}</span>
-                </td>
-                <td>{{ $booking->emergency_contact_name ?: $booking->guardian_name ?: $booking->participant_phone }} ({{ $booking->emergency_contact_phone ?: $booking->guardian_phone ?: $booking->participant_phone }})</td>
+                <th>#</th>
+                <th>Booking Ref</th>
+                <th>Type</th>
+                <th>Participant Name</th>
+                <th>Student ID</th>
+                <th>Section</th>
+                <th>Assigned Bus & Seat</th>
+                <th>Rate</th>
+                <th>Status</th>
+                <th>Emergency / Contact</th>
             </tr>
-        @empty
-            <tr>
-                <td colspan="10" style="text-align: center; color: #607087;">No registered participants for this tour package yet.</td>
-            </tr>
-        @endforelse
-    </tbody>
-</table>
+        </thead>
+        <tbody>
+            @forelse($rosterPage as $index => $booking)
+                @php
+                    $rowNumber = $pageIndex === 0
+                        ? $index + 1
+                        : $firstPageCount + (($pageIndex - 1) * $continuationPageCount) + $index + 1;
+                    $contactName = $booking->emergency_contact_name
+                        ?: $booking->guardian_name
+                        ?: null;
+                    $contactPhone = $booking->emergency_contact_phone
+                        ?: $booking->guardian_phone
+                        ?: $booking->participant_phone;
+                @endphp
+                <tr>
+                    <td>{{ $rowNumber }}</td>
+                    <td>{{ $booking->reference }}</td>
+                    <td><strong style="color: {{ in_array($booking->participant_type, ['adult', 'companion', 'guardian', 'teacher']) ? '#059669' : '#2563eb' }};">{{ in_array($booking->participant_type, ['adult', 'companion', 'guardian', 'teacher']) ? 'Adult / Companion' : 'Student' }}</strong></td>
+                    <td><strong>{{ $booking->full_name }}</strong></td>
+                    <td>{{ $booking->student_number ?: '-' }}</td>
+                    <td>{{ $booking->section ?: '-' }}</td>
+                    <td>
+                        @if($booking->busAssignment)
+                            Bus #{{ $booking->busAssignment->sequence_number }} ({{ $booking->seat_number ?: 'General' }})
+                        @else
+                            <span style="color:#d97706;">Unassigned</span>
+                        @endif
+                    </td>
+                    <td>₱{{ number_format($booking->rate_snapshot ?: $booking->amount_due, 2) }}</td>
+                    <td>
+                        <span style="text-transform: capitalize;">{{ $booking->payment_status }}</span>
+                    </td>
+                    <td>
+                        @if($contactName && $contactPhone)
+                            {{ $contactName }} ({{ $contactPhone }})
+                        @elseif($contactName)
+                            {{ $contactName }}
+                        @elseif($contactPhone)
+                            {{ $contactPhone }}
+                        @else
+                            -
+                        @endif
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="10" style="text-align: center; color: #607087;">No registered participants for this tour package yet.</td>
+                </tr>
+            @endforelse
+        </tbody>
+      </table>
+    </div>
+@endforeach
 
 @if($package->operations_notes)
 <div class="section">Operations Notes</div>

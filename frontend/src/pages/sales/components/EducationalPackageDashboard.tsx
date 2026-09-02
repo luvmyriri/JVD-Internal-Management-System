@@ -243,7 +243,9 @@ export default function EducationalPackageDashboard({ packageId, onBack }: Props
       window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
       toast.success('Participant manifest downloaded.');
     },
-    onError: () => toast.error('The participant manifest could not be generated.'),
+    onError: (err: any) => toast.error(
+      err?.response?.data?.message || err?.message || 'The participant manifest could not be generated.',
+    ),
   });
 
   // Mutations

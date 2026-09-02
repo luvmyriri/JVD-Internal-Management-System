@@ -14,6 +14,7 @@ use App\Models\EducationalTourPackage;
 use App\Models\EducationalTourParticipantBooking;
 use App\Services\DocumentPdfService;
 use App\Services\EducationalTourBusAllocator;
+use App\Services\EducationalTourManifestCacheService;
 use App\Services\EducationalTourPackageService;
 use App\Services\EducationalTourPaymentService;
 use App\Services\EducationalTourRegistrationService;
@@ -370,21 +371,17 @@ class EducationalTourPackageController extends Controller
         ]);
     }
 
-    public function manifest(EducationalTourPackage $package, DocumentPdfService $documents)
+    public function manifest(EducationalTourPackage $package, EducationalTourManifestCacheService $manifests)
     {
-        $package->load([
-            'program',
-            'busAssignments.bus',
-            'busAssignments.driver',
-            'participantBookings' => function ($q) {
-                $q->whereNotIn('status', ['cancelled', 'expired'])
-                    ->with(['invoice', 'busAssignment.bus'])
-                    ->orderBy('participant_last_name');
-            },
-        ]);
+        @set_time_limit(120);
 
-        return $documents->render('pdf.educational-tour-package-manifest', ['package' => $package])
-            ->stream("Educational_Tour_Package_Manifest_{$package->tour_code}.pdf");
+        $contents = $manifests->contents($package);
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.$manifests->fileName($package).'"',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     // Delete package
