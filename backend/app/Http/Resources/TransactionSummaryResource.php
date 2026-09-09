@@ -53,7 +53,7 @@ class TransactionSummaryResource extends JsonResource
         $balance = max(0, round($total - $grossCollected - $credited, 2));
         $paymentState = $this->paymentState($invoice, $grossCollected, $total, $credited, $refunded);
         $refunds = $order && $order->relationLoaded('refunds') ? $order->refunds : collect();
-        $documents = $this->documents($order?->id, $contract?->id, $serviceTypes);
+        $documents = $this->documents($invoice, $order?->id, $contract?->id, $serviceTypes);
 
         return [
             'id' => $invoice->id,
@@ -352,12 +352,14 @@ class TransactionSummaryResource extends JsonResource
         ];
     }
 
-    protected function documents(?int $orderId, ?int $contractId, SupportCollection $serviceTypes): array
+    protected function documents(Invoice $invoice, ?int $orderId, ?int $contractId, SupportCollection $serviceTypes): array
     {
         $hasOrder = $orderId !== null;
 
         return [
-            'invoice' => $hasOrder,
+            'invoice' => true,
+            'statement' => true,
+            'payment_receipt' => in_array($invoice->status, ['paid', 'partial'], true),
             'quotation' => $hasOrder,
             'manifest' => $hasOrder,
             'contract' => $hasOrder && $contractId !== null,
@@ -432,7 +434,10 @@ class TransactionSummaryResource extends JsonResource
                 'route' => 'sales.orders.documents',
                 'path_template' => "/api/v1/sales/orders/{$orderId}/documents/{document}",
                 'params' => ['order_id' => $orderId],
-                'available' => array_keys(array_filter($documents)),
+                'available' => array_values(array_intersect(array_keys(array_filter($documents)), [
+                    'invoice', 'quotation', 'manifest', 'contract', 'joiner_manifest',
+                    'charter_confirmation', 'charter_dispatch', 'educational_manifest',
+                ])),
             ] : null,
         ];
     }

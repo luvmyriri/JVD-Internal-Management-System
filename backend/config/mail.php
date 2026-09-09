@@ -18,7 +18,7 @@ return [
 
     // Customer-facing financial documents must use a real delivery transport.
     // Never silently treat the log mailer as successful customer delivery.
-    'transactional_mailer' => env('MAIL_TRANSACTIONAL_MAILER', env('MAIL_MAILER', 'smtp')),
+    'transactional_mailer' => env('MAIL_TRANSACTIONAL_MAILER', 'smtp'),
 
     /*
     |--------------------------------------------------------------------------

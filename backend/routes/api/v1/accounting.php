@@ -67,6 +67,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         Route::get('/billing', [BillingController::class, 'index'])->name('billing.index');
         Route::get('/billing/{billing}', [BillingController::class, 'show'])->name('billing.show');
         Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/{invoice}/documents/{document}', [TransactionController::class, 'document'])->name('transactions.documents');
         Route::get('/transactions/{invoice}', [TransactionController::class, 'show'])->name('transactions.show');
 
         // Optional Sales contracts. Legacy signature routes remain for already-issued signing links.

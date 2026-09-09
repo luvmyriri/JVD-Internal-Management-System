@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Mail\TransactionNotificationMail;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Customer;
@@ -10,19 +10,18 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\Service;
 use App\Models\User;
-use App\Services\InvoiceDocumentMailService;
 use App\Services\RouteEstimateService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class ExampleTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_invoice_has_payments_relation_and_send_email_succeeds(): void
+    public function test_invoice_email_is_queued_without_waiting_for_smtp(): void
     {
-        Mail::fake();
+        Queue::fake();
 
         $admin = User::factory()->superAdmin()->create();
         $customer = Customer::factory()->create(['email' => 'client@example.com']);
@@ -82,19 +81,11 @@ class ExampleTest extends TestCase
             'email' => 'client@example.com',
         ]);
 
-        $response->assertOk()
+        $response->assertAccepted()
             ->assertJsonPath('success', true);
 
-        Mail::assertSent(TransactionNotificationMail::class, fn (TransactionNotificationMail $mail) => $mail->hasTo('client@example.com'));
-
-        $failedMailer = \Mockery::mock(InvoiceDocumentMailService::class);
-        $failedMailer->shouldReceive('send')->once()->andThrow(new \RuntimeException('SMTP unavailable'));
-        $this->app->instance(InvoiceDocumentMailService::class, $failedMailer);
-
-        $this->actingAs($admin)
-            ->postJson("/api/v1/billing/{$invoice->id}/send-email", ['email' => 'client@example.com'])
-            ->assertStatus(502)
-            ->assertJsonPath('success', false);
+        Queue::assertPushed(SendInvoiceDocumentsJob::class, fn (SendInvoiceDocumentsJob $job) => $job->invoiceId === $invoice->id && $job->recipient === 'client@example.com'
+        );
     }
 
     public function test_collections_search_returns_settled_records_matching_query(): void

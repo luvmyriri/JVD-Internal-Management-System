@@ -356,13 +356,16 @@ class Transactions360Test extends TestCase
             ->assertOk()
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('data.0.order', null)
-            ->assertJsonPath('data.0.documents.invoice', false)
+            ->assertJsonPath('data.0.documents.invoice', true)
+            ->assertJsonPath('data.0.documents.statement', true)
             ->assertJsonPath('data.0.documents.manifest', false);
 
         $this->actingAs($this->sales)
             ->getJson("/api/v1/transactions/{$legacy->id}")
             ->assertOk()
             ->assertJsonPath('data.order', null)
+            ->assertJsonPath('data.documents.invoice', true)
+            ->assertJsonPath('data.documents.statement', true)
             ->assertJsonPath('data.documents.quotation', false)
             ->assertJsonPath('data.documents.contract', false);
 

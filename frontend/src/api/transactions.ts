@@ -92,6 +92,8 @@ export interface TransactionRefundSummary {
 
 export interface TransactionDocumentAvailability {
   invoice: boolean;
+  statement: boolean;
+  payment_receipt: boolean;
   quotation: boolean;
   manifest: boolean;
   contract: boolean;
@@ -316,4 +318,6 @@ export const transactionsApi = {
     client.get<TransactionListResponse>('/transactions', { params }).then((response) => response.data),
   get: (invoiceId: number) =>
     client.get<{ success: boolean; data: TransactionRecord }>(`/transactions/${invoiceId}`).then((response) => response.data.data),
+  getDocument: (invoiceId: number, document: 'invoice' | 'statement-of-account' | 'payment-receipt') =>
+    client.get(`/transactions/${invoiceId}/documents/${document}`, { responseType: 'blob' }).then((response) => response.data as Blob),
 };

@@ -7,11 +7,10 @@ use App\Http\Requests\Accounting\StoreInvoiceRequest;
 use App\Http\Requests\Accounting\StoreServiceRequest;
 use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
 use App\Http\Requests\Accounting\UpdateServiceRequest;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Invoice;
 use App\Services\BillingService;
-use App\Services\InvoiceDocumentMailService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class BillingController extends Controller
 {
@@ -77,7 +76,7 @@ class BillingController extends Controller
         return $this->service->handleWebhook($request);
     }
 
-    public function sendEmail(Request $request, $id, InvoiceDocumentMailService $mail)
+    public function sendEmail(Request $request, $id)
     {
         $validated = $request->validate([
             'email' => ['nullable', 'email:rfc', 'max:255'],
@@ -93,24 +92,11 @@ class BillingController extends Controller
             $invoice->forceFill(['customer_email' => $recipient])->save();
         }
 
-        try {
-            $mail->send($invoice, $recipient);
-        } catch (\Throwable $exception) {
-            Log::error('Invoice email delivery failed.', [
-                'invoice_id' => $invoice->id,
-                'recipient' => $recipient,
-                'exception' => $exception,
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'The invoice could not be delivered. Please check the mail configuration and try again.',
-            ], 502);
-        }
+        SendInvoiceDocumentsJob::dispatch($invoice->id, null, false, $recipient);
 
         return response()->json([
             'success' => true,
             'message' => "Invoice #{$invoice->invoice_number} and customer documents were accepted for delivery to {$recipient}.",
-        ]);
+        ], 202);
     }
 }

@@ -6,7 +6,7 @@
     <style>
         @page { size: A4; margin: 12mm 14mm 22mm; }
         * { box-sizing: border-box; }
-        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 24px 28px; font-size: 11px; line-height: 1.6; background: #fff; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 11px; line-height: 1.6; background: #fff; }
 
         /* ─── Header ─── */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
@@ -61,7 +61,7 @@
         .summary-paid-value { display: table-cell; text-align: right; font-weight: 900; color: #16a34a; font-size: 12px; }
 
         /* ─── Notice Block ─── */
-        .notice { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 24px; }
+        .notice { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 18px; page-break-inside: avoid; }
         .notice strong { color: #92400e; display: block; font-size: 10px; margin-bottom: 3px; }
         .notice p { margin: 0; color: #78350f; font-size: 9.5px; }
 

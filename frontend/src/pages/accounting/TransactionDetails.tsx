@@ -73,7 +73,6 @@ const documentDefinitions: Array<{
   label: string;
   description: string;
 }> = [
-  { key: 'invoice', type: 'invoice', label: 'Invoice', description: 'Customer billing document' },
   { key: 'quotation', type: 'quotation', label: 'Quotation', description: 'Professional price proposal' },
   { key: 'manifest', type: 'manifest', label: 'General manifest', description: 'Consolidated traveler list' },
   { key: 'contract', type: 'contract', label: 'Contract', description: 'Signed service agreement' },
@@ -81,6 +80,17 @@ const documentDefinitions: Array<{
   { key: 'charter_confirmation', type: 'charter-confirmation', label: 'Charter confirmation', description: 'Customer charter confirmation' },
   { key: 'charter_dispatch', type: 'charter-dispatch', label: 'Charter dispatch', description: 'Fleet and driver dispatch sheet' },
   { key: 'educational_manifest', type: 'educational-manifest', label: 'Educational manifest', description: 'School group and vehicle manifest' },
+];
+
+const transactionDocumentDefinitions: Array<{
+  key: 'invoice' | 'statement' | 'payment_receipt';
+  type: 'invoice' | 'statement-of-account' | 'payment-receipt';
+  label: string;
+  description: string;
+}> = [
+  { key: 'invoice', type: 'invoice', label: 'Invoice', description: 'Customer billing document' },
+  { key: 'statement', type: 'statement-of-account', label: 'Statement of account', description: 'Balance and complete payment history' },
+  { key: 'payment_receipt', type: 'payment-receipt', label: 'Payment receipt', description: 'Acknowledgement for a posted payment' },
 ];
 
 function sourceLinks(transaction: TransactionRecord) {
@@ -178,6 +188,23 @@ export default function TransactionDetails() {
     onError: (error: any) => toast.error(error?.response?.data?.message || 'The document could not be generated.'),
   });
 
+  const transactionDocumentMutation = useMutation({
+    mutationFn: async (document: 'invoice' | 'statement-of-account' | 'payment-receipt') => {
+      const preview = window.open('', '_blank');
+      try {
+        const blob = await transactionsApi.getDocument(invoiceId, document);
+        const url = URL.createObjectURL(blob);
+        if (preview) preview.location.href = url;
+        else window.open(url, '_blank', 'noopener,noreferrer');
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      } catch (error) {
+        preview?.close();
+        throw error;
+      }
+    },
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'The financial document could not be generated.'),
+  });
+
   const emailMutation = useMutation({
     mutationFn: () => billingApi.sendEmail(invoiceId, email.trim()),
     onSuccess: (response) => toast.success(response.data?.message || `Invoice accepted for delivery to ${email.trim()}`),
@@ -217,6 +244,7 @@ export default function TransactionDetails() {
   const availableDocuments = canOpenSalesRecords
     ? documentDefinitions.filter((document) => transaction.documents[document.key])
     : [];
+  const availableTransactionDocuments = transactionDocumentDefinitions.filter((document) => transaction.documents[document.key]);
   const orderId = transaction.order?.id ?? transaction.identifiers.sales_order_id;
   const payments = transaction.payments ?? [];
   const credits = transaction.credits ?? [];
@@ -366,6 +394,11 @@ export default function TransactionDetails() {
         <div className="flex items-center gap-2"><Download className="h-5 w-5 text-brand" /><h2 id="documents-title" className="text-xl font-black text-ink">Documents and customer email</h2></div>
         <p className="mt-1 text-sm text-muted">Generate documents from the same saved package, passenger, invoice, and assignment data.</p>
         <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {availableTransactionDocuments.map((document) => (
+            <button key={document.key} type="button" disabled={transactionDocumentMutation.isPending} onClick={() => transactionDocumentMutation.mutate(document.type)} className="min-h-24 rounded-xl border border-border p-4 text-left outline-none transition hover:border-brand hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand dark:hover:bg-blue-950/20">
+              <FileCheck2 className="h-5 w-5 text-brand" /><span className="mt-3 block text-sm font-black text-ink">{document.label}</span><span className="mt-1 block text-xs leading-5 text-muted">{document.description}</span>
+            </button>
+          ))}
           {availableDocuments.map((document) => (
             <button key={document.key} type="button" disabled={!orderId || documentMutation.isPending} onClick={() => orderId && documentMutation.mutate({ orderId, document: document.type })} className="min-h-24 rounded-xl border border-border p-4 text-left outline-none transition hover:border-brand hover:bg-blue-50/50 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand dark:hover:bg-blue-950/20">
               <FileCheck2 className="h-5 w-5 text-brand" /><span className="mt-3 block text-sm font-black text-ink">{document.label}</span><span className="mt-1 block text-xs leading-5 text-muted">{document.description}</span>
@@ -375,7 +408,7 @@ export default function TransactionDetails() {
             <button type="button" onClick={() => contractMutation.mutate()} disabled={contractMutation.isPending} className="min-h-24 rounded-xl border border-blue-200 bg-blue-50 p-4 text-left outline-none transition hover:border-blue-500 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand dark:border-blue-900 dark:bg-blue-950/20"><ShieldCheck className="h-5 w-5 text-brand" /><span className="mt-3 block text-sm font-black text-ink">Generate and email contract</span><span className="mt-1 block text-xs leading-5 text-muted">Create the contract required by this sale.</span></button>
           )}
         </div>
-        {availableDocuments.length === 0 && (!transaction.contract.required || !canCreateAccounting) && <p className="mt-5 rounded-xl bg-surface-alt p-4 text-sm text-muted">No document action is available for this record and your current access.</p>}
+        {availableTransactionDocuments.length === 0 && availableDocuments.length === 0 && (!transaction.contract.required || !canCreateAccounting) && <p className="mt-5 rounded-xl bg-surface-alt p-4 text-sm text-muted">No document action is available for this record and your current access.</p>}
         {canEditAccounting && <form onSubmit={(event) => { event.preventDefault(); if (!email.trim()) return toast.error('Enter a customer email address.'); emailMutation.mutate(); }} className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-end">
           <label className="min-w-0 flex-1 text-xs font-bold text-muted">Customer email
             <div className="relative mt-1.5"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="customer@example.com" className="h-11 w-full rounded-xl border border-border bg-surface-alt pl-10 pr-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" /></div>
