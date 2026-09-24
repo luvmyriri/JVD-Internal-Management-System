@@ -68,6 +68,6 @@ tmp/
 backups/
 *.bak*
 *.pre-idempotency*
-backend/public/uploads/
+backend/public/uploads
 backend/storage/framework/testing-temp/
 
