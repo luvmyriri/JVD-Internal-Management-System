@@ -32,7 +32,7 @@
 
     <p><strong>Package:</strong> {{ $package->name }} ({{ $package->tour_code }})</p>
     <p><strong>Program:</strong> {{ optional($package->program)->name ?? 'N/A' }}</p>
-    <p><strong>Customer:</strong> {{ optional($package->schoolCustomer)->name ?? 'N/A' }}</p>
+    <p><strong>School / Customer:</strong> {{ $package->school_name ?: trim(($package->schoolCustomer?->first_name ?? '').' '.($package->schoolCustomer?->last_name ?? '')) ?: 'Not specified' }}</p>
     <p><strong>Dates:</strong> {{ $package->starts_at->format('Y-m-d') }} to {{ $package->ends_at->format('Y-m-d') }}</p>
     <p><strong>Maximum Capacity:</strong> {{ $package->maximum_capacity }}</p>
 
@@ -43,16 +43,12 @@
                 <th>Amount (PHP)</th>
             </tr>
             <tr>
-                <td>Base Package Price</td>
-                <td>{{ number_format($package->base_price ?? 0, 2) }}</td>
+                <td>Student package rate per participant</td>
+                <td>{{ number_format($package->rate_per_head ?? 0, 2) }}</td>
             </tr>
             <tr>
-                <td>Additional Services</td>
-                <td>{{ number_format($package->additional_services_price ?? 0, 2) }}</td>
-            </tr>
-            <tr>
-                <th>Total</th>
-                <th>{{ number_format(($package->base_price ?? 0) + ($package->additional_services_price ?? 0), 2) }}</th>
+                <th>Rate per student</th>
+                <th>{{ number_format($package->rate_per_head ?? 0, 2) }}</th>
             </tr>
         </table>
     </div>

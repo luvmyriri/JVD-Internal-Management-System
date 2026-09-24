@@ -11,6 +11,7 @@ import {
   FileText,
   GraduationCap,
   Image as ImageIcon,
+  Mail,
   Plus,
   Printer,
   RefreshCw,
@@ -167,6 +168,8 @@ export default function EducationalTours() {
   });
   const [editingPackage, setEditingPackage] = useState<EducationalTourPackage | null>(null);
   const [deletingPackage, setDeletingPackage] = useState<EducationalTourPackage | null>(null);
+  const [quotationPackage, setQuotationPackage] = useState<EducationalTourPackage | null>(null);
+  const [quotationEmail, setQuotationEmail] = useState('');
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -210,6 +213,16 @@ export default function EducationalTours() {
       toast.success('Quotation PDF downloaded.');
     },
     onError: () => toast.error('Could not generate quotation.'),
+  });
+
+  const sendQuotationMutation = useMutation({
+    mutationFn: () => educationalTourApi.sendPackageQuotation(quotationPackage!.id, quotationEmail.trim()),
+    onSuccess: (response) => {
+      toast.success(response.message);
+      setQuotationPackage(null);
+      setQuotationEmail('');
+    },
+    onError: (error: any) => toast.error(error?.response?.data?.message || 'Could not queue the quotation email.'),
   });
 
   const filteredPackages = useMemo(() => {
@@ -268,6 +281,16 @@ export default function EducationalTours() {
   // ── Main landing ──
   return (
     <div className="space-y-6 pb-12">
+      {quotationPackage && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" role="presentation">
+        <form onSubmit={event => { event.preventDefault(); sendQuotationMutation.mutate(); }} className="w-full max-w-md rounded-2xl bg-surface p-6 shadow-2xl" aria-label="Send educational quotation">
+          <h2 className="text-lg font-black text-ink">Send quotation</h2>
+          <p className="mt-1 text-sm text-muted">{quotationPackage.name}</p>
+          <label className="mt-5 block text-sm font-bold text-ink">Customer email
+            <input type="email" required value={quotationEmail} onChange={event => setQuotationEmail(event.target.value)} placeholder="customer@example.com" className="mt-2 w-full rounded-xl border border-border bg-surface-alt px-3 py-2 text-ink" />
+          </label>
+          <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setQuotationPackage(null)} className="rounded-xl px-4 py-2 text-sm font-bold text-muted">Cancel</button><button type="submit" disabled={sendQuotationMutation.isPending} className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">{sendQuotationMutation.isPending ? 'Queueing…' : 'Send quotation email'}</button></div>
+        </form>
+      </div>}
       {/* Edit Drawer */}
       {editingPackage && (
         <EditEducationalTourDrawer
@@ -542,6 +565,7 @@ export default function EducationalTours() {
                       >
                         <FileText className="h-3.5 w-3.5" />
                       </button>
+                      <button type="button" onClick={() => { setQuotationPackage(pkg); setQuotationEmail(''); }} className="px-2.5 py-1.5 rounded-xl bg-surface border border-border hover:bg-surface-alt text-ink text-xs font-bold flex items-center gap-1" title="Send quotation by email"><Mail className="h-3.5 w-3.5" /> Send quotation</button>
                       <Button
                         type="button"
                         onClick={() => setSelectedPackageId(pkg.id)}

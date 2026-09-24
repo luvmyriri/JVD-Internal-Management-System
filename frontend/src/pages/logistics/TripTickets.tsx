@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
@@ -159,19 +160,19 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
   }, [form.date_of_travel, form.duration, form.driver_id, form.bus_id, ticket?.id]);
 
   const mutation = useMutation({
-    mutationFn: (data: any) => {
+    mutationFn: ({ data, approve }: { data: any; approve: boolean }) => {
       if (ticket) {
-        return tripTicketApi.update(ticket.id, { ...data, status: 'approved' });
+        return tripTicketApi.update(ticket.id, approve ? { ...data, status: 'approved' } : data);
       }
       return tripTicketApi.create(data);
     },
     onSuccess: () => {
-      toast.success(ticket ? 'Trip Ticket approved successfully' : 'Trip Ticket created successfully');
+      toast.success(ticket ? 'Trip Ticket updated successfully' : 'Trip Ticket created successfully');
       qc.invalidateQueries({ queryKey: ['trip-tickets'] });
       onClose();
     },
     onError: (error: any) => {
-      toast.error(error.response?.data?.message || `Failed to ${ticket ? 'approve' : 'create'} trip ticket`);
+      toast.error(error.response?.data?.message || `Failed to ${ticket ? 'update' : 'create'} trip ticket`);
     },
   });
 
@@ -202,7 +203,8 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
       }
     }
 
-    mutation.mutate(payload);
+    const approve = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('value') === 'approve';
+    mutation.mutate({ data: payload, approve });
   };
 
   return (
@@ -215,6 +217,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
               Schedule, route, passengers, and original dispatch assignments came from {ticket.sales_order_item.title}. Update booking facts in Sales; continue here with allowances, pre-trip approval, and completion.
               {canReassignFromDtt ? ' Vehicle and driver reassignment remains available for this service.' : ''}
             </p>
+            <Link to={`/sales/orders/${ticket.sales_order_item.sales_order_id}`} className="mt-2 inline-block text-xs font-bold underline underline-offset-2">Open source sale</Link>
           </div>
         )}
 
@@ -536,7 +539,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
           </div>
         </details>
 
-        {ticket && (
+        {ticket?.status === 'draft' && (
           <div className="mx-2 mb-2 px-5 py-4 bg-blue-50/70 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl">
             <p className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-1">Auto-Budget Notice</p>
             <p className="text-xs text-gray-600 dark:text-gray-400">
@@ -551,6 +554,7 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
           </Button>
           <button
             type="submit"
+            value="save"
             disabled={isSubmitDisabled}
             className="flex items-center justify-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold text-sm transition-all shadow-lg shadow-blue-600/20 active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -560,8 +564,9 @@ function TripTicketFormModal({ ticket, onClose }: { ticket?: TripTicket; onClose
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             )}
-            {ticket ? "Approve & Send to Cash Budgets" : "Create Ticket"}
+            {ticket ? 'Save DTT changes' : 'Create Ticket'}
           </button>
+          {ticket?.status === 'draft' && <button type="submit" value="approve" disabled={isSubmitDisabled} className="rounded-2xl bg-emerald-700 px-6 py-2.5 text-sm font-bold text-white hover:bg-emerald-800 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-700">Approve &amp; send to Cash Budgets</button>}
         </div>
       </form>
     </Modal>

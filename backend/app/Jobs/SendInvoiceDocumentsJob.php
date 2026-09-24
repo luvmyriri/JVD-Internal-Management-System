@@ -46,6 +46,12 @@ class SendInvoiceDocumentsJob implements ShouldQueue
             throw new RuntimeException("Invoice {$this->invoiceId} has no document delivery recipient.");
         }
 
+        $invoice->forceFill([
+            'document_delivery_status' => 'sending',
+            'document_delivery_recipient' => $recipient,
+            'document_delivery_error' => null,
+        ])->save();
+
         $this->updateParticipantDelivery([
             'document_delivery_status' => 'sending',
             'document_delivery_recipient' => $recipient,
@@ -55,6 +61,14 @@ class SendInvoiceDocumentsJob implements ShouldQueue
 
         $contract = $this->contractId ? Contract::find($this->contractId) : null;
         $mail->send($invoice, $recipient, $this->sendBookingConfirmation, $contract);
+
+        $invoice->forceFill([
+            'document_delivery_status' => 'sent',
+            'document_delivery_recipient' => $recipient,
+            'document_delivery_sent_at' => now(),
+            'document_delivery_failed_at' => null,
+            'document_delivery_error' => null,
+        ])->save();
 
         $this->updateParticipantDelivery([
             'document_delivery_status' => 'sent',
@@ -67,6 +81,11 @@ class SendInvoiceDocumentsJob implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
+        Invoice::whereKey($this->invoiceId)->update([
+            'document_delivery_status' => 'failed',
+            'document_delivery_failed_at' => now(),
+            'document_delivery_error' => 'Delivery failed after automatic retries. Verify the recipient address and try again.',
+        ]);
         $this->updateParticipantDelivery([
             'document_delivery_status' => 'failed',
             'document_delivery_failed_at' => now(),

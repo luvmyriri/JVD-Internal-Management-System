@@ -8,7 +8,7 @@ use App\Http\Requests\Sales\RecordEducationalPaymentRequest;
 use App\Http\Requests\Sales\RegisterParticipantRequest;
 use App\Http\Requests\Sales\StoreEducationalPackageRequest;
 use App\Http\Requests\Sales\UpdateEducationalPackageRequest;
-use App\Jobs\SendInvoiceDocumentsJob;
+use App\Jobs\SendQuotationJob;
 use App\Models\EducationalTourBusAssignment;
 use App\Models\EducationalTourPackage;
 use App\Models\EducationalTourParticipantBooking;
@@ -21,6 +21,7 @@ use App\Services\EducationalTourRegistrationService;
 use App\Services\ExcelExportService;
 use App\Services\ExcelImportService;
 use App\Services\InvoiceDocumentCacheService;
+use App\Services\InvoiceDocumentDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -327,7 +328,7 @@ class EducationalTourPackageController extends Controller
         // especially when the mail server is temporarily unavailable. Queue the
         // same retryable job used by the rest of the billing flow so the button
         // can return immediately and delivery is retried safely in the worker.
-        SendInvoiceDocumentsJob::dispatch($invoice->id, recipient: $recipient)->afterCommit();
+        app(InvoiceDocumentDispatchService::class)->queue($invoice, recipient: $recipient);
 
         return response()->json([
             'message' => "Invoice {$invoice->invoice_number} and customer documents were queued for delivery to {$recipient}.",
@@ -345,7 +346,7 @@ class EducationalTourPackageController extends Controller
         $result = $this->paymentService->recordPayment($booking, $request->validated(), $request->user()->id);
 
         if (! $result['duplicate'] && $result['booking']->invoice?->notificationEmail()) {
-            SendInvoiceDocumentsJob::dispatch($result['booking']->invoice->id)->afterCommit();
+            app(InvoiceDocumentDispatchService::class)->queue($result['booking']->invoice);
         }
 
         return response()->json([
@@ -426,9 +427,17 @@ class EducationalTourPackageController extends Controller
     // Generate quotation PDF
     public function quotation(EducationalTourPackage $package, DocumentPdfService $documents)
     {
-        $pdf = $documents->renderWithTemplate('quotation-template.pdf', ['package' => $package]);
+        $pdf = $documents->render('pdf.quotation-template', ['package' => $package->loadMissing(['program', 'schoolCustomer'])]);
 
         return $pdf->download('quotation_'.$package->id.'.pdf');
+    }
+
+    public function sendQuotation(Request $request, EducationalTourPackage $package)
+    {
+        $validated = $request->validate(['email' => ['required', 'email:rfc', 'max:255']]);
+        SendQuotationJob::dispatch('educational', $package->id, $validated['email'])->afterCommit();
+
+        return response()->json(['message' => "Quotation {$package->tour_code} was queued for delivery to {$validated['email']}."], 202);
     }
 
     // Generate contract PDF

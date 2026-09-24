@@ -7,6 +7,7 @@ import {
   CalendarDays,
   GraduationCap,
   Eye,
+  FileText,
   ImagePlus,
   MapPinned,
   Pencil,
@@ -28,6 +29,7 @@ import ItineraryBuilder from './components/ItineraryBuilder';
 import type { ItineraryDayInput } from '../../api/contracts';
 import PackageBuilderShell from './components/PackageBuilderShell';
 import TripLocationMapPicker from '../../components/travel/TripLocationMapPicker';
+import QuotationRecipientModal from './QuotationRecipientModal';
 
 
 interface PackageForm {
@@ -83,6 +85,7 @@ export default function FixedPackages() {
   const [search, setSearch] = useState('');
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [quotingService, setQuotingService] = useState<Service | null>(null);
   const [continueAfterSave, setContinueAfterSave] = useState(false);
   const [form, setForm] = useState<PackageForm>(INITIAL_FORM);
   const [inclusionsList, setInclusionsList] = useState<string[]>([]);
@@ -393,6 +396,21 @@ export default function FixedPackages() {
 
   return (
     <div className="w-full space-y-6 pb-12">
+      {quotingService && <QuotationRecipientModal
+        service={quotingService}
+        pricing={{
+          service: quotingService,
+          bookingTourVehicle: 'Bus',
+          bookingTourExtraDays: 0,
+          bookingTourExtraHours: 0,
+          bookingAdults: Number(quotingService.package_config?.minimum_pax || 1),
+          bookingChildren: 0,
+          selectedDetailAdultPrice: Number(quotingService.adult_price ?? quotingService.price ?? 0),
+          selectedDetailChildPrice: Number(quotingService.child_price ?? quotingService.adult_price ?? quotingService.price ?? 0),
+          selectedDetailChildDiscount: Number(quotingService.child_discount ?? 0),
+        }}
+        onClose={() => setQuotingService(null)}
+      />}
       <header className="rounded-3xl bg-[#071b33] p-7 text-white">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -444,6 +462,7 @@ export default function FixedPackages() {
                 <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
                   <Button variant="secondary" onClick={() => navigate(`/sales/services/${service.id}/details`)}><Eye className="h-4 w-4" /> Details</Button>
                   <Button disabled={!isConfigured && !canManage} onClick={() => isConfigured ? sellPackage(service) : openEdit(service, true)}>{isConfigured ? 'Book for a customer' : canManage ? 'Complete package and continue' : 'Package setup required'} <ArrowRight className="h-4 w-4" /></Button>
+                  {isConfigured && canManage && <Button variant="secondary" onClick={() => setQuotingService(service)}><FileText className="h-4 w-4" /> Send quotation</Button>}
                 </div>
               </div>
             </article>;

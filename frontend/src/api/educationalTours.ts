@@ -387,6 +387,7 @@ export const educationalTourApi = {
   },
   deletePackage: (id: number) => client.delete(`/sales/educational-tour-packages/${id}`).then(res => res.data),
   packageQuotation: (id: number) => client.get(`/sales/educational-tour-packages/${id}/quotation`, { responseType: 'blob' }).then(res => res.data as Blob),
+  sendPackageQuotation: (id: number, email: string) => client.post<{ message: string }>(`/sales/educational-tour-packages/${id}/quotation/send`, { email }).then(res => res.data),
   packageContract: (id: number) => client.get(`/sales/educational-tour-packages/${id}/contract`, { responseType: 'blob' }).then(res => res.data as Blob),
   registerParticipantAtDesk: (packageId: number, data: RegisterParticipantPayload) => client.post(
     `/sales/educational-tour-packages/${packageId}/participant-bookings`,

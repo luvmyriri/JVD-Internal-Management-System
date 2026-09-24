@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\SendCollectionStatementJob;
+use App\Jobs\SendInvoiceDocumentsJob;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
@@ -16,6 +17,7 @@ use App\Models\Service;
 use App\Models\User;
 use App\Services\CollectionStatementService;
 use App\Services\InvoiceDocumentCacheService;
+use App\Services\InvoiceDocumentDispatchService;
 use App\Services\InvoiceDocumentMailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
@@ -26,6 +28,59 @@ use Tests\TestCase;
 class CustomerDocumentDeliveryTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_invoice_delivery_is_queued_with_visible_recipient_and_can_be_retried(): void
+    {
+        Queue::fake();
+        [$admin, $invoice] = $this->paidInvoice();
+
+        $this->actingAs($admin)
+            ->postJson("/api/v1/billing/{$invoice->id}/send-email", ['email' => 'first@example.com'])
+            ->assertAccepted();
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'document_delivery_status' => 'queued',
+            'document_delivery_recipient' => 'first@example.com',
+        ]);
+        $this->actingAs($admin)->getJson("/api/v1/transactions/{$invoice->id}")
+            ->assertOk()->assertJsonPath('data.document_delivery.status', 'queued')
+            ->assertJsonPath('data.document_delivery.recipient', 'first@example.com');
+
+        $invoice->forceFill([
+            'document_delivery_status' => 'failed',
+            'document_delivery_error' => 'Previous attempt failed.',
+        ])->save();
+        app(InvoiceDocumentDispatchService::class)->queue($invoice->fresh(), recipient: 'retry@example.com');
+
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'document_delivery_status' => 'queued',
+            'document_delivery_recipient' => 'retry@example.com',
+            'document_delivery_error' => null,
+        ]);
+        Queue::assertPushed(SendInvoiceDocumentsJob::class, 2);
+    }
+
+    public function test_invoice_delivery_job_marks_sent_and_exhausted_retries_mark_failed(): void
+    {
+        Storage::fake('local');
+        [, $invoice] = $this->paidInvoice();
+        config(['mail.transactional_mailer' => 'array']);
+        Mail::mailer('array')->getSymfonyTransport()->flush();
+
+        $job = new SendInvoiceDocumentsJob($invoice->id, recipient: 'documents@example.com');
+        $job->handle(app(InvoiceDocumentMailService::class));
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'document_delivery_status' => 'sent',
+            'document_delivery_recipient' => 'documents@example.com',
+        ]);
+        $this->assertNotNull($invoice->fresh()->document_delivery_sent_at);
+
+        $job->failed(new \RuntimeException('SMTP unavailable'));
+        $this->assertDatabaseHas('invoices', ['id' => $invoice->id, 'document_delivery_status' => 'failed']);
+        $this->assertNotNull($invoice->fresh()->document_delivery_failed_at);
+    }
 
     public function test_transaction_financial_documents_render_as_valid_pdfs(): void
     {

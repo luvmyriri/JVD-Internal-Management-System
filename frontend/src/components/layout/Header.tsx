@@ -36,9 +36,10 @@ import {
   LuSun,
   LuMoon
 } from 'react-icons/lu';
-import { useState, useEffect, useRef } from 'react';
-import { CreateCommissionForm } from '../../pages/operations/Commissions';
+import { lazy, Suspense, useState, useEffect, useRef } from 'react';
 import HeaderWidgetsMenu from '../HeaderWidgetsMenu';
+
+const CreateCommissionForm = lazy(() => import('../../pages/operations/Commissions').then(module => ({ default: module.CreateCommissionForm })));
 
 interface NotificationItem {
   id: string;
@@ -1696,7 +1697,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
     {/* Request Commission Modal (Quick Action) */}
     {showRequestCommission && (
-      <CreateCommissionForm onClose={() => setShowRequestCommission(false)} />
+      <Suspense fallback={null}><CreateCommissionForm onClose={() => setShowRequestCommission(false)} /></Suspense>
     )}
 
     {/* Notification Detail Modal */}

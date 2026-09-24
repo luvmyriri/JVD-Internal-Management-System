@@ -53,6 +53,8 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
         // Customer-facing quotations (write access — sales roles).
         Route::middleware('role:super_admin,executive_vice_president,reservation_officer,office_staff,sales:create')->group(function () {
             Route::post('/quotations', [SalesQuotationController::class, 'store'])->name('sales.quotations.store');
+            Route::get('/quotations/{quotation}/pdf', [SalesQuotationController::class, 'pdf'])->name('sales.quotations.pdf');
+            Route::post('/quotations/{quotation}/send', [SalesQuotationController::class, 'send'])->name('sales.quotations.send');
             Route::post('/joiner-departures', [JoinerDepartureController::class, 'store'])->name('sales.joiner-departures.store');
             Route::put('/joiner-departures/{departure}', [JoinerDepartureController::class, 'update'])->name('sales.joiner-departures.update');
             Route::post('/joiner-departures/{departure}/holds', [JoinerDepartureController::class, 'hold'])->name('sales.joiner-departures.hold');
@@ -77,6 +79,7 @@ Route::middleware(['auth:sanctum', 'enforce.password.change', 'verify.2fa'])->gr
             Route::post('/educational-tour-packages/{package}/allocate-buses', [EducationalTourPackageController::class, 'allocateBuses'])->name('sales.educational.packages.allocate-buses');
             Route::post('/educational-tour-packages/{package}/image', [EducationalTourPackageController::class, 'uploadImage'])->name('sales.educational.packages.uploadImage');
             Route::get('/educational-tour-packages/{package}/quotation', [EducationalTourPackageController::class, 'quotation'])->name('sales.educational.packages.quotation');
+            Route::post('/educational-tour-packages/{package}/quotation/send', [EducationalTourPackageController::class, 'sendQuotation'])->name('sales.educational.packages.quotation.send');
             Route::get('/educational-tour-packages/{package}/contract', [EducationalTourPackageController::class, 'contract'])->name('sales.educational.packages.contract');
             Route::get('/educational-tour-packages/export', [EducationalTourPackageController::class, 'exportExcel'])->name('sales.educational.packages.export');
             Route::post('/educational-tour-packages/import', [EducationalTourPackageController::class, 'importExcel'])->name('sales.educational.packages.import');

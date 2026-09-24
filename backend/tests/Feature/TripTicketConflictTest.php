@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Models\User;
 use App\Models\Bus;
+use App\Models\CashBudgetRequest;
 use App\Models\TripTicket;
+use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -13,16 +15,20 @@ class TripTicketConflictTest extends TestCase
     use RefreshDatabase;
 
     private User $admin;
+
     private User $driver1;
+
     private User $driver2;
+
     private Bus $bus1;
+
     private Bus $bus2;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
 
         $this->admin = User::factory()->superAdmin()->create([
             'employee_id' => 'ADM001',
@@ -154,6 +160,39 @@ class TripTicketConflictTest extends TestCase
             ]);
 
         $response->assertOk();
+    }
+
+    public function test_nonfinancial_dtt_edits_are_allowed_after_cash_budget_submission(): void
+    {
+        $ticket = TripTicket::create([
+            'control_no' => 'DTT-2026-BUDGET',
+            'issue_date' => '2026-06-20',
+            'date_of_travel' => '2026-06-20',
+            'pick_up' => 'Manila',
+            'drop_off' => 'Laguna',
+            'no_of_passengers' => 30,
+            'driver_id' => $this->driver1->id,
+            'bus_id' => $this->bus1->id,
+            'status' => 'approved',
+            'diesel' => 5000,
+        ]);
+        CashBudgetRequest::create([
+            'date' => '2026-06-20',
+            'trip_ticket_id' => $ticket->id,
+            'diesel' => 5000,
+            'status' => 'submitted',
+            'total_amount' => 5000,
+            'prepared_by' => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/trip-tickets/{$ticket->id}", ['passenger_rating' => 'satisfactory', 'diesel' => 5000])
+            ->assertOk();
+        $this->assertDatabaseHas('trip_tickets', ['id' => $ticket->id, 'passenger_rating' => 'satisfactory']);
+
+        $this->actingAs($this->admin, 'sanctum')
+            ->putJson("/api/v1/trip-tickets/{$ticket->id}", ['diesel' => 5100])
+            ->assertUnprocessable();
     }
 
     public function test_update_respects_other_tickets_conflicts()

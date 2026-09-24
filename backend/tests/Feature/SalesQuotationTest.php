@@ -2,16 +2,46 @@
 
 namespace Tests\Feature;
 
+use App\Jobs\SendQuotationJob;
 use App\Models\SalesQuotation;
 use App\Models\Service;
 use App\Models\SystemSetting;
 use App\Models\User;
+use App\Services\DocumentPdfService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Tests\TestCase;
 
 class SalesQuotationTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_saved_quotation_can_be_queued_and_delivered_as_pdf(): void
+    {
+        Queue::fake();
+        $user = $this->salesUser();
+        $quotationId = $this->actingAs($user)->postJson('/api/v1/sales/quotations', $this->payload())
+            ->assertCreated()->json('data.id');
+
+        $this->actingAs($user)->postJson("/api/v1/sales/quotations/{$quotationId}/send", [
+            'email' => 'quotes@example.com',
+        ])->assertAccepted();
+
+        Queue::assertPushed(SendQuotationJob::class, fn (SendQuotationJob $job) => $job->kind === 'sales' && $job->quotationId === $quotationId && $job->recipient === 'quotes@example.com');
+        $this->assertDatabaseHas('sales_quotations', ['id' => $quotationId, 'status' => 'queued']);
+
+        config(['mail.transactional_mailer' => 'array']);
+        Mail::mailer('array')->getSymfonyTransport()->flush();
+        (new SendQuotationJob('sales', $quotationId, 'quotes@example.com'))
+            ->handle(app(DocumentPdfService::class));
+
+        $this->assertDatabaseHas('sales_quotations', ['id' => $quotationId, 'status' => 'sent']);
+        $messages = Mail::mailer('array')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $attachment = $messages->first()->getOriginalMessage()->getAttachments()[0];
+        $this->assertStringStartsWith('%PDF-', $attachment->getBody());
+    }
 
     private function salesUser(): User
     {

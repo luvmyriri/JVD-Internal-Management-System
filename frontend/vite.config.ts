@@ -21,11 +21,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
-      sentryVitePlugin({
+      ...(env.SENTRY_AUTH_TOKEN ? [sentryVitePlugin({
         org: process.env.SENTRY_ORG || "jvd",
         project: process.env.SENTRY_PROJECT || "frontend",
-        authToken: process.env.SENTRY_AUTH_TOKEN,
-      }),
+        authToken: env.SENTRY_AUTH_TOKEN,
+        telemetry: false,
+      })] : []),
     ],
     server: {
       port: 3000,

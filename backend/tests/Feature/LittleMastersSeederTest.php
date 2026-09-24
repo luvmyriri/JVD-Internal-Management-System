@@ -15,7 +15,12 @@ class LittleMastersSeederTest extends TestCase
 
     public function test_little_masters_seeder_creates_package_participants_and_payments(): void
     {
-        $this->seed(LittleMastersEducationalTourSeeder::class);
+        putenv('SEED_EDUCATIONAL_TOUR_PARTICIPANTS=true');
+        try {
+            $this->seed(LittleMastersEducationalTourSeeder::class);
+        } finally {
+            putenv('SEED_EDUCATIONAL_TOUR_PARTICIPANTS');
+        }
 
         $package = EducationalTourPackage::where('name', 'Little Masters')->first();
         $this->assertNotNull($package);

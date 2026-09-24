@@ -7,9 +7,9 @@ use App\Http\Requests\Accounting\StoreInvoiceRequest;
 use App\Http\Requests\Accounting\StoreServiceRequest;
 use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
 use App\Http\Requests\Accounting\UpdateServiceRequest;
-use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Invoice;
 use App\Services\BillingService;
+use App\Services\InvoiceDocumentDispatchService;
 use Illuminate\Http\Request;
 
 class BillingController extends Controller
@@ -92,7 +92,7 @@ class BillingController extends Controller
             $invoice->forceFill(['customer_email' => $recipient])->save();
         }
 
-        SendInvoiceDocumentsJob::dispatch($invoice->id, null, false, $recipient);
+        app(InvoiceDocumentDispatchService::class)->queue($invoice, recipient: $recipient);
 
         return response()->json([
             'success' => true,

@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Exceptions\MaxPaxExceededException;
-use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Account;
 use App\Models\CharterRatePlan;
 use App\Models\Contract;
@@ -898,11 +897,11 @@ class InvoiceFinalizationService
 
         if ($invoice->notificationEmail()) {
             $contract = $context['contract'] ?? null;
-            SendInvoiceDocumentsJob::dispatch(
-                $invoice->id,
+            app(InvoiceDocumentDispatchService::class)->queue(
+                $invoice,
                 $contract?->id,
                 ($context['source'] ?? null) === 'contract',
-            )->afterCommit();
+            );
         }
 
         /** @var User|null $actor */

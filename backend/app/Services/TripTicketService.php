@@ -737,7 +737,7 @@ class TripTicketService
         $financialFields = ['meal_allowance', 'diesel', 'sop', 'easy_trip', 'autosweep'];
         $hasFinancialUpdates = false;
         foreach ($financialFields as $field) {
-            if ($request->has($field)) {
+            if ($request->has($field) && round((float) $request->input($field), 2) !== round((float) $ticket->{$field}, 2)) {
                 $hasFinancialUpdates = true;
                 break;
             }

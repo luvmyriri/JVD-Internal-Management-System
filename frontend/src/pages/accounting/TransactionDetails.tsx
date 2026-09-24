@@ -165,6 +165,7 @@ export default function TransactionDetails() {
     queryKey: ['transaction-360', invoiceId],
     queryFn: () => transactionsApi.get(invoiceId),
     enabled: Number.isInteger(invoiceId) && invoiceId > 0,
+    refetchInterval: (current) => ['queued', 'sending'].includes(current.state.data?.document_delivery?.status ?? '') ? 5000 : false,
   });
 
   useEffect(() => {
@@ -207,7 +208,10 @@ export default function TransactionDetails() {
 
   const emailMutation = useMutation({
     mutationFn: () => billingApi.sendEmail(invoiceId, email.trim()),
-    onSuccess: (response) => toast.success(response.data?.message || `Invoice accepted for delivery to ${email.trim()}`),
+    onSuccess: (response) => {
+      toast.success(response.data?.message || `Invoice queued for delivery to ${email.trim()}`);
+      void query.refetch();
+    },
     onError: (error: any) => toast.error(error?.response?.data?.message || 'The invoice email could not be sent.'),
   });
 
@@ -409,11 +413,18 @@ export default function TransactionDetails() {
           )}
         </div>
         {availableTransactionDocuments.length === 0 && availableDocuments.length === 0 && (!transaction.contract.required || !canCreateAccounting) && <p className="mt-5 rounded-xl bg-surface-alt p-4 text-sm text-muted">No document action is available for this record and your current access.</p>}
+        {transaction.document_delivery?.status && <p role="status" className="mt-5 rounded-xl border border-border bg-surface-alt p-3 text-sm text-ink">
+          <span className="font-bold">Invoice email: {transaction.document_delivery.status}.</span>{' '}
+          {transaction.document_delivery.recipient && <>Recipient: {transaction.document_delivery.recipient}.</>}
+          {transaction.document_delivery.sent_at && <> Sent {new Date(transaction.document_delivery.sent_at).toLocaleString()}.</>}
+          {transaction.document_delivery.error && <> {transaction.document_delivery.error}</>}
+          {['queued', 'sending'].includes(transaction.document_delivery.status) && <> Delivery status updates automatically.</>}
+        </p>}
         {canEditAccounting && <form onSubmit={(event) => { event.preventDefault(); if (!email.trim()) return toast.error('Enter a customer email address.'); emailMutation.mutate(); }} className="mt-6 flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-end">
           <label className="min-w-0 flex-1 text-xs font-bold text-muted">Customer email
             <div className="relative mt-1.5"><Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" /><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="customer@example.com" className="h-11 w-full rounded-xl border border-border bg-surface-alt pl-10 pr-3 text-sm text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/20" /></div>
           </label>
-          <button type="submit" disabled={emailMutation.isPending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#071b33] px-4 text-xs font-black text-white outline-none hover:bg-[#0d3159] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"><Mail className="h-4 w-4" />{emailMutation.isPending ? 'Sending…' : 'Email invoice'}</button>
+          <button type="submit" disabled={emailMutation.isPending} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#071b33] px-4 text-xs font-black text-white outline-none hover:bg-[#0d3159] disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"><Mail className="h-4 w-4" />{emailMutation.isPending ? 'Queueing…' : transaction.document_delivery?.status === 'failed' ? 'Retry invoice email' : 'Send invoice email'}</button>
         </form>}
       </section>
 

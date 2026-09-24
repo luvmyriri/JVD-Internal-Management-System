@@ -5,23 +5,21 @@ import { LuX, LuSearch, LuUser, LuLoaderCircle } from 'react-icons/lu';
 import type { Service } from '../../api/billing';
 import { customerApi } from '../../api/customers';
 import { salesQuotationApi } from '../../api/salesQuotations';
-import {
-  buildServiceQuotationHtml,
-  type QuotationPricingInput,
-} from './FixedPackageQuotationPrint';
+import type { QuotationPricingInput } from './FixedPackageQuotationPrint';
 
 interface Props {
   service: Service;
   pricing: QuotationPricingInput;
-  agentName: string;
   onClose: () => void;
 }
 
 const inputCls =
   'w-full px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 text-sm bg-white dark:bg-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition';
 
-export default function QuotationRecipientModal({ service, pricing, agentName, onClose }: Props) {
+export default function QuotationRecipientModal({ service, pricing, onClose }: Props) {
   const [search, setSearch] = useState('');
+  const [adults, setAdults] = useState(pricing.bookingAdults);
+  const [children, setChildren] = useState(pricing.bookingChildren);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
@@ -59,8 +57,8 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
           }
         : service.has_booking_fields
           ? {
-              adults: pricing.bookingAdults,
-              children: pricing.bookingChildren,
+              adults,
+              children,
             }
           : undefined;
 
@@ -96,37 +94,28 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
     try {
       const res = await mutation.mutateAsync();
       const q = res.data;
-      w.document.open();
-      w.document.write(
-        buildServiceQuotationHtml({
-          ...pricing,
-          agentName,
-          lineItems: q.line_items,
-          recipient: {
-            client_name: name.trim(),
-            client_company: company.trim(),
-            client_address: address.trim(),
-            client_contact: contact.trim(),
-            client_email: email.trim(),
-            client_tin: tin.trim(),
-          },
-          meta: {
-            quotationNumber: q.quotation_number,
-            subtotal: Number(q.subtotal),
-            vatAmount: Number(q.vat_amount),
-            total: Number(q.total),
-            vatRate: Number(q.vat_rate),
-            validUntil: q.valid_until,
-            travelDate: q.travel_date || travelDate || undefined,
-          },
-        }),
-      );
-      w.document.close();
+      const pdf = await salesQuotationApi.pdf(q.id);
+      const url = URL.createObjectURL(pdf);
+      w.location.href = url;
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
       toast.success(`Quotation ${q.quotation_number} created`);
       onClose();
     } catch (err: any) {
       w.close();
       toast.error(err?.response?.data?.message || 'Failed to create quotation.');
+    }
+  };
+
+  const handleSend = async () => {
+    if (!name.trim()) return toast.error('Client name is required.');
+    if (!email.trim()) return toast.error('Client email is required.');
+    try {
+      const { data } = await mutation.mutateAsync();
+      const response = await salesQuotationApi.send(data.id, email.trim());
+      toast.success(response.message);
+      onClose();
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || 'Could not queue the quotation email.');
     }
   };
 
@@ -142,6 +131,10 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
         </div>
 
         <div className="p-7 overflow-y-auto space-y-5">
+          {service.has_booking_fields && <div className="grid grid-cols-2 gap-4 rounded-xl bg-blue-50 p-4 dark:bg-blue-950/20">
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-200">Adults<input type="number" min={0} value={adults} onChange={event => setAdults(Number(event.target.value) || 0)} className={inputCls} /></label>
+            <label className="text-sm font-bold text-gray-700 dark:text-gray-200">Children<input type="number" min={0} value={children} onChange={event => setChildren(Number(event.target.value) || 0)} className={inputCls} /></label>
+          </div>}
           {/* Customer search */}
           <div>
             <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Find existing customer (optional)</label>
@@ -203,6 +196,7 @@ export default function QuotationRecipientModal({ service, pricing, agentName, o
 
         <div className="p-6 px-7 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800 shrink-0 flex justify-end gap-3">
           <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-sm font-semibold text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition">Cancel</button>
+          <button onClick={handleSend} disabled={!name.trim() || !email.trim() || mutation.isPending} className="px-6 py-2.5 rounded-xl bg-emerald-700 text-white text-sm font-bold hover:bg-emerald-800 disabled:opacity-50">Send quotation email</button>
           <button
             onClick={handleGenerate}
             disabled={!name.trim() || mutation.isPending}

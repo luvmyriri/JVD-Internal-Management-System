@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { LuPrinter, LuX, LuPlus, LuTrash2, LuFileText } from 'react-icons/lu';
-import { openBusCharterQuotationPrintWindow, type BusCharterQuotationData } from '../busCharterQuotationPdf';
+import { LuPrinter, LuX, LuPlus, LuTrash2, LuFileText, LuMail } from 'react-icons/lu';
+import toast from 'react-hot-toast';
+import { salesQuotationApi } from '../../../api/salesQuotations';
+import type { BusCharterQuotationData } from '../busCharterQuotationPdf';
 
 interface BusCharterQuotationModalProps {
   isOpen: boolean;
@@ -9,8 +11,9 @@ interface BusCharterQuotationModalProps {
 }
 
 export default function BusCharterQuotationModal({ isOpen, onClose, initialData }: BusCharterQuotationModalProps) {
+  const [isWorking, setIsWorking] = useState(false);
   const [form, setForm] = useState<BusCharterQuotationData>({
-    quotationNumber: initialData?.quotationNumber || `QTN-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+    quotationNumber: initialData?.quotationNumber || 'Assigned when generated',
     quotationDate: initialData?.quotationDate || new Date().toISOString().split('T')[0],
     groupCompanyName: initialData?.groupCompanyName || '',
     contactPerson: initialData?.contactPerson || '',
@@ -70,9 +73,55 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
     });
   };
 
-  const handlePrint = (e: React.FormEvent) => {
+  const createQuotation = () => salesQuotationApi.create({
+    client_name: form.contactPerson.trim() || form.groupCompanyName.trim(),
+    client_company: form.groupCompanyName.trim() || undefined,
+    client_contact: form.contactNumber.trim() || undefined,
+    client_email: form.emailAddress.trim() || undefined,
+    service_name: 'Bus charter',
+    category: 'Transport',
+    line_items: form.items.map(item => ({
+      description: `${item.pickupLocation} to ${item.destination} · ${item.duration} · ${item.startDate}${item.endDate ? ` to ${item.endDate}` : ''}`,
+      quantity: item.quantityUnits,
+      unit_price: item.unitPrice,
+    })),
+  });
+
+  const handlePrint = async (e: React.FormEvent) => {
     e.preventDefault();
-    openBusCharterQuotationPrintWindow(form);
+    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) return toast.error('Enter the customer or company name.');
+    const preview = window.open('', '_blank');
+    setIsWorking(true);
+    try {
+      const { data } = await createQuotation();
+      const blob = await salesQuotationApi.pdf(data.id);
+      const url = URL.createObjectURL(blob);
+      if (preview) preview.location.href = url;
+      else window.open(url, '_blank', 'noopener,noreferrer');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      toast.success(`Quotation ${data.quotation_number} generated.`);
+    } catch (error: any) {
+      preview?.close();
+      toast.error(error?.response?.data?.message || 'Could not generate quotation.');
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) return toast.error('Enter the customer or company name.');
+    if (!form.emailAddress.trim()) return toast.error('Enter the customer email address.');
+    setIsWorking(true);
+    try {
+      const { data } = await createQuotation();
+      const response = await salesQuotationApi.send(data.id, form.emailAddress.trim());
+      toast.success(response.message);
+      onClose();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || 'Could not queue the quotation email.');
+    } finally {
+      setIsWorking(false);
+    }
   };
 
   return (
@@ -142,22 +191,12 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
           {/* Quotation Meta */}
           <div className="grid grid-cols-2 gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/40 border border-gray-100 dark:border-gray-800">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">QTN #</label>
-              <input
-                type="text"
-                value={form.quotationNumber}
-                onChange={e => setForm({ ...form, quotationNumber: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold font-mono"
-              />
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">QTN #</span>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Assigned when generated</p>
             </div>
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Date</label>
-              <input
-                type="date"
-                value={form.quotationDate}
-                onChange={e => setForm({ ...form, quotationDate: e.target.value })}
-                className="w-full px-3 py-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold"
-              />
+              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Date</span>
+              <p className="text-xs font-bold text-gray-700 dark:text-gray-200">Generated when saved</p>
             </div>
           </div>
 
@@ -253,9 +292,10 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
 
           {/* Grand Total */}
           <div className="flex items-center justify-between p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40">
-            <span className="text-xs font-black text-red-700 dark:text-red-300 uppercase tracking-widest">Grand Total Quotation Amount</span>
+            <span className="text-xs font-black text-red-700 dark:text-red-300 uppercase tracking-widest">Subtotal before VAT</span>
             <span className="text-2xl font-black text-red-600 dark:text-red-400">₱{form.grandTotal.toLocaleString()}</span>
           </div>
+          <p className="text-xs text-gray-500 dark:text-gray-400">The saved PDF and email add the configured VAT and show the final total.</p>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <button
@@ -265,11 +305,13 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
             >
               Cancel
             </button>
+            <button type="button" onClick={handleSend} disabled={isWorking} className="px-5 py-2.5 rounded-2xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"><LuMail size={16} /> Send quotation email</button>
             <button
               type="submit"
+              disabled={isWorking}
               className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 transition shadow-lg shadow-red-600/30"
             >
-              <LuPrinter size={16} /> Generate &amp; Print Quotation PDF
+              <LuPrinter size={16} /> Generate quotation PDF
             </button>
           </div>
         </form>

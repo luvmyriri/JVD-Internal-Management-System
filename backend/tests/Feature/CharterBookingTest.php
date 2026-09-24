@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Bus;
 use App\Models\CharterBooking;
 use App\Models\CharterRatePlan;
+use App\Models\Invoice;
 use App\Models\Service;
 use App\Models\TripTicket;
 use App\Models\User;
@@ -260,6 +261,12 @@ class CharterBookingTest extends TestCase
         $this->assertSame([$this->driver->id, $secondDriver->id], $tickets->pluck('driver_id')->all());
         $this->assertSame([20, 20], $tickets->pluck('no_of_passengers')->all());
         $this->assertDatabaseCount('work_orders', 2);
+        $invoice = $booking->invoice->load(Invoice::operationalDocumentRelations());
+        $html = view('pdf.invoice', ['invoice' => $invoice])->render();
+        $this->assertStringContainsString('CHARTER-01', $html);
+        $this->assertStringContainsString('CHARTER-02', $html);
+        $this->assertStringContainsString($this->driver->first_name, $html);
+        $this->assertStringContainsString($secondDriver->first_name, $html);
     }
 
     public function test_active_charter_booking_can_update_operations_and_manifest(): void

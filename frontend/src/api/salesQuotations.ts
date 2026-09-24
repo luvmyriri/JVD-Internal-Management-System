@@ -61,4 +61,6 @@ export interface SalesQuotation {
 export const salesQuotationApi = {
   create: (payload: CreateSalesQuotationPayload) =>
     client.post<{ success: boolean; data: SalesQuotation }>('/sales/quotations', payload).then((r) => r.data),
+  pdf: (id: number) => client.get(`/sales/quotations/${id}/pdf`, { responseType: 'blob' }).then((r) => r.data as Blob),
+  send: (id: number, email: string) => client.post<{ message: string }>(`/sales/quotations/${id}/send`, { email }).then((r) => r.data),
 };

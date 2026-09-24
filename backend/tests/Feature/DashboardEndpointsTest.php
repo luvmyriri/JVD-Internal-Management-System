@@ -18,7 +18,7 @@ class DashboardEndpointsTest extends TestCase
 
     public static function endpoints(): array
     {
-        return [['admin'], ['accounting'], ['agent'], ['driver'], ['hr']];
+        return [['admin'], ['accounting'], ['agent'], ['hr']];
     }
 
     #[DataProvider('endpoints')]
@@ -30,5 +30,15 @@ class DashboardEndpointsTest extends TestCase
             ->getJson("/api/v1/dashboards/{$endpoint}")
             ->assertOk()
             ->assertJsonStructure(['success', 'data' => ['kpis']]);
+    }
+
+    public function test_driver_dashboard_is_private_to_driver_accounts(): void
+    {
+        $admin = User::factory()->superAdmin()->create();
+        $driver = User::factory()->create(['role' => 'driver']);
+
+        $this->actingAs($admin)->getJson('/api/v1/dashboards/driver')->assertForbidden();
+        $this->actingAs($driver)->getJson('/api/v1/dashboards/driver')
+            ->assertOk()->assertJsonStructure(['success', 'data' => ['kpis']]);
     }
 }

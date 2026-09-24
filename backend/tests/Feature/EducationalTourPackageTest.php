@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Jobs\SendInvoiceDocumentsJob;
+use App\Jobs\SendQuotationJob;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Bus;
 use App\Models\Collection;
@@ -12,6 +13,7 @@ use App\Models\EducationalTourParticipantBooking;
 use App\Models\EducationalTourProgram;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Services\DocumentPdfService;
 use App\Services\EducationalTourPackageService;
 use App\Services\GeneralServiceAgreementPdfService;
 use App\Services\InvoiceDocumentMailService;
@@ -19,7 +21,9 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Bus as BusFacade;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class EducationalTourPackageTest extends TestCase
@@ -100,6 +104,42 @@ class EducationalTourPackageTest extends TestCase
 
         $this->assertArrayNotHasKey('registration_token', $response->json('data'));
         $this->assertArrayNotHasKey('registration_url', $response->json('data'));
+    }
+
+    public function test_package_quotation_renders_the_saved_customer_and_rate(): void
+    {
+        $package = EducationalTourPackage::create([
+            'public_id' => (string) Str::uuid(),
+            'registration_token_hash' => hash('sha256', 'test-quotation-token'),
+            'tour_code' => 'QTN-EDU-001',
+            'name' => 'Science Discovery',
+            'school_name' => 'North School',
+            'pickup_location' => 'North School Main Gate',
+            'starts_at' => now()->addMonth(),
+            'ends_at' => now()->addMonth()->addDay(),
+            'maximum_capacity' => 50,
+            'rate_per_head' => 3450,
+            'status' => 'published',
+            'created_by' => $this->user->id,
+        ]);
+
+        $html = view('pdf.quotation-template', [
+            'package' => $package,
+            'company' => app(DocumentPdfService::class)->companyProfile(),
+            'generatedAt' => now(),
+        ])->render();
+        $this->assertStringContainsString('North School', $html);
+        $this->assertStringContainsString('3,450.00', $html);
+        $this->actingAs($this->user)
+            ->get("/api/v1/sales/educational-tour-packages/{$package->id}/quotation")
+            ->assertOk()->assertHeader('content-type', 'application/pdf');
+
+        Queue::fake();
+        $this->actingAs($this->user)
+            ->postJson("/api/v1/sales/educational-tour-packages/{$package->id}/quotation/send", [
+                'email' => 'school@example.com',
+            ])->assertAccepted();
+        Queue::assertPushed(SendQuotationJob::class, fn (SendQuotationJob $job) => $job->kind === 'educational' && $job->quotationId === $package->id && $job->recipient === 'school@example.com');
     }
 
     public function test_public_registration_routes_are_not_available(): void

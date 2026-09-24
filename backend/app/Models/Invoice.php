@@ -44,6 +44,12 @@ class Invoice extends Model
         'cash_budget_request_id',
         'finalized_snapshot',
         'finalized_at',
+        'document_delivery_status',
+        'document_delivery_recipient',
+        'document_delivery_queued_at',
+        'document_delivery_sent_at',
+        'document_delivery_failed_at',
+        'document_delivery_error',
     ];
 
     protected function casts(): array
@@ -52,6 +58,9 @@ class Invoice extends Model
             'requires_contract' => 'boolean',
             'finalized_snapshot' => 'array',
             'finalized_at' => 'datetime',
+            'document_delivery_queued_at' => 'datetime',
+            'document_delivery_sent_at' => 'datetime',
+            'document_delivery_failed_at' => 'datetime',
         ];
     }
 

@@ -3,15 +3,38 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
+use App\Jobs\SendQuotationJob;
 use App\Models\SalesQuotation;
 use App\Models\Service;
 use App\Models\SystemSetting;
+use App\Services\DocumentPdfService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class SalesQuotationController extends Controller
 {
+    public function pdf(SalesQuotation $quotation, DocumentPdfService $documents)
+    {
+        return $documents->render('pdf.sales-quotation', ['quotation' => $quotation])
+            ->download("Quotation_{$quotation->quotation_number}.pdf");
+    }
+
+    public function send(Request $request, SalesQuotation $quotation)
+    {
+        $validated = $request->validate(['email' => ['nullable', 'email:rfc', 'max:255']]);
+        $recipient = $validated['email'] ?? $quotation->client_email;
+        if (! $recipient) {
+            return response()->json(['message' => 'A customer email address is required.'], 422);
+        }
+
+        $quotation->update(['client_email' => $recipient, 'status' => 'queued']);
+        SendQuotationJob::dispatch('sales', $quotation->id, $recipient)->afterCommit();
+
+        return response()->json(['message' => "Quotation {$quotation->quotation_number} was queued for delivery to {$recipient}."], 202);
+    }
+
     /** Persist a customer-facing sales quotation and assign a sequential number. */
     public function store(Request $request)
     {
@@ -256,7 +279,7 @@ class SalesQuotationController extends Controller
      * Price lines that do not use a quotation-level service. Generic catalog
      * lines remain server-priced; only service-less lines retain entered prices.
      *
-     * @param  \Illuminate\Support\Collection<int, Service>  $services
+     * @param  Collection<int, Service>  $services
      * @return array<int, array{service_id: int|null, description: string, unit_price: float, quantity: int|float, amount: float}>
      */
     private function standaloneItems(array $submittedItems, $services, array $pricingContext): array

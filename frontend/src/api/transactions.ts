@@ -245,6 +245,14 @@ export interface TransactionRecord {
   schedule: TransactionSchedule;
   refund: TransactionRefundSummary;
   documents: TransactionDocumentAvailability;
+  document_delivery?: {
+    status: 'queued' | 'sending' | 'sent' | 'failed' | null;
+    recipient: string | null;
+    queued_at: string | null;
+    sent_at: string | null;
+    failed_at: string | null;
+    error: string | null;
+  };
   navigation: {
     transaction?: TransactionNavigationTarget | null;
     billing?: TransactionNavigationTarget | null;

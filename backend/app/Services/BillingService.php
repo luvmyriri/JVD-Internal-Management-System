@@ -8,7 +8,6 @@ use App\Http\Requests\Accounting\StoreServiceRequest;
 use App\Http\Requests\Accounting\UpdateInvoiceStatusRequest;
 use App\Http\Requests\Accounting\UpdateServiceRequest;
 use App\Http\Resources\InvoiceResource;
-use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Booking;
 use App\Models\CharterRatePlan;
 use App\Models\Collection;
@@ -611,7 +610,7 @@ class BillingService
         $notificationEmail = $invoice->notificationEmail();
         if ($notificationEmail) {
             try {
-                SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
+                app(InvoiceDocumentDispatchService::class)->queue($invoice);
             } catch (\Exception $mailEx) {
                 \Log::error("Failed to send POS status update email to {$notificationEmail}: ".$mailEx->getMessage());
             }
@@ -826,7 +825,7 @@ class BillingService
                     $notificationEmail = $invoice->notificationEmail();
                     if (! $duplicate && $notificationEmail) {
                         try {
-                            SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
+                            app(InvoiceDocumentDispatchService::class)->queue($invoice);
                         } catch (\Exception $mailEx) {
                             \Log::error("Failed to send updated payment receipt email via webhook to {$notificationEmail}: ".$mailEx->getMessage());
                         }

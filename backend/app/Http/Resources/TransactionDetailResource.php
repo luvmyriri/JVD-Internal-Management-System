@@ -34,6 +34,14 @@ class TransactionDetailResource extends TransactionSummaryResource
             'provider' => [
                 'invoice_payment_id' => $invoice->payment_id,
             ],
+            'document_delivery' => [
+                'status' => $invoice->document_delivery_status,
+                'recipient' => $invoice->document_delivery_recipient,
+                'queued_at' => $invoice->document_delivery_queued_at?->toISOString(),
+                'sent_at' => $invoice->document_delivery_sent_at?->toISOString(),
+                'failed_at' => $invoice->document_delivery_failed_at?->toISOString(),
+                'error' => $invoice->document_delivery_error,
+            ],
             'payments' => $payments,
             'credits' => $credits->map(fn ($credit) => [
                 'id' => $credit->id,

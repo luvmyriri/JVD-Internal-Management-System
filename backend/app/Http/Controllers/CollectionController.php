@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\SendCollectionStatementJob;
-use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Invoice;
 use App\Services\AuditLogService;
 use App\Services\CollectionStatementService;
+use App\Services\InvoiceDocumentDispatchService;
 use App\Services\SalesLifecycleService;
 use App\Services\SalesOrderService;
 use Illuminate\Http\Request;
@@ -151,7 +151,7 @@ class CollectionController extends Controller
                 $notificationEmail = $invoice?->notificationEmail();
                 if ($invoice && $notificationEmail) {
                     try {
-                        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
+                        app(InvoiceDocumentDispatchService::class)->queue($invoice);
                     } catch (\Exception $mailEx) {
                         \Log::error("Failed to send updated collection email to {$notificationEmail}: ".$mailEx->getMessage());
                     }
@@ -267,7 +267,7 @@ class CollectionController extends Controller
             $notificationEmail = $invoice?->notificationEmail();
             if ($invoice && $notificationEmail) {
                 try {
-                    SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
+                    app(InvoiceDocumentDispatchService::class)->queue($invoice);
                 } catch (\Exception $mailEx) {
                     \Log::error("Failed to send updated payment receipt email on addPayment to {$notificationEmail}: ".$mailEx->getMessage());
                 }

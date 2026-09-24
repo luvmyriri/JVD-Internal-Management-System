@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { QuickRequestProvider } from './context/QuickRequestContext';
@@ -14,58 +15,59 @@ import { Toaster } from 'react-hot-toast';
 import { getLandingPageForUser, isPathAllowedForUser } from './utils/navigation';
 
 // Pages
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import FixedPackages from './pages/sales/FixedPackages';
-import FixedPackageCheckout from './pages/sales/FixedPackageCheckout';
-import Sales from './pages/sales/Sales';
-import JoinerDepartures from './pages/sales/JoinerDepartures';
-import JoinerCheckout from './pages/sales/JoinerCheckout';
-import JoinerDepartureDetail from './pages/sales/JoinerDepartureDetail';
-import CharterSales from './pages/sales/CharterSales';
-import EducationalTours from './pages/sales/EducationalTours';
-import CustomTransactions from './pages/sales/CustomTransactions';
-import SalesOrders from './pages/sales/SalesOrders';
-import { EducationalProgramDetails, SalesServiceDetails } from './pages/sales/SalesDetails';
-import Transactions from './pages/accounting/Transactions';
-import TransactionDetails from './pages/accounting/TransactionDetails';
-import Reports from './pages/accounting/Reports';
-import JournalEntries from './pages/accounting/JournalEntries';
-import Liquidations from './pages/accounting/Liquidations';
-import PurchaseOrders from './pages/procurement/PurchaseOrders';
-import JobOrders from './pages/procurement/JobOrders';
-import WorkOrders from './pages/procurement/WorkOrders';
-import Commissions from './pages/operations/Commissions';
-import TripTickets from './pages/logistics/TripTickets';
-import CashBudgets from './pages/accounting/CashBudgets';
-import Collections from './pages/accounting/Collections';
-import Accreditations from './pages/operations/Accreditations';
-import Suppliers from './pages/procurement/Suppliers';
-import CompanyDocuments from './pages/operations/CompanyDocuments';
-import Supplies from './pages/inventory/Supplies';
-import Fleet from './pages/inventory/Fleet';
-import PMS from './pages/inventory/PMS';
-import Passporting from './pages/travel/Passporting';
-import VisaProcessing from './pages/travel/VisaProcessing';
-import Customers from './pages/operations/Customers';
-import CustomerProfile from './pages/operations/CustomerProfile';
-import Employees from './pages/hr/Employees';
-import Applications from './pages/hr/Applications';
-import Internships from './pages/hr/Internships';
-import Payroll from './pages/hr/Payroll';
-import Users from './pages/admin/Users';
-import AuditLogs from './pages/admin/AuditLogs';
-import Settings from './pages/admin/Settings';
-import DashboardCustomizerPage from './pages/admin/DashboardCustomizerPage';
-import RolePermissions from './pages/admin/RolePermissions';
-import DriverSchedule from './pages/driver/Schedule';
-import DriverTrips from './pages/driver/Trips';
-import DriverBus from './pages/driver/Bus';
-import KycSubmission from './pages/KycSubmission';
-import VisaUploadPublic from './pages/travel/VisaUploadPublic';
-import CustomerPortal from './pages/portal/CustomerPortal';
-import Profile from './pages/Profile';
-import SetPassword from './pages/SetPassword';
+const Login = lazy(() => import('./pages/Login'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const FixedPackages = lazy(() => import('./pages/sales/FixedPackages'));
+const FixedPackageCheckout = lazy(() => import('./pages/sales/FixedPackageCheckout'));
+const Sales = lazy(() => import('./pages/sales/Sales'));
+const JoinerDepartures = lazy(() => import('./pages/sales/JoinerDepartures'));
+const JoinerCheckout = lazy(() => import('./pages/sales/JoinerCheckout'));
+const JoinerDepartureDetail = lazy(() => import('./pages/sales/JoinerDepartureDetail'));
+const CharterSales = lazy(() => import('./pages/sales/CharterSales'));
+const EducationalTours = lazy(() => import('./pages/sales/EducationalTours'));
+const CustomTransactions = lazy(() => import('./pages/sales/CustomTransactions'));
+const SalesOrders = lazy(() => import('./pages/sales/SalesOrders'));
+const EducationalProgramDetails = lazy(() => import('./pages/sales/SalesDetails').then(module => ({ default: module.EducationalProgramDetails })));
+const SalesServiceDetails = lazy(() => import('./pages/sales/SalesDetails').then(module => ({ default: module.SalesServiceDetails })));
+const Transactions = lazy(() => import('./pages/accounting/Transactions'));
+const TransactionDetails = lazy(() => import('./pages/accounting/TransactionDetails'));
+const Reports = lazy(() => import('./pages/accounting/Reports'));
+const JournalEntries = lazy(() => import('./pages/accounting/JournalEntries'));
+const Liquidations = lazy(() => import('./pages/accounting/Liquidations'));
+const PurchaseOrders = lazy(() => import('./pages/procurement/PurchaseOrders'));
+const JobOrders = lazy(() => import('./pages/procurement/JobOrders'));
+const WorkOrders = lazy(() => import('./pages/procurement/WorkOrders'));
+const Commissions = lazy(() => import('./pages/operations/Commissions'));
+const TripTickets = lazy(() => import('./pages/logistics/TripTickets'));
+const CashBudgets = lazy(() => import('./pages/accounting/CashBudgets'));
+const Collections = lazy(() => import('./pages/accounting/Collections'));
+const Accreditations = lazy(() => import('./pages/operations/Accreditations'));
+const Suppliers = lazy(() => import('./pages/procurement/Suppliers'));
+const CompanyDocuments = lazy(() => import('./pages/operations/CompanyDocuments'));
+const Supplies = lazy(() => import('./pages/inventory/Supplies'));
+const Fleet = lazy(() => import('./pages/inventory/Fleet'));
+const PMS = lazy(() => import('./pages/inventory/PMS'));
+const Passporting = lazy(() => import('./pages/travel/Passporting'));
+const VisaProcessing = lazy(() => import('./pages/travel/VisaProcessing'));
+const Customers = lazy(() => import('./pages/operations/Customers'));
+const CustomerProfile = lazy(() => import('./pages/operations/CustomerProfile'));
+const Employees = lazy(() => import('./pages/hr/Employees'));
+const Applications = lazy(() => import('./pages/hr/Applications'));
+const Internships = lazy(() => import('./pages/hr/Internships'));
+const Payroll = lazy(() => import('./pages/hr/Payroll'));
+const Users = lazy(() => import('./pages/admin/Users'));
+const AuditLogs = lazy(() => import('./pages/admin/AuditLogs'));
+const Settings = lazy(() => import('./pages/admin/Settings'));
+const DashboardCustomizerPage = lazy(() => import('./pages/admin/DashboardCustomizerPage'));
+const RolePermissions = lazy(() => import('./pages/admin/RolePermissions'));
+const DriverSchedule = lazy(() => import('./pages/driver/Schedule'));
+const DriverTrips = lazy(() => import('./pages/driver/Trips'));
+const DriverBus = lazy(() => import('./pages/driver/Bus'));
+const KycSubmission = lazy(() => import('./pages/KycSubmission'));
+const VisaUploadPublic = lazy(() => import('./pages/travel/VisaUploadPublic'));
+const CustomerPortal = lazy(() => import('./pages/portal/CustomerPortal'));
+const Profile = lazy(() => import('./pages/Profile'));
+const SetPassword = lazy(() => import('./pages/SetPassword'));
 import ForceChangePasswordModal from './components/auth/ForceChangePasswordModal';
 import LogisticsOverview from './pages/logistics/Overview';
 
@@ -118,6 +120,7 @@ export default function App() {
           <EntityPreviewProvider>
             <AuthProvider>
               <QuickRequestProvider>
+                <Suspense fallback={<div role="status" className="p-6 text-sm text-muted">Loading page…</div>}>
                 <Routes>
                   {/* Public */}
                   <Route path="/login" element={<Login />} />
@@ -232,6 +235,7 @@ export default function App() {
 
                   <Route path="*" element={<DefaultRedirect />} />
                 </Routes>
+                </Suspense>
                 <Toaster position="top-right" />
                 <ForceChangePasswordModal />
                 <EntityPreviewPanel />
