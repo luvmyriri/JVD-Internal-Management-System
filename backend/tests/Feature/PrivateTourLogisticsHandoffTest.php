@@ -144,12 +144,14 @@ class PrivateTourLogisticsHandoffTest extends TestCase
         [$agent, $orderItem, $fulfillment] = $this->privateTourSale();
         $ticket = app(TripTicketService::class)->ensureDraftForSalesItem($orderItem, $agent->id);
 
+        $newTravelDate = now()->addMonths(4)->toDateString();
         $this->actingAs($agent)
             ->putJson("/api/v1/trip-tickets/{$ticket->id}", [
-                'date_of_travel' => now()->addMonths(4)->toDateString(),
+                'date_of_travel' => $newTravelDate,
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'This trip schedule came from a confirmed sale. Amend or rebook its dates in Sales so the invoice, customer itinerary, and fleet allocation remain synchronized.');
+            ->assertOk();
+
+        $this->assertSame($newTravelDate, $ticket->fresh()->date_of_travel);
 
         $occupiedBus = $this->bus('BUSY-303');
         $occupiedDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);

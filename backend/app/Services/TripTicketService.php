@@ -759,6 +759,7 @@ class TripTicketService
             'date_of_travel' => 'sometimes|date',
             'duration' => 'nullable|string',
             'pick_up' => 'sometimes|string',
+            'destination' => 'nullable|string',
             'drop_off' => 'sometimes|string',
             'bus_id' => 'nullable|exists:buses,id',
             'plate_no' => 'nullable|string',
@@ -781,6 +782,19 @@ class TripTicketService
             'trip_type' => 'sometimes|in:domestic,international',
             'override_conflict' => 'nullable|boolean',
         ]);
+
+        if (! empty($validated['bus_id'])) {
+            $assignedBus = Bus::find($validated['bus_id']);
+            if ($assignedBus) {
+                $validated['plate_no'] = $assignedBus->plate_number;
+            }
+        }
+        if (isset($validated['drop_off']) && ! isset($validated['destination'])) {
+            $validated['destination'] = $validated['drop_off'];
+        }
+        if (isset($validated['destination']) && ! isset($validated['drop_off'])) {
+            $validated['drop_off'] = $validated['destination'];
+        }
 
         if ($user && $user->role === 'driver') {
             // Keep only allowed driver fields in $validated
@@ -810,70 +824,125 @@ class TripTicketService
         $salesFactsChanged = $salesItem && collect([
             'pick_up' => 'pick_up',
             'drop_off' => 'drop_off',
+            'destination' => 'destination',
             'no_of_passengers' => 'no_of_passengers',
         ])->contains(fn ($ticketField, $requestField) => array_key_exists($requestField, $validated)
             && (string) $validated[$requestField] !== (string) $ticket->{$ticketField});
 
-        if ($salesItem && ($dateChanged || $durationChanged)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This trip schedule came from a confirmed sale. Amend or rebook its dates in Sales so the invoice, customer itinerary, and fleet allocation remain synchronized.',
-            ], 422);
+        if ($busChanged && $ticket->status === 'approved' && (! isset($validated['status']) || $validated['status'] !== 'approved')) {
+            $validated['status'] = 'draft';
         }
 
-        if ($salesFactsChanged) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This route and passenger count came from a confirmed sale. Amend the travel booking in Sales and its linked DTT will refresh automatically.',
-            ], 422);
-        }
-
-        if ($salesItem && ($driverChanged || $busChanged)
-            && ! ($salesItem->fulfillment instanceof PrivateTourBooking)
-            && ! ($salesItem->fulfillment instanceof TransferBooking)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'This vehicle and driver assignment came from Sales. Update the charter, educational tour, or departure in Sales; its linked DTT will refresh automatically.',
-            ], 422);
-        }
-
-        $result = DB::transaction(function () use ($ticket, $validated, $driverChanged, $busChanged, $dateChanged, $durationChanged, $newDriverId, $newBusId, $newDate, $newDuration, $request, $user, $salesItem) {
+        $result = DB::transaction(function () use ($ticket, $validated, $driverChanged, $busChanged, $dateChanged, $durationChanged, $salesFactsChanged, $newDriverId, $newBusId, $newDate, $newDuration, $request, $user, $salesItem) {
             if ($driverChanged || $busChanged || $dateChanged || $durationChanged) {
+                $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
+                $canOverride = $user && (
+                    $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
+                    $user->hasTag('process:override_schedule')
+                );
+
+                if (! $override || ! $canOverride) {
+                    $conflictResponse = $this->detectScheduleConflict(
+                        $newDriverId,
+                        $newBusId,
+                        $newDate,
+                        $newDuration,
+                        $ticket->id
+                    );
+                    if ($conflictResponse) {
+                        return $conflictResponse;
+                    }
+                }
+
                 if ($salesItem) {
-                    if (! $newBusId) {
+                    if (! $newBusId && ($busChanged || ! $ticket->bus_id)) {
                         return response()->json([
                             'success' => false,
                             'message' => 'A confirmed travel service must retain an assigned vehicle. Reassign it to another available vehicle instead.',
                         ], 422);
                     }
 
-                    $salesItem->fulfillment->update([
-                        'bus_id' => $newBusId,
-                        'driver_id' => $newDriverId,
-                    ]);
-                    // A bus change uses a different unique allocation key. Mark the
-                    // former row inactive before the shared sales allocator reserves
-                    // the replacement; transaction rollback restores it on conflict.
-                    app(ResourceAllocationService::class)->release($salesItem->fulfillment);
-                    app(SalesOrderService::class)->resynchronizeFulfillment($salesItem);
-                } else {
-                    $override = filter_var($request->input('override_conflict'), FILTER_VALIDATE_BOOLEAN);
-                    $canOverride = $user && (
-                        $user->hasRole('super_admin', 'executive_vice_president', 'operations_manager') ||
-                        $user->hasTag('process:override_schedule')
-                    );
-
-                    if (! $override || ! $canOverride) {
-                        $conflictResponse = $this->detectScheduleConflict(
-                            $newDriverId,
-                            $newBusId,
-                            $newDate,
-                            $newDuration,
-                            $ticket->id
-                        );
-                        if ($conflictResponse) {
-                            return $conflictResponse;
+                    $fulfillment = $salesItem->fulfillment;
+                    if ($fulfillment instanceof CharterBooking) {
+                        $assignments = $fulfillment->fleet_assignments ?: [];
+                        $idx = (int) ($ticket->assignment_index ?? 0);
+                        $bus = $newBusId ? Bus::find($newBusId) : null;
+                        if (empty($assignments)) {
+                            $assignments = [[
+                                'bus_id' => $newBusId,
+                                'driver_id' => $newDriverId,
+                                'plate_number' => $bus?->plate_number,
+                            ]];
+                        } else {
+                            if (isset($assignments[$idx])) {
+                                $assignments[$idx]['bus_id'] = $newBusId;
+                                $assignments[$idx]['driver_id'] = $newDriverId;
+                                $assignments[$idx]['plate_number'] = $bus?->plate_number;
+                            }
                         }
+                        $bookingUpdates = ['fleet_assignments' => $assignments];
+                        if ($idx === 0) {
+                            $bookingUpdates['bus_id'] = $newBusId;
+                            $bookingUpdates['driver_id'] = $newDriverId;
+                        }
+                        if ($dateChanged && isset($validated['date_of_travel'])) {
+                            $travelDate = Carbon::parse($validated['date_of_travel']);
+                            $durationDays = max(1, $fulfillment->starts_at && $fulfillment->ends_at ? $fulfillment->starts_at->diffInDays($fulfillment->ends_at) + 1 : 1);
+                            if (isset($validated['duration']) && preg_match('/(\d+)/', $validated['duration'], $m)) {
+                                $durationDays = max(1, (int) $m[1]);
+                            }
+                            $bookingUpdates['starts_at'] = $travelDate->copy()->startOfDay();
+                            $bookingUpdates['ends_at'] = $travelDate->copy()->addDays($durationDays - 1)->endOfDay();
+                        }
+                        if (isset($validated['pick_up'])) {
+                            $bookingUpdates['pickup_location'] = $validated['pick_up'];
+                        }
+                        if (isset($validated['drop_off']) || isset($validated['destination'])) {
+                            $bookingUpdates['destination'] = $validated['drop_off'] ?? $validated['destination'];
+                        }
+                        if (isset($validated['no_of_passengers'])) {
+                            $bookingUpdates['passenger_count'] = $validated['no_of_passengers'];
+                        }
+                        $fulfillment->update($bookingUpdates);
+                    } elseif ($fulfillment && in_array(get_class($fulfillment), [PrivateTourBooking::class, TransferBooking::class, Booking::class])) {
+                        $fUpdates = [
+                            'bus_id' => $newBusId,
+                            'driver_id' => $newDriverId,
+                        ];
+                        if ($dateChanged && isset($validated['date_of_travel'])) {
+                            $travelDate = Carbon::parse($validated['date_of_travel']);
+                            $fUpdates['starts_at'] = $travelDate->copy()->startOfDay();
+                            $fUpdates['ends_at'] = $travelDate->copy()->endOfDay();
+                        }
+                        if (isset($validated['pick_up']) && isset($fulfillment->pickup_location)) {
+                            $fUpdates['pickup_location'] = $validated['pick_up'];
+                        }
+                        if (isset($validated['drop_off']) && isset($fulfillment->destination)) {
+                            $fUpdates['destination'] = $validated['drop_off'];
+                        }
+                        $fulfillment->update($fUpdates);
+                    }
+
+                    if ($fulfillment) {
+                        app(ResourceAllocationService::class)->release($fulfillment);
+                        app(SalesOrderService::class)->resynchronizeFulfillment($salesItem);
+                    }
+                }
+            } elseif ($salesItem && $salesFactsChanged) {
+                $fulfillment = $salesItem->fulfillment;
+                if ($fulfillment instanceof CharterBooking) {
+                    $cUpdates = [];
+                    if (isset($validated['pick_up'])) {
+                        $cUpdates['pickup_location'] = $validated['pick_up'];
+                    }
+                    if (isset($validated['drop_off']) || isset($validated['destination'])) {
+                        $cUpdates['destination'] = $validated['drop_off'] ?? $validated['destination'];
+                    }
+                    if (isset($validated['no_of_passengers'])) {
+                        $cUpdates['passenger_count'] = $validated['no_of_passengers'];
+                    }
+                    if (! empty($cUpdates)) {
+                        $fulfillment->update($cUpdates);
                     }
                 }
             }
@@ -980,22 +1049,24 @@ class TripTicketService
             }
         }
 
+        $budgetData = [
+            'travel_date' => $ticket->date_of_travel,
+            'plate_number' => $ticket->bus?->plate_number ?? $ticket->plate_no ?? 'TBA',
+            'destination' => $ticket->drop_off ?? $ticket->destination ?? 'TBA',
+            'diesel' => $ticket->diesel ?? 0,
+            'meal_allowance' => $ticket->meal_allowance ?? 0,
+            'sop' => $ticket->sop ?? 0,
+            'autosweep' => $ticket->autosweep ?? 0,
+            'easytrip' => $ticket->easy_trip ?? 0,
+            'total_amount' => ($ticket->diesel ?? 0) + ($ticket->meal_allowance ?? 0) + ($ticket->sop ?? 0) + ($ticket->autosweep ?? 0) + ($ticket->easy_trip ?? 0),
+        ];
+
+        $budget = CashBudgetRequest::where('trip_ticket_id', $ticket->id)->first();
+        if ($budget && in_array($budget->status, ['draft', 'pending', 'approved'])) {
+            $budget->update($budgetData);
+        }
+
         if ($request->has('status') && $request->status === 'approved') {
-
-            // Sync/Create Cash Budget Request for the Trip Ticket
-            $budgetData = [
-                'travel_date' => $ticket->date_of_travel,
-                'plate_number' => $ticket->bus?->plate_number ?? $ticket->plate_no ?? 'TBA',
-                'destination' => $ticket->drop_off,
-                'diesel' => $ticket->diesel ?? 0,
-                'meal_allowance' => $ticket->meal_allowance ?? 0,
-                'sop' => $ticket->sop ?? 0,
-                'autosweep' => $ticket->autosweep ?? 0,
-                'easytrip' => $ticket->easy_trip ?? 0,
-                'total_amount' => ($ticket->diesel ?? 0) + ($ticket->meal_allowance ?? 0) + ($ticket->sop ?? 0) + ($ticket->autosweep ?? 0) + ($ticket->easy_trip ?? 0),
-            ];
-
-            $budget = CashBudgetRequest::where('trip_ticket_id', $ticket->id)->first();
             if ($budget) {
                 $budget->update($budgetData);
             } else {

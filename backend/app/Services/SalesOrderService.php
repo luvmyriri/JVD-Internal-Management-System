@@ -554,15 +554,18 @@ class SalesOrderService
     private function scheduleFor(string $type, array $details): array
     {
         return match ($type) {
-            'private_tour' => [$details['starts_at'], $details['ends_at'], $details['passenger_count']],
+            'private_tour' => [$details['starts_at'] ?? null, $details['ends_at'] ?? null, $details['passenger_count'] ?? 1],
+            'bus_rental', 'charter' => [$details['starts_at'] ?? null, $details['ends_at'] ?? null, $details['passenger_count'] ?? 1],
+            'educational_tour' => [$details['starts_at'] ?? null, $details['ends_at'] ?? null, ($details['student_count'] ?? 0) + ($details['chaperone_count'] ?? 0)],
             'visa_assistance' => [$details['appointment_at'] ?? $details['intended_departure'] ?? null, null, 1],
             'passport_assistance' => [$details['appointment_at'] ?? null, $details['target_release_date'] ?? null, 1],
-            'flight_booking' => [$details['departure_at'], $details['return_at'] ?? null, $details['passenger_count']],
-            'accommodation_booking' => [$details['check_in'], $details['check_out'], $details['adult_count'] + ($details['child_count'] ?? 0)],
-            'ticket_booking' => [$details['departure_at'], $details['arrival_at'] ?? null, $details['passenger_count']],
-            'activity_booking' => [$details['session_starts_at'], $details['session_ends_at'] ?? null, $details['participant_count']],
-            'transfer_service' => [$details['pickup_at'], $details['dropoff_at'] ?? null, $details['passenger_count']],
+            'flight_booking' => [$details['departure_at'] ?? null, $details['return_at'] ?? null, $details['passenger_count'] ?? 1],
+            'accommodation_booking' => [$details['check_in'] ?? null, $details['check_out'] ?? null, ($details['adult_count'] ?? 0) + ($details['child_count'] ?? 0)],
+            'ticket_booking' => [$details['departure_at'] ?? null, $details['arrival_at'] ?? null, $details['passenger_count'] ?? 1],
+            'activity_booking' => [$details['session_starts_at'] ?? null, $details['session_ends_at'] ?? null, $details['participant_count'] ?? 1],
+            'transfer_service' => [$details['pickup_at'] ?? null, $details['dropoff_at'] ?? null, $details['passenger_count'] ?? 1],
             'custom_arrangement' => [$details['target_starts_at'] ?? null, $details['target_ends_at'] ?? null, null],
+            default => [null, null, null],
         };
     }
 
