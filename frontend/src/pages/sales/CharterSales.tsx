@@ -415,7 +415,7 @@ export default function CharterSales() {
       .filter(Boolean)
       .join(', ');
 
-    const unitBreakdownStr = sanitizedAssignments.map(u => 
+    const unitBreakdownStr = sanitizedAssignments.map(u =>
       `Unit ${u.unit_number}: ${u.plate_number}${u.model ? ` (${u.model})` : ''} - Driver: ${u.driver_name}`
     ).join(' | ');
 
@@ -551,7 +551,7 @@ export default function CharterSales() {
                       <input
                         type="radio"
                         name="plan_is_fixed_rate"
-                        checked={!Boolean(planForm.is_fixed_rate)}
+                        checked={!planForm.is_fixed_rate}
                         onChange={() => setPlanForm(curr => ({ ...curr, is_fixed_rate: false }))}
                         className="mt-0.5"
                       />

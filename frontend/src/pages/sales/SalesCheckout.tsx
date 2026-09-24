@@ -458,12 +458,12 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                           Vehicle: {item.vehicleType} {item.extraDays ? `| +${item.extraDays} Days` : ''} {item.extraHours ? `| +${item.extraHours} Hrs` : ''}
                         </p>
                       )}
-                      {Array.isArray(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments) && (item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).length > 0 ? (
+                      {Array.isArray(item.lineMetadata?.bus_assignments ?? item.lineMetadata?.fleet_assignments ?? []) && (item.lineMetadata?.bus_assignments ?? item.lineMetadata?.fleet_assignments ?? []).length > 0 ? (
                         <div className="mt-2 space-y-1">
                           <p className="text-[9px] text-blue-700 dark:text-blue-400 font-black uppercase tracking-wider">
-                            Allocated Fleet &amp; Drivers ({(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).length} Units):
+                            Allocated Fleet &amp; Drivers ({(item.lineMetadata?.bus_assignments ?? item.lineMetadata?.fleet_assignments ?? []).length} Units):
                           </p>
-                          {(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).map((unit: any, uIdx: number) => (
+                          {(item.lineMetadata?.bus_assignments ?? item.lineMetadata?.fleet_assignments ?? []).map((unit: any, uIdx: number) => (
                             <div key={uIdx} className="text-[9px] bg-neutral-50 dark:bg-neutral-800/60 rounded px-1.5 py-0.5 border border-neutral-200/60 dark:border-neutral-700/50 flex flex-wrap gap-x-2 text-gray-700 dark:text-gray-300">
                               <span className="font-bold text-gray-900 dark:text-gray-100">Unit {unit.unit_number || uIdx + 1}:</span>
                               <span>{unit.plate_number ? unit.plate_number : `Bus #${unit.bus_id}`}{unit.model ? ` (${unit.model})` : ''}</span>
