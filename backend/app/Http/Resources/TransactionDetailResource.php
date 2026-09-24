@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Invoice;
 use App\Models\PrivateTourBooking;
+use App\Services\InvoiceDocumentDispatchService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 
@@ -35,12 +36,17 @@ class TransactionDetailResource extends TransactionSummaryResource
                 'invoice_payment_id' => $invoice->payment_id,
             ],
             'document_delivery' => [
-                'status' => $invoice->document_delivery_status,
+                'status' => in_array($invoice->document_delivery_status, ['queued', 'sending'], true)
+                    && $invoice->document_delivery_queued_at?->isBefore(now()->subMinutes(InvoiceDocumentDispatchService::STALLED_AFTER_MINUTES))
+                    ? 'stalled' : $invoice->document_delivery_status,
                 'recipient' => $invoice->document_delivery_recipient,
                 'queued_at' => $invoice->document_delivery_queued_at?->toISOString(),
                 'sent_at' => $invoice->document_delivery_sent_at?->toISOString(),
                 'failed_at' => $invoice->document_delivery_failed_at?->toISOString(),
-                'error' => $invoice->document_delivery_error,
+                'error' => in_array($invoice->document_delivery_status, ['queued', 'sending'], true)
+                    && $invoice->document_delivery_queued_at?->isBefore(now()->subMinutes(InvoiceDocumentDispatchService::STALLED_AFTER_MINUTES))
+                    ? 'The mail worker has not completed this delivery. Check worker health and retry.'
+                    : $invoice->document_delivery_error,
             ],
             'payments' => $payments,
             'credits' => $credits->map(fn ($credit) => [

@@ -25,7 +25,7 @@ import {
 } from 'react-icons/lu';
 import { Modal, Button, Pagination } from '../../components/ui';
 import { ListRow, StatusPill, EmptyState, Button as DsButton, confirm } from '../../components/ds';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { jobApplicationsApi, type JobApplication, type ConvertToEmployeePayload } from '../../api/jobApplications';
 import { formatDate, getStorageUrl } from '../../utils';
@@ -396,11 +396,11 @@ export default function Applications() {
     currentPage * itemsPerPage
   );
 
-  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<Partial<JobApplication>>({
+  const { register, handleSubmit, reset, control, setValue, formState: { errors } } = useForm<Partial<JobApplication>>({
     mode: 'onChange'
   });
 
-  const currentStatus = watch('status') || 'pending';
+  const currentStatus = useWatch({ control, name: 'status' }) || 'pending';
 
   const openModal = (app?: JobApplication) => {
     setActiveTab('details');

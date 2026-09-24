@@ -11,7 +11,8 @@ import {
 import { loadExcelJS } from '../../utils/lazyExport';
 import { supplierApi, type Supplier, type SupplierFormData } from '../../api/suppliers';
 import { SUPPLIER_ACCREDITATION_LABELS } from '../../constants';
-import AddressSelector, { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/AddressSelector';
+import AddressSelector from '../../components/ui/AddressSelector';
+import { EMPTY_ADDRESS, type AddressValue } from '../../components/ui/addressValue';
 import { Modal, Pagination, Button } from '../../components/ui';
 
 

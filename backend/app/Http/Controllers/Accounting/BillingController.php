@@ -88,15 +88,17 @@ class BillingController extends Controller
             return response()->json(['message' => 'Customer email address is required.'], 422);
         }
 
-        if ($invoice->customer_email !== $recipient) {
-            $invoice->forceFill(['customer_email' => $recipient])->save();
+        try {
+            $queued = app(InvoiceDocumentDispatchService::class)->queue($invoice, recipient: $recipient);
+        } catch (\InvalidArgumentException $exception) {
+            return response()->json(['message' => $exception->getMessage()], 409);
         }
-
-        app(InvoiceDocumentDispatchService::class)->queue($invoice, recipient: $recipient);
 
         return response()->json([
             'success' => true,
-            'message' => "Invoice #{$invoice->invoice_number} and customer documents were accepted for delivery to {$recipient}.",
+            'message' => $queued
+                ? "Invoice #{$invoice->invoice_number} and customer documents were accepted for delivery to {$recipient}."
+                : "Invoice #{$invoice->invoice_number} is already being delivered to {$recipient}.",
         ], 202);
     }
 }

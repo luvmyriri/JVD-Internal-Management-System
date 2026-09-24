@@ -134,7 +134,7 @@ export default function DataTable<T>({
       map[col.key] = Array.from(set).sort((a, b) => a.localeCompare(b));
     }
     return map;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [data, columns]);
 
   // Active date window [start, end) from the preset.
@@ -187,7 +187,7 @@ export default function DataTable<T>({
       }
       return true;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [data, columns, query, colFilters, dateField, dateWindow, isServer]);
 
   const sorted = useMemo(() => {
@@ -215,7 +215,8 @@ export default function DataTable<T>({
   const toggleOne = (id: string | number) => {
     if (!onSelectedChange || !selected) return;
     const next = new Set(selected);
-    next.has(id) ? next.delete(id) : next.add(id);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
     onSelectedChange(next);
   };
 

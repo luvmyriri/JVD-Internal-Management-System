@@ -13,7 +13,7 @@ import {
 } from 'react-icons/lu';
 import { Modal, StatusBadge, Button, Pagination } from '../../components/ui';
 import { DataTable, type Column } from '../../components/ds';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import toast from 'react-hot-toast';
 import { internshipsApi, type Internship } from '../../api/internships';
 
@@ -107,11 +107,11 @@ export default function Internships() {
     currentPage * itemsPerPage
   );
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<Partial<Internship>>({
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm<Partial<Internship>>({
     mode: 'onChange'
   });
 
-  const schoolValue = watch('school') || '';
+  const schoolValue = useWatch({ control, name: 'school' }) || '';
   const filteredSuggestions = schoolValue
     ? schools.filter(school =>
       school.toLowerCase().includes(schoolValue.toLowerCase()) &&

@@ -232,7 +232,8 @@ export default function DesignSystem() {
               variant="secondary"
               onClick={async () => {
                 const ok = await confirm({ title: 'Approve this request?', description: 'The requester will be notified.', confirmLabel: 'Approve' });
-                ok ? notify.success('Approved') : notify.info('Cancelled');
+                if (ok) notify.success('Approved');
+                else notify.info('Cancelled');
               }}
             >
               await confirm()
@@ -241,7 +242,8 @@ export default function DesignSystem() {
               variant="secondary"
               onClick={async () => {
                 const notes = await promptText({ title: 'Reject request', placeholder: 'Reason (optional)…', confirmLabel: 'Reject', destructive: true });
-                notes === null ? notify.info('Cancelled') : notify.error(`Rejected${notes ? `: ${notes}` : ''}`);
+                if (notes === null) notify.info('Cancelled');
+                else notify.error(`Rejected${notes ? `: ${notes}` : ''}`);
               }}
             >
               await promptText()

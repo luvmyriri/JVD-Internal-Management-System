@@ -13,29 +13,29 @@ import LogisticsDashboard from './dashboards/LogisticsDashboard';
 import ProcurementDashboard from './dashboards/ProcurementDashboard';
 import MaintenanceDashboard from './dashboards/MaintenanceDashboard';
 
-function getDashboardForRole(role: string): React.FC {
+function getDashboardForRole(role: string): React.ReactNode {
   switch (role) {
     case 'super_admin':
     case 'executive_vice_president':
-      return AdminDashboard;
+      return <AdminDashboard />;
     case 'operations_manager':
-      return OperationsDashboard;
+      return <OperationsDashboard />;
     case 'logistics_in_charge':
     case 'dispatcher':
     case 'service_adviser':
     case 'head_mechanic':
-      return LogisticsDashboard;
+      return <LogisticsDashboard />;
     case 'corporate_secretary':
-      return HRDashboard;
+      return <HRDashboard />;
     case 'accounting_executive':
-      return AccountingDashboard;
+      return <AccountingDashboard />;
     case 'reservation_officer':
     case 'office_staff':
-      return AgentDashboard;
+      return <AgentDashboard />;
     case 'driver':
-      return DriverDashboard;
+      return <DriverDashboard />;
     default:
-      return AdminDashboard; // Fallback to Admin/System overview
+      return null;
   }
 }
 
@@ -83,18 +83,13 @@ export default function Dashboard() {
 
   if (!user) return <LoadingScreen />;
 
-  const DashboardComponent = getDashboardForRole(user.role);
-  const isNull = !DashboardComponent;
+  const dashboard = getDashboardForRole(user.role);
 
   return (
     <div className="space-y-6">
       <DashboardErrorBoundary title="Dashboard failed to load">
         <Suspense fallback={<LoadingScreen />}>
-          {isNull ? (
-            <WelcomeFallback />
-          ) : (
-            <DashboardComponent />
-          )}
+          {dashboard ?? <WelcomeFallback />}
         </Suspense>
       </DashboardErrorBoundary>
     </div>

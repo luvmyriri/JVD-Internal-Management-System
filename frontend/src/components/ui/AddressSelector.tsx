@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
 import { LuChevronDown, LuLoaderCircle, LuMapPin, LuSearch, LuX } from 'react-icons/lu';
+import { EMPTY_ADDRESS, formatFullAddress, type AddressValue } from './addressValue';
 
 // ─── PSGC Cloud API ──────────────────────────────────────────────────────────
 const PSGC = 'https://psgc.cloud/api';
@@ -44,33 +45,6 @@ const psgc = {
   barangays: (cityCode: string) =>
     axios.get<PsgcEntry[]>(`${PSGC}/cities-municipalities/${cityCode}/barangays`).then(r => fixEntries(r.data)),
 };
-
-// ─── Address Types ────────────────────────────────────────────────────────────
-export interface AddressValue {
-  regionCode: string;
-  regionName: string;
-  provinceCode: string;
-  provinceName: string;
-  cityCode: string;
-  cityName: string;
-  barangayCode: string;
-  barangayName: string;
-  street: string;
-}
-
-export const EMPTY_ADDRESS: AddressValue = {
-  regionCode: '', regionName: '',
-  provinceCode: '', provinceName: '',
-  cityCode: '', cityName: '',
-  barangayCode: '', barangayName: '',
-  street: '',
-};
-
-export function formatFullAddress(v: AddressValue): string {
-  return [v.street, v.barangayName, v.cityName, v.provinceName, v.regionName]
-    .filter(Boolean)
-    .join(', ');
-}
 
 // ─── Searchable Combobox ──────────────────────────────────────────────────────
 interface ComboboxProps {

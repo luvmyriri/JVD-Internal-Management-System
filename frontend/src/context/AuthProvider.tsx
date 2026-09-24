@@ -1,21 +1,8 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../api/auth';
 import type { User, RolePermissions } from '../types/auth';
-
-interface AuthContextType {
-  user: User | null;
-  permissions: RolePermissions | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (user: User, permissions?: RolePermissions) => void;
-  logout: () => Promise<void>;
-  refreshUser: () => Promise<void>;
-  setUser: (user: User | null) => void;
-  hasPermission: (module: string, action?: 'can_view' | 'can_create' | 'can_edit' | 'can_delete') => boolean;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { AuthContext } from './AuthContext';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -132,12 +119,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

@@ -30,6 +30,7 @@ class SendInvoiceDocumentsJob implements ShouldQueue
         public readonly ?int $contractId = null,
         public readonly bool $sendBookingConfirmation = false,
         public readonly ?string $recipient = null,
+        public readonly ?string $deliveryToken = null,
     ) {
         $this->onQueue('mail');
     }
@@ -39,6 +40,9 @@ class SendInvoiceDocumentsJob implements ShouldQueue
         $invoice = Invoice::with(Invoice::operationalDocumentRelations())->find($this->invoiceId);
         if (! $invoice) {
             throw new RuntimeException("Invoice {$this->invoiceId} no longer exists.");
+        }
+        if ($invoice->document_delivery_token !== $this->deliveryToken) {
+            return;
         }
 
         $recipient = $this->recipient ?: $invoice->notificationEmail();
@@ -62,6 +66,10 @@ class SendInvoiceDocumentsJob implements ShouldQueue
         $contract = $this->contractId ? Contract::find($this->contractId) : null;
         $mail->send($invoice, $recipient, $this->sendBookingConfirmation, $contract);
 
+        $invoice->refresh();
+        if ($invoice->document_delivery_token !== $this->deliveryToken) {
+            return;
+        }
         $invoice->forceFill([
             'document_delivery_status' => 'sent',
             'document_delivery_recipient' => $recipient,
@@ -81,7 +89,10 @@ class SendInvoiceDocumentsJob implements ShouldQueue
 
     public function failed(?Throwable $exception): void
     {
-        Invoice::whereKey($this->invoiceId)->update([
+        if (! Invoice::whereKey($this->invoiceId)->where('document_delivery_token', $this->deliveryToken)->exists()) {
+            return;
+        }
+        Invoice::whereKey($this->invoiceId)->where('document_delivery_token', $this->deliveryToken)->update([
             'document_delivery_status' => 'failed',
             'document_delivery_failed_at' => now(),
             'document_delivery_error' => 'Delivery failed after automatic retries. Verify the recipient address and try again.',

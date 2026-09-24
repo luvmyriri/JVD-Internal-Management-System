@@ -1,4 +1,4 @@
-import { navigation } from '../components/layout/Sidebar';
+import { navigation } from '../components/layout/navigationData';
 import type { User, RolePermissions } from '../types/auth';
 
 export function isPathAllowedForUser(path: string, user?: User | null, permissions?: RolePermissions | null): boolean {

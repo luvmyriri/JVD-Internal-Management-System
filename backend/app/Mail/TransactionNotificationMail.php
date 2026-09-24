@@ -2,7 +2,9 @@
 
 namespace App\Mail;
 
+use App\Models\Contract;
 use App\Models\Invoice;
+use App\Services\ContractPdfService;
 use App\Services\InvoiceDocumentCacheService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -21,8 +23,11 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
     /**
      * Create a new message instance.
      */
-    public function __construct(Invoice $invoice)
-    {
+    public function __construct(
+        Invoice $invoice,
+        public readonly bool $bookingConfirmed = false,
+        public readonly ?Contract $contract = null,
+    ) {
         $this->invoice = $invoice->load(Invoice::operationalDocumentRelations());
     }
 
@@ -31,9 +36,11 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
      */
     public function envelope(): Envelope
     {
-        $subject = $this->invoice->status === 'paid'
+        $subject = $this->bookingConfirmed
+            ? "Booking confirmed — JVD invoice #{$this->invoice->invoice_number}"
+            : ($this->invoice->status === 'paid'
             ? "Your Official JVD Invoice (#{$this->invoice->invoice_number})"
-            : "Action Required: Statement of Account (#{$this->invoice->invoice_number})";
+            : "Action Required: Statement of Account (#{$this->invoice->invoice_number})");
 
         return new Envelope(
             subject: $subject,
@@ -89,6 +96,13 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
             $attachments[] = Attachment::fromData(
                 fn () => $documents->contents($this->invoice, InvoiceDocumentCacheService::SERVICE_AGREEMENT),
                 $documents->fileName($this->invoice, InvoiceDocumentCacheService::SERVICE_AGREEMENT),
+            )->withMime('application/pdf');
+        }
+
+        if ($this->bookingConfirmed && $this->contract?->isFullySigned()) {
+            $attachments[] = Attachment::fromData(
+                fn () => app(ContractPdfService::class)->generate($this->contract)->output(),
+                "Contract_{$this->contract->contract_number}.pdf",
             )->withMime('application/pdf');
         }
 

@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Mail\BookingConfirmationMail;
 use App\Mail\TransactionNotificationMail;
 use App\Models\Contract;
 use App\Models\Invoice;
@@ -16,13 +15,10 @@ class InvoiceDocumentMailService
         bool $sendBookingConfirmation = false,
         ?Contract $contract = null,
     ): void {
+        $mailerName = app(CustomerMailTransport::class)->mailerName();
         $invoice->load(Invoice::operationalDocumentRelations());
-        $mailer = Mail::mailer(config('mail.transactional_mailer', 'smtp'));
+        $mailer = Mail::mailer($mailerName);
 
-        $mailer->to($recipient)->sendNow(new TransactionNotificationMail($invoice));
-
-        if ($sendBookingConfirmation) {
-            $mailer->to($recipient)->sendNow(new BookingConfirmationMail($invoice, $contract));
-        }
+        $mailer->to($recipient)->sendNow(new TransactionNotificationMail($invoice, $sendBookingConfirmation, $contract));
     }
 }

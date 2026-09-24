@@ -215,6 +215,12 @@
                 @endif
             @endif
 
+            @if(!empty($bookingConfirmed))
+                <p><strong>Your booking is confirmed.</strong> This email includes your invoice and account documents.
+                    @if(!empty($contract) && $contract->isFullySigned()) Your signed contract is attached for your records. @endif
+                </p>
+            @endif
+
             @if($invoice->travel_date || $invoice->bus_id || $invoice->driver_id || $invoice->tour_code || $invoice->pickup_location || $invoice->pax_count)
             <!-- Travel & Assignment Details -->
             <div class="financial-card" style="margin-bottom: 20px;">

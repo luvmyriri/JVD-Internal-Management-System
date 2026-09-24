@@ -29,22 +29,6 @@ interface CommandPaletteProps {
   placeholder?: string;
 }
 
-/** Wire the global ⌘K / Ctrl+K shortcut. Returns [isOpen, open, close]. */
-export function useCommandPalette(): [boolean, () => void, () => void] {
-  const [isOpen, setOpen] = useState(false);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setOpen((o) => !o);
-      }
-    };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, []);
-  return [isOpen, () => setOpen(true), () => setOpen(false)];
-}
-
 export default function CommandPalette({ isOpen, onClose, commands, placeholder = 'Search actions, pages, records…' }: CommandPaletteProps) {
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);

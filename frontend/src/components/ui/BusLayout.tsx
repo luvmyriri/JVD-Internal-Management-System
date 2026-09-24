@@ -32,7 +32,7 @@ export interface BusLayoutProps {
   isCustomizing?: boolean;     // from remote branch
 }
 
-export const statusColors: Record<SeatStatus, { bg: string; border: string; text: string }> = {
+const statusColors: Record<SeatStatus, { bg: string; border: string; text: string }> = {
   available: { bg: 'bg-white dark:bg-gray-800', text: 'text-gray-600 dark:text-gray-300', border: 'border-gray-300 dark:border-gray-600' },
   reserved:  { bg: 'bg-amber-100 dark:bg-amber-900/40', text: 'text-amber-600 dark:text-amber-400', border: 'border-amber-300 dark:border-amber-700/50' },
   selected:  { bg: 'bg-blue-500', text: 'text-white', border: 'border-blue-600' },

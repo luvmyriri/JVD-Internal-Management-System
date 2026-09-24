@@ -66,6 +66,24 @@ export default defineConfig(({ mode }) => {
     optimizeDeps: {
       include: ['jspdf', 'jspdf-autotable', 'exceljs', 'file-saver'],
     },
+    build: {
+      // ExcelJS is a single 930 kB module loaded only when a user exports a workbook.
+      // The initial app chunk is kept below 500 kB by the vendor splitting below.
+      chunkSizeWarningLimit: 1000,
+      rolldownOptions: {
+        output: {
+          codeSplitting: {
+            groups: [{
+              name: 'vendor',
+              test: /[\\/]node_modules[\\/]/,
+              entriesAware: true,
+              minSize: 100_000,
+              maxSize: 450_000,
+            }],
+          },
+        },
+      },
+    },
   }
 })
 

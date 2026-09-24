@@ -34,7 +34,7 @@ import { rolePermissionsApi, type ModulePermission } from '../../api/rolePermiss
 import { Modal, StatusBadge, Pagination, Button, Dropdown } from '../../components/ui';
 import { EmployeeName, DataTable, type Column } from '../../components/ds';
 import { cn, fullName } from '../../utils';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { loadExcelJS } from '../../utils/lazyExport';
 import toast from 'react-hot-toast';
 import UserFormModal from './UserFormModal';
@@ -136,8 +136,8 @@ export default function Users() {
   const { data: busesData } = useBuses();
   const allBuses = (busesData?.data ?? []) as any[];
 
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm();
-  const watchedRole = watch('role', selectedUser?.role ?? 'reservation_officer');
+  const { register, handleSubmit, reset, setValue, control, formState: { errors } } = useForm();
+  const watchedRole = useWatch({ control, name: 'role', defaultValue: selectedUser?.role ?? 'reservation_officer' });
 
   const handleOpenModal = (user?: User) => {
     if (user) {

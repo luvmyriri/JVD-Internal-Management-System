@@ -498,9 +498,15 @@ class EducationalTourPackageTest extends TestCase
                 && $job->recipient === 'maria@example.test'
                 && $job->queue === 'mail'
         );
-        BusFacade::assertDispatchedTimes(SendInvoiceDocumentsJob::class, 4);
+        // Registration, deposit, and final payment each changed the PDF snapshot;
+        // the explicit resend of the already queued final version is deduplicated.
+        BusFacade::assertDispatchedTimes(SendInvoiceDocumentsJob::class, 3);
 
-        $job = new SendInvoiceDocumentsJob($booking->invoice_id, recipient: 'maria@example.test');
+        $job = new SendInvoiceDocumentsJob(
+            $booking->invoice_id,
+            recipient: 'maria@example.test',
+            deliveryToken: Invoice::findOrFail($booking->invoice_id)->document_delivery_token,
+        );
         $job->handle(app(InvoiceDocumentMailService::class));
         $this->assertDatabaseHas('educational_tour_participant_bookings', [
             'id' => $booking->id,

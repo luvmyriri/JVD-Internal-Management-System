@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Mail\QuotationMail;
 use App\Models\EducationalTourPackage;
 use App\Models\SalesQuotation;
+use App\Services\CustomerMailTransport;
 use App\Services\DocumentPdfService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -49,7 +50,7 @@ class SendQuotationJob implements ShouldQueue
             throw new InvalidArgumentException('Unknown quotation type.');
         }
 
-        Mail::mailer(config('mail.transactional_mailer', 'smtp'))
+        Mail::mailer(app(CustomerMailTransport::class)->mailerName())
             ->to($this->recipient)
             ->sendNow(new QuotationMail($customerName, $reference, $pdf));
 

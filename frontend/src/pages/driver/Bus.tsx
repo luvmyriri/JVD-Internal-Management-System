@@ -11,6 +11,7 @@ import { workOrderApi } from '../../api/workOrders';
 import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../utils';
 import toast from 'react-hot-toast';
+import { useCurrentTime } from '../../hooks/useCurrentTime';
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
   available:         { label: 'Available',         color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20' },
@@ -150,6 +151,7 @@ function RequestMaintenanceModal({ busId, onClose }: { busId: number; onClose: (
 }
 
 export default function DriverBus() {
+  const nowMs = useCurrentTime();
   const { user } = useAuth();
   const [showRequestModal, setShowRequestModal] = useState(false);
 
@@ -193,7 +195,7 @@ export default function DriverBus() {
   const lastService = bus.last_service_date;
 
   const daysUntilService = nextService
-    ? Math.ceil((new Date(nextService).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+    ? Math.ceil((new Date(nextService).getTime() - nowMs) / (1000 * 60 * 60 * 24))
     : null;
 
   return (

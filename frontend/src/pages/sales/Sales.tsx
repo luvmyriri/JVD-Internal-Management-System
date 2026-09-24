@@ -6,6 +6,7 @@ import { ArrowRight, Bus, CalendarDays, Clock3, FileCheck2, GraduationCap, MapPi
 import { catalogApi, type ServiceType } from '../../api/catalog';
 import { charterApi } from '../../api/charters';
 import { educationalTourApi } from '../../api/educationalTours';
+import { useCurrentTime } from '../../hooks/useCurrentTime';
 
 const iconFor = (code: string) => {
   if (code === 'joiner_tour') return UsersRound;
@@ -19,6 +20,7 @@ export default function Sales() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'nearing' | 'unassigned'>('all');
+  const nowMs = useCurrentTime();
 
   const { data: catalog, isLoading: catalogLoading } = useQuery({ queryKey: ['sales-workspace-catalog'], queryFn: catalogApi.getWorkspaceCatalog });
   const { data: departures = [], isLoading: departureLoading } = useQuery({ queryKey: ['joiner-departures', 'upcoming'], queryFn: catalogApi.getJoinerDepartures });
@@ -30,7 +32,6 @@ export default function Sales() {
 
   // Unified master list of all active/upcoming bookings & departures across all packages
   const masterOperationsList = useMemo(() => {
-    const nowMs = Date.now();
     const list: Array<{
       id: string;
       category: 'Joiner' | 'Charter' | 'Educational Tour';
@@ -113,7 +114,7 @@ export default function Sales() {
 
 
     return list.sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime());
-  }, [departures, charterBookings, educationalBookings]);
+  }, [departures, charterBookings, educationalBookings, nowMs]);
 
   const filteredOperationsList = useMemo(() => {
     if (activeFilter === 'nearing') return masterOperationsList.filter(item => item.is_nearing);

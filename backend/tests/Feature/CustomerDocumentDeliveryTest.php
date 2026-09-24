@@ -82,6 +82,77 @@ class CustomerDocumentDeliveryTest extends TestCase
         $this->assertNotNull($invoice->fresh()->document_delivery_failed_at);
     }
 
+    public function test_replaced_invoice_delivery_job_cannot_send_or_overwrite_the_new_attempt(): void
+    {
+        Queue::fake();
+        Storage::fake('local');
+        [, $invoice] = $this->paidInvoice();
+        config(['mail.transactional_mailer' => 'array']);
+        $mailer = Mail::mailer('array');
+        $mailer->getSymfonyTransport()->flush();
+
+        $dispatch = app(InvoiceDocumentDispatchService::class);
+        $dispatch->queue($invoice, recipient: 'old@example.com');
+        $oldToken = $invoice->fresh()->document_delivery_token;
+        $invoice->forceFill(['document_delivery_queued_at' => now()->subMinutes(6)])->save();
+        $dispatch->queue($invoice->fresh(), recipient: 'new@example.com');
+        $newToken = $invoice->fresh()->document_delivery_token;
+        $this->assertNotSame($oldToken, $newToken);
+
+        $oldJob = new SendInvoiceDocumentsJob($invoice->id, recipient: 'old@example.com', deliveryToken: $oldToken);
+        $oldJob->handle(app(InvoiceDocumentMailService::class));
+        $oldJob->failed(new \RuntimeException('Stale SMTP failure'));
+        $this->assertCount(0, $mailer->getSymfonyTransport()->messages());
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'document_delivery_status' => 'queued',
+            'document_delivery_recipient' => 'new@example.com',
+        ]);
+
+        (new SendInvoiceDocumentsJob($invoice->id, recipient: 'new@example.com', deliveryToken: $newToken))
+            ->handle(app(InvoiceDocumentMailService::class));
+        $this->assertCount(1, $mailer->getSymfonyTransport()->messages());
+        $this->assertDatabaseHas('invoices', [
+            'id' => $invoice->id,
+            'document_delivery_status' => 'sent',
+            'document_delivery_recipient' => 'new@example.com',
+        ]);
+    }
+
+    public function test_active_invoice_delivery_cannot_be_duplicated_or_redirected(): void
+    {
+        Queue::fake();
+        [, $invoice] = $this->paidInvoice();
+        $dispatch = app(InvoiceDocumentDispatchService::class);
+
+        $this->assertTrue($dispatch->queue($invoice, recipient: 'first@example.com'));
+        $this->assertFalse($dispatch->queue($invoice->fresh(), recipient: 'first@example.com'));
+        Queue::assertPushed(SendInvoiceDocumentsJob::class, 1);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $dispatch->queue($invoice->fresh(), recipient: 'different@example.com');
+    }
+
+    public function test_stalled_invoice_delivery_is_visible_and_can_be_requeued(): void
+    {
+        Queue::fake();
+        [$admin, $invoice] = $this->paidInvoice();
+        $dispatch = app(InvoiceDocumentDispatchService::class);
+        $dispatch->queue($invoice, recipient: 'documents@example.com');
+        $oldToken = $invoice->fresh()->document_delivery_token;
+        $invoice->forceFill(['document_delivery_queued_at' => now()->subMinutes(6)])->save();
+
+        $this->actingAs($admin)->getJson("/api/v1/transactions/{$invoice->id}")
+            ->assertOk()
+            ->assertJsonPath('data.document_delivery.status', 'stalled');
+
+        $this->actingAs($admin)
+            ->postJson("/api/v1/billing/{$invoice->id}/send-email", ['email' => 'documents@example.com'])
+            ->assertAccepted();
+        $this->assertNotSame($oldToken, $invoice->fresh()->document_delivery_token);
+        Queue::assertPushed(SendInvoiceDocumentsJob::class, 2);
+    }
+
     public function test_transaction_financial_documents_render_as_valid_pdfs(): void
     {
         Storage::fake('local');
@@ -182,6 +253,24 @@ class CustomerDocumentDeliveryTest extends TestCase
         foreach ($pdfs as $pdf) {
             $this->assertStringStartsWith('%PDF-', $pdf->getBody());
         }
+    }
+
+    public function test_booking_confirmation_and_invoice_are_delivered_as_one_email(): void
+    {
+        Storage::fake('local');
+        [, $invoice] = $this->paidInvoice();
+        config(['mail.transactional_mailer' => 'array']);
+        $mailer = Mail::mailer('array');
+        $mailer->getSymfonyTransport()->flush();
+
+        app(InvoiceDocumentMailService::class)->send($invoice, 'documents@example.com', true);
+
+        $messages = $mailer->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $message = $messages->first()->getOriginalMessage();
+        $this->assertStringContainsString('Booking confirmed', $message->getSubject());
+        $this->assertStringContainsString('Your booking is confirmed.', $message->getHtmlBody());
+        $this->assertContains("Invoice_{$invoice->invoice_number}.pdf", collect($message->getAttachments())->map(fn ($part) => $part->getFilename())->all());
     }
 
     public function test_unpaid_email_does_not_claim_a_deposit_was_received(): void

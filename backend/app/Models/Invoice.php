@@ -45,6 +45,8 @@ class Invoice extends Model
         'finalized_snapshot',
         'finalized_at',
         'document_delivery_status',
+        'document_delivery_token',
+        'document_delivery_content_hash',
         'document_delivery_recipient',
         'document_delivery_queued_at',
         'document_delivery_sent_at',

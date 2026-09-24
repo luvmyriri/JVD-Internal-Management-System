@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Mail\CollectionStatementMail;
 use App\Models\Collection;
+use App\Services\CustomerMailTransport;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -37,7 +38,7 @@ class SendCollectionStatementJob implements ShouldQueue
             throw new RuntimeException("Collection {$this->collectionId} no longer exists.");
         }
 
-        Mail::mailer(config('mail.transactional_mailer', 'smtp'))
+        Mail::mailer(app(CustomerMailTransport::class)->mailerName())
             ->to($this->recipient)
             ->sendNow(new CollectionStatementMail($collection));
     }

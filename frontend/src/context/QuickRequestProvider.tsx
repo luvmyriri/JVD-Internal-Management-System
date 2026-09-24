@@ -1,15 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-
-export type QuickRequestTab = 'cash_budget' | 'commission';
-
-interface QuickRequestContextType {
-  isOpen: boolean;
-  activeTab: QuickRequestTab;
-  openQuickRequest: (tab?: QuickRequestTab) => void;
-  closeQuickRequest: () => void;
-}
-
-const QuickRequestContext = createContext<QuickRequestContextType | undefined>(undefined);
+import React, { useState } from 'react';
+import { QuickRequestContext, type QuickRequestTab } from './QuickRequestContext';
 
 export const QuickRequestProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -36,12 +26,4 @@ export const QuickRequestProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {children}
     </QuickRequestContext.Provider>
   );
-};
-
-export const useQuickRequest = () => {
-  const context = useContext(QuickRequestContext);
-  if (!context) {
-    throw new Error('useQuickRequest must be used within a QuickRequestProvider');
-  }
-  return context;
 };

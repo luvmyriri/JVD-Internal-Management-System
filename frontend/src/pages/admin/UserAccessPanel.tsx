@@ -12,7 +12,7 @@ import { useTheme } from '../../context/ThemeContext';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-export const DASHBOARD_OPTIONS = [
+const DASHBOARD_OPTIONS = [
   { value: '',            label: 'Role Default',     description: 'Use the dashboard assigned to this role' },
   { value: 'admin',       label: 'Admin / Overview',  description: 'Full management overview' },
   { value: 'accounting',  label: 'Accounting',        description: 'Revenue, billing, cash budgets' },
@@ -294,7 +294,7 @@ export default function UserAccessPanel({
       }
     }
     onPermissionsChange(custom);
-  }, [overrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [overrides]);
 
   const handleOverride = (key: string, action: keyof ModulePermission, val: OverrideState) => {
     setOverrides(prev => ({

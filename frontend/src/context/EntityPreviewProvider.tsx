@@ -1,21 +1,5 @@
-import React, { createContext, useContext, useState } from 'react';
-
-export type PreviewEntityType = 'supplier' | 'inventory' | 'driver' | 'customer' | 'job_order' | 'document' | 'search' | null;
-
-interface EntityPreviewState {
-  isOpen: boolean;
-  entityType: PreviewEntityType;
-  entityId: number | null;
-  searchQuery: string | null;
-}
-
-interface EntityPreviewContextType extends EntityPreviewState {
-  showPreview: (type: PreviewEntityType, id: number) => void;
-  showSearchPreview: (query: string) => void;
-  closePreview: () => void;
-}
-
-const EntityPreviewContext = createContext<EntityPreviewContextType | undefined>(undefined);
+import React, { useState } from 'react';
+import { EntityPreviewContext, type EntityPreviewState, type PreviewEntityType } from './EntityPreviewContext';
 
 export function EntityPreviewProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<EntityPreviewState>({
@@ -57,12 +41,4 @@ export function EntityPreviewProvider({ children }: { children: React.ReactNode 
       {children}
     </EntityPreviewContext.Provider>
   );
-}
-
-export function useEntityPreview() {
-  const context = useContext(EntityPreviewContext);
-  if (context === undefined) {
-    throw new Error('useEntityPreview must be used within an EntityPreviewProvider');
-  }
-  return context;
 }

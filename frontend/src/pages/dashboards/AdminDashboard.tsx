@@ -1,3 +1,4 @@
+import DashboardDownloadActions from '../../components/ui/DashboardDownloadActions';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../context/AuthContext';
@@ -361,61 +362,6 @@ export default function AdminDashboard() {
   const detailedRevenueData = dashboardData?.revenue_export ?? [];
 
 
-  const DownloadActions = ({ title, data, variant = 'dark' }: { title: string; data: any[]; variant?: 'dark' | 'light' }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-          setIsOpen(false);
-        }
-      };
-
-      if (isOpen) {
-        document.addEventListener('mousedown', handleClickOutside);
-      }
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }, [isOpen]);
-
-    return (
-      <div className="relative flex items-center" ref={dropdownRef}>
-        <button
-          onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
-          className={`p-1.5 rounded-xl transition-all opacity-50 group-hover:opacity-100 ${variant === 'light'
-            ? 'bg-white/20 hover:bg-white/30 text-white'
-            : 'hover:bg-slate-50 dark:hover:bg-gray-800 text-muted hover:text-blue-600 dark:hover:text-blue-400'
-            }`}
-        >
-          <LuDownload className="w-3.5 h-3.5" />
-        </button>
-
-        {isOpen && (
-          <div className="absolute top-full right-0 pt-2 z-[100]">
-            <div className="w-32 bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-border py-2">
-              <button
-                onClick={async (e) => { e.stopPropagation(); await exportToPDF(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-red-50 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 flex items-center gap-2 transition-colors"
-              >
-                <LuFileText className="w-3.5 h-3.5" />
-                Export PDF
-              </button>
-              <button
-                onClick={async (e) => { e.stopPropagation(); await exportToExcel(title, data); setIsOpen(false); }}
-                className="w-full px-4 py-2 text-left text-[10px] font-bold text-muted hover:bg-emerald-50 dark:hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-2 transition-colors"
-              >
-                <LuFileSpreadsheet className="w-3.5 h-3.5" />
-                Export Excel
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
   return (
     <div className="flex flex-col gap-6 pb-12 w-full max-w-full overflow-x-hidden">
 
@@ -430,7 +376,7 @@ export default function AdminDashboard() {
               <LuUsers className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-1">
-              <DownloadActions variant="light" title="Global Personnel" data={detailedEmployeeData} />
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="light" title="Global Personnel" data={detailedEmployeeData} />
             </div>
           </div>
           <div className="flex items-end justify-between mt-3">
@@ -447,7 +393,7 @@ export default function AdminDashboard() {
             <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:bg-white/30 transition-colors">
               <LuUsers className="w-5 h-5 text-white" />
             </div>
-            <DownloadActions variant="light" title="User Roles" data={userDist} />
+            <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="light" title="User Roles" data={userDist} />
           </div>
           <div className="flex items-end justify-between mt-3">
             <div>
@@ -466,7 +412,7 @@ export default function AdminDashboard() {
               <LuGlobe className="w-5 h-5 text-white" />
             </div>
             <div className="flex items-center gap-1">
-              <DownloadActions variant="light" title="Customer Base" data={detailedCustomerData} />
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="light" title="Customer Base" data={detailedCustomerData} />
             </div>
           </div>
           <div className="flex items-end justify-between mt-3">
@@ -489,7 +435,7 @@ export default function AdminDashboard() {
                 <option value="weekly" className="text-gray-800">Weekly</option>
                 <option value="yearly" className="text-gray-800">Yearly</option>
               </select>
-              <DownloadActions variant="light" title="Revenue Metrics" data={detailedRevenueData} />
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="light" title="Revenue Metrics" data={detailedRevenueData} />
             </div>
           </div>
           <div className="flex items-end justify-between mt-3">
@@ -607,7 +553,7 @@ export default function AdminDashboard() {
                   Local Travel Bookings
                 </h3>
               </div>
-              <DownloadActions variant="dark" title="Local Bookings Report" data={localBookings} />
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="dark" title="Local Bookings Report" data={localBookings} />
             </div>
 
             <div className="space-y-1 overflow-y-auto flex-1 mt-3 pr-0.5 custom-scrollbar">
@@ -654,7 +600,7 @@ export default function AdminDashboard() {
                 <LuBus className="w-3 h-3 text-amber-500" />
                 Buses Under Maintenance
               </h3>
-              <DownloadActions
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel}
                 variant="dark"
                 title="Buses Under Maintenance"
                 data={busesUnderMaintenance.map((b: any) => ({
@@ -712,7 +658,7 @@ export default function AdminDashboard() {
                 <LuGlobe className="w-3 h-3 text-rose-500" />
                 International Travel booking
               </h3>
-              <DownloadActions variant="dark" title="International Bookings Report" data={internationalBookings} />
+              <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="dark" title="International Bookings Report" data={internationalBookings} />
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-1.5 mt-3.5 pr-0.5 custom-scrollbar">
@@ -770,7 +716,7 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
-                <DownloadActions variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
+                <DashboardDownloadActions onExportPDF={exportToPDF} onExportExcel={exportToExcel} variant="dark" title="Pending and Reserved Bookings" data={pendingAndReservedBookings} />
               </div>
             </div>
 

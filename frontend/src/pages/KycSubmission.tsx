@@ -470,7 +470,7 @@ export default function KycSubmission() {
       y += 10;
       ctx.fillStyle = '#334155';
       ctx.font = '16px sans-serif';
-      y = wrapText(`I hereby acknowledge and agree to abide by JVD\'s operational terms, standard 20% platform commission rates, bi-weekly payment schemes, and data protection policies.`, 80, y, 1040, 26);
+      y = wrapText(`I hereby acknowledge and agree to abide by JVD's operational terms, standard 20% platform commission rates, bi-weekly payment schemes, and data protection policies.`, 80, y, 1040, 26);
       y += 50;
 
       // Draw signature canvas if provided

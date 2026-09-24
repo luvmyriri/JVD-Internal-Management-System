@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import Sidebar, { navigation } from './Sidebar';
+import Sidebar from './Sidebar';
+import { navigation } from './navigationData';
 import Header from './Header';
 import { useTheme } from '../../context/ThemeContext';
 import { Suspense, useState } from 'react';

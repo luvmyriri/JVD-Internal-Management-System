@@ -246,7 +246,7 @@ export interface TransactionRecord {
   refund: TransactionRefundSummary;
   documents: TransactionDocumentAvailability;
   document_delivery?: {
-    status: 'queued' | 'sending' | 'sent' | 'failed' | null;
+    status: 'queued' | 'sending' | 'sent' | 'failed' | 'stalled' | null;
     recipient: string | null;
     queued_at: string | null;
     sent_at: string | null;

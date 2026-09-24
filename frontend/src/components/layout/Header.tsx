@@ -139,6 +139,10 @@ interface HeaderProps {
   onMenuClick?: () => void;
 }
 
+function createOptimisticMessageId(): string {
+  return `optimistic-${Date.now()}-${crypto.randomUUID()}`;
+}
+
 export default function Header({ onMenuClick }: HeaderProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -179,7 +183,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     try {
       const unreadThreads = messages.filter(m => !m.read);
       await Promise.all(unreadThreads.map(async (msg) => {
-        let payload: any = {};
+        const payload: any = {};
         if (msg.id.startsWith('user-')) {
           payload.sender_id = parseInt(msg.id.replace('user-', ''));
         } else if (msg.id.startsWith('group-')) {
@@ -208,7 +212,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     setMessagesOpen(false);
 
     try {
-      let payload: any = {};
+      const payload: any = {};
       if (msg.id.startsWith('user-')) {
         payload.sender_id = parseInt(msg.id.replace('user-', ''));
       } else if (msg.id.startsWith('group-')) {
@@ -269,7 +273,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
   const handleSendMessage = async (msgId: string, text: string, file?: File) => {
     if (!text.trim() && !file) return;
 
-    const optimisticMsgId = `optimistic-${Date.now()}`;
+    const optimisticMsgId = createOptimisticMessageId();
     const newMsg: MessageDetail = {
       id: optimisticMsgId,
       sender: 'user',
@@ -353,7 +357,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
 
     try {
-      let payload: any = {};
+      const payload: any = {};
       if (msg.id.startsWith('user-')) {
         payload.sender_id = parseInt(msg.id.replace('user-', ''));
       } else {
@@ -454,10 +458,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
              (m.sender_id === u.id && m.receiver_id === currentUserId))
           );
 
-          let mappedMessages: MessageDetail[] = [];
+          let mappedMessages: MessageDetail[];
           let lastMessageTime = 'Just now';
-          let isRead = true;
-          let lastMessageTimestamp = 0;
+          let isRead: boolean;
+          let lastMessageTimestamp: number;
 
           if (userMsgs.length > 0) {
             mappedMessages = userMsgs.map((m: any) => ({
@@ -561,10 +565,10 @@ export default function Header({ onMenuClick }: HeaderProps) {
 
           const groupMsgs = dbMessages.filter((m: any) => m.group_id === g.group_id);
 
-          let mappedMessages: MessageDetail[] = [];
+          let mappedMessages: MessageDetail[];
           let lastMessageTime = 'Just now';
-          let isRead = true;
-          let lastMessageTimestamp = 0;
+          let isRead: boolean;
+          let lastMessageTimestamp: number;
 
           if (groupMsgs.length > 0) {
             mappedMessages = groupMsgs.map((m: any) => ({
@@ -2437,17 +2441,9 @@ function FloatingChatWindow({
               const displayName = item.senderName || thread.senderName;
               
               // Calculate if we should show timestamp above this message (gap of 5 minutes or more)
-              let showTimestamp = false;
-              if (idx === 0) {
-                showTimestamp = true;
-              } else {
-                const prev = thread.messages[idx - 1];
-                if (item.timestamp && prev.timestamp) {
-                  showTimestamp = (item.timestamp - prev.timestamp) >= 300000; // 5 mins in ms
-                } else {
-                  showTimestamp = true;
-                }
-              }
+              const previous = thread.messages[idx - 1];
+              const showTimestamp = idx === 0 || !item.timestamp || !previous?.timestamp
+                || item.timestamp - previous.timestamp >= 300000;
               
               return (
                 <div key={item.id || idx} className="flex flex-col w-full">

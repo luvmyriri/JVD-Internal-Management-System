@@ -21,16 +21,6 @@ export default function Reports() {
 
   const isAuthorized = user && ['super_admin', 'executive_vice_president', 'accounting_executive'].includes(user.role || '');
 
-  if (!isAuthorized) {
-    return (
-      <div className="p-12 text-center text-gray-600 bg-white rounded-[2rem] border border-gray-100 shadow-sm max-w-md mx-auto mt-20">
-        <LuTriangleAlert className="mx-auto text-red-500 text-5xl mb-4 animate-bounce" />
-        <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Access Denied</h3>
-        <p className="text-xs text-gray-400 font-semibold mt-2">You do not have the required permissions to view corporate financial reports.</p>
-      </div>
-    );
-  }
-
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [isExportOpen, setIsExportOpen] = useState(false);
 
@@ -86,6 +76,7 @@ export default function Reports() {
     },
     placeholderData: keepPreviousData,
     staleTime: 10_000,
+    enabled: Boolean(isAuthorized),
   });
 
   const { data: summaryData } = useQuery({
@@ -95,6 +86,7 @@ export default function Reports() {
       return res.data;
     },
     staleTime: 10_000,
+    enabled: Boolean(isAuthorized),
   });
 
   // Click outside listener for Export Dropdown
@@ -469,6 +461,16 @@ export default function Reports() {
       ),
     },
   ];
+
+  if (!isAuthorized) {
+    return (
+      <div className="p-12 text-center text-gray-600 bg-white rounded-[2rem] border border-gray-100 shadow-sm max-w-md mx-auto mt-20">
+        <LuTriangleAlert className="mx-auto text-red-500 text-5xl mb-4 animate-bounce" />
+        <h3 className="text-xl font-black text-gray-900 uppercase tracking-tight">Access Denied</h3>
+        <p className="text-xs text-gray-400 font-semibold mt-2">You do not have the required permissions to view corporate financial reports.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2 pb-4 lg:h-[calc(100vh-9.5rem)] lg:overflow-hidden">
@@ -923,7 +925,7 @@ export default function Reports() {
             <div className="pt-4 border-t border-gray-50 dark:border-gray-800 shrink-0 flex items-center justify-between mt-2 select-none">
               <div className="leading-tight">
                 <p className="text-[8px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-wider">Reference Code</p>
-                <p className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-400 tracking-wider">JVD-REF-{Math.floor(100000 + Math.random() * 900000)}</p>
+                <p className="text-[10px] font-mono font-bold text-gray-600 dark:text-gray-400 tracking-wider">{selectedTxn.id}</p>
               </div>
 
               <button
