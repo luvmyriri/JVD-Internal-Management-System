@@ -59,10 +59,15 @@ frontend/playwright-report/
 .agents/
 .claude/
 .codex/
+.codex-*/
 .github/agents/
 .github/hooks/
 .github/skills/
 output/
 tmp/
+backups/
+*.bak*
+*.pre-idempotency*
+backend/public/uploads/
 backend/storage/framework/testing-temp/
 
