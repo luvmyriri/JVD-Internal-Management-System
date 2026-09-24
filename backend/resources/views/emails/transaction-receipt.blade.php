@@ -199,7 +199,11 @@
                 </div>
 
                 <h3>Dear {{ $invoice->customer_name }},</h3>
-                <p>Your partial payment / downpayment has been successfully credited to your transaction ledger.</p>
+                @if((float) $invoice->amount_received > 0)
+                    <p>Your partial payment / downpayment has been successfully credited to your transaction ledger.</p>
+                @else
+                    <p>Your invoice has been issued. No payment has been recorded yet.</p>
+                @endif
                 <p>We have generated a <strong>Statement of Account (SOA)</strong> detailing your remaining balance and payment history, which is attached to this email as a PDF document.</p>
                 @if($invoice->payment_url)
                     <p>To settle the outstanding balance through the secure PayMongo checkout, use the payment button below. Available methods, including QR Ph, depend on the company PayMongo account configuration.</p>

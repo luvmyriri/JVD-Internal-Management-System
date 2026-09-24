@@ -208,7 +208,7 @@ class Invoice extends Model
         }
 
         $joinerSeats = $this->joinerReservation?->passengers
-            ?->pluck('seat.seat_number')
+            ?->pluck('seat.seat_code')
             ->filter()
             ->values()
             ->all();

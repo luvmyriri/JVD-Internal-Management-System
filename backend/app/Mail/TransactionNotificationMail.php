@@ -61,7 +61,7 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
         $attachments = [];
 
         // Every transaction receives the invoice; a receipt is a separate document
-        // generated only after payment is settled.
+        // generated when a full or partial payment has been recorded.
         $documents = app(InvoiceDocumentCacheService::class);
         $attachments[] = Attachment::fromData(
             fn () => $documents->contents($this->invoice, InvoiceDocumentCacheService::INVOICE),
@@ -69,7 +69,7 @@ class TransactionNotificationMail extends Mailable implements ShouldQueue
         )
             ->withMime('application/pdf');
 
-        if ($this->invoice->status === 'paid') {
+        if (in_array($this->invoice->status, ['paid', 'partial'], true) && (float) $this->invoice->amount_received > 0) {
             $attachments[] = Attachment::fromData(
                 fn () => $documents->contents($this->invoice, InvoiceDocumentCacheService::PAYMENT_RECEIPT),
                 $documents->fileName($this->invoice, InvoiceDocumentCacheService::PAYMENT_RECEIPT),

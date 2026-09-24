@@ -10,15 +10,19 @@ use App\Http\Requests\Accounting\UpdateServiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Jobs\SendInvoiceDocumentsJob;
 use App\Models\Booking;
+use App\Models\CharterRatePlan;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Customer;
 use App\Models\CustomTransactionDetail;
+use App\Models\EducationalTourProgram;
 use App\Models\IntegrationEvent;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\InvoicePassenger;
 use App\Models\Itinerary;
+use App\Models\JoinerDeparture;
+use App\Models\SalesOrderItem;
 use App\Models\Service;
 use App\Notifications\SystemAlert;
 use Illuminate\Http\Request;
@@ -303,11 +307,11 @@ class BillingService
     {
         $service = Service::findOrFail($id);
 
-        $hasDependencies = \App\Models\JoinerDeparture::where('service_id', $service->id)->exists()
-            || \App\Models\InvoiceItem::where('service_id', $service->id)->exists()
-            || \App\Models\SalesOrderItem::where('service_id', $service->id)->exists()
-            || \App\Models\EducationalTourProgram::where('service_id', $service->id)->exists()
-            || \App\Models\CharterRatePlan::where('service_id', $service->id)->exists();
+        $hasDependencies = JoinerDeparture::where('service_id', $service->id)->exists()
+            || InvoiceItem::where('service_id', $service->id)->exists()
+            || SalesOrderItem::where('service_id', $service->id)->exists()
+            || EducationalTourProgram::where('service_id', $service->id)->exists()
+            || CharterRatePlan::where('service_id', $service->id)->exists();
 
         if ($hasDependencies) {
             $service->update(['is_active' => false]);
@@ -607,7 +611,7 @@ class BillingService
         $notificationEmail = $invoice->notificationEmail();
         if ($notificationEmail) {
             try {
-                SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
+                SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
             } catch (\Exception $mailEx) {
                 \Log::error("Failed to send POS status update email to {$notificationEmail}: ".$mailEx->getMessage());
             }
@@ -822,7 +826,7 @@ class BillingService
                     $notificationEmail = $invoice->notificationEmail();
                     if (! $duplicate && $notificationEmail) {
                         try {
-                            SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
+                            SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
                         } catch (\Exception $mailEx) {
                             \Log::error("Failed to send updated payment receipt email via webhook to {$notificationEmail}: ".$mailEx->getMessage());
                         }

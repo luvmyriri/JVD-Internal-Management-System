@@ -58,39 +58,15 @@
     @include('pdf.partials.brand-header', ['documentTitle' => 'Official Invoice', 'documentReference' => $invoice->invoice_number, 'documentDate' => $invoice->created_at])
     @include('pdf.partials.brand-footer', ['footerNote' => 'Official invoice. Please contact JVD Accounting for currently authorized payment channels.'])
 
-    <!-- Header -->
-    <table class="header-table">
-        <tr>
-            <td class="header-left">
-                <table style="width: 100%; border-collapse: collapse;">
-                    <tr>
-                        <td style="width: 45px; vertical-align: middle; padding-right: 8px;">
-                            <img src="{{ public_path('JVDlogo-removebg-preview.png') }}" style="height: 42px; width: auto;" alt="JVD Logo">
-                        </td>
-                        <td style="vertical-align: middle;">
-                            <div class="company-logo">{{ $company['name'] }}</div>
-                            <div style="font-size: 8px; font-weight: 900; color: #3b82f6; text-transform: uppercase; letter-spacing: 1px;">Management Company</div>
-                        </td>
-                    </tr>
-                </table>
-                <div style="margin-top: 5px; font-size: 8px; color: #475569; line-height: 1.3;">
-                    Registration No: {{ $company['registration'] }}<br>
-                    {{ $company['address'] }}<br>
-                    Phone: {{ $company['phone'] }} | {{ $company['email'] }}
-                </div>
-            </td>
-            <td class="header-right">
-                <h3 style="margin: 0; color: #475569; font-size: 13px;">OFFICIAL INVOICE</h3>
-                <div style="margin-top: 5px; font-weight: 900; color: #0f172a; font-size: 10px;">{{ $invoice->customer_name }}</div>
-                <div style="font-size: 8px;">{{ $invoice->customer_address }}</div>
-                <div style="font-size: 8px;">{{ $invoice->notificationEmail() }}</div>
-                <div style="margin-top: 5px; font-size: 9px; font-weight: 900;">Invoice #: {{ $invoice->invoice_number }}</div>
-                <div style="font-size: 8px;">Date: {{ $invoice->created_at->format('M d, Y') }}</div>
-            </td>
-        </tr>
-    </table>
-
-    <div class="doc-title">Official Invoice</div>
+    <div class="details-box">
+        <div class="details-title">Bill To</div>
+        <strong>{{ $invoice->customer_name }}</strong><br>
+        @if($invoice->customer_address){{ $invoice->customer_address }}<br>@endif
+        @if($invoice->notificationEmail()){{ $invoice->notificationEmail() }}<br>@endif
+        @if($invoice->customer_contact){{ $invoice->customer_contact }}<br>@endif
+        <span class="details-label">Status:</span> {{ strtoupper($invoice->status) }}
+        @if($invoice->due_date)<br><span class="details-label">Due Date:</span> {{ \Carbon\Carbon::parse($invoice->due_date)->format('M d, Y') }}@endif
+    </div>
 
     {{-- Travel & Assignment Details --}}
     @php
@@ -98,7 +74,6 @@
         $bus = $booking?->bus;
         $driver = $booking?->driver;
         $seatMap = $booking?->seat_map ?? [];
-        $itineraries = $invoice->itineraries ?? collect();
         $joiner = $invoice->joinerReservation;
         $joinerDeparture = $joiner?->departure;
         $joinerSeats = $joiner?->passengers?->map(fn($passenger) => $passenger->seat?->seat_code)->filter()->values()->all() ?? [];
@@ -319,14 +294,7 @@
                 <td>{{ $index + 1 }}</td>
                 <td>
                     <div class="item-name">
-                        @if($itineraries->count() > 0 && $item->service && in_array(strtolower($item->service->category ?? ''), ['tour package', 'educational tour', 'domestic tour', 'international tour', 'joiners']))
-                            {{ $itineraries->first()->location ?? $item->item_name ?? $item->service?->name }}
-                            @if($itineraries->count() > 1)
-                                <span class="item-sub">({{ $itineraries->count() }}-Day Itinerary)</span>
-                            @endif
-                        @else
-                            {{ $item->item_name ?? $item->service?->name ?? 'Travel service' }}
-                        @endif
+                        {{ $lineName }}
                     </div>
                     <div class="item-sub">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
                     @if($lineDescription && trim($lineDescription) !== trim($lineName))
@@ -368,7 +336,7 @@
                 </div>
                 <div class="summary-row" style="color: #16a34a;">
                     <div class="summary-label">Amount Paid:</div>
-                    <div class="summary-value">PHP&nbsp;{{ number_format($invoice->amount_received, 2) }}</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format(max(0, (float) $invoice->amount_received - (float) $invoice->change), 2) }}</div>
                 </div>
                 @if($invoice->change > 0)
                 <div class="summary-row" style="color: #16a34a;">
@@ -402,7 +370,7 @@
                 </div>
                 <div class="summary-row">
                     <div class="summary-label">Adjustments:</div>
-                    <div class="summary-value">PHP&nbsp;0.00</div>
+                    <div class="summary-value">PHP&nbsp;{{ number_format((float) $invoice->total_amount - (float) $invoice->subtotal, 2) }}</div>
                 </div>
                 <div class="summary-row" style="border-top: 1px dashed #cbd5e1; padding-top: 3px; margin-top: 3px;">
                     <div class="summary-label">Amount Tendered:</div>

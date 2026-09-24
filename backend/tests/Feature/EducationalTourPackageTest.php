@@ -243,7 +243,8 @@ class EducationalTourPackageTest extends TestCase
             ])
             ->assertCreated();
 
-        BusFacade::assertDispatchedAfterResponse(SendInvoiceDocumentsJob::class);
+        BusFacade::assertDispatched(SendInvoiceDocumentsJob::class);
+        BusFacade::assertNotDispatchedAfterResponse(SendInvoiceDocumentsJob::class);
     }
 
     public function test_customer_document_mail_includes_invoice_soa_and_general_service_terms(): void
@@ -451,7 +452,7 @@ class EducationalTourPackageTest extends TestCase
         ]);
 
         Mail::assertNothingSent();
-        BusFacade::assertDispatchedAfterResponse(
+        BusFacade::assertDispatched(
             SendInvoiceDocumentsJob::class,
             fn (SendInvoiceDocumentsJob $job) => $job->invoiceId === $booking->invoice_id
                 && $job->recipient === 'maria@example.test'

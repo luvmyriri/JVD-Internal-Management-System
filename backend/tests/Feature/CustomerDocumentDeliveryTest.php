@@ -3,16 +3,22 @@
 namespace Tests\Feature;
 
 use App\Jobs\SendCollectionStatementJob;
+use App\Mail\TransactionNotificationMail;
 use App\Models\Collection;
 use App\Models\CollectionPayment;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
+use App\Models\JoinerDepartureSeat;
+use App\Models\JoinerPassenger;
+use App\Models\JoinerReservation;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\CollectionStatementService;
 use App\Services\InvoiceDocumentCacheService;
+use App\Services\InvoiceDocumentMailService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -85,6 +91,84 @@ class CustomerDocumentDeliveryTest extends TestCase
 
         Queue::assertPushed(SendCollectionStatementJob::class, fn (SendCollectionStatementJob $job) => $job->collectionId === $collection->id && $job->recipient === 'collections@example.com'
         );
+    }
+
+    public function test_invoice_preserves_customer_and_package_identity_with_itineraries(): void
+    {
+        [, $invoice] = $this->paidInvoice();
+        $invoice->items->first()->service->update(['category' => 'Tour Package']);
+        $invoice->itineraries()->create(['day_number' => 1, 'location' => 'First stop only', 'activity_description' => 'Arrival']);
+        $invoice->load(Invoice::operationalDocumentRelations());
+        $html = view('pdf.invoice', ['invoice' => $invoice])->render();
+
+        $this->assertStringContainsString('Bill To', $html);
+        $this->assertStringContainsString('Document Customer', $html);
+        $this->assertStringContainsString('documents@example.com', $html);
+        $this->assertStringContainsString('Customer Document Service', $html);
+        $this->assertStringNotContainsString('First stop only', $html);
+    }
+
+    public function test_partial_payment_email_sends_real_pdf_attachments_without_a_live_transport(): void
+    {
+        Storage::fake('local');
+        [, $invoice] = $this->paidInvoice();
+        $invoice->update(['status' => 'partial', 'amount_received' => 500, 'balance' => 2000]);
+        config(['mail.transactional_mailer' => 'array']);
+        $mailer = Mail::mailer('array');
+        $mailer->getSymfonyTransport()->flush();
+
+        app(InvoiceDocumentMailService::class)->send($invoice, 'documents@example.com');
+        $messages = $mailer->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $email = $messages->first()->getOriginalMessage();
+        $pdfs = collect($email->getAttachments())->filter(fn ($part) => $part->getMediaSubtype() === 'pdf');
+        $this->assertCount(3, $pdfs);
+        $this->assertContains('Payment_Receipt_INV-DOCUMENT-001.pdf', $pdfs->map(fn ($part) => $part->getFilename())->all());
+        foreach ($pdfs as $pdf) {
+            $this->assertStringStartsWith('%PDF-', $pdf->getBody());
+        }
+    }
+
+    public function test_unpaid_email_does_not_claim_a_deposit_was_received(): void
+    {
+        [, $invoice] = $this->paidInvoice();
+        $invoice->update(['status' => 'pending_payment', 'amount_received' => 0, 'balance' => 2500]);
+        $invoice->load(Invoice::operationalDocumentRelations());
+        $html = view('emails.transaction-receipt', ['invoice' => $invoice])->render();
+        $this->assertStringContainsString('No payment has been recorded yet.', $html);
+        $this->assertStringNotContainsString('downpayment has been successfully credited', $html);
+        $attachments = (new TransactionNotificationMail($invoice))->attachments();
+        $this->assertNotContains('Payment_Receipt_INV-DOCUMENT-001.pdf', collect($attachments)->pluck('as')->all());
+    }
+
+    public function test_invoice_distinguishes_cash_tendered_from_payment_and_refreshes_cached_documents(): void
+    {
+        Storage::fake('local');
+        [, $invoice] = $this->paidInvoice();
+        $documents = app(InvoiceDocumentCacheService::class);
+        $before = $documents->contents($invoice, InvoiceDocumentCacheService::INVOICE);
+        $invoice->update(['amount_received' => 3000, 'change' => 500]);
+        $after = $documents->contents($invoice->fresh(), InvoiceDocumentCacheService::INVOICE);
+        $this->assertNotSame(hash('sha256', $before), hash('sha256', $after));
+        $this->assertSame($after, $documents->contents($invoice->fresh(), InvoiceDocumentCacheService::INVOICE));
+
+        $html = view('pdf.invoice', ['invoice' => $invoice])->render();
+        $this->assertMatchesRegularExpression('/Amount Paid:<\/div>\s*<div[^>]*>PHP&nbsp;2,500\.00/', $html);
+        $this->assertMatchesRegularExpression('/Amount Tendered:<\/div>\s*<div[^>]*>PHP&nbsp;3,000\.00/', $html);
+    }
+
+    public function test_joiner_seat_codes_are_available_to_customer_documents(): void
+    {
+        $invoice = new Invoice;
+        foreach (['booking', 'charterBooking', 'educationalTourParticipantBooking'] as $relation) {
+            $invoice->setRelation($relation, null);
+        }
+        $reservation = new JoinerReservation;
+        $passenger = new JoinerPassenger;
+        $passenger->setRelation('seat', new JoinerDepartureSeat(['seat_code' => 'A1']));
+        $reservation->setRelation('passengers', collect([$passenger]));
+        $invoice->setRelation('joinerReservation', $reservation);
+        $this->assertSame(['A1'], $invoice->seat_map);
     }
 
     /** @return array{User, Invoice} */

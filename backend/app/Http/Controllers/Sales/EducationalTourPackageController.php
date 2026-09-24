@@ -327,7 +327,7 @@ class EducationalTourPackageController extends Controller
         // especially when the mail server is temporarily unavailable. Queue the
         // same retryable job used by the rest of the billing flow so the button
         // can return immediately and delivery is retried safely in the worker.
-        SendInvoiceDocumentsJob::dispatch($invoice->id, recipient: $recipient)->afterResponse();
+        SendInvoiceDocumentsJob::dispatch($invoice->id, recipient: $recipient)->afterCommit();
 
         return response()->json([
             'message' => "Invoice {$invoice->invoice_number} and customer documents were queued for delivery to {$recipient}.",
@@ -345,7 +345,7 @@ class EducationalTourPackageController extends Controller
         $result = $this->paymentService->recordPayment($booking, $request->validated(), $request->user()->id);
 
         if (! $result['duplicate'] && $result['booking']->invoice?->notificationEmail()) {
-            SendInvoiceDocumentsJob::dispatch($result['booking']->invoice->id)->afterResponse();
+            SendInvoiceDocumentsJob::dispatch($result['booking']->invoice->id)->afterCommit();
         }
 
         return response()->json([

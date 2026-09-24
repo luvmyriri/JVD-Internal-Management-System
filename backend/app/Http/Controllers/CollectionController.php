@@ -151,7 +151,7 @@ class CollectionController extends Controller
                 $notificationEmail = $invoice?->notificationEmail();
                 if ($invoice && $notificationEmail) {
                     try {
-                        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
+                        SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
                     } catch (\Exception $mailEx) {
                         \Log::error("Failed to send updated collection email to {$notificationEmail}: ".$mailEx->getMessage());
                     }
@@ -267,7 +267,7 @@ class CollectionController extends Controller
             $notificationEmail = $invoice?->notificationEmail();
             if ($invoice && $notificationEmail) {
                 try {
-                    SendInvoiceDocumentsJob::dispatch($invoice->id)->afterResponse();
+                    SendInvoiceDocumentsJob::dispatch($invoice->id)->afterCommit();
                 } catch (\Exception $mailEx) {
                     \Log::error("Failed to send updated payment receipt email on addPayment to {$notificationEmail}: ".$mailEx->getMessage());
                 }

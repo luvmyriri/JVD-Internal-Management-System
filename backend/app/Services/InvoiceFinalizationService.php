@@ -902,7 +902,7 @@ class InvoiceFinalizationService
                 $invoice->id,
                 $contract?->id,
                 ($context['source'] ?? null) === 'contract',
-            )->afterResponse();
+            )->afterCommit();
         }
 
         /** @var User|null $actor */
