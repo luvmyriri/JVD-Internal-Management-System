@@ -25,6 +25,24 @@ class InvoiceResource extends JsonResource
         $bus = $this->operationalBus();
         $driver = $this->operationalDriver();
 
+        $fleetAssignments = $this->relationLoaded('charterBooking') && $this->charterBooking?->fleet_assignments
+            ? $this->charterBooking->fleet_assignments
+            : null;
+
+        if (empty($fleetAssignments) && $this->relationLoaded('items')) {
+            foreach ($this->items as $item) {
+                $meta = is_array($item->item_metadata) ? $item->item_metadata : json_decode($item->item_metadata ?? '[]', true);
+                if (! empty($meta['fleet_assignments'])) {
+                    $fleetAssignments = $meta['fleet_assignments'];
+                    break;
+                }
+                if (! empty($meta['bus_assignments'])) {
+                    $fleetAssignments = $meta['bus_assignments'];
+                    break;
+                }
+            }
+        }
+
         return [
             'id' => $this->id,
             'invoice_number' => $this->invoice_number,
@@ -72,6 +90,7 @@ class InvoiceResource extends JsonResource
                 'phone' => $driver->phone,
                 'email' => $driver->email,
             ] : null,
+            'fleet_assignments' => $fleetAssignments ?? [],
             'private_tour_booking' => $privateTour ? [
                 'id' => $privateTour->id,
                 'sales_order_item_id' => $privateTour->sales_order_item_id,
@@ -174,6 +193,12 @@ class InvoiceResource extends JsonResource
                     'pickup_location' => $charter->pickup_location, 'destination' => $charter->destination,
                     'passenger_count' => $charter->passenger_count, 'estimated_kilometers' => (float) $charter->estimated_kilometers,
                     'vehicle' => $charter->bus ? ['plate_number' => $charter->bus->plate_number, 'model' => $charter->bus->model] : null,
+                    'driver' => $charter->driver ? [
+                        'id' => $charter->driver->id,
+                        'name' => trim($charter->driver->first_name.' '.$charter->driver->last_name),
+                        'phone' => $charter->driver->phone,
+                    ] : null,
+                    'fleet_assignments' => $charter->fleet_assignments ?: [],
                 ];
             }),
             'educational_tour_booking' => $this->whenLoaded('educationalTourBooking', function () {

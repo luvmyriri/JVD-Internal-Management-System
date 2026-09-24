@@ -31,10 +31,11 @@ export interface BusCharterQuotationData {
 }
 
 export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): string {
+  const totalUnits = data.items.reduce((sum, it) => sum + (Number(it.quantityUnits) || 1), 0);
   const defaultInclusions = [
-    '49 - Seating Capacity / Tourist Bus',
-    'Diesel, Toll fee, Driver & Driver\'s meal',
-    'PAMI INSURANCE / COMPREHENSIVE with 49 unnamed passengers',
+    totalUnits > 1 ? `${totalUnits} Units × 49 - Seating Capacity / Tourist Bus` : '49 - Seating Capacity / Tourist Bus',
+    totalUnits > 1 ? `Diesel, Toll fee, ${totalUnits} Drivers & Drivers' meal` : 'Diesel, Toll fee, Driver & Driver\'s meal',
+    totalUnits > 1 ? `PAMI INSURANCE / COMPREHENSIVE (${totalUnits} units × 49 unnamed passengers)` : 'PAMI INSURANCE / COMPREHENSIVE with 49 unnamed passengers',
   ];
 
   const defaultExclusions = [
@@ -42,7 +43,15 @@ export function generateBusCharterQuotationHtml(data: BusCharterQuotationData): 
     'Parking Fee',
   ];
 
-  const inclusions = data.inclusions && data.inclusions.length > 0 ? data.inclusions : defaultInclusions;
+  const inclusions = (data.inclusions && data.inclusions.length > 0 ? data.inclusions : defaultInclusions).map(inc => {
+    if (totalUnits > 1 && inc === '49 - Seating Capacity / Tourist Bus') {
+      return `${totalUnits} Units × 49 - Seating Capacity / Tourist Bus`;
+    }
+    if (totalUnits > 1 && inc === "Diesel, Toll fee, Driver & Driver's meal") {
+      return `Diesel, Toll fee, ${totalUnits} Drivers & Drivers' meal`;
+    }
+    return inc;
+  });
   const exclusions = data.exclusions && data.exclusions.length > 0 ? data.exclusions : defaultExclusions;
 
   const rowsHtml = data.items.map(item => `
