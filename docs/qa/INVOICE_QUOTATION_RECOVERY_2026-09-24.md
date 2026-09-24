@@ -1,8 +1,8 @@
 # Invoice, quotation, and DTT recovery — 24 September 2026
 
-Branch: `Val-Fix-92426` (includes Gregory's multi-bus branch).
+Branch: `Val-Fix-92426` (includes Gregory's multi-bus branch through `213c4a7`, including editable DTT).
 
-Validation baseline: full Laravel suite passed (372 tests, 2,176 assertions) with Sentry reporting disabled in the test process. Frontend production build and targeted ESLint for transaction, quotation, and DTT flows passed.
+Validation baseline: full Laravel suite passed (373 tests, 2,200 assertions) with Sentry reporting disabled in the test process. Frontend production build and targeted ESLint for transaction, quotation, and DTT flows passed.
 
 ## Verified in code and automated tests
 
@@ -14,6 +14,7 @@ Validation baseline: full Laravel suite passed (372 tests, 2,176 assertions) wit
 | Quotation cannot be sent | Bus charter, fixed-package quotation modal, and educational package now queue server-generated PDF email through the `mail` queue. Bus charter PDF preview uses the saved quotation and VAT snapshot. | `SalesQuotationTest::test_saved_quotation_can_be_queued_and_delivered_as_pdf`; educational send route assertion. |
 | Customer invoice email is invisible after queueing | Every invoice dispatch path records recipient and queued/sending/sent/failed state; transaction details poll while delivery is active and offer retry. | `CustomerDocumentDeliveryTest::test_invoice_delivery_is_queued_with_visible_recipient_and_can_be_retried`. |
 | DTT edit forces approval / budget blocks unrelated edit | Save and Approve are separate actions; unchanged allowance values no longer block nonfinancial edits after budget submission. | `TripTicketConflictTest::test_nonfinancial_dtt_edits_are_allowed_after_cash_budget_submission`. |
+| Linked DTT details cannot be edited safely | Sales details now opens the shared DTT form. Supported charter, private-tour, and transfer bookings synchronize driver, vehicle, date, route, and passengers to their Sales fulfillment. Unit-specific charter reassignment refreshes the saved driver/vehicle snapshot used by the invoice PDF. Conflicting assignments remain blocked. Trip length remains controlled by the Sales booking. | `PrivateTourLogisticsHandoffTest::test_linked_ticket_reschedules_and_rejects_conflicting_assignment`; the two-unit charter test reassigns unit 2 and checks the resulting PDF. |
 
 ## Still requiring environment and client acceptance
 

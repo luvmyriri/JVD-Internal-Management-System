@@ -267,6 +267,35 @@ class CharterBookingTest extends TestCase
         $this->assertStringContainsString('CHARTER-02', $html);
         $this->assertStringContainsString($this->driver->first_name, $html);
         $this->assertStringContainsString($secondDriver->first_name, $html);
+
+        $replacementDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);
+        $replacementBus = Bus::create([
+            'plate_number' => 'CHARTER-03',
+            'model' => 'Replacement Coach',
+            'vehicle_type' => 'bus',
+            'seating_capacity' => 49,
+            'status' => 'available',
+        ]);
+        $this->actingAs($this->user)
+            ->putJson("/api/v1/trip-tickets/{$tickets[1]->id}", [
+                'bus_id' => $replacementBus->id,
+                'driver_id' => $replacementDriver->id,
+            ])->assertOk();
+
+        $assignments = $booking->fresh()->fleet_assignments;
+        $this->assertSame($this->bus->id, $assignments[0]['bus_id']);
+        $this->assertSame($replacementBus->id, $assignments[1]['bus_id']);
+        $this->assertSame($replacementBus->plate_number, $assignments[1]['plate_number']);
+        $this->assertSame($replacementBus->model, $assignments[1]['model']);
+        $this->assertSame($replacementDriver->id, $assignments[1]['driver_id']);
+        $this->assertSame(trim($replacementDriver->first_name.' '.$replacementDriver->last_name), $assignments[1]['driver_name']);
+        $this->assertSame($this->bus->id, $tickets[0]->fresh()->bus_id);
+        $this->assertSame($replacementBus->id, $tickets[1]->fresh()->bus_id);
+        $updatedHtml = view('pdf.invoice', ['invoice' => $invoice->fresh()->load(Invoice::operationalDocumentRelations())])->render();
+        $this->assertStringContainsString('CHARTER-01', $updatedHtml);
+        $this->assertStringContainsString('CHARTER-03', $updatedHtml);
+        $this->assertStringContainsString($replacementDriver->first_name, $updatedHtml);
+        $this->assertStringNotContainsString('CHARTER-02', $updatedHtml);
     }
 
     public function test_active_charter_booking_can_update_operations_and_manifest(): void

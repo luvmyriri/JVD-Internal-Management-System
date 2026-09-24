@@ -1,4 +1,5 @@
 import client from './client';
+import type { TripTicket } from '../types';
 
 export type SalesOrderStatus = 'draft' | 'quoted' | 'awaiting_payment' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
 
@@ -47,17 +48,7 @@ export interface SalesOrder {
     customer_contact?: string | null;
     customer_address?: string | null;
     contract?: { id: number; contract_number: string; status: string } | null;
-    trip_tickets?: Array<{
-      id: number;
-      control_no: string;
-      status: string;
-      date_of_travel?: string | null;
-      pick_up?: string | null;
-      drop_off?: string | null;
-      no_of_passengers?: number | null;
-      bus?: { id: number; plate_number: string; model?: string | null } | null;
-      driver?: { id: number; first_name: string; last_name: string } | null;
-    }>;
+    trip_tickets?: TripTicket[];
   };
   items: SalesOrderItem[];
 }

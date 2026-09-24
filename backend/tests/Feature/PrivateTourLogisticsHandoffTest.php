@@ -12,8 +12,8 @@ use App\Models\SalesOrderItem;
 use App\Models\Service;
 use App\Models\TripTicket;
 use App\Models\User;
-use App\Services\ResourceAllocationService;
 use App\Services\DocumentPdfService;
+use App\Services\ResourceAllocationService;
 use App\Services\TripTicketService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
@@ -131,32 +131,53 @@ class PrivateTourLogisticsHandoffTest extends TestCase
 
         if (getenv('JVD_WRITE_PRIVATE_TOUR_PDF') === '1') {
             $directory = base_path('tmp/pdfs');
-            if (!is_dir($directory)) mkdir($directory, 0777, true);
+            if (! is_dir($directory)) {
+                mkdir($directory, 0777, true);
+            }
             app(DocumentPdfService::class)
                 ->render('pdf.invoice', ['invoice' => $invoice, 'taxRate' => 0.12])
                 ->save($directory.'/private-tour-invoice.pdf');
         }
     }
 
-    public function test_linked_ticket_rejects_schedule_drift_and_rolls_back_conflicting_assignment(): void
+    public function test_linked_ticket_reschedules_and_rejects_conflicting_assignment(): void
     {
         Notification::fake();
         [$agent, $orderItem, $fulfillment] = $this->privateTourSale();
         $ticket = app(TripTicketService::class)->ensureDraftForSalesItem($orderItem, $agent->id);
 
         $this->actingAs($agent)
+            ->putJson("/api/v1/trip-tickets/{$ticket->id}", ['duration' => '9 days'])
+            ->assertUnprocessable();
+
+        $newTravelDate = now()->addMonths(4)->toDateString();
+        $this->actingAs($agent)
             ->putJson("/api/v1/trip-tickets/{$ticket->id}", [
-                'date_of_travel' => now()->addMonths(4)->toDateString(),
+                'date_of_travel' => $newTravelDate,
             ])
-            ->assertUnprocessable()
-            ->assertJsonPath('message', 'This trip schedule came from a confirmed sale. Amend or rebook its dates in Sales so the invoice, customer itinerary, and fleet allocation remain synchronized.');
+            ->assertOk();
+
+        $this->assertSame($newTravelDate, $ticket->fresh()->date_of_travel);
+        $this->assertSame($newTravelDate, $fulfillment->fresh()->starts_at->toDateString());
+        $this->actingAs($agent)
+            ->putJson("/api/v1/trip-tickets/{$ticket->id}", [
+                'pick_up' => 'New Pickup',
+                'drop_off' => 'New Destination',
+                'no_of_passengers' => 3,
+            ])
+            ->assertOk();
+        $fulfillment->refresh();
+        $this->assertSame('New Pickup', $fulfillment->pickup_location);
+        $this->assertSame('New Destination', $fulfillment->destination);
+        $this->assertSame(3, $fulfillment->passenger_count);
+        $this->assertSame('New Destination', $ticket->fresh()->drop_off);
 
         $occupiedBus = $this->bus('BUSY-303');
         $occupiedDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);
         $blocker = TripTicket::create([
             'control_no' => 'DTT-BLOCKER-1',
             'issue_date' => now()->toDateString(),
-            'date_of_travel' => $ticket->date_of_travel,
+            'date_of_travel' => $newTravelDate,
             'duration' => $ticket->duration,
             'pick_up' => 'Depot',
             'drop_off' => 'Occupied Route',

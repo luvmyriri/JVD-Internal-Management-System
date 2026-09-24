@@ -1,14 +1,17 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   BusFront,
   CalendarDays,
   Download,
+  Edit3,
   FileCheck2,
   FileText,
   GraduationCap,
   Loader2,
   MapPin,
+  Printer,
   ReceiptText,
   Route,
   ScrollText,
@@ -20,6 +23,9 @@ import toast from 'react-hot-toast';
 import { educationalTourApi } from '../../api/educationalTours';
 import { contractsApi } from '../../api/contracts';
 import { salesOrderApi, type SalesDocumentType, type SalesOrder, type SalesOrderItem } from '../../api/salesOrders';
+import type { TripTicket } from '../../types';
+import TripTicketFormModal from '../logistics/TripTicketFormModal';
+import { printTripTicket } from '../logistics/printTripTicket';
 
 const money = (value: unknown) => new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(Number(value ?? 0));
 const dateTime = (value?: string | null) => value
@@ -119,7 +125,10 @@ function ServiceFacts({ item }: { item: SalesOrderItem }) {
 
 export function SalesTransactionDetails() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const invoiceId = Number(useParams().invoiceId);
+  const [editingTicket, setEditingTicket] = useState<TripTicket | null>(null);
+
   const query = useQuery({
     queryKey: ['sales-transaction-details', invoiceId],
     queryFn: () => salesOrderApi.getByInvoice(invoiceId),
@@ -172,7 +181,90 @@ export function SalesTransactionDetails() {
 
     <section className="rounded-2xl border border-border bg-surface"><div className="border-b border-border p-5"><h2 className="text-xl font-black text-ink">Travel services and fulfillment</h2><p className="mt-1 text-sm text-muted">The saved operational record for each service sold in this transaction.</p></div><div className="divide-y divide-border">{order.items.map(item => <article key={item.id} className="p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><h3 className="text-lg font-black text-ink">{item.title}</h3><span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase text-blue-700">{titleCase(item.service_type)}</span></div><p className="mt-2 max-w-3xl text-sm leading-6 text-muted">{item.description || 'No additional description recorded.'}</p></div><strong className="shrink-0 text-lg text-brand">{money(item.total_amount)}</strong></div><div className="mt-4 flex flex-wrap gap-4 text-xs font-bold text-muted"><span className="flex items-center gap-1.5"><CalendarDays className="h-4 w-4" />{dateTime(item.scheduled_start)}</span>{item.traveler_count != null && <span className="flex items-center gap-1.5"><UsersRound className="h-4 w-4" />{item.traveler_count} travelers</span>}</div><ServiceFacts item={item} /></article>)}</div></section>
 
-    <section className="rounded-2xl border border-border bg-surface"><div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-black text-ink">Driver&apos;s Trip Ticket handoff</h2><p className="mt-1 text-sm text-muted">DTT records generated from the same Sales fulfillment and assignments.</p></div><button type="button" onClick={() => navigate('/logistics/trip-tickets')} className="rounded-xl bg-[#071b33] px-4 py-2.5 text-xs font-black text-white"><Route className="mr-2 inline h-4 w-4" />Open Trip Tickets</button></div>{tickets.length === 0 ? <div className="p-8 text-center"><BusFront className="mx-auto h-7 w-7 text-muted" /><p className="mt-3 font-black text-ink">No DTT is required or assigned yet</p><p className="mt-1 text-sm text-muted">Travel services receive a draft DTT after a valid vehicle/schedule fulfillment is confirmed.</p></div> : <div className="divide-y divide-border">{tickets.map(ticket => <div key={ticket.id} className="grid gap-3 p-5 sm:grid-cols-[1fr_1fr_1fr_auto] sm:items-center"><div><p className="text-[10px] font-black uppercase text-muted">Control number</p><p className="mt-1 font-black text-ink">{ticket.control_no}</p></div><div><p className="text-[10px] font-black uppercase text-muted">Route</p><p className="mt-1 text-sm font-semibold text-ink">{ticket.pick_up || 'TBA'} → {ticket.drop_off || 'TBA'}</p></div><div><p className="text-[10px] font-black uppercase text-muted">Assignment</p><p className="mt-1 text-sm font-semibold text-ink">{ticket.bus?.plate_number || 'Vehicle TBA'} · {ticket.driver ? `${ticket.driver.first_name} ${ticket.driver.last_name}` : 'Driver TBA'}</p></div><span className="rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black uppercase text-emerald-700">{ticket.status}</span></div>)}</div>}</section>
+    <section className="rounded-2xl border border-border bg-surface">
+      <div className="flex flex-col gap-3 border-b border-border p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-black text-ink">Driver&apos;s Trip Ticket handoff</h2>
+          <p className="mt-1 text-sm text-muted">DTT records generated from the same Sales fulfillment and assignments.</p>
+        </div>
+        <button type="button" onClick={() => navigate('/logistics/trip-tickets')} className="rounded-xl bg-[#071b33] px-4 py-2.5 text-xs font-black text-white hover:bg-slate-800 transition-colors">
+          <Route className="mr-2 inline h-4 w-4" />Open Trip Tickets
+        </button>
+      </div>
+      {tickets.length === 0 ? (
+        <div className="p-8 text-center">
+          <BusFront className="mx-auto h-7 w-7 text-muted" />
+          <p className="mt-3 font-black text-ink">No DTT is required or assigned yet</p>
+          <p className="mt-1 text-sm text-muted">Travel services receive a draft DTT after a valid vehicle/schedule fulfillment is confirmed.</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-border">
+          {tickets.map(ticket => (
+            <div key={ticket.id} className="grid gap-4 p-5 sm:grid-cols-[1.2fr_1.5fr_1.5fr_auto_auto] sm:items-center">
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted">
+                  Control number {ticket.assignment_index !== undefined ? `· Unit #${Number(ticket.assignment_index) + 1}` : ''}
+                </p>
+                <p className="mt-1 font-black text-ink">{ticket.control_no}</p>
+                <p className="mt-0.5 text-xs text-muted">{ticket.date_of_travel || 'Date TBA'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted">Route & Passengers</p>
+                <p className="mt-1 text-sm font-semibold text-ink">{ticket.pick_up || 'TBA'} → {ticket.drop_off || (ticket as any).destination || 'TBA'}</p>
+                <p className="mt-0.5 text-xs text-muted">{ticket.no_of_passengers || 1} pax {ticket.passenger_name ? `· ${ticket.passenger_name}` : ''}</p>
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase text-muted">Assignment</p>
+                <p className="mt-1 text-sm font-semibold text-ink">{ticket.bus?.plate_number || ticket.plate_no || 'Vehicle TBA'}</p>
+                <p className="mt-0.5 text-xs text-muted">{ticket.driver ? `${ticket.driver.first_name || ''} ${ticket.driver.last_name || (ticket.driver as any).name || ''}`.trim() : 'Driver TBA'}</p>
+              </div>
+              <div>
+                <span className={`inline-block rounded-full px-3 py-1.5 text-xs font-black uppercase ${
+                  ticket.status === 'approved'
+                    ? 'bg-blue-50 text-blue-700'
+                    : ticket.status === 'completed'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : 'bg-amber-50 text-amber-700'
+                }`}>
+                  {ticket.status}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingTicket(ticket)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2 text-xs font-bold text-blue-700 hover:bg-blue-100 hover:border-blue-300 transition-all shadow-sm"
+                >
+                  <Edit3 className="h-3.5 w-3.5" />
+                  Edit DTT
+                </button>
+                <button
+                  type="button"
+                  onClick={() => printTripTicket(ticket)}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-xs font-bold text-ink hover:bg-surface-alt transition-colors"
+                  title="Print Driver's Trip Ticket"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  Print
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+
+    {editingTicket && (
+      <TripTicketFormModal
+        ticket={editingTicket}
+        onClose={() => setEditingTicket(null)}
+        onSaved={async () => {
+          await query.refetch();
+          qc.invalidateQueries({ queryKey: ['sales-transaction-details', invoiceId] });
+          qc.invalidateQueries({ queryKey: ['trip-tickets'] });
+        }}
+      />
+    )}
   </div>;
 }
 
