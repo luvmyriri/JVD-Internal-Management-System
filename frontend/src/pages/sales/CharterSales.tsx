@@ -161,6 +161,12 @@ export default function CharterSales() {
 
   const selectedBus = useMemo(() => resources?.buses.find(b => b.id === Number(busAssignments?.[0]?.bus_id || booking.bus_id)), [resources, busAssignments, booking.bus_id]);
   const selectedDriver = useMemo(() => resources?.drivers.find(d => d.id === Number(busAssignments?.[0]?.driver_id || booking.driver_id)), [resources, busAssignments, booking.driver_id]);
+  const [previewUnitIndex, setPreviewUnitIndex] = useState(0);
+  const activePreviewBus = useMemo(() => {
+    const assignment = busAssignments?.[previewUnitIndex] || busAssignments?.[0];
+    const busId = Number(assignment?.bus_id || booking.bus_id);
+    return resources?.buses.find(b => b.id === busId) || selectedBus;
+  }, [resources, busAssignments, previewUnitIndex, booking.bus_id, selectedBus]);
 
   const paxCount = Math.max(1, Number(booking.passenger_count || 1));
   const primaryCapacity = selectedBus?.seating_capacity || (selectedPlan?.vehicle_class === 'van' ? 14 : selectedPlan?.vehicle_class === 'coaster' ? 29 : 49);
@@ -385,10 +391,33 @@ export default function CharterSales() {
     
     const assignedPlates = assignedBusesList.map(b => b?.plate_number).join(', ') || 'TBD';
 
-    const sanitizedAssignments = busAssignments.slice(0, busesRequired).map(a => ({
-      bus_id: Number(a.bus_id) || null,
-      driver_id: a.driver_id ? Number(a.driver_id) : null,
-    }));
+    const sanitizedAssignments = busAssignments.slice(0, busesRequired).map((a, idx) => {
+      const bus = resources?.buses.find(b => b.id === Number(a.bus_id));
+      const driver = resources?.drivers.find(d => d.id === Number(a.driver_id));
+      return {
+        unit_number: idx + 1,
+        bus_id: Number(a.bus_id) || null,
+        driver_id: a.driver_id ? Number(a.driver_id) : null,
+        plate_number: bus?.plate_number || 'TBD',
+        model: bus?.model || '',
+        seating_capacity: bus?.seating_capacity || 0,
+        driver_name: driver ? `${driver.first_name} ${driver.last_name}`.trim() : 'TBD',
+        driver_phone: (driver as any)?.phone || '',
+      };
+    });
+
+    const assignedDriversList = busAssignments
+      .slice(0, busesRequired)
+      .map(a => resources?.drivers.find(d => d.id === Number(a.driver_id)))
+      .filter(Boolean);
+    const assignedDriversStr = assignedDriversList
+      .map(d => `${d?.first_name} ${d?.last_name}`.trim())
+      .filter(Boolean)
+      .join(', ');
+
+    const unitBreakdownStr = sanitizedAssignments.map(u => 
+      `Unit ${u.unit_number}: ${u.plate_number}${u.model ? ` (${u.model})` : ''} - Driver: ${u.driver_name}`
+    ).join(' | ');
 
     return [{
       cartId: `charter-${selectedPlan.id}`,
@@ -405,7 +434,7 @@ export default function CharterSales() {
       busId: Number(busAssignments[0]?.bus_id) || undefined,
       selectedSeats: selectedSeats.length > 0 ? selectedSeats : undefined,
       driverId: Number(busAssignments[0]?.driver_id) || undefined,
-      driverName: selectedDriver ? `${selectedDriver.first_name} ${selectedDriver.last_name}` : undefined,
+      driverName: assignedDriversStr || (selectedDriver ? `${selectedDriver.first_name} ${selectedDriver.last_name}` : undefined),
       travelDate: booking.starts_at ? booking.starts_at.slice(0, 10) : undefined,
       departureDate: booking.starts_at,
       arrivalDate: booking.ends_at,
@@ -414,7 +443,7 @@ export default function CharterSales() {
       paxCount: bookingMode === 'entire_vehicle' ? primaryCapacity : (selectedSeats.length || paxCount),
       passengers: manifestPassengers,
       lineName: `Bus Charter: ${selectedPlan.name} (${busesRequired} Bus${busesRequired > 1 ? 'es' : ''} for ${paxCount} Pax)`,
-      lineDescription: `${busesRequired} × Vehicles required for ${paxCount} passengers. ${bookingMode === 'entire_vehicle' ? 'Entire Vehicle Charter' : `Specific Seats: ${selectedSeats.join(', ')}`}. Assigned Vehicles: ${assignedPlates}.`,
+      lineDescription: `${busesRequired} × Vehicles required for ${paxCount} passengers. ${bookingMode === 'entire_vehicle' ? 'Entire Vehicle Charter' : `Specific Seats: ${selectedSeats.join(', ')}`}. Fleet & Drivers: ${unitBreakdownStr}.`,
       serviceType: 'bus_rental',
       lineMetadata: {
         rate_plan_id: selectedPlan.id,
@@ -430,6 +459,7 @@ export default function CharterSales() {
         requested_units: busesRequired,
         includes_driver: Boolean(selectedPlan.includes_driver),
         bus_assignments: sanitizedAssignments,
+        fleet_assignments: sanitizedAssignments,
         selected_seats: selectedSeats,
         booking_mode: bookingMode,
         passengers: manifestPassengers,
@@ -1008,17 +1038,37 @@ export default function CharterSales() {
             ))}
           </div>
 
-          {selectedBus && (
+          {activePreviewBus && (
             <div className="mt-5 border-t border-border pt-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-black text-ink">
-                  Selected Seating Blueprint ({selectedBus.plate_number} · {selectedBus.model})
-                </p>
-                <span className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-xs font-black text-ink">
+                    Selected Seating Blueprint: Unit #{previewUnitIndex + 1} ({activePreviewBus.plate_number} · {activePreviewBus.model || 'Standard'})
+                  </p>
+                  {busesRequired > 1 && (
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: busesRequired }).map((_, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setPreviewUnitIndex(idx)}
+                          className={`px-2.5 py-0.5 text-[11px] font-bold rounded-lg border transition ${
+                            previewUnitIndex === idx
+                              ? 'bg-primary text-white border-primary shadow-xs'
+                              : 'bg-surface text-ink-muted border-border hover:bg-neutral-50 dark:hover:bg-neutral-800'
+                          }`}
+                        >
+                          Unit {idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <span className="text-xs font-bold text-amber-600 bg-amber-50 dark:bg-amber-950/40 px-3 py-1 rounded-full w-fit">
                   {bookingMode === 'entire_vehicle' ? 'Entire Vehicle Charter' : `Specific Seats: ${selectedSeats.join(', ')}`}
                 </span>
               </div>
-              <BusLayout viewOnly={bookingMode === 'entire_vehicle'} totalSeats={selectedBus.seating_capacity} selectedSeats={selectedSeats} hasRestroom={selectedBus.bus_category === 'VIP'} />
+              <BusLayout viewOnly={bookingMode === 'entire_vehicle'} totalSeats={activePreviewBus.seating_capacity} selectedSeats={selectedSeats} hasRestroom={activePreviewBus.bus_category === 'VIP'} />
             </div>
           )}
         </section>

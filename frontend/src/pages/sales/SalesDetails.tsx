@@ -43,15 +43,78 @@ function ErrorState({ retry }: { retry: () => void }) {
 }
 
 function ServiceFacts({ item }: { item: SalesOrderItem }) {
-  const source = item.fulfillment ?? item.details_snapshot ?? {};
-  const hidden = new Set(['id', 'created_at', 'updated_at', 'deleted_at', 'invoice_id', 'customer_id', 'created_by']);
+  const source: Record<string, any> = (item.fulfillment ?? item.details_snapshot ?? (item as any).item_metadata ?? {}) as any;
+  const rawFleet = source.fleet_assignments ||
+    source.bus_assignments ||
+    ((item as any).item_metadata as any)?.fleet_assignments ||
+    ((item as any).item_metadata as any)?.bus_assignments;
+  const fleetAssignments: any[] = Array.isArray(rawFleet) ? rawFleet : [];
+
+  const hidden = new Set([
+    'id', 'created_at', 'updated_at', 'deleted_at', 'invoice_id', 'customer_id', 'created_by',
+    'fleet_assignments', 'bus_assignments', 'assignments', 'pricing_snapshot', 'selected_seats', 'passengers',
+    ...(fleetAssignments.length > 0 ? ['bus_id', 'driver_id'] : []),
+  ]);
   const facts = Object.entries(source)
     .filter(([key, value]) => !hidden.has(key) && value !== null && value !== '' && typeof value !== 'object')
-    .slice(0, 10);
+    .slice(0, 12);
 
-  return facts.length ? <dl className="mt-4 grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-    {facts.map(([key, value]) => <div key={key} className="min-w-0"><dt className="text-[10px] font-black uppercase tracking-wider text-muted">{titleCase(key)}</dt><dd className="mt-1 break-words text-sm font-semibold text-ink">{readable(value)}</dd></div>)}
-  </dl> : <p className="mt-3 text-xs text-muted">Operational particulars remain linked to the owning service workflow.</p>;
+  return (
+    <div className="mt-4 space-y-4">
+      {fleetAssignments.length > 0 && (
+        <div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-4 dark:border-blue-900/40 dark:bg-blue-950/20">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h4 className="text-xs font-black uppercase tracking-wider text-blue-800 dark:text-blue-300">
+              Allocated Fleet &amp; Drivers ({fleetAssignments.length} {fleetAssignments.length > 1 ? 'Units' : 'Unit'})
+            </h4>
+            <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/60 px-2.5 py-0.5 rounded-full">
+              Fleet Breakdown
+            </span>
+          </div>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {fleetAssignments.map((unit: any, idx: number) => (
+              <div key={idx} className="rounded-xl border border-blue-200/70 bg-white p-3 shadow-xs dark:border-neutral-700 dark:bg-neutral-800">
+                <div className="flex items-center justify-between text-xs mb-1.5">
+                  <span className="font-black text-ink">Unit #{unit.unit_number || idx + 1}</span>
+                  {unit.seating_capacity > 0 && (
+                    <span className="text-[11px] font-semibold text-muted">{unit.seating_capacity} Seats</span>
+                  )}
+                </div>
+                <div className="text-sm font-bold text-primary">
+                  {unit.plate_number ? unit.plate_number : `Bus #${unit.bus_id || 'TBD'}`}
+                </div>
+                {unit.model && (
+                  <div className="text-xs text-muted font-medium mt-0.5">{unit.model}</div>
+                )}
+                <div className="mt-2 pt-2 border-t border-neutral-100 dark:border-neutral-700/60 flex flex-col text-xs">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted">Assigned Driver</span>
+                  <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                    {unit.driver_name || (unit.driver_id ? `Driver #${unit.driver_id}` : 'Unassigned')}
+                  </span>
+                  {unit.driver_phone && (
+                    <span className="text-[11px] text-muted">{unit.driver_phone}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {facts.length ? (
+        <dl className="grid gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+          {facts.map(([key, value]) => (
+            <div key={key} className="min-w-0">
+              <dt className="text-[10px] font-black uppercase tracking-wider text-muted">{titleCase(key)}</dt>
+              <dd className="mt-1 break-words text-sm font-semibold text-ink">{readable(value)}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : !fleetAssignments.length ? (
+        <p className="mt-3 text-xs text-muted">Operational particulars remain linked to the owning service workflow.</p>
+      ) : null}
+    </div>
+  );
 }
 
 export function SalesTransactionDetails() {

@@ -458,15 +458,32 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                           Vehicle: {item.vehicleType} {item.extraDays ? `| +${item.extraDays} Days` : ''} {item.extraHours ? `| +${item.extraHours} Hrs` : ''}
                         </p>
                       )}
-                      {item.busId && (
-                        <p className="text-[9px] text-blue-600 dark:text-blue-450 font-black mt-1 uppercase tracking-tight">
-                          Bus Assigned (ID: {item.busId}) {item.selectedSeats && item.selectedSeats.length > 0 ? `| Seats: ${item.selectedSeats.join(', ')}` : ''}
-                        </p>
-                      )}
-                      {item.driverName && (
-                        <p className="text-[9px] text-emerald-600 dark:text-emerald-450 font-black mt-1 uppercase tracking-tight">
-                          Driver Assigned: {item.driverName}
-                        </p>
+                      {Array.isArray(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments) && (item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).length > 0 ? (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-[9px] text-blue-700 dark:text-blue-400 font-black uppercase tracking-wider">
+                            Allocated Fleet &amp; Drivers ({(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).length} Units):
+                          </p>
+                          {(item.lineMetadata?.bus_assignments || item.lineMetadata?.fleet_assignments).map((unit: any, uIdx: number) => (
+                            <div key={uIdx} className="text-[9px] bg-neutral-50 dark:bg-neutral-800/60 rounded px-1.5 py-0.5 border border-neutral-200/60 dark:border-neutral-700/50 flex flex-wrap gap-x-2 text-gray-700 dark:text-gray-300">
+                              <span className="font-bold text-gray-900 dark:text-gray-100">Unit {unit.unit_number || uIdx + 1}:</span>
+                              <span>{unit.plate_number ? unit.plate_number : `Bus #${unit.bus_id}`}{unit.model ? ` (${unit.model})` : ''}</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">• Driver: {unit.driver_name || (unit.driver_id ? `Driver #${unit.driver_id}` : 'Unassigned')}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <>
+                          {item.busId && (
+                            <p className="text-[9px] text-blue-600 dark:text-blue-450 font-black mt-1 uppercase tracking-tight">
+                              Bus Assigned (ID: {item.busId}) {item.selectedSeats && item.selectedSeats.length > 0 ? `| Seats: ${item.selectedSeats.join(', ')}` : ''}
+                            </p>
+                          )}
+                          {item.driverName && (
+                            <p className="text-[9px] text-emerald-600 dark:text-emerald-450 font-black mt-1 uppercase tracking-tight">
+                              Driver Assigned: {item.driverName}
+                            </p>
+                          )}
+                        </>
                       )}
                       {item.travelDate && (
                         <p className="text-[9px] text-indigo-600 dark:text-indigo-400 font-black mt-1 uppercase tracking-tight">
@@ -1050,27 +1067,70 @@ export default function SalesCheckout({ cart, removeFromCart, updateQuantity, cl
                   </tbody>
                 </table>
 
-                {lastInvoice?.bus && (
-                  <div className="my-4 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-left">
-                    <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Bus Rental Assignment</p>
-                    <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">Bus Plate #: {lastInvoice.bus.plate_number}</p>
-                    <p className="text-[10px] font-bold text-gray-500 mt-0.5">Model: {lastInvoice.bus.model}</p>
-                    {lastInvoice.seat_map && lastInvoice.seat_map.length > 0 && (
-                      <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
-                        Seats Booked: {lastInvoice.seat_map.join(', ')} ({lastInvoice.seat_map.length} seats)
-                      </p>
-                    )}
-                  </div>
-                )}
+                {(() => {
+                  const rawFleet = (lastInvoice as any)?.fleet_assignments ||
+                    (lastInvoice as any)?.charter_booking?.fleet_assignments ||
+                    lastInvoice?.items?.map((it: any) => it.item_metadata?.fleet_assignments || it.item_metadata?.bus_assignments).filter(Boolean).flat() ||
+                    [];
+                  const fleetList: any[] = Array.isArray(rawFleet) ? rawFleet : [];
 
-                {lastInvoice?.driver && (
-                  <div className="my-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-left">
-                    <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Driver Assignment</p>
-                    <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">
-                      {lastInvoice.driver.first_name} {lastInvoice.driver.last_name}
-                    </p>
-                  </div>
-                )}
+                  if (fleetList.length > 0) {
+                    return (
+                      <div className="my-4 p-4 bg-blue-50/60 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-2xl text-left">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[9px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">
+                            Assigned Fleet &amp; Drivers ({fleetList.length} Units)
+                          </p>
+                          <span className="text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/60 px-2 py-0.5 rounded-full">
+                            Multi-Unit Fleet
+                          </span>
+                        </div>
+                        <div className="space-y-2 mt-2">
+                          {fleetList.map((unit: any, idx: number) => (
+                            <div key={idx} className="p-2.5 bg-white dark:bg-neutral-800/80 rounded-xl border border-blue-100 dark:border-neutral-700 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs">
+                              <div>
+                                <span className="font-black text-gray-900 dark:text-white mr-2">Unit #{unit.unit_number || idx + 1}:</span>
+                                <span className="font-bold text-primary">{unit.plate_number || `Bus #${unit.bus_id}`}</span>
+                                {unit.model && <span className="text-gray-500 dark:text-gray-400 ml-1">({unit.model})</span>}
+                                {unit.seating_capacity > 0 && <span className="text-gray-400 dark:text-gray-500 ml-1 text-[11px]">· {unit.seating_capacity} seats</span>}
+                              </div>
+                              <div className="text-emerald-700 dark:text-emerald-400 font-semibold text-[11px]">
+                                Driver: {unit.driver_name || (unit.driver_id ? `Driver #${unit.driver_id}` : 'Unassigned')}
+                                {unit.driver_phone && <span className="text-gray-400 ml-1 font-normal">({unit.driver_phone})</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <>
+                      {lastInvoice?.bus && (
+                        <div className="my-4 p-4 bg-blue-50/50 border border-blue-100 rounded-2xl text-left">
+                          <p className="text-[9px] font-black text-blue-600 uppercase tracking-widest">Bus Rental Assignment</p>
+                          <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">Bus Plate #: {lastInvoice.bus.plate_number}</p>
+                          <p className="text-[10px] font-bold text-gray-500 mt-0.5">Model: {lastInvoice.bus.model}</p>
+                          {lastInvoice.seat_map && lastInvoice.seat_map.length > 0 && (
+                            <p className="text-[10px] font-bold text-gray-500 mt-0.5 uppercase tracking-wider">
+                              Seats Booked: {lastInvoice.seat_map.join(', ')} ({lastInvoice.seat_map.length} seats)
+                            </p>
+                          )}
+                        </div>
+                      )}
+
+                      {lastInvoice?.driver && (
+                        <div className="my-4 p-4 bg-emerald-50/50 border border-emerald-100 rounded-2xl text-left">
+                          <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Driver Assignment</p>
+                          <p className="text-[11px] font-black text-gray-900 mt-1 uppercase">
+                            {lastInvoice.driver.first_name} {lastInvoice.driver.last_name}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
 
                 {(lastInvoice?.travel_date || lastInvoice?.tour_code || lastInvoice?.pickup_location || lastInvoice?.pax_count) && (
                   <div className="my-4 p-4 bg-indigo-50/50 border border-indigo-100 rounded-2xl text-left">
