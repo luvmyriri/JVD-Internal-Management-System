@@ -427,7 +427,7 @@ class EducationalTourPackageController extends Controller
     // Generate quotation PDF
     public function quotation(EducationalTourPackage $package, DocumentPdfService $documents)
     {
-        $pdf = $documents->render('pdf.quotation-template', ['package' => $package->loadMissing(['program', 'schoolCustomer'])]);
+        $pdf = $documents->render('pdf.quotation-template', ['package' => $package->loadMissing(['program.service', 'schoolCustomer'])]);
 
         return $pdf->download('quotation_'.$package->id.'.pdf');
     }

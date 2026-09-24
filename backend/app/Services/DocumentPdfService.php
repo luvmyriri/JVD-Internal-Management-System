@@ -19,6 +19,49 @@ class DocumentPdfService
     }
 
     /**
+     * Resolve an image path (storage, public, or URL) into a base64 data URI for safe Dompdf rendering.
+     */
+    public static function imageToBase64(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'data:image/')) {
+            return $path;
+        }
+
+        $cleanPath = ltrim(parse_url($path, PHP_URL_PATH) ?? '', '/');
+
+        $candidates = [
+            storage_path('app/public/' . (str_starts_with($cleanPath, 'storage/') ? substr($cleanPath, 8) : $cleanPath)),
+            public_path($cleanPath),
+            public_path('storage/' . (str_starts_with($cleanPath, 'storage/') ? substr($cleanPath, 8) : $cleanPath)),
+            storage_path('app/' . $cleanPath),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (file_exists($candidate) && is_file($candidate)) {
+                $mime = mime_content_type($candidate) ?: 'image/jpeg';
+                $data = file_get_contents($candidate);
+                if ($data !== false) {
+                    return 'data:' . $mime . ';base64,' . base64_encode($data);
+                }
+            }
+        }
+
+        if (filter_var($path, FILTER_VALIDATE_URL) && ini_get('allow_url_fopen')) {
+            $context = stream_context_create(['http' => ['timeout' => 2]]);
+            $data = @file_get_contents($path, false, $context);
+            if ($data !== false) {
+                return 'data:image/jpeg;base64,' . base64_encode($data);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Render a PDF from a Blade view.
      *
      * @param string $view Blade view name (e.g. 'pdf.quotation-template')

@@ -37,12 +37,12 @@ class SendQuotationJob implements ShouldQueue
     public function handle(DocumentPdfService $documents): void
     {
         if ($this->kind === 'sales') {
-            $quotation = SalesQuotation::findOrFail($this->quotationId);
+            $quotation = SalesQuotation::with(['customer', 'service', 'preparer'])->findOrFail($this->quotationId);
             $pdf = $documents->render('pdf.sales-quotation', ['quotation' => $quotation])->output();
             $customerName = $quotation->client_name;
             $reference = $quotation->quotation_number;
         } elseif ($this->kind === 'educational') {
-            $package = EducationalTourPackage::with(['program', 'schoolCustomer'])->findOrFail($this->quotationId);
+            $package = EducationalTourPackage::with(['program.service', 'schoolCustomer'])->findOrFail($this->quotationId);
             $pdf = $documents->render('pdf.quotation-template', ['package' => $package])->output();
             $customerName = $package->school_name ?: 'Customer';
             $reference = $package->tour_code;

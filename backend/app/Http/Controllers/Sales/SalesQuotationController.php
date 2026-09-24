@@ -17,6 +17,8 @@ class SalesQuotationController extends Controller
 {
     public function pdf(SalesQuotation $quotation, DocumentPdfService $documents)
     {
+        $quotation->loadMissing(['customer', 'service', 'preparer']);
+
         return $documents->render('pdf.sales-quotation', ['quotation' => $quotation])
             ->download("Quotation_{$quotation->quotation_number}.pdf");
     }
