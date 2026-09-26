@@ -146,16 +146,40 @@ export function printTripTicket(ticket: TripTicket) {
       padding: 8px 12px;
     }
     .liq-right .fuel-title { font-weight: 900; font-size: 12px; margin-bottom: 6px; }
+    .fuel-grid {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .fuel-col {
+      flex: 1;
+    }
+    .fuel-col-title {
+      font-weight: 700;
+      font-size: 10.5px;
+      margin-bottom: 4px;
+    }
     .gauge-row {
       display: flex;
-      gap: 20px;
+      gap: 10px;
       align-items: flex-end;
-      margin: 8px 0;
+      margin: 4px 0;
       font-size: 10.5px;
     }
-    .gauge-item { text-align: center; }
+    .gauge-item { text-align: center; flex: 1; }
     .gauge-label { font-weight: 700; margin-bottom: 4px; font-size: 10.5px; }
     .gauge-svg { display: block; margin: 0 auto; }
+    .digital-seg {
+      cursor: pointer;
+      transition: fill 0.15s ease;
+    }
+    .digital-seg:hover {
+      opacity: 0.75;
+    }
+    .edit-locked .digital-seg {
+      cursor: default !important;
+    }
     .odometer-row { margin-top: 10px; }
     .odometer-row .od-label { font-weight: 700; font-size: 11px; margin-bottom: 4px; }
     .od-line { border-bottom: 1px solid #000; min-height: 18px; margin-bottom: 3px; }
@@ -441,28 +465,71 @@ export function printTripTicket(ticket: TripTicket) {
 
       <div class="liq-right">
         <div class="fuel-title">Fuel Consumed for the Trip</div>
-        <div style="font-size:10.5px; margin-bottom:6px;">Fuel Gauge Reading</div>
-        <div class="gauge-row">
-          <div class="gauge-item">
-            <div class="gauge-label">Before</div>
-            <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
-              <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <text x="2" y="47" font-size="9" font-weight="700">E</text>
-              <text x="70" y="47" font-size="9" font-weight="700">F</text>
-            </svg>
+        <div class="fuel-grid">
+          <!-- Fuel Gauge Reading (Analog) -->
+          <div class="fuel-col">
+            <div class="fuel-col-title">Fuel Gauge Reading</div>
+            <div class="gauge-row">
+              <div class="gauge-item">
+                <div class="gauge-label">Before</div>
+                <svg class="gauge-svg" width="76" height="46" viewBox="0 0 80 48">
+                  <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
+                  <text x="2" y="47" font-size="9" font-weight="700">E</text>
+                  <text x="70" y="47" font-size="9" font-weight="700">F</text>
+                </svg>
+              </div>
+              <div class="gauge-item">
+                <div class="gauge-label">After</div>
+                <svg class="gauge-svg" width="76" height="46" viewBox="0 0 80 48">
+                  <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
+                  <text x="2" y="47" font-size="9" font-weight="700">E</text>
+                  <text x="70" y="47" font-size="9" font-weight="700">F</text>
+                </svg>
+              </div>
+            </div>
           </div>
-          <div class="gauge-item">
-            <div class="gauge-label">After</div>
-            <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
-              <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <text x="2" y="47" font-size="9" font-weight="700">E</text>
-              <text x="70" y="47" font-size="9" font-weight="700">F</text>
-            </svg>
+
+          <!-- Digital Meter (Right column with 6 lines) -->
+          <div class="fuel-col" style="border-left: 1px solid #000; padding-left: 10px;">
+            <div class="fuel-col-title">Digital Meter</div>
+            <div class="gauge-row">
+              <div class="gauge-item">
+                <div class="gauge-label">Before</div>
+                <svg class="gauge-svg" width="76" height="46" viewBox="0 0 80 48">
+                  <rect x="2" y="6" width="76" height="26" rx="3" fill="#f8fafc" stroke="#000" stroke-width="1.2"/>
+                  <!-- 6 Digital lines/bars indicating Empty to Full -->
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="6" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="17.7" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="29.4" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="41.1" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="52.8" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="64.5" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <text x="6" y="44" font-size="9" font-weight="700">E</text>
+                  <text x="66" y="44" font-size="9" font-weight="700">F</text>
+                </svg>
+              </div>
+
+              <div class="gauge-item">
+                <div class="gauge-label">After</div>
+                <svg class="gauge-svg" width="76" height="46" viewBox="0 0 80 48">
+                  <rect x="2" y="6" width="76" height="26" rx="3" fill="#f8fafc" stroke="#000" stroke-width="1.2"/>
+                  <!-- 6 Digital lines/bars indicating Empty to Full -->
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="6" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="17.7" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="29.4" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="41.1" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="52.8" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <rect class="digital-seg" onclick="toggleDigitalSegment(this)" x="64.5" y="9" width="9.5" height="20" rx="1" fill="#fff" stroke="#000" stroke-width="0.8"/>
+                  <text x="6" y="44" font-size="9" font-weight="700">E</text>
+                  <text x="66" y="44" font-size="9" font-weight="700">F</text>
+                </svg>
+              </div>
+            </div>
           </div>
         </div>
         <div class="odometer-row">
           <div class="od-label">Odometer (Km) Reading</div>
-          <div style="display:flex; gap:14px;">
+          <div style="display:flex; gap:14px; max-width:175px;">
             <div style="flex:1;">
               <div style="font-size:9.5px;">Before</div>
               <div class="od-line dtt-editable" contenteditable="true" spellcheck="false"></div>
@@ -527,6 +594,16 @@ export function printTripTicket(ticket: TripTicket) {
       editables.forEach(function(el) {
         el.setAttribute('contenteditable', 'true');
       });
+    }
+
+    function toggleDigitalSegment(el) {
+      if (!isEditingEnabled) return;
+      var current = el.getAttribute('fill');
+      if (current === '#000' || current === 'black') {
+        el.setAttribute('fill', '#fff');
+      } else {
+        el.setAttribute('fill', '#000');
+      }
     }
 
     function toggleEditMode() {
