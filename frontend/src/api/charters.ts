@@ -192,9 +192,17 @@ export interface CharterBooking {
   invoice: { id: number; invoice_number: string; status: string; balance: number };
 }
 
+export interface CharterBookingPage {
+  data: CharterBooking[];
+  meta: { current_page: number; last_page: number; total: number };
+}
+
 export const charterApi = {
   ratePlans: () => client.get('/sales/charter-rate-plans').then(res => res.data.data as CharterRatePlan[]),
   bookings: () => client.get('/sales/charter-bookings').then(res => res.data.data as CharterBooking[]),
+  bookingsForPlan: (ratePlanId: number, page: number, search: string, status: string) =>
+    client.get('/sales/charter-bookings', { params: { rate_plan_id: ratePlanId, page, ...(search ? { search } : {}), ...(status ? { status } : {}) } })
+      .then(res => res.data as CharterBookingPage),
   resources: (startsAt: string, endsAt: string) => client.get('/sales/charter-resources', { params: { starts_at: startsAt, ends_at: endsAt } }).then(res => res.data.data as CharterResources),
   quote: (data: { rate_plan_id: number; starts_at: string; ends_at: string; estimated_kilometers: number; is_fixed_rate?: boolean }) => client.post('/sales/charter-quote', data).then(res => res.data.data as CharterPricing),
   searchLocations: (q: string, signal?: AbortSignal) => client.get('/sales/location-search', {

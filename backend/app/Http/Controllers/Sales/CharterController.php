@@ -148,9 +148,44 @@ class CharterController extends Controller
         return response()->json(['data' => $this->tollMatrix->calculate($data['segments'])]);
     }
 
-    public function bookings()
+    public function bookings(Request $request)
     {
-        return response()->json(['data' => CharterBooking::with(['ratePlan.service', 'bus', 'driver', 'invoice:id,invoice_number,status,balance'])->orderByDesc('starts_at')->limit(100)->get()]);
+        $filters = $request->validate([
+            'rate_plan_id' => ['sometimes', 'integer', 'exists:charter_rate_plans,id'],
+            'status' => ['sometimes', 'string', 'max:50'],
+            'search' => ['sometimes', 'string', 'max:100'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+        ]);
+        $query = CharterBooking::with(['ratePlan.service', 'bus', 'driver', 'invoice:id,invoice_number,status,balance'])
+            ->orderByDesc('starts_at')
+            ->orderByDesc('id');
+
+        if (isset($filters['rate_plan_id'])) {
+            $query->where('rate_plan_id', $filters['rate_plan_id']);
+            if (! empty($filters['status'])) {
+                $query->where('status', $filters['status']);
+            }
+            if (! empty($filters['search'])) {
+                $search = trim($filters['search']);
+                $query->where(function ($bookings) use ($search) {
+                    $bookings->whereLike('reference', "%{$search}%")
+                        ->orWhereLike('lead_name', "%{$search}%")
+                        ->orWhereHas('invoice', fn ($invoices) => $invoices->whereLike('invoice_number', "%{$search}%"));
+                });
+            }
+            $page = $query->paginate(12);
+
+            return response()->json([
+                'data' => $page->items(),
+                'meta' => [
+                    'current_page' => $page->currentPage(),
+                    'last_page' => $page->lastPage(),
+                    'total' => $page->total(),
+                ],
+            ]);
+        }
+
+        return response()->json(['data' => $query->limit(100)->get()]);
     }
 
     public function quote(Request $request)

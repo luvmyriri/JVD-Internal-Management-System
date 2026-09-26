@@ -329,6 +329,37 @@ class CharterBookingTest extends TestCase
         ]);
     }
 
+    public function test_booking_list_is_scoped_to_a_package_and_can_be_searched(): void
+    {
+        $first = $this->actingAs($this->user)
+            ->postJson('/api/v1/sales/charter-bookings', $this->payload())
+            ->assertCreated();
+
+        $otherPlan = $this->plan->replicate();
+        $otherPlan->name = 'Another charter package';
+        $otherPlan->save();
+        $otherPayload = $this->payload();
+        $otherPayload['rate_plan_id'] = $otherPlan->id;
+        $otherPayload['lead_name'] = 'Different Customer';
+        $otherPayload['starts_at'] = now()->addMonths(2)->startOfDay()->toIso8601String();
+        $otherPayload['ends_at'] = now()->addMonths(2)->startOfDay()->addDay()->toIso8601String();
+        $this->actingAs($this->user)
+            ->postJson('/api/v1/sales/charter-bookings', $otherPayload)
+            ->assertCreated();
+
+        $this->actingAs($this->user)
+            ->getJson("/api/v1/sales/charter-bookings?rate_plan_id={$this->plan->id}&search=corporate&status=confirmed")
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $first->json('data.id'))
+            ->assertJsonPath('meta.total', 1);
+
+        $this->actingAs($this->user)
+            ->getJson("/api/v1/sales/charter-bookings?rate_plan_id={$this->plan->id}&status=completed")
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+    }
+
     public function test_removing_a_rate_plan_deactivates_it_without_deleting_its_service(): void
     {
         $this->actingAs($this->user)

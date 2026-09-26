@@ -12,6 +12,8 @@ interface BookingWorkspaceHeaderProps {
   onBack: () => void;
   facts: Array<{ label: string; value: ReactNode }>;
   actions?: ReactNode;
+  showSteps?: boolean;
+  compact?: boolean;
 }
 
 export default function BookingWorkspaceHeader({
@@ -24,8 +26,31 @@ export default function BookingWorkspaceHeader({
   onBack,
   facts,
   actions,
+  showSteps = true,
+  compact = false,
 }: BookingWorkspaceHeaderProps) {
   const imagesList = images && images.length > 0 ? images : image ? [image] : [];
+
+  if (compact) {
+    return <header className="border-b border-border pb-5">
+      <button type="button" onClick={onBack} className="mb-3 inline-flex items-center gap-2 text-xs font-bold text-muted hover:text-ink">
+        <ArrowLeft className="h-4 w-4" /> Back to package catalog
+      </button>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-black text-ink">{title}</h1>
+          <p className="mt-1 text-sm text-muted">{description}</p>
+        </div>
+        {actions}
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3 text-xs sm:max-w-xl">
+        {facts.slice(0, 3).map(fact => <div key={fact.label}>
+          <span className="block text-muted">{fact.label}</span>
+          <strong className="mt-1 block text-sm text-ink">{fact.value}</strong>
+        </div>)}
+      </div>
+    </header>;
+  }
 
   return (
     <header className="overflow-hidden rounded-3xl bg-[#071b33] text-white shadow-xl">
@@ -58,7 +83,7 @@ export default function BookingWorkspaceHeader({
         </div>
       </div>
 
-      <div className="grid border-t border-white/10 bg-white/[0.04] sm:grid-cols-3">
+      {showSteps && <div className="grid border-t border-white/10 bg-white/[0.04] sm:grid-cols-3">
         {[
           ['1', 'Package selected', 'Complete'],
           ['2', 'Trip details', 'In progress'],
@@ -71,7 +96,7 @@ export default function BookingWorkspaceHeader({
             <div><strong className="block text-xs">{label}</strong><span className="text-[10px] text-slate-400">{state}</span></div>
           </div>
         ))}
-      </div>
+      </div>}
     </header>
   );
 }

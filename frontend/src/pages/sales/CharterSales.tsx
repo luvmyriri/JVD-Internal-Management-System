@@ -40,6 +40,7 @@ export default function CharterSales() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [booking, setBooking] = useState(bookingInitial);
+  const [workspaceView, setWorkspaceView] = useState<'bookings' | 'create'>('bookings');
   const [pricingModeOverride, setPricingModeOverride] = useState<'fixed' | 'metered' | null>(null);
   const [planForm, setPlanForm] = useState(planInitial);
   const [planOpen, setPlanOpen] = useState(false);
@@ -626,14 +627,18 @@ export default function CharterSales() {
               { label: 'Included', value: `${plan.included_hours}h`, icon: <CalendarClock className="h-4 w-4" /> },
               { label: 'Distance', value: `${plan.included_kilometers} km`, icon: <LuMapPin className="h-4 w-4" /> },
             ]}
-            actionLabel="Select package & continue"
-            onAction={() => setBooking(current => ({
-              ...current,
-              rate_plan_id: String(plan.id),
-              estimated_kilometers: String(plan.included_kilometers || current.estimated_kilometers || '120'),
-              pickup_location: plan.pickup_location || current.pickup_location,
-              destination: plan.destination || current.destination,
-            }))}
+            actionLabel="Open package bookings"
+            onAction={() => {
+              setWorkspaceView('bookings');
+              document.querySelector('main')?.scrollTo(0, 0);
+              setBooking(current => ({
+                ...current,
+                rate_plan_id: String(plan.id),
+                estimated_kilometers: String(plan.included_kilometers || current.estimated_kilometers || '120'),
+                pickup_location: plan.pickup_location || current.pickup_location,
+                destination: plan.destination || current.destination,
+              }));
+            }}
             controls={
               <div className="flex gap-1">
                 <button type="button" onClick={() => navigate(`/sales/services/${plan.service_id}/details`)} title="View service details" className="grid h-8 w-8 place-items-center rounded-lg hover:bg-white/20"><Eye className="h-4 w-4" /></button>
@@ -654,8 +659,11 @@ export default function CharterSales() {
       badge={selectedPlan.vehicle_class || 'Charter'}
       image={selectedPlan.service?.images?.[0]}
       title={selectedPlan.name}
-      description={selectedPlan.service?.description || 'Complete the route, schedule, passenger manifest, fleet allocation, and checkout for this charter.'}
+      description={workspaceView === 'bookings' ? 'Track this package\'s bookings or start a new charter.' : selectedPlan.service?.description || 'Complete the route, schedule, passenger manifest, fleet allocation, and checkout for this charter.'}
+      showSteps={workspaceView === 'create'}
+      compact={workspaceView === 'bookings'}
       onBack={() => {
+        document.querySelector('main')?.scrollTo(0, 0);
         setBooking(current => ({ ...current, rate_plan_id: '', bus_id: '', driver_id: '' }));
         setBusAssignments([{ bus_id: '', driver_id: '' }]);
         setSelectedSeats([]);
@@ -665,11 +673,17 @@ export default function CharterSales() {
         { label: 'Included operating time', value: `${selectedPlan.included_hours} hours` },
         { label: 'Included distance', value: `${selectedPlan.included_kilometers} km` },
       ]}
-      actions={<><Button onClick={() => setManifestModalOpen(true)} className="!bg-blue-600 !text-white"><Users className="h-4 w-4" /> Manifest ({manifestPassengers.length})</Button><Button onClick={() => setBusAllocationModalOpen(true)} className="!bg-amber-500 !text-white"><Bus className="h-4 w-4" /> Fleet & seats</Button></>}
+      actions={workspaceView === 'create' ? <><Button onClick={() => setManifestModalOpen(true)} className="!bg-blue-600 !text-white"><Users className="h-4 w-4" /> Manifest ({manifestPassengers.length})</Button><Button onClick={() => setBusAllocationModalOpen(true)} className="!bg-amber-500 !text-white"><Bus className="h-4 w-4" /> Fleet & seats</Button></> : undefined}
     />
 
-    <CharterBookingManager bookings={bookings} targetId={manageId} />
+    <div role="tablist" aria-label="Charter package workspace" className="flex border-b border-border">
+      <button type="button" role="tab" aria-selected={workspaceView === 'bookings'} onClick={() => setWorkspaceView('bookings')} className={`px-5 py-3 text-sm font-bold ${workspaceView === 'bookings' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-muted hover:text-ink'}`}>Bookings</button>
+      <button type="button" role="tab" aria-selected={workspaceView === 'create'} onClick={() => setWorkspaceView('create')} className={`px-5 py-3 text-sm font-bold ${workspaceView === 'create' ? 'border-b-2 border-blue-600 text-blue-700' : 'text-muted hover:text-ink'}`}>New booking</button>
+    </div>
 
+    {workspaceView === 'bookings' && <CharterBookingManager bookings={bookings} targetId={manageId} planId={selectedPlan.id} planName={selectedPlan.name} onCreate={() => { setWorkspaceView('create'); document.querySelector('main')?.scrollTo(0, 0); }} />}
+
+    {workspaceView === 'create' && <>
     <div className="grid gap-6 2xl:grid-cols-[minmax(0,1fr)_440px]">
       <div className="space-y-6">
         {/* 1. Distinct Elevated Rate Plans Catalog Selection Container Card */}
@@ -1089,6 +1103,9 @@ export default function CharterSales() {
           onEditCartItem={() => setBusAllocationModalOpen(true)}
           onCheckoutSuccess={() => {
             queryClient.invalidateQueries({ queryKey: ['charter-bookings'] });
+            queryClient.invalidateQueries({ queryKey: ['charter-bookings-plan', selectedPlan.id] });
+            setWorkspaceView('bookings');
+            document.querySelector('main')?.scrollTo(0, 0);
             toast.success('Charter order finalized & synchronized with accounting & logistics!');
           }}
         />
@@ -1149,6 +1166,8 @@ export default function CharterSales() {
       title="Bus Charter Passenger Manifest"
       packageName={selectedPlan?.name || 'Bus Charter Service'}
     />
+
+    </>}
 
     <Modal isOpen={planOpen} onClose={() => { setPlanOpen(false); setEditingRatePlanId(null); }} title={editingRatePlanId ? "Edit Charter Rate Plan" : "Create Charter Rate Plan"} size="lg" footer={null}>
       <form onSubmit={e => { e.preventDefault(); savePlan.mutate(); }} className="space-y-5 py-2">

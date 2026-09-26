@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -22,20 +22,51 @@ import {
   Pencil,
   Eye,
   XCircle,
+  Search,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { charterApi, type CharterBooking } from '../../../api/charters';
 import { Button } from '../../../components/ds';
 import PassengerManifestModal, { type PassengerManifestRow } from '../../../components/travel/PassengerManifestModal';
 
-const toLocal = (value: string) => value ? new Date(value).toISOString().slice(0, 16) : '';
+const toLocal = (value: string) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+};
 
-export default function CharterBookingManager({ bookings, targetId }: { bookings: CharterBooking[]; targetId?: string | null }) {
+export default function CharterBookingManager({ bookings, targetId, planId, planName, onCreate }: {
+  bookings: CharterBooking[];
+  targetId?: string | null;
+  planId?: number;
+  planName?: string;
+  onCreate?: () => void;
+}) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<CharterBooking | null>(null);
+  const openedTarget = useRef<string | null>(null);
   const [manifestOpen, setManifestOpen] = useState(false);
   const [form, setForm] = useState<Record<string, any>>({});
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('');
+  const [page, setPage] = useState(1);
+  const { data: bookingPage, isLoading, isError, refetch } = useQuery({
+    queryKey: ['charter-bookings-plan', planId, page, search.trim(), status],
+    queryFn: () => charterApi.bookingsForPlan(planId!, page, search.trim(), status),
+    enabled: Boolean(planId),
+  });
+  const filteredBookings = planId ? (bookingPage?.data ?? []) : bookings.filter(item => {
+    const query = search.trim().toLowerCase();
+    return (!status || item.status === status)
+      && (!query || [item.lead_name, item.reference, item.invoice?.invoice_number].some(value => value?.toLowerCase().includes(query)));
+  });
+  const visibleBookings = planId ? filteredBookings : filteredBookings.slice((page - 1) * 12, page * 12);
+  const total = planId ? (bookingPage?.meta.total ?? 0) : filteredBookings.length;
+  const lastPage = planId ? (bookingPage?.meta.last_page ?? 1) : Math.max(1, Math.ceil(total / 12));
 
   const open = (booking: CharterBooking) => {
     setSelected(booking);
@@ -70,10 +101,13 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
   };
 
   useEffect(() => {
-    if (!targetId) return;
-    const booking = bookings.find(item => String(item.id) === targetId);
-    if (booking) open(booking);
-  }, [targetId, bookings]);
+    if (!targetId || openedTarget.current === targetId) return;
+    const booking = [...(bookingPage?.data ?? []), ...bookings].find(item => String(item.id) === targetId && (!planId || item.rate_plan?.id === planId));
+    if (booking) {
+      openedTarget.current = targetId;
+      open(booking);
+    }
+  }, [targetId, bookings, bookingPage, planId]);
 
   // Close drawer on Escape key press
   useEffect(() => {
@@ -125,6 +159,7 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
     }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['charter-bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['charter-bookings-plan', planId] });
       toast.success('Charter booking, fleet, and schedule updated');
       setSelected(null);
     },
@@ -140,7 +175,9 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
       if (!reason?.trim()) throw new Error('cancelled');
       return charterApi.cancelBooking(selected!.id, reason.trim());
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['charter-bookings'] });
+      await queryClient.invalidateQueries({ queryKey: ['charter-bookings-plan', planId] });
       toast.success('Cancellation submitted for approval');
       setSelected(null);
     },
@@ -152,19 +189,38 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
   const assignments = (form.assignments ?? []) as Array<Record<string, string>>;
 
   return (
-    <section className="rounded-3xl border border-border bg-surface p-5 shadow-sm">
-      <div className="mb-4 flex items-center justify-between">
+    <section className="border-y border-border bg-surface py-5 sm:px-1">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-brand">Manage bookings</p>
-          <h2 className="text-lg font-black text-ink">Charter operations</h2>
+          <h2 className="text-lg font-black text-ink">{planId ? `${planName ?? 'Package'} bookings` : 'Recent charter bookings'}</h2>
+          <p className="text-xs text-muted">Open a booking to manage its passengers, route, fleet, and invoice.</p>
         </div>
-        <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700 dark:bg-blue-950/40 dark:text-blue-300">
-          {bookings.length} {bookings.length === 1 ? 'record' : 'records'}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold text-muted">{total} {total === 1 ? 'booking' : 'bookings'}</span>
+          {onCreate && <Button type="button" onClick={onCreate}><Plus className="mr-1 h-4 w-4" /> New booking</Button>}
+        </div>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {bookings.slice(0, 12).map(booking => {
+      <div className="mb-4 flex flex-wrap gap-3">
+        <label className="relative min-w-56 flex-1 sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <span className="sr-only">Search bookings</span>
+          <input type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Customer, reference, or invoice" className="h-10 w-full rounded-md border border-border bg-surface pl-10 pr-3 text-sm text-ink" />
+        </label>
+        <label className="sr-only" htmlFor="charter-booking-status">Booking status</label>
+        <select id="charter-booking-status" value={status} onChange={event => { setStatus(event.target.value); setPage(1); }} className="h-10 rounded-md border border-border bg-surface px-3 text-sm text-ink">
+          <option value="">All statuses</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="awaiting_payment">Awaiting payment</option>
+          <option value="in_progress">In progress</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+
+      {isError && planId && <div className="mb-4 flex items-center gap-3 text-sm text-red-700">Bookings could not be loaded. <button type="button" onClick={() => void refetch()} className="font-bold underline">Retry</button></div>}
+      {isLoading && planId ? <p className="py-10 text-center text-sm text-muted">Loading bookings...</p> : visibleBookings.length === 0 ? <p className="py-10 text-center text-sm text-muted">{search || status ? 'No bookings match these filters.' : 'No bookings for this package yet.'}</p> : <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {visibleBookings.map(booking => {
           const isCurrent = selected?.id === booking.id;
           return (
             <button
@@ -181,6 +237,7 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
                 <Pencil className="h-4 w-4 text-blue-600 shrink-0" />
               </div>
               <p className="mt-1 text-xs font-bold text-muted font-mono">{booking.reference}</p>
+              <p className="mt-2 text-xs font-semibold text-ink">{booking.status.replaceAll('_', ' ')}{booking.invoice?.invoice_number ? ` · ${booking.invoice.invoice_number}` : ''}</p>
               <p className="mt-3 flex items-center gap-2 text-xs text-muted">
                 <CalendarClock className="h-4 w-4 text-slate-400" />
                 {new Date(booking.starts_at).toLocaleDateString()} · {new Date(booking.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -192,7 +249,13 @@ export default function CharterBookingManager({ bookings, targetId }: { bookings
             </button>
           );
         })}
-      </div>
+      </div>}
+
+      {lastPage > 1 && <div className="mt-4 flex items-center justify-end gap-3 text-sm text-muted">
+        <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page <= 1} aria-label="Previous bookings page" className="rounded-md border border-border p-2 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /></button>
+        <span>Page {page} of {lastPage}</span>
+        <button type="button" onClick={() => setPage(current => Math.min(lastPage, current + 1))} disabled={page >= lastPage} aria-label="Next bookings page" className="rounded-md border border-border p-2 disabled:opacity-40"><ChevronRight className="h-4 w-4" /></button>
+      </div>}
 
       {/* Right-Side Slide-Over Drawer */}
       {selected && (

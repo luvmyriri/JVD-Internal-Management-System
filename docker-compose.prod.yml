@@ -63,6 +63,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: jvd_worker
+    user: "82:82"
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
@@ -80,6 +81,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: jvd_mail_worker
+    user: "82:82"
     restart: unless-stopped
     working_dir: /var/www/html
     volumes:
