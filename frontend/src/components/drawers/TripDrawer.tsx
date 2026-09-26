@@ -173,7 +173,7 @@ export default function TripDrawer({ ticket, isOpen, onClose, onCustomizeApprove
               Customize & Approve
             </Button>
           )}
-          {ticket.status === 'approved' && user?.role === 'super_admin' && onCustomizeApprove && (
+          {ticket.status !== 'draft' && user?.role !== 'driver' && onCustomizeApprove && (
             <Button
               variant="secondary"
               onClick={() => { onCustomizeApprove(ticket); onClose(); }}
