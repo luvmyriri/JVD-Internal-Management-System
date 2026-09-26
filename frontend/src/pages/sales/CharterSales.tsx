@@ -650,6 +650,7 @@ export default function CharterSales() {
         </div>}
       </section>
       <CharterBookingManager bookings={bookings} targetId={manageId} />
+      <BusCharterQuotationModal isOpen={showQuotationModal} onClose={() => setShowQuotationModal(false)} />
     </div>;
   }
 

@@ -151,9 +151,30 @@ export default function TripTickets() {
       header: 'Actions',
       align: 'right',
       render: (ticket) => (
-        <button onClick={() => setSelectedTicket(ticket)} className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer">
-          Details
-        </button>
+        <div className="flex items-center justify-end gap-1.5">
+          <button
+            onClick={() => printTripTicket(ticket)}
+            title="Print / View DTT"
+            className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1"
+          >
+            🖨️ Print
+          </button>
+          {user?.role !== 'driver' && (
+            <button
+              onClick={() => setEditingTicket(ticket)}
+              title="Edit Customized DTT"
+              className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:hover:bg-amber-900/50 dark:text-amber-300 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1"
+            >
+              ✏️ Edit
+            </button>
+          )}
+          <button
+            onClick={() => setSelectedTicket(ticket)}
+            className="px-3.5 py-1.5 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-all cursor-pointer"
+          >
+            Details
+          </button>
+        </div>
       ),
     },
   ];
