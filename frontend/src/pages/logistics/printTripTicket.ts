@@ -447,7 +447,6 @@ export function printTripTicket(ticket: TripTicket) {
             <div class="gauge-label">Before</div>
             <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
               <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <line x1="40" y1="44" x2="10" y2="20" stroke="#000" stroke-width="2" stroke-linecap="round"/>
               <text x="2" y="47" font-size="9" font-weight="700">E</text>
               <text x="70" y="47" font-size="9" font-weight="700">F</text>
             </svg>
@@ -456,7 +455,6 @@ export function printTripTicket(ticket: TripTicket) {
             <div class="gauge-label">After</div>
             <svg class="gauge-svg" width="80" height="48" viewBox="0 0 80 48">
               <path d="M4 44 A36 36 0 0 1 76 44" fill="none" stroke="#ccc" stroke-width="8" stroke-linecap="round"/>
-              <line x1="40" y1="44" x2="10" y2="20" stroke="#000" stroke-width="2" stroke-linecap="round"/>
               <text x="2" y="47" font-size="9" font-weight="700">E</text>
               <text x="70" y="47" font-size="9" font-weight="700">F</text>
             </svg>
