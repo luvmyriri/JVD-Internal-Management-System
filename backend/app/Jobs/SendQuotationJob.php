@@ -38,7 +38,7 @@ class SendQuotationJob implements ShouldQueue
     {
         if ($this->kind === 'sales') {
             $quotation = SalesQuotation::with(['customer', 'service', 'preparer'])->findOrFail($this->quotationId);
-            $pdf = $documents->render('pdf.sales-quotation', ['quotation' => $quotation])->output();
+            $pdf = $documents->render($quotation->pdfView(), ['quotation' => $quotation])->output();
             $customerName = $quotation->client_name;
             $reference = $quotation->quotation_number;
         } elseif ($this->kind === 'educational') {

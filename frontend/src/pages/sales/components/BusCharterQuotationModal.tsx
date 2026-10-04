@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { LuPrinter, LuX, LuPlus, LuTrash2, LuFileText, LuMail } from 'react-icons/lu';
 import toast from 'react-hot-toast';
 import { salesQuotationApi } from '../../../api/salesQuotations';
-import type { BusCharterQuotationData } from '../busCharterQuotationPdf';
+import type { BusCharterQuotationData } from '../busCharterQuotationTypes';
 
 interface BusCharterQuotationModalProps {
   isOpen: boolean;
@@ -14,23 +14,26 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
   const [isWorking, setIsWorking] = useState(false);
   const [formError, setFormError] = useState('');
   const [form, setForm] = useState<BusCharterQuotationData>({
+    ratePlanName: initialData?.ratePlanName,
     quotationNumber: initialData?.quotationNumber || 'Assigned when generated',
     quotationDate: initialData?.quotationDate || new Date().toISOString().split('T')[0],
     groupCompanyName: initialData?.groupCompanyName || '',
     contactPerson: initialData?.contactPerson || '',
     emailAddress: initialData?.emailAddress || '',
     contactNumber: initialData?.contactNumber || '',
+    inclusions: initialData?.inclusions,
+    exclusions: initialData?.exclusions,
     items: initialData?.items && initialData.items.length > 0 ? initialData.items : [{
       startDate: new Date().toISOString().split('T')[0],
       endDate: '',
-      pickupLocation: 'DICT Headquarters, Quezon City',
-      destination: 'Any point within Clark, Pampanga',
-      duration: 'Pick and Drop',
+      pickupLocation: '',
+      destination: '',
+      duration: 'Daytour',
       quantityUnits: 1,
-      unitPrice: 27000,
-      totalPrice: 27000,
+      unitPrice: 0,
+      totalPrice: 0,
     }],
-    grandTotal: initialData?.grandTotal || 27000,
+    grandTotal: initialData?.grandTotal ?? 0,
   });
 
   if (!isOpen) return null;
@@ -44,8 +47,8 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
         destination: '',
         duration: 'Daytour',
         quantityUnits: 1,
-        unitPrice: 27000,
-        totalPrice: 27000,
+        unitPrice: 0,
+        totalPrice: 0,
       }];
       const grand = newItems.reduce((acc, it) => acc + (it.quantityUnits * it.unitPrice), 0);
       return { ...prev, items: newItems, grandTotal: grand };
@@ -81,24 +84,38 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
     client_email: form.emailAddress.trim() || undefined,
     service_name: 'Bus charter',
     category: 'Transport',
+    description: form.ratePlanName ? `Charter rate plan: ${form.ratePlanName}` : 'Bus charter transport as itemized below.',
+    inclusions: form.inclusions?.join('\n'),
+    exclusions: form.exclusions?.join('\n'),
+    travel_date: form.items[0]?.startDate || null,
     line_items: form.items.map(item => ({
-      description: `${item.pickupLocation} to ${item.destination} · ${item.duration} · ${item.startDate}${item.endDate ? ` to ${item.endDate}` : ''}`,
+      description: `Bus charter - ${item.duration.trim() || 'Transport service'}`,
       quantity: item.quantityUnits,
       unit_price: item.unitPrice,
+      travel_start_date: item.startDate,
+      travel_end_date: item.endDate || undefined,
+      pickup_location: item.pickupLocation.trim(),
+      destination: item.destination.trim(),
+      duration: item.duration.trim(),
     })),
   });
+
+  const validateForm = (requireEmail: boolean): string | null => {
+    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) return 'Enter the customer or company name.';
+    if (requireEmail && !form.emailAddress.trim()) return 'Enter the customer email address.';
+    if (form.emailAddress.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress.trim())) return 'Enter a valid customer email address.';
+    const invalidLine = form.items.findIndex(item => !item.startDate || !item.pickupLocation.trim() || !item.destination.trim() || !item.duration.trim() || item.quantityUnits < 1 || item.unitPrice <= 0);
+    if (invalidLine >= 0) return `Complete the date, route, duration, quantity, and rate for line ${invalidLine + 1}.`;
+    const invalidDateRange = form.items.findIndex(item => item.endDate && item.endDate < item.startDate);
+    if (invalidDateRange >= 0) return `End date must be on or after the start date for line ${invalidDateRange + 1}.`;
+    return null;
+  };
 
   const handlePrint = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) {
-      setFormError('Enter the customer or company name.');
-      return;
-    }
-    if (form.emailAddress.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress.trim())) {
-      setFormError('Enter a valid customer email address.');
-      return;
-    }
+    const validationError = validateForm(false);
+    if (validationError) { setFormError(validationError); return; }
     setIsWorking(true);
     try {
       const { data } = await createQuotation();
@@ -121,18 +138,8 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
 
   const handleSend = async () => {
     setFormError('');
-    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) {
-      setFormError('Enter the customer or company name.');
-      return;
-    }
-    if (!form.emailAddress.trim()) {
-      setFormError('Enter the customer email address.');
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress.trim())) {
-      setFormError('Enter a valid customer email address.');
-      return;
-    }
+    const validationError = validateForm(true);
+    if (validationError) { setFormError(validationError); return; }
     setIsWorking(true);
     try {
       const { data } = await createQuotation();
@@ -148,7 +155,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl w-full max-w-3xl my-8 overflow-hidden border border-gray-100 dark:border-gray-800">
+      <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-3xl border border-gray-100 bg-white shadow-2xl dark:border-gray-800 dark:bg-gray-900">
         <div className="flex items-center justify-between p-6 border-b border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 dark:bg-red-950/50 dark:text-red-400 flex items-center justify-center font-black">
@@ -156,7 +163,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
             </div>
             <div>
               <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Generate Bus Charter Quotation</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Create and download an official sales quotation PDF</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{form.ratePlanName ? `${form.ratePlanName} · ` : ''}Branded quotation with route, rates, and VAT</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
@@ -164,7 +171,8 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
           </button>
         </div>
 
-        <form onSubmit={handlePrint} noValidate className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handlePrint} noValidate className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-6 custom-scrollbar">
           {/* Header Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -264,6 +272,11 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
                 </div>
 
                 <div>
+                  <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">End Date (if multi-day)</label>
+                  <input type="date" value={item.endDate || ''} onChange={e => updateItem(idx, 'endDate', e.target.value)} className="w-full px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl text-xs font-bold" />
+                </div>
+
+                <div>
                   <label className="text-[9px] font-bold text-gray-500 uppercase block mb-1">Pick-up Location</label>
                   <input
                     type="text"
@@ -318,23 +331,26 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">The saved PDF and email add the configured VAT and show the final total.</p>
 
-          {formError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{formError}</p>}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
+          </div>
+          <div className="shrink-0 border-t border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-6">
+          {formError && <p role="alert" className="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{formError}</p>}
+          <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+              className="w-full px-5 py-2.5 rounded-2xl text-xs font-bold text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition sm:w-auto"
             >
               Cancel
             </button>
-            <button type="button" onClick={handleSend} disabled={isWorking} className="px-5 py-2.5 rounded-2xl bg-blue-700 hover:bg-blue-800 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"><LuMail size={16} /> Send quotation email</button>
+            <button type="button" onClick={handleSend} disabled={isWorking} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-blue-700 px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white hover:bg-blue-800 disabled:opacity-50 sm:w-auto"><LuMail size={16} /> Send quotation email</button>
             <button
               type="submit"
               disabled={isWorking}
-              className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 transition shadow-lg shadow-red-600/30"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-600 px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-lg shadow-red-600/30 transition hover:bg-red-700 sm:w-auto"
             >
               <LuPrinter size={16} /> {isWorking ? 'Generating…' : 'Generate quotation PDF'}
             </button>
+          </div>
           </div>
         </form>
       </div>

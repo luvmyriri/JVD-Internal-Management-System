@@ -19,7 +19,7 @@ class SalesQuotationController extends Controller
     {
         $quotation->loadMissing(['customer', 'service', 'preparer']);
 
-        return $documents->render('pdf.sales-quotation', ['quotation' => $quotation])
+        return $documents->render($quotation->pdfView(), ['quotation' => $quotation])
             ->download("Quotation_{$quotation->quotation_number}.pdf");
     }
 
@@ -56,6 +56,11 @@ class SalesQuotationController extends Controller
             'line_items.*.description' => ['required', 'string', 'max:255'],
             'line_items.*.unit_price' => ['required', 'numeric', 'min:0'],
             'line_items.*.quantity' => ['required', 'numeric', 'min:0'],
+            'line_items.*.travel_start_date' => ['nullable', 'date_format:Y-m-d'],
+            'line_items.*.travel_end_date' => ['nullable', 'date_format:Y-m-d'],
+            'line_items.*.pickup_location' => ['nullable', 'string', 'max:255'],
+            'line_items.*.destination' => ['nullable', 'string', 'max:255'],
+            'line_items.*.duration' => ['nullable', 'string', 'max:100'],
             'pricing_context' => ['sometimes', 'array'],
             'pricing_context.vehicle' => ['sometimes', 'string', 'in:bus,coaster'],
             'pricing_context.extra_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
@@ -315,6 +320,13 @@ class SalesQuotationController extends Controller
                 'unit_price' => $unitPrice,
                 'quantity' => $quantity,
                 'amount' => round($unitPrice * $quantity, 2),
+                ...($service ? [] : array_filter([
+                    'travel_start_date' => $line['travel_start_date'] ?? null,
+                    'travel_end_date' => $line['travel_end_date'] ?? null,
+                    'pickup_location' => $line['pickup_location'] ?? null,
+                    'destination' => $line['destination'] ?? null,
+                    'duration' => $line['duration'] ?? null,
+                ], fn ($value) => $value !== null && $value !== '')),
             ];
         }, $submittedItems);
     }

@@ -13,6 +13,11 @@ export interface CreateQuotationLineItem {
   description: string;
   unit_price: number;
   quantity: number;
+  travel_start_date?: string;
+  travel_end_date?: string;
+  pickup_location?: string;
+  destination?: string;
+  duration?: string;
 }
 
 export interface QuotationPricingContext {

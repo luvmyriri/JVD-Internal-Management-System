@@ -23,6 +23,7 @@ import { getStorageUrl } from '../../utils';
 import PackageCatalogCard from './components/PackageCatalogCard';
 import BookingWorkspaceHeader from './components/BookingWorkspaceHeader';
 import BusCharterQuotationModal from './components/BusCharterQuotationModal';
+import type { BusCharterQuotationData } from './busCharterQuotationTypes';
 import TollMatrixPicker from './components/TollMatrixPicker';
 
 const getTomorrowStartEnd = () => {
@@ -66,6 +67,7 @@ export default function CharterSales() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedClass, setSelectedClass] = useState('All');
   const [showQuotationModal, setShowQuotationModal] = useState(false);
+  const [quotationInitialData, setQuotationInitialData] = useState<Partial<BusCharterQuotationData> | undefined>();
 
   // Profit-First Engine States
   const [customBaseRate, setCustomBaseRate] = useState('35000');
@@ -597,8 +599,8 @@ export default function CharterSales() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">Start with the vehicle and rate plan. Trip dates, route, fleet allocation, passenger details, and payment open only after you choose.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={() => setShowQuotationModal(true)} className="!bg-red-600 !text-white hover:!bg-red-700 font-bold">
-            <LuFileText className="h-4 w-4 mr-1" /> Create Bus Charter Quotation
+          <Button onClick={() => { setQuotationInitialData(undefined); setShowQuotationModal(true); }} className="!bg-red-600 !text-white hover:!bg-red-700 font-bold">
+            <LuFileText className="h-4 w-4 mr-1" /> Create Custom Quotation
           </Button>
           <Button onClick={openCreatePlan} className="!bg-amber-500 !text-white hover:!bg-amber-600 font-bold">
             <Plus className="h-4 w-4 mr-1" /> Create new rate plan
@@ -628,6 +630,35 @@ export default function CharterSales() {
               { label: 'Distance', value: `${plan.included_kilometers} km`, icon: <LuMapPin className="h-4 w-4" /> },
             ]}
             actionLabel="Open package bookings"
+            secondaryActionLabel="Create quotation"
+            onSecondaryAction={() => {
+              const baseRate = Number(plan.base_price);
+              setQuotationInitialData({
+                ratePlanName: plan.name,
+                inclusions: [
+                  ...(plan.includes_driver ? ['Driver'] : []),
+                  ...(plan.includes_fuel ? ['Fuel'] : []),
+                  ...(plan.includes_tolls ? ['Toll fees'] : []),
+                  ...(plan.includes_parking ? ['Parking fees'] : []),
+                ],
+                exclusions: [
+                  ...(!plan.includes_tolls ? ['Toll fees'] : []),
+                  ...(!plan.includes_parking ? ['Parking fees'] : []),
+                ],
+                items: [{
+                  startDate: new Date().toISOString().split('T')[0],
+                  endDate: '',
+                  pickupLocation: plan.pickup_location || '',
+                  destination: plan.destination || '',
+                  duration: `${plan.included_hours} hours`,
+                  quantityUnits: 1,
+                  unitPrice: baseRate,
+                  totalPrice: baseRate,
+                }],
+                grandTotal: baseRate,
+              });
+              setShowQuotationModal(true);
+            }}
             onAction={() => {
               setWorkspaceView('bookings');
               document.querySelector('main')?.scrollTo(0, 0);
@@ -650,7 +681,7 @@ export default function CharterSales() {
         </div>}
       </section>
       <CharterBookingManager bookings={bookings} targetId={manageId} />
-      <BusCharterQuotationModal isOpen={showQuotationModal} onClose={() => setShowQuotationModal(false)} />
+      {showQuotationModal && <BusCharterQuotationModal isOpen onClose={() => setShowQuotationModal(false)} initialData={quotationInitialData} />}
     </div>;
   }
 
@@ -1341,6 +1372,6 @@ export default function CharterSales() {
     </Modal>
 
     {/* Bus Charter Quotation Modal */}
-    <BusCharterQuotationModal isOpen={showQuotationModal} onClose={() => setShowQuotationModal(false)} />
+    {showQuotationModal && <BusCharterQuotationModal isOpen onClose={() => setShowQuotationModal(false)} initialData={quotationInitialData} />}
   </div>;
 }

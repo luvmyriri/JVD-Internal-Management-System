@@ -7,6 +7,16 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class SalesQuotation extends Model
 {
+    public function isBusCharter(): bool
+    {
+        return $this->category === 'Transport' && $this->service_name === 'Bus charter';
+    }
+
+    public function pdfView(): string
+    {
+        return $this->isBusCharter() ? 'pdf.bus-charter-quotation' : 'pdf.sales-quotation';
+    }
+
     protected $fillable = [
         'quotation_number',
         'customer_id',

@@ -23,6 +23,7 @@ class SalesQuotationTest extends TestCase
         $user = $this->salesUser();
         $quotationId = $this->actingAs($user)->postJson('/api/v1/sales/quotations', $this->payload())
             ->assertCreated()->json('data.id');
+        $this->assertSame('pdf.sales-quotation', SalesQuotation::findOrFail($quotationId)->pdfView());
 
         $this->actingAs($user)->postJson("/api/v1/sales/quotations/{$quotationId}/send", [
             'email' => 'quotes@example.com',
@@ -37,6 +38,63 @@ class SalesQuotationTest extends TestCase
             ->handle(app(DocumentPdfService::class));
 
         $this->assertDatabaseHas('sales_quotations', ['id' => $quotationId, 'status' => 'sent']);
+        $messages = Mail::mailer('array')->getSymfonyTransport()->messages();
+        $this->assertCount(1, $messages);
+        $attachment = $messages->first()->getOriginalMessage()->getAttachments()[0];
+        $this->assertStringStartsWith('%PDF-', $attachment->getBody());
+    }
+
+    public function test_bus_charter_quotation_preserves_route_details_and_uses_its_own_pdf_template(): void
+    {
+        Queue::fake();
+        $user = $this->salesUser();
+        $payload = $this->payload();
+        $payload['service_name'] = 'Bus charter';
+        $payload['category'] = 'Transport';
+        $payload['description'] = 'Charter rate plan: Deluxe Bus';
+        $payload['line_items'] = [[
+            'description' => 'Bus charter - 3 days',
+            'unit_price' => 57000,
+            'quantity' => 1,
+            'travel_start_date' => '2026-10-10',
+            'travel_end_date' => '2026-10-12',
+            'pickup_location' => 'Caloocan City',
+            'destination' => 'Clark, Pampanga',
+            'duration' => '3 days',
+        ]];
+
+        $quotationId = $this->actingAs($user)
+            ->postJson('/api/v1/sales/quotations', $payload)
+            ->assertCreated()
+            ->assertJsonPath('data.line_items.0.pickup_location', 'Caloocan City')
+            ->assertJsonPath('data.line_items.0.destination', 'Clark, Pampanga')
+            ->assertJsonPath('data.line_items.0.travel_end_date', '2026-10-12')
+            ->json('data.id');
+
+        $quotation = SalesQuotation::with('preparer')->findOrFail($quotationId);
+        $this->assertSame('pdf.bus-charter-quotation', $quotation->pdfView());
+        $html = view($quotation->pdfView(), [
+            'quotation' => $quotation,
+            'company' => app(DocumentPdfService::class)->companyProfile(),
+        ])->render();
+        $this->assertStringContainsString('Caloocan City', $html);
+        $this->assertStringContainsString('Clark, Pampanga', $html);
+        $this->assertStringContainsString('Oct 12, 2026', $html);
+        $this->assertStringContainsString('63,840.00', $html);
+
+        $this->actingAs($user)->get("/api/v1/sales/quotations/{$quotationId}/pdf")
+            ->assertOk()
+            ->assertHeader('content-type', 'application/pdf');
+
+        $this->actingAs($user)->postJson("/api/v1/sales/quotations/{$quotationId}/send", [
+            'email' => 'charter@example.com',
+        ])->assertAccepted();
+        Queue::assertPushed(SendQuotationJob::class, fn (SendQuotationJob $job) => $job->kind === 'sales' && $job->quotationId === $quotationId);
+
+        config(['mail.transactional_mailer' => 'array']);
+        Mail::mailer('array')->getSymfonyTransport()->flush();
+        (new SendQuotationJob('sales', $quotationId, 'charter@example.com'))
+            ->handle(app(DocumentPdfService::class));
         $messages = Mail::mailer('array')->getSymfonyTransport()->messages();
         $this->assertCount(1, $messages);
         $attachment = $messages->first()->getOriginalMessage()->getAttachments()[0];

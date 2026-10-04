@@ -18,6 +18,8 @@ interface PackageCatalogCardProps {
   facts: PackageFact[];
   actionLabel: string;
   onAction: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
   selected?: boolean;
   warning?: string;
   controls?: ReactNode;
@@ -33,6 +35,8 @@ export default function PackageCatalogCard({
   facts,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
   selected = false,
   warning,
   controls,
@@ -68,10 +72,17 @@ export default function PackageCatalogCard({
 
         {warning && <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold leading-4 text-amber-800">{warning}</div>}
 
+        {secondaryActionLabel && onSecondaryAction && <button
+          type="button"
+          onClick={onSecondaryAction}
+          className="mt-4 inline-flex h-10 w-full items-center justify-center rounded-xl bg-blue-700 px-3 text-xs font-black text-white transition hover:bg-blue-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+        >
+          {secondaryActionLabel}
+        </button>}
         <button
           type="button"
           onClick={onAction}
-          className="mt-4 inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-black text-slate-900 transition hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:border-slate-700 dark:bg-slate-900 dark:text-white"
+          className={`${secondaryActionLabel && onSecondaryAction ? 'mt-2' : 'mt-4'} inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white text-xs font-black text-slate-900 transition hover:border-blue-600 hover:bg-blue-600 hover:text-white dark:border-slate-700 dark:bg-slate-900 dark:text-white`}
         >
           {actionLabel}
           <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
