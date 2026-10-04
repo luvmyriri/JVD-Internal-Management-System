@@ -12,6 +12,7 @@ interface BusCharterQuotationModalProps {
 
 export default function BusCharterQuotationModal({ isOpen, onClose, initialData }: BusCharterQuotationModalProps) {
   const [isWorking, setIsWorking] = useState(false);
+  const [formError, setFormError] = useState('');
   const [form, setForm] = useState<BusCharterQuotationData>({
     quotationNumber: initialData?.quotationNumber || 'Assigned when generated',
     quotationDate: initialData?.quotationDate || new Date().toISOString().split('T')[0],
@@ -89,28 +90,49 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
 
   const handlePrint = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) return toast.error('Enter the customer or company name.');
-    const preview = window.open('', '_blank');
+    setFormError('');
+    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) {
+      setFormError('Enter the customer or company name.');
+      return;
+    }
+    if (form.emailAddress.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress.trim())) {
+      setFormError('Enter a valid customer email address.');
+      return;
+    }
     setIsWorking(true);
     try {
       const { data } = await createQuotation();
       const blob = await salesQuotationApi.pdf(data.id);
       const url = URL.createObjectURL(blob);
-      if (preview) preview.location.href = url;
-      else window.open(url, '_blank', 'noopener,noreferrer');
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Quotation_${data.quotation_number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-      toast.success(`Quotation ${data.quotation_number} generated.`);
+      toast.success(`Quotation ${data.quotation_number} downloaded.`);
     } catch (error: any) {
-      preview?.close();
-      toast.error(error?.response?.data?.message || 'Could not generate quotation.');
+      setFormError(error?.response?.data?.message || error?.message || 'Could not generate quotation.');
     } finally {
       setIsWorking(false);
     }
   };
 
   const handleSend = async () => {
-    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) return toast.error('Enter the customer or company name.');
-    if (!form.emailAddress.trim()) return toast.error('Enter the customer email address.');
+    setFormError('');
+    if (!form.contactPerson.trim() && !form.groupCompanyName.trim()) {
+      setFormError('Enter the customer or company name.');
+      return;
+    }
+    if (!form.emailAddress.trim()) {
+      setFormError('Enter the customer email address.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.emailAddress.trim())) {
+      setFormError('Enter a valid customer email address.');
+      return;
+    }
     setIsWorking(true);
     try {
       const { data } = await createQuotation();
@@ -118,7 +140,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
       toast.success(response.message);
       onClose();
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || 'Could not queue the quotation email.');
+      setFormError(error?.response?.data?.message || error?.message || 'Could not queue the quotation email.');
     } finally {
       setIsWorking(false);
     }
@@ -134,7 +156,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
             </div>
             <div>
               <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Generate Bus Charter Quotation</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">JVD Official 2-Page Quotation PDF Blueprint</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Create and download an official sales quotation PDF</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
@@ -142,14 +164,13 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
           </button>
         </div>
 
-        <form onSubmit={handlePrint} className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handlePrint} noValidate className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           {/* Header Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Company / Client Name *</label>
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest block mb-1">Company / Client Name</label>
               <input
                 type="text"
-                required
                 value={form.groupCompanyName}
                 onChange={e => setForm({ ...form, groupCompanyName: e.target.value })}
                 placeholder="e.g. Vanguard Transport Service"
@@ -297,6 +318,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400">The saved PDF and email add the configured VAT and show the final total.</p>
 
+          {formError && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-xs font-bold text-red-700 dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">{formError}</p>}
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-100 dark:border-gray-800">
             <button
               type="button"
@@ -311,7 +333,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
               disabled={isWorking}
               className="px-6 py-2.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 transition shadow-lg shadow-red-600/30"
             >
-              <LuPrinter size={16} /> Generate quotation PDF
+              <LuPrinter size={16} /> {isWorking ? 'Generating…' : 'Generate quotation PDF'}
             </button>
           </div>
         </form>
