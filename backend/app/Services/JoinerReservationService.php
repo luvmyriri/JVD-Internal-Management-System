@@ -136,9 +136,8 @@ class JoinerReservationService
                 : $adultUnitPrice;
             $subtotal = round(($adultUnitPrice * $adultCount) + ($childUnitPrice * $childCount), 2);
             $unitPrice = $locked->passenger_count > 0 ? round($subtotal / $locked->passenger_count, 2) : 0;
-            $taxRate = (float) \App\Models\SystemSetting::getValue('vat_rate', 0.12);
-            $taxAmount = round($subtotal * $taxRate, 2);
-            $total = round($subtotal + $taxAmount, 2);
+            $taxAmount = 0.0;
+            $total = $subtotal;
             $received = (float) $checkout['amount_received'];
 
             if ($checkout['payment_method'] === 'Cash' && $checkout['payment_type'] === 'full' && $received < $total) {

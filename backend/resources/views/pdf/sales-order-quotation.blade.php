@@ -621,10 +621,6 @@
                     <td class="totals-value">&#8369;{{ number_format($order->subtotal, 2) }}</td>
                 </tr>
                 <tr>
-                    <td class="totals-label">Value-Added Tax</td>
-                    <td class="totals-value">&#8369;{{ number_format($order->tax_amount, 2) }}</td>
-                </tr>
-                <tr>
                     <td class="totals-label">Others</td>
                     <td class="totals-value">&#8369;0.00</td>
                 </tr>

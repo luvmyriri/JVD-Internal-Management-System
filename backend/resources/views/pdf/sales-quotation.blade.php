@@ -539,10 +539,12 @@
                     <td class="totals-label">Subtotal</td>
                     <td class="totals-value">&#8369;{{ number_format($quotation->subtotal, 2) }}</td>
                 </tr>
+                @if((float) $quotation->vat_amount > 0)
                 <tr>
-                    <td class="totals-label">Value-Added Tax ({{ number_format($quotation->vat_rate, 2) }}%)</td>
+                    <td class="totals-label">VAT on previously issued quotation</td>
                     <td class="totals-value">&#8369;{{ number_format($quotation->vat_amount, 2) }}</td>
                 </tr>
+                @endif
                 <tr>
                     <td class="totals-label">Others</td>
                     <td class="totals-value">&#8369;0.00</td>

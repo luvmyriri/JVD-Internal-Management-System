@@ -63,7 +63,7 @@ class CharterBookingTest extends TestCase
         $response->assertCreated()->assertJsonPath('data.status', 'confirmed')->assertJsonPath('data.invoice.status', 'paid');
         $bookingId = $response->json('data.id');
         $this->assertDatabaseHas('charter_bookings', ['bus_id' => $this->bus->id, 'driver_id' => $this->driver->id, 'pickup_location' => 'JVD Office']);
-        $this->assertDatabaseHas('invoices', ['customer_name' => 'Corporate Client', 'total_amount' => 11200]);
+        $this->assertDatabaseHas('invoices', ['customer_name' => 'Corporate Client', 'subtotal' => 10000, 'tax_amount' => 0, 'total_amount' => 10000]);
         $this->assertDatabaseHas('trip_tickets', [
             'invoice_id' => $response->json('data.invoice.id'),
             'bus_id' => $this->bus->id,
@@ -75,6 +75,22 @@ class CharterBookingTest extends TestCase
             ->assertOk()->assertHeader('content-type', 'application/pdf');
         $this->actingAs($this->user)->get("/api/v1/sales/charter-bookings/{$bookingId}/dispatch-sheet")
             ->assertOk()->assertHeader('content-type', 'application/pdf');
+    }
+
+    public function test_charter_quote_uses_the_rate_plan_price_without_added_vat(): void
+    {
+        $payload = $this->payload();
+
+        $this->actingAs($this->user)->postJson('/api/v1/sales/charter-quote', [
+            'rate_plan_id' => $payload['rate_plan_id'],
+            'starts_at' => $payload['starts_at'],
+            'ends_at' => $payload['ends_at'],
+            'estimated_kilometers' => $payload['estimated_kilometers'],
+        ])->assertOk()
+            ->assertJsonPath('data.subtotal', 10000)
+            ->assertJsonPath('data.tax_amount', 0)
+            ->assertJsonPath('data.tax_rate', 0)
+            ->assertJsonPath('data.total', 10000);
     }
 
     public function test_overlapping_charter_cannot_reuse_the_same_vehicle(): void
@@ -380,7 +396,7 @@ class CharterBookingTest extends TestCase
             'starts_at' => $start->toIso8601String(), 'ends_at' => $start->copy()->addDay()->toIso8601String(),
             'pickup_location' => 'JVD Office', 'destination' => 'Baguio City', 'stops' => ['NLEX Stopover'],
             'passenger_count' => 40, 'estimated_kilometers' => 150, 'operations_notes' => 'Report 30 minutes early.',
-            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 11200,
+            'payment_method' => 'Cash', 'payment_type' => 'full', 'amount_received' => 10000,
         ];
     }
 }

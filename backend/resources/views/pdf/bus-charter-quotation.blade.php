@@ -169,8 +169,10 @@
         <td class="totals-spacer"></td>
         <td class="totals-col">
             <table class="totals-table">
-                <tr><td class="totals-label">Subtotal before VAT</td><td class="totals-value">PHP {{ number_format($quotation->subtotal, 2) }}</td></tr>
-                <tr><td class="totals-label">VAT ({{ number_format($quotation->vat_rate, 2) }}%)</td><td class="totals-value">PHP {{ number_format($quotation->vat_amount, 2) }}</td></tr>
+                <tr><td class="totals-label">Quoted price</td><td class="totals-value">PHP {{ number_format($quotation->subtotal, 2) }}</td></tr>
+                @if((float) $quotation->vat_amount > 0)
+                <tr><td class="totals-label">VAT on previously issued quotation</td><td class="totals-value">PHP {{ number_format($quotation->vat_amount, 2) }}</td></tr>
+                @endif
                 <tr class="total-highlight-row"><td class="total-highlight-label">Total</td><td class="total-highlight-value">PHP {{ number_format($quotation->total, 2) }}</td></tr>
             </table>
         </td>

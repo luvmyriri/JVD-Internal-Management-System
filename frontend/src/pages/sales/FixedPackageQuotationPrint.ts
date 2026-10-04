@@ -45,9 +45,7 @@ export interface QuotationRecipient {
 export interface QuotationMeta {
   quotationNumber: string;
   subtotal: number;
-  vatAmount: number;
   total: number;
-  vatRate: number;
   validUntil: string;  // yyyy-mm-dd
   travelDate?: string; // yyyy-mm-dd
 }
@@ -246,18 +244,16 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
           </table>
 
           <div class="totals">
-            <div class="row"><span>Subtotal (VAT-exclusive)</span><span>${formatPrice(meta.subtotal)}</span></div>
-            <div class="row"><span>VAT (${meta.vatRate}%)</span><span>${formatPrice(meta.vatAmount)}</span></div>
+            <div class="row"><span>Quoted price</span><span>${formatPrice(meta.subtotal)}</span></div>
             <div class="row grand"><span>Total Amount</span><span>${formatPrice(meta.total)}</span></div>
           </div>
-          <p class="disclaimer">* Line rates are in Philippine Peso and VAT-exclusive; VAT is shown separately. This quotation is valid until ${formatDate(meta.validUntil)}.</p>
+          <p class="disclaimer">* Line rates are in Philippine Peso. This quotation is valid until ${formatDate(meta.validUntil)}.</p>
 
           <div class="terms">
             <div class="terms-title">Terms &amp; Conditions</div>
             <ul>
               <li>Prices are subject to change without prior notice after the validity date.</li>
               <li>A reservation is confirmed only upon receipt of the required deposit.</li>
-              <li>${esc(meta.vatRate)}% VAT is added to the VAT-exclusive line rates shown above.</li>
               <li>Inclusions and exclusions are as listed above; additional requests may incur extra charges.</li>
             </ul>
           </div>

@@ -163,7 +163,7 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
             </div>
             <div>
               <h2 className="text-lg font-black text-gray-900 dark:text-white uppercase tracking-tight">Generate Bus Charter Quotation</h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{form.ratePlanName ? `${form.ratePlanName} · ` : ''}Branded quotation with route, rates, and VAT</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{form.ratePlanName ? `${form.ratePlanName} · ` : ''}Branded quotation with route and final price</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-xl text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition">
@@ -326,10 +326,10 @@ export default function BusCharterQuotationModal({ isOpen, onClose, initialData 
 
           {/* Grand Total */}
           <div className="flex items-center justify-between p-4 rounded-2xl bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-900/40">
-            <span className="text-xs font-black text-red-700 dark:text-red-300 uppercase tracking-widest">Subtotal before VAT</span>
+            <span className="text-xs font-black text-red-700 dark:text-red-300 uppercase tracking-widest">Total quoted price</span>
             <span className="text-2xl font-black text-red-600 dark:text-red-400">₱{form.grandTotal.toLocaleString()}</span>
           </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400">The saved PDF and email add the configured VAT and show the final total.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">The saved PDF and email show this same total.</p>
 
           </div>
           <div className="shrink-0 border-t border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900 sm:p-6">

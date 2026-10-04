@@ -124,7 +124,7 @@ class JoinerReservationTest extends TestCase
         ])->assertOk();
 
         $invoiceId = $confirmation->json('data.invoice.id');
-        $this->assertDatabaseHas('invoices', ['id' => $invoiceId, 'customer_name' => 'Customer One', 'subtotal' => 7500]);
+        $this->assertDatabaseHas('invoices', ['id' => $invoiceId, 'customer_name' => 'Customer One', 'subtotal' => 7500, 'tax_amount' => 0, 'total_amount' => 7500]);
         $this->assertDatabaseHas('invoice_items', ['invoice_id' => $invoiceId, 'adults' => 1, 'children' => 1, 'adult_price' => 4500, 'child_price' => 3000]);
         $this->assertDatabaseHas('joiner_passengers', ['reservation_id' => $reservationId, 'first_name' => 'Child', 'last_name' => 'One', 'passenger_type' => 'child']);
 

@@ -44,6 +44,25 @@ class SalesQuotationTest extends TestCase
         $this->assertStringStartsWith('%PDF-', $attachment->getBody());
     }
 
+    public function test_existing_draft_quotation_is_corrected_without_rewriting_sent_quotation(): void
+    {
+        $user = $this->salesUser();
+        $draftId = $this->actingAs($user)->postJson('/api/v1/sales/quotations', $this->payload())
+            ->assertCreated()->json('data.id');
+        $sentId = $this->actingAs($user)->postJson('/api/v1/sales/quotations', $this->payload())
+            ->assertCreated()->json('data.id');
+
+        SalesQuotation::whereKey($draftId)->update(['vat_amount' => 13440, 'vat_rate' => 12, 'total' => 125440]);
+        SalesQuotation::whereKey($sentId)->update(['status' => 'sent', 'vat_amount' => 13440, 'vat_rate' => 12, 'total' => 125440]);
+
+        $migration = require database_path('migrations/2026_10_04_000001_remove_automatic_vat_from_draft_sales_quotations.php');
+        $migration->up();
+
+        $this->assertSame(112000.0, (float) SalesQuotation::findOrFail($draftId)->total);
+        $this->assertSame(0.0, (float) SalesQuotation::findOrFail($draftId)->vat_amount);
+        $this->assertSame(125440.0, (float) SalesQuotation::findOrFail($sentId)->total);
+    }
+
     public function test_bus_charter_quotation_preserves_route_details_and_uses_its_own_pdf_template(): void
     {
         Queue::fake();
@@ -80,7 +99,8 @@ class SalesQuotationTest extends TestCase
         $this->assertStringContainsString('Caloocan City', $html);
         $this->assertStringContainsString('Clark, Pampanga', $html);
         $this->assertStringContainsString('Oct 12, 2026', $html);
-        $this->assertStringContainsString('63,840.00', $html);
+        $this->assertStringContainsString('57,000.00', $html);
+        $this->assertStringNotContainsString('VAT', $html);
 
         $this->actingAs($user)->get("/api/v1/sales/quotations/{$quotationId}/pdf")
             ->assertOk()
@@ -121,16 +141,16 @@ class SalesQuotationTest extends TestCase
         ];
     }
 
-    public function test_sales_user_creates_a_quotation_with_sequential_number_and_vat_breakdown(): void
+    public function test_sales_user_creates_a_quotation_with_sequential_number_and_no_added_vat(): void
     {
         $res = $this->actingAs($this->salesUser())
             ->postJson('/api/v1/sales/quotations', $this->payload())
             ->assertStatus(201);
 
-        // Catalog/bespoke line rates are VAT-exclusive, matching invoicing.
         $res->assertJsonPath('data.subtotal', 112000);
-        $res->assertJsonPath('data.vat_amount', 13440);
-        $res->assertJsonPath('data.total', 125440);
+        $res->assertJsonPath('data.vat_amount', 0);
+        $res->assertJsonPath('data.vat_rate', 0);
+        $res->assertJsonPath('data.total', 112000);
 
         $year = date('Y');
         $res->assertJsonPath('data.quotation_number', "JVD-QT-{$year}-000001");
@@ -168,11 +188,11 @@ class SalesQuotationTest extends TestCase
             ->assertJsonPath('data.line_items.0.quantity', 1)
             ->assertJsonPath('data.line_items.0.amount', 5600)
             ->assertJsonPath('data.subtotal', 5600)
-            ->assertJsonPath('data.total', 6272);
+            ->assertJsonPath('data.total', 5600);
 
         $quotation = SalesQuotation::firstOrFail();
         $this->assertSame(5600.0, (float) $quotation->line_items[0]['unit_price']);
-        $this->assertSame(6272.0, (float) $quotation->total);
+        $this->assertSame(5600.0, (float) $quotation->total);
     }
 
     public function test_per_line_catalog_service_is_server_priced_when_no_top_level_service_is_supplied(): void
@@ -200,7 +220,7 @@ class SalesQuotationTest extends TestCase
             ->assertJsonPath('data.line_items.0.service_id', $service->id)
             ->assertJsonPath('data.line_items.0.unit_price', 1200)
             ->assertJsonPath('data.subtotal', 2400)
-            ->assertJsonPath('data.total', 2688);
+            ->assertJsonPath('data.total', 2400);
     }
 
     public function test_conflicting_top_level_and_line_service_ids_are_rejected(): void
@@ -260,16 +280,16 @@ class SalesQuotationTest extends TestCase
             ->assertJsonPath('data.line_items.0.service_id', null)
             ->assertJsonPath('data.line_items.0.unit_price', 7700)
             ->assertJsonPath('data.subtotal', 15400)
-            ->assertJsonPath('data.total', 17248);
+            ->assertJsonPath('data.total', 15400);
     }
 
-    public function test_vat_breakdown_uses_the_configured_system_rate(): void
+    public function test_configured_vat_rate_does_not_change_the_quoted_price(): void
     {
         SystemSetting::setValue('vat_rate', 0.10);
 
         $payload = $this->payload();
         $payload['line_items'] = [[
-            'description' => 'VAT-exclusive bespoke service',
+            'description' => 'Bespoke service',
             'unit_price' => 110,
             'quantity' => 1,
         ]];
@@ -278,9 +298,9 @@ class SalesQuotationTest extends TestCase
             ->postJson('/api/v1/sales/quotations', $payload)
             ->assertCreated()
             ->assertJsonPath('data.subtotal', 110)
-            ->assertJsonPath('data.vat_amount', 11)
-            ->assertJsonPath('data.total', 121)
-            ->assertJsonPath('data.vat_rate', 10);
+            ->assertJsonPath('data.vat_amount', 0)
+            ->assertJsonPath('data.total', 110)
+            ->assertJsonPath('data.vat_rate', 0);
     }
 
     public function test_tour_quotation_rebuilds_vehicle_and_extension_lines_from_server_catalog_rates(): void
@@ -321,8 +341,8 @@ class SalesQuotationTest extends TestCase
             ->assertJsonPath('data.line_items.2.description', 'Extra Rental Hours')
             ->assertJsonPath('data.line_items.2.unit_price', 1950)
             ->assertJsonPath('data.subtotal', 75910)
-            ->assertJsonPath('data.vat_amount', 9109.2)
-            ->assertJsonPath('data.total', 85019.2);
+            ->assertJsonPath('data.vat_amount', 0)
+            ->assertJsonPath('data.total', 75910);
     }
 
     public function test_guest_package_quotation_rebuilds_adult_and_child_lines_from_server_catalog_rates(): void
@@ -357,7 +377,7 @@ class SalesQuotationTest extends TestCase
             ->assertJsonPath('data.line_items.1.unit_price', 1500)
             ->assertJsonPath('data.line_items.1.quantity', 3)
             ->assertJsonPath('data.subtotal', 10500)
-            ->assertJsonPath('data.total', 11760);
+            ->assertJsonPath('data.total', 10500);
     }
 
     public function test_specialized_catalog_package_requires_non_price_booking_context(): void

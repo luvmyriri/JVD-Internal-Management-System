@@ -12,7 +12,6 @@ use App\Models\CharterRatePlan;
 use App\Models\JoinerDeparture;
 use App\Models\PmsSchedule;
 use App\Models\Service;
-use App\Models\SystemSetting;
 use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\CharterBookingService;
@@ -198,9 +197,7 @@ class CharterController extends Controller
         ]);
         $plan = CharterRatePlan::where('is_active', true)->findOrFail($data['rate_plan_id']);
         $pricing = $this->charters->calculate($plan, $data['starts_at'], $data['ends_at'], (float) $data['estimated_kilometers'], isset($data['is_fixed_rate']) ? (bool) $data['is_fixed_rate'] : null);
-        $taxRate = (float) SystemSetting::getValue('vat_rate', 0.12);
-
-        return response()->json(['data' => [...$pricing, 'tax_rate' => $taxRate, 'tax_amount' => round($pricing['subtotal'] * $taxRate, 2), 'total' => round($pricing['subtotal'] * (1 + $taxRate), 2)]]);
+        return response()->json(['data' => [...$pricing, 'tax_rate' => 0, 'tax_amount' => 0, 'total' => $pricing['subtotal']]]);
     }
 
     public function resources(Request $request)

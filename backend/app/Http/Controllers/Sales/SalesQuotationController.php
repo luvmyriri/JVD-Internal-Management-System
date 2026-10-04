@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Jobs\SendQuotationJob;
 use App\Models\SalesQuotation;
 use App\Models\Service;
-use App\Models\SystemSetting;
 use App\Services\DocumentPdfService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -141,15 +140,10 @@ class SalesQuotationController extends Controller
                 ? $this->catalogItems($quotationService, $pricingContext)
                 : $this->standaloneItems($submittedItems, $services, $pricingContext);
 
-            // Catalog and entered line prices are VAT-exclusive, matching invoice
-            // finalization. SystemSetting stores a fractional rate (for example,
-            // 0.12), while quotations snapshot the display percentage (12.00).
-            $configuredVatRate = max(0.0, (float) SystemSetting::getValue('vat_rate', 0.12));
-            $vatFraction = $configuredVatRate > 1 ? $configuredVatRate / 100 : $configuredVatRate;
-            $vatRate = round($vatFraction * 100, 2);
             $subtotal = round(array_sum(array_column($items, 'amount')), 2);
-            $vat = round($subtotal * $vatFraction, 2);
-            $total = round($subtotal + $vat, 2);
+            $vat = 0.0;
+            $vatRate = 0.0;
+            $total = $subtotal;
 
             $year = now()->year;
             $prefix = "JVD-QT-{$year}-";
