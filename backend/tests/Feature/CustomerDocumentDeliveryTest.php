@@ -23,6 +23,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Mockery;
 use Tests\TestCase;
 
 class CustomerDocumentDeliveryTest extends TestCase
@@ -299,6 +300,22 @@ class CustomerDocumentDeliveryTest extends TestCase
         $html = view('pdf.invoice', ['invoice' => $invoice])->render();
         $this->assertMatchesRegularExpression('/Amount Paid:<\/div>\s*<div[^>]*>PHP&nbsp;2,500\.00/', $html);
         $this->assertMatchesRegularExpression('/Amount Tendered:<\/div>\s*<div[^>]*>PHP&nbsp;3,000\.00/', $html);
+    }
+
+    public function test_invoice_download_succeeds_when_document_cache_is_not_writable(): void
+    {
+        [$admin, $invoice] = $this->paidInvoice();
+        $disk = Mockery::mock();
+        $disk->shouldReceive('exists')->andReturn(false);
+        $disk->shouldReceive('put')->andReturn(false);
+        Storage::shouldReceive('disk')->with('local')->andReturn($disk);
+
+        $response = $this->actingAs($admin)
+            ->get("/api/v1/transactions/{$invoice->id}/documents/invoice")
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+
+        $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
     public function test_joiner_seat_codes_are_available_to_customer_documents(): void

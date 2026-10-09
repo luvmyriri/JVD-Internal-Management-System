@@ -4,9 +4,11 @@ namespace App\Services;
 
 use App\Models\Invoice;
 use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 class InvoiceDocumentCacheService
 {
@@ -33,11 +35,15 @@ class InvoiceDocumentCacheService
         $path = "{$directory}/{$document}.pdf";
         $disk = Storage::disk('local');
 
-        if ($disk->exists($path)) {
-            $cached = $disk->get($path);
-            if (is_string($cached) && str_starts_with($cached, '%PDF')) {
-                return $cached;
+        try {
+            if ($disk->exists($path)) {
+                $cached = $disk->get($path);
+                if (is_string($cached) && str_starts_with($cached, '%PDF')) {
+                    return $cached;
+                }
             }
+        } catch (Throwable $e) {
+            report($e);
         }
 
         $contents = $this->render($invoice, $document);
@@ -45,14 +51,21 @@ class InvoiceDocumentCacheService
             throw new RuntimeException("The generated {$document} is not a valid PDF.");
         }
 
-        if (! $disk->put($path, $contents)) {
-            throw new RuntimeException("The generated {$document} could not be cached.");
-        }
-
-        foreach ($disk->directories("invoice-documents/{$invoice->id}") as $existingDirectory) {
-            if ($existingDirectory !== $directory) {
-                $disk->deleteDirectory($existingDirectory);
+        try {
+            if ($disk->put($path, $contents)) {
+                foreach ($disk->directories("invoice-documents/{$invoice->id}") as $existingDirectory) {
+                    if ($existingDirectory !== $directory) {
+                        $disk->deleteDirectory($existingDirectory);
+                    }
+                }
+            } else {
+                Log::warning('Invoice document cache write failed; serving generated PDF directly.', [
+                    'invoice_id' => $invoice->id,
+                    'document' => $document,
+                ]);
             }
+        } catch (Throwable $e) {
+            report($e);
         }
 
         return $contents;
