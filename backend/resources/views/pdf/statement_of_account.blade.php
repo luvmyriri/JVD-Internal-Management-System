@@ -6,7 +6,7 @@
     <style>
         @page { size: A4; margin: 12mm 14mm 22mm; }
         * { box-sizing: border-box; }
-        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 11px; line-height: 1.6; background: #fff; }
+        body { font-family: 'DejaVu Sans', sans-serif; color: #1e293b; margin: 0; padding: 0; font-size: 10px; line-height: 1.4; background: #fff; }
 
         /* ─── Header ─── */
         .header-table { width: 100%; border-collapse: collapse; margin-bottom: 28px; }
@@ -19,26 +19,26 @@
         .title-bar { background: #1e3a8a; color: #fff; text-align: center; padding: 10px; border-radius: 4px; font-size: 13px; font-weight: 900; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 22px; }
 
         /* ─── Info Grid ─── */
-        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .info-box   { width: 50%; vertical-align: top; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; }
+        .info-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .info-box   { width: 50%; vertical-align: top; padding: 9px 11px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; }
         .info-label { font-size: 8px; font-weight: 900; text-transform: uppercase; color: #94a3b8; letter-spacing: 0.6px; margin-bottom: 2px; }
         .info-value { font-size: 12px; font-weight: 900; color: #0f172a; }
         .info-sub   { font-size: 9px; color: #64748b; margin-top: 1px; }
 
         /* ─── Service Items Table ─── */
-        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .items-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
         .items-table thead tr { background: #f1f5f9; }
-        .items-table th { padding: 9px 10px; text-align: left; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; }
-        .items-table td { padding: 11px 10px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 10.5px; }
+        .items-table th { padding: 7px 8px; text-align: left; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; border-bottom: 2px solid #cbd5e1; }
+        .items-table td { padding: 7px 8px; border-bottom: 1px solid #f1f5f9; vertical-align: top; font-size: 10px; }
         .items-table tbody tr:last-child td { border-bottom: none; }
         .items-table .num { text-align: right; }
         .service-name { font-weight: 700; color: #0f172a; }
         .service-cat  { font-size: 8.5px; color: #64748b; margin-top: 2px; }
 
         /* ─── Payments History ─── */
-        .payments-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .payments-table th { padding: 8px 10px; text-align: left; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #475569; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; }
-        .payments-table td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; font-size: 10px; }
+        .payments-table { width: 100%; border-collapse: collapse; margin-bottom: 12px; }
+        .payments-table th { padding: 6px 8px; text-align: left; font-size: 8.5px; font-weight: 900; text-transform: uppercase; color: #475569; background: #f1f5f9; border-bottom: 2px solid #cbd5e1; }
+        .payments-table td { padding: 6px 8px; border-bottom: 1px solid #f1f5f9; font-size: 10px; }
         .payments-table .amount-cell { text-align: right; font-weight: 700; color: #16a34a; }
 
         /* ─── Status Badge ─── */
@@ -48,29 +48,26 @@
         .badge-paid    { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
 
         /* ─── Financial Summary ─── */
-        .summary-wrapper { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 28px; }
-        .summary-row { display: table; width: 100%; margin-bottom: 7px; }
+        .summary-wrapper { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 9px 12px; margin-bottom: 10px; }
+        .summary-row { display: table; width: 100%; margin-bottom: 4px; }
         .summary-label { display: table-cell; font-weight: 600; color: #475569; font-size: 10.5px; }
         .summary-value { display: table-cell; text-align: right; font-weight: 900; color: #0f172a; font-size: 10.5px; }
-        .summary-divider { border: none; border-top: 1px dashed #cbd5e1; margin: 8px 0; }
-        .summary-balance-row { background: #fef2f2; border-radius: 4px; padding: 8px 10px; display: table; width: 100%; margin-top: 6px; }
+        .summary-divider { border: none; border-top: 1px dashed #cbd5e1; margin: 5px 0; }
+        .summary-balance-row { background: #fef2f2; border-radius: 4px; padding: 5px 8px; display: table; width: 100%; margin-top: 4px; }
         .summary-balance-label { display: table-cell; font-weight: 900; color: #991b1b; font-size: 11px; }
         .summary-balance-value { display: table-cell; text-align: right; font-weight: 900; color: #dc2626; font-size: 14px; }
-        .summary-paid-row { display: table; width: 100%; margin-top: 4px; padding: 6px 10px; background: #dcfce7; border-radius: 4px; }
+        .summary-paid-row { display: table; width: 100%; margin-top: 4px; padding: 5px 8px; background: #dcfce7; border-radius: 4px; }
         .summary-paid-label { display: table-cell; font-weight: 900; color: #166534; font-size: 10.5px; }
         .summary-paid-value { display: table-cell; text-align: right; font-weight: 900; color: #16a34a; font-size: 12px; }
 
-        /* ─── Notice Block ─── */
-        .notice { border-left: 4px solid #f59e0b; background: #fffbeb; padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 18px; page-break-inside: avoid; }
-        .notice strong { color: #92400e; display: block; font-size: 10px; margin-bottom: 3px; }
-        .notice p { margin: 0; color: #78350f; font-size: 9.5px; }
+        .balance-note { margin-top: 6px; font-size: 8.5px; color: #78350f; }
 
         /* ─── Footer ─── */
         .footer { border-top: 1px solid #e2e8f0; padding-top: 18px; margin-top: 36px; font-size: 9px; color: #64748b; }
         .footer-table { width: 100%; border-collapse: collapse; }
         .footer-left  { width: 50%; vertical-align: top; }
         .footer-right { width: 50%; text-align: right; vertical-align: top; }
-        .section-title { font-size: 9.5px; font-weight: 900; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
+        .section-title { font-size: 9.5px; font-weight: 900; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #e2e8f0; }
         body > .header-table, body > .title-bar, body > .footer { display: none; }
         @include('pdf.partials.brand-styles')
     </style>
@@ -316,22 +313,15 @@
             <div class="summary-paid-value">PHP {{ number_format($invoice->amount_received, 2) }}</div>
         </div>
         @if(!$isPaid)
-        <div class="summary-balance-row" style="margin-top: 8px;">
+        <div class="summary-balance-row">
             <div class="summary-balance-label">Outstanding Balance:</div>
             <div class="summary-balance-value">PHP {{ number_format($invoice->balance, 2) }}</div>
         </div>
+        <div class="balance-note">Please settle the remaining balance on or before the scheduled service date. Failure to settle may result in cancellation of services.</div>
         @else
         <div style="text-align: center; margin-top: 10px; color: #166534; font-weight: 900; font-size: 12px;">✔ ACCOUNT FULLY SETTLED</div>
         @endif
     </div>
-
-    {{-- ── NOTICE (unpaid only) ── --}}
-    @if(!$isPaid)
-    <div class="notice">
-        <strong>Outstanding Balance Notice</strong>
-        <p>Please settle your remaining balance of <strong>PHP {{ number_format($invoice->balance, 2) }}</strong> on or before the scheduled service date. Failure to settle may result in cancellation of services.</p>
-    </div>
-    @endif
 
     {{-- ── FOOTER ── --}}
     <div class="footer">

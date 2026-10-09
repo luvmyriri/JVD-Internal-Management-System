@@ -92,7 +92,7 @@ class InvoiceDocumentCacheService
     {
         $settingsUpdatedAt = SystemSetting::query()->max('updated_at');
         $payload = [
-            'template_version' => 4,
+            'template_version' => 5,
             'invoice' => $invoice->toArray(),
             'settings_updated_at' => $settingsUpdatedAt,
         ];
