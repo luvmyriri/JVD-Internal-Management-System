@@ -95,6 +95,7 @@
         $educationPackage = $educationParticipant?->package;
         $charter = $invoice->charterBooking;
         $charterFleet = $charter?->fleet_assignments ?: [];
+        $documentLines = app(\App\Services\InvoiceDocumentLineService::class)->lines($invoice);
     @endphp
 
     {{-- ── HEADER ── --}}
@@ -191,9 +192,11 @@
             <tr>
                 <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Vehicles Assigned:</strong> {{ count($charterFleet) }} buses</td>
             </tr>
+            @if(count($charterFleet) === 1)
             <tr>
-                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Fleet &amp; Drivers:</strong> {{ collect($charterFleet)->map(fn ($assignment, $index) => 'Unit '.($index + 1).': '.($assignment['plate_number'] ?? 'vehicle pending').(! empty($assignment['model']) ? ' ('.$assignment['model'].')' : '').' - '.($assignment['driver_name'] ?? 'driver pending'))->implode('; ') }}</td>
+                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Fleet &amp; Driver:</strong> {{ ($charterFleet[0]['plate_number'] ?? 'vehicle pending').(! empty($charterFleet[0]['model']) ? ' ('.$charterFleet[0]['model'].')' : '').' - '.($charterFleet[0]['driver_name'] ?? 'driver pending') }}</td>
             </tr>
+            @endif
             @elseif($invoice->bus_id || $invoice->driver_id)
             <tr>
                 @if($operationalBus)
@@ -234,26 +237,26 @@
         <thead>
             <tr>
                 <th style="width: 8%;">Qty</th>
-                <th style="width: 42%;">Description</th>
-                <th style="width: 20%;">Date Issued</th>
-                <th style="width: 15%; text-align: center;">Status</th>
-                <th style="width: 15%; text-align: right;">Amount</th>
+                <th style="width: 44%;">Description</th>
+                <th style="width: 17%; text-align: right;">Unit Rate</th>
+                <th style="width: 14%; text-align: center;">Status</th>
+                <th style="width: 17%; text-align: right;">Amount</th>
             </tr>
         </thead>
         <tbody>
             @if($hasItems)
-                @foreach($invoice->items as $item)
+                @foreach($documentLines as $line)
                 <tr>
-                    <td>{{ $item->quantity }}</td>
+                    <td>{{ $line['quantity'] }}</td>
                     <td>
-                        <div class="service-name">{{ $item->item_name ?? $item->service?->name ?? 'N/A' }}</div>
-                        <div class="service-cat">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
+                        <div class="service-name">{{ $line['name'] }}</div>
+                        <div class="service-cat">{{ \Illuminate\Support\Str::limit($line['description'] ?: $line['category'], 150) }}</div>
                     </td>
-                    <td>{{ $invoice->created_at ? \Carbon\Carbon::parse($invoice->created_at)->format('M d, Y') : 'N/A' }}</td>
+                    <td class="num">PHP {{ number_format($line['unit_price'], 2) }}</td>
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $statusLabel }}">{{ strtoupper($statusLabel) }}</span>
                     </td>
-                    <td class="num" style="font-weight: 700;">PHP {{ number_format($item->total_price, 2) }}</td>
+                    <td class="num" style="font-weight: 700;">PHP {{ number_format($line['total_price'], 2) }}</td>
                 </tr>
                 @endforeach
             @else
@@ -266,7 +269,7 @@
                             @if($invoice->pick_up ?? false)Pickup: {{ $invoice->pick_up }} → {{ $invoice->drop_off ?? '' }}@endif
                         </div>
                     </td>
-                    <td>{{ $invoice->created_at ? \Carbon\Carbon::parse($invoice->created_at)->format('M d, Y') : now()->format('M d, Y') }}</td>
+                    <td class="num">PHP {{ number_format($invoice->total_amount, 2) }}</td>
                     <td style="text-align: center;">
                         <span class="badge badge-{{ $statusLabel }}">{{ strtoupper($statusLabel) }}</span>
                     </td>

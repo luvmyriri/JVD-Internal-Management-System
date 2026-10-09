@@ -79,6 +79,7 @@
         $joinerSeats = $joiner?->passengers?->map(fn($passenger) => $passenger->seat?->seat_code)->filter()->values()->all() ?? [];
         $joinerSeatNames = $joiner?->passengers?->map(fn($passenger) => ($passenger->seat?->seat_code ?: '?').' - '.$passenger->first_name.' '.$passenger->last_name.($passenger->passenger_type === 'child' ? ' (Child)' : ''))->filter()->values()->all() ?? [];
         $charter = $invoice->charterBooking;
+        $documentLines = app(\App\Services\InvoiceDocumentLineService::class)->lines($invoice);
         $education = $invoice->educationalTourBooking;
         $educationParticipant = $invoice->educationalTourParticipantBooking;
         $educationPackage = $educationParticipant?->package;
@@ -198,7 +199,9 @@
                 <td><span class="details-label">Estimated Distance:</span> {{ number_format($charter->estimated_kilometers, 0) }} km</td>
             </tr>
             <tr><td colspan="3"><span class="details-label">Route:</span> {{ $charter->pickup_location }} &rarr; {{ $charter->destination }}</td></tr>
-            <tr><td colspan="3"><span class="details-label">Fleet Assignment:</span> {{ collect($charterFleet)->map(fn($assignment, $index) => 'Unit '.($index + 1).': '.($assignment['plate_number'] ?? 'vehicle pending').(!empty($assignment['model']) ? ' ('.$assignment['model'].')' : '').' - '.($assignment['driver_name'] ?? 'driver pending').(!empty($assignment['driver_phone']) ? ' ['.$assignment['driver_phone'].']' : ''))->implode('; ') }}</td></tr>
+            @if(count($charterFleet) === 1)
+            <tr><td colspan="3"><span class="details-label">Fleet Assignment:</span> {{ ($charterFleet[0]['plate_number'] ?? 'vehicle pending').(!empty($charterFleet[0]['model']) ? ' ('.$charterFleet[0]['model'].')' : '').' - '.($charterFleet[0]['driver_name'] ?? 'driver pending') }}</td></tr>
+            @endif
         </table>
     </div>
     @endif
@@ -285,40 +288,36 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($invoice->items as $index => $item)
-            @php
-                $lineName = $item->item_name ?? $item->service?->name ?? 'Travel service';
-                $lineDescription = $item->item_description ?? $item->service?->description;
-            @endphp
+            @foreach($documentLines as $index => $line)
             <tr>
                 <td>{{ $index + 1 }}</td>
                 <td>
                     <div class="item-name">
-                        {{ $lineName }}
+                        {{ $line['name'] }}
                     </div>
-                    <div class="item-sub">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
-                    @if($lineDescription && trim($lineDescription) !== trim($lineName))
-                    <div class="item-sub">{{ \Illuminate\Support\Str::limit($lineDescription, 120) }}</div>
+                    <div class="item-sub">{{ $line['category'] }}</div>
+                    @if($line['description'] && trim($line['description']) !== trim($line['name']))
+                    <div class="item-sub">{{ \Illuminate\Support\Str::limit($line['description'], 150) }}</div>
                     @endif
-                    @if($item->adults !== null || $item->children !== null)
+                    @if($line['adults'] !== null || $line['children'] !== null)
                     <div class="pax-row">
-                        @if($item->adults)
-                        Adults: {{ $item->adults }} &times; PHP&nbsp;{{ number_format($item->adult_price ?? $item->unit_price, 2) }}
+                        @if($line['adults'])
+                        Adults: {{ $line['adults'] }} &times; PHP&nbsp;{{ number_format($line['adult_price'] ?? $line['unit_price'], 2) }}
                         @endif
-                        @if($item->adults && $item->children)
+                        @if($line['adults'] && $line['children'])
                          |
                         @endif
-                        @if($item->children)
-                        Children: {{ $item->children }} &times; PHP&nbsp;{{ number_format($item->child_price ?? $item->unit_price, 2) }}
+                        @if($line['children'])
+                        Children: {{ $line['children'] }} &times; PHP&nbsp;{{ number_format($line['child_price'] ?? $line['unit_price'], 2) }}
                         @endif
                     </div>
                     @endif
                 </td>
                 <td>{{ $invoice->created_at->format('M d, Y') }}</td>
-                <td class="center">{{ $item->quantity }}@if($item->service_type === 'bus_rental') {{ (int) $item->quantity === 1 ? 'bus' : 'buses' }}@endif</td>
-                <td class="right">PHP&nbsp;{{ number_format($item->unit_price, 2) }}</td>
+                <td class="center">{{ $line['quantity_label'] }}</td>
+                <td class="right">PHP&nbsp;{{ number_format($line['unit_price'], 2) }}</td>
                 <td class="right" style="font-weight: 900; color: #0f172a;">
-                    PHP&nbsp;{{ number_format($item->total_price, 2) }}
+                    PHP&nbsp;{{ number_format($line['total_price'], 2) }}
                 </td>
             </tr>
             @endforeach

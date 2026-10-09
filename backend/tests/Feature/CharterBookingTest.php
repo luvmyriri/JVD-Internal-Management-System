@@ -6,10 +6,12 @@ use App\Models\Bus;
 use App\Models\CharterBooking;
 use App\Models\CharterRatePlan;
 use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\Service;
 use App\Models\TripTicket;
 use App\Models\User;
 use App\Services\CharterBookingService;
+use App\Services\InvoiceDocumentLineService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -281,7 +283,9 @@ class CharterBookingTest extends TestCase
         $html = view('pdf.invoice', ['invoice' => $invoice])->render();
         $this->assertStringContainsString('CHARTER-01', $html);
         $this->assertStringContainsString('CHARTER-02', $html);
-        $this->assertStringContainsString('2 buses</td>', $html);
+        $this->assertStringContainsString('Bus Charter — Bus 1', $html);
+        $this->assertStringContainsString('Bus Charter — Bus 2', $html);
+        $this->assertSame(2, substr_count($html, 'class="center">1 bus</td>'));
         $this->assertStringContainsString($this->driver->first_name, $html);
         $this->assertStringContainsString($secondDriver->first_name, $html);
         $statementHtml = view('pdf.statement_of_account', ['invoice' => $invoice])->render();
@@ -290,7 +294,10 @@ class CharterBookingTest extends TestCase
         $this->assertStringContainsString('CHARTER-01', $statementHtml);
         $this->assertStringContainsString('CHARTER-02', $statementHtml);
         $this->assertStringContainsString('<th style="width: 8%;">Qty</th>', $statementHtml);
-        $this->assertStringContainsString('<td>2</td>', $statementHtml);
+        $this->assertStringContainsString('Bus Charter — Bus 1', $statementHtml);
+        $this->assertStringContainsString('Bus Charter — Bus 2', $statementHtml);
+        $this->assertStringContainsString('Unit Rate', $statementHtml);
+        $this->assertSame(4, substr_count($statementHtml, 'PHP 10,000.00</td>'));
 
         $replacementDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);
         $replacementBus = Bus::create([
@@ -320,6 +327,45 @@ class CharterBookingTest extends TestCase
         $this->assertStringContainsString('CHARTER-03', $updatedHtml);
         $this->assertStringContainsString($replacementDriver->first_name, $updatedHtml);
         $this->assertStringNotContainsString('CHARTER-02', $updatedHtml);
+    }
+
+    public function test_document_lines_itemize_three_assigned_buses_without_changing_invoice_total(): void
+    {
+        $invoice = new Invoice;
+        $invoice->setRelation('items', collect([new InvoiceItem([
+            'item_name' => 'Bus Charter: VIP Luxury Bus Charter (3 Buses for 49 Pax)',
+            'service_type' => 'bus_rental',
+            'quantity' => 3,
+            'unit_price' => 35000,
+            'total_price' => 105000,
+        ])]));
+        $invoice->setRelation('charterBooking', new CharterBooking([
+            'fleet_assignments' => [
+                ['plate_number' => 'NKR 8458', 'model' => 'H3', 'driver_name' => 'Joseph P. Corpin', 'seating_capacity' => 49],
+                ['plate_number' => 'NKR 8460', 'model' => 'H4', 'driver_name' => 'Reymundo Madrona', 'seating_capacity' => 49],
+                ['plate_number' => 'NKR 8457', 'model' => 'H5', 'driver_name' => 'Alexander Bordeos', 'seating_capacity' => 49],
+            ],
+        ]));
+
+        $lines = app(InvoiceDocumentLineService::class)->lines($invoice);
+
+        $this->assertCount(3, $lines);
+        $this->assertSame(['Bus Charter: VIP Luxury Bus Charter — Bus 1', 'Bus Charter: VIP Luxury Bus Charter — Bus 2', 'Bus Charter: VIP Luxury Bus Charter — Bus 3'], array_column($lines, 'name'));
+        $this->assertSame([35000, 35000, 35000], array_column($lines, 'total_price'));
+        $this->assertEquals(105000, array_sum(array_column($lines, 'total_price')));
+        foreach (['NKR 8458', 'NKR 8460', 'NKR 8457', 'Joseph P. Corpin', 'Reymundo Madrona', 'Alexander Bordeos'] as $detail) {
+            $this->assertStringContainsString($detail, implode(' ', array_column($lines, 'description')));
+        }
+
+        $invoice->setRelation('items', collect([new InvoiceItem([
+            'item_name' => 'Bus Charter - 3 units',
+            'service_type' => 'bus_rental',
+            'quantity' => 3,
+            'unit_price' => 33.3333,
+            'total_price' => 100,
+        ])]));
+        $roundedLines = app(InvoiceDocumentLineService::class)->lines($invoice);
+        $this->assertSame([33.34, 33.33, 33.33], array_column($roundedLines, 'total_price'));
     }
 
     public function test_active_charter_booking_can_update_operations_and_manifest(): void
