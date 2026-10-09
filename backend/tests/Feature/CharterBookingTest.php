@@ -281,8 +281,16 @@ class CharterBookingTest extends TestCase
         $html = view('pdf.invoice', ['invoice' => $invoice])->render();
         $this->assertStringContainsString('CHARTER-01', $html);
         $this->assertStringContainsString('CHARTER-02', $html);
+        $this->assertStringContainsString('2 buses</td>', $html);
         $this->assertStringContainsString($this->driver->first_name, $html);
         $this->assertStringContainsString($secondDriver->first_name, $html);
+        $statementHtml = view('pdf.statement_of_account', ['invoice' => $invoice])->render();
+        $this->assertStringContainsString('Vehicles Assigned:', $statementHtml);
+        $this->assertStringContainsString('2 buses', $statementHtml);
+        $this->assertStringContainsString('CHARTER-01', $statementHtml);
+        $this->assertStringContainsString('CHARTER-02', $statementHtml);
+        $this->assertStringContainsString('<th style="width: 8%;">Qty</th>', $statementHtml);
+        $this->assertStringContainsString('<td>2</td>', $statementHtml);
 
         $replacementDriver = User::factory()->create(['role' => 'driver', 'is_active' => true]);
         $replacementBus = Bus::create([

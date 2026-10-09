@@ -315,7 +315,7 @@
                     @endif
                 </td>
                 <td>{{ $invoice->created_at->format('M d, Y') }}</td>
-                <td class="center">{{ $item->quantity }}</td>
+                <td class="center">{{ $item->quantity }}@if($item->service_type === 'bus_rental') {{ (int) $item->quantity === 1 ? 'bus' : 'buses' }}@endif</td>
                 <td class="right">PHP&nbsp;{{ number_format($item->unit_price, 2) }}</td>
                 <td class="right" style="font-weight: 900; color: #0f172a;">
                     PHP&nbsp;{{ number_format($item->total_price, 2) }}

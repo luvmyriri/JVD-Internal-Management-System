@@ -93,6 +93,8 @@
         $travelDate     = isset($invoice->travel_date) ? $invoice->travel_date : ($invoice->due_date ?? null);
         $educationParticipant = $invoice->educationalTourParticipantBooking;
         $educationPackage = $educationParticipant?->package;
+        $charter = $invoice->charterBooking;
+        $charterFleet = $charter?->fleet_assignments ?: [];
     @endphp
 
     {{-- ── HEADER ── --}}
@@ -185,7 +187,14 @@
                 <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Pickup Location:</strong> {{ $invoice->pickup_location }}</td>
             </tr>
             @endif
-            @if($invoice->bus_id || $invoice->driver_id)
+            @if($charter && count($charterFleet) > 0)
+            <tr>
+                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Vehicles Assigned:</strong> {{ count($charterFleet) }} buses</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="padding: 3px 0; vertical-align: top;"><strong>Fleet &amp; Drivers:</strong> {{ collect($charterFleet)->map(fn ($assignment, $index) => 'Unit '.($index + 1).': '.($assignment['plate_number'] ?? 'vehicle pending').(! empty($assignment['model']) ? ' ('.$assignment['model'].')' : '').' - '.($assignment['driver_name'] ?? 'driver pending'))->implode('; ') }}</td>
+            </tr>
+            @elseif($invoice->bus_id || $invoice->driver_id)
             <tr>
                 @if($operationalBus)
                 <td style="padding: 3px 0; vertical-align: top;"><strong>Bus Assigned:</strong> {{ $operationalBus->plate_number }} ({{ $operationalBus->model }})</td>
@@ -224,8 +233,8 @@
     <table class="items-table">
         <thead>
             <tr>
-                <th style="width: 5%;">#</th>
-                <th style="width: 45%;">Description</th>
+                <th style="width: 8%;">Qty</th>
+                <th style="width: 42%;">Description</th>
                 <th style="width: 20%;">Date Issued</th>
                 <th style="width: 15%; text-align: center;">Status</th>
                 <th style="width: 15%; text-align: right;">Amount</th>
@@ -233,9 +242,9 @@
         </thead>
         <tbody>
             @if($hasItems)
-                @foreach($invoice->items as $index => $item)
+                @foreach($invoice->items as $item)
                 <tr>
-                    <td>{{ $index + 1 }}</td>
+                    <td>{{ $item->quantity }}</td>
                     <td>
                         <div class="service-name">{{ $item->item_name ?? $item->service?->name ?? 'N/A' }}</div>
                         <div class="service-cat">{{ $item->service?->category ?? str_replace('_', ' ', $item->service_type ?? 'Custom service') }}</div>
