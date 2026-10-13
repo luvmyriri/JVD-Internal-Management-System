@@ -121,7 +121,6 @@ export function buildServiceQuotationHtml(params: ServiceQuotationParams): strin
     ${recipientLine('Address', recipient.client_address)}
     ${recipientLine('Contact', recipient.client_contact)}
     ${recipientLine('Email', recipient.client_email)}
-    ${recipientLine('TIN', recipient.client_tin)}
   `;
 
   const today = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });

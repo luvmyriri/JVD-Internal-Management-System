@@ -51,7 +51,7 @@
         $company = $company ?? [
             'name' => 'JVD Event & Travel Management Company',
             'address' => 'UNIT 6 - Aryanna Village Center Brgy 175 Susano Road, Camarin, Caloocan City',
-            'phone' => '0976 471 1294', 'email' => 'accounts@jvd-travel.com', 'registration' => '912-883-911-000',
+            'phone' => '0976 471 1294', 'email' => 'accounts@jvd-travel.com',
         ];
     @endphp
 

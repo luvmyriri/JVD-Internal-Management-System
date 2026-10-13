@@ -14,7 +14,6 @@ class DocumentPdfService
             'address' => SystemSetting::getValue('company.address', 'UNIT 6 - Aryanna Village Center, Brgy 175 Susano Road, Camarin, Caloocan City'),
             'phone' => SystemSetting::getValue('company.phone', '0976 471 1294'),
             'email' => SystemSetting::getValue('company.email', 'accounts@jvd-travel.com'),
-            'registration' => SystemSetting::getValue('company.registration', '912-883-911-000'),
         ];
     }
 

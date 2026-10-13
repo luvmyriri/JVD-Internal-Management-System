@@ -4,7 +4,6 @@
         'address' => 'Unit 6 Aryanna Village Center, Brgy. 175, Susano Road, Camarin, Caloocan City',
         'phone' => '0954 396 0802',
         'email' => 'jvdtransport8@gmail.com',
-        'registration' => '912-883-911-000',
     ];
     $documentTitle = $documentTitle ?? 'Official Document';
     $documentReference = $documentReference ?? null;

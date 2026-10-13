@@ -26,7 +26,6 @@ export default function QuotationRecipientModal({ service, pricing, onClose }: P
   const [address, setAddress] = useState('');
   const [contact, setContact] = useState('');
   const [email, setEmail] = useState('');
-  const [tin, setTin] = useState('');
   const [travelDate, setTravelDate] = useState('');
   const [validDays, setValidDays] = useState(15);
 
@@ -69,7 +68,6 @@ export default function QuotationRecipientModal({ service, pricing, onClose }: P
         client_address: address.trim() || undefined,
         client_contact: contact.trim() || undefined,
         client_email: email.trim() || undefined,
-        client_tin: tin.trim() || undefined,
         service_id: service.id,
         service_name: service.name,
         category: service.category,
@@ -163,13 +161,9 @@ export default function QuotationRecipientModal({ service, pricing, onClose }: P
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Client Name *</label>
               <input value={name} onChange={(e) => { setName(e.target.value); setCustomerId(null); }} placeholder="e.g. Juan Dela Cruz" className={inputCls} />
             </div>
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Company</label>
               <input value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Optional" className={inputCls} />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">TIN</label>
-              <input value={tin} onChange={(e) => setTin(e.target.value)} placeholder="Optional" className={inputCls} />
             </div>
             <div className="sm:col-span-2">
               <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Address</label>

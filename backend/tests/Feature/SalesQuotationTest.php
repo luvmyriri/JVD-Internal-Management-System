@@ -20,10 +20,19 @@ class SalesQuotationTest extends TestCase
     public function test_saved_quotation_can_be_queued_and_delivered_as_pdf(): void
     {
         Queue::fake();
+        SystemSetting::setValue('company.registration', 'UNVERIFIED-TAX-ID');
         $user = $this->salesUser();
         $quotationId = $this->actingAs($user)->postJson('/api/v1/sales/quotations', $this->payload())
             ->assertCreated()->json('data.id');
         $this->assertSame('pdf.sales-quotation', SalesQuotation::findOrFail($quotationId)->pdfView());
+        $company = app(DocumentPdfService::class)->companyProfile();
+        $this->assertArrayNotHasKey('registration', $company);
+        $quotationHtml = view('pdf.sales-quotation', [
+            'quotation' => SalesQuotation::with('preparer')->findOrFail($quotationId),
+            'company' => $company,
+        ])->render();
+        $this->assertStringNotContainsString('UNVERIFIED-TAX-ID', $quotationHtml);
+        $this->assertStringNotContainsString('TIN:', $quotationHtml);
 
         $this->actingAs($user)->postJson("/api/v1/sales/quotations/{$quotationId}/send", [
             'email' => 'quotes@example.com',
@@ -101,6 +110,7 @@ class SalesQuotationTest extends TestCase
         $this->assertStringContainsString('Oct 12, 2026', $html);
         $this->assertStringContainsString('57,000.00', $html);
         $this->assertStringNotContainsString('VAT', $html);
+        $this->assertStringNotContainsString('TIN:', $html);
 
         $this->actingAs($user)->get("/api/v1/sales/quotations/{$quotationId}/pdf")
             ->assertOk()

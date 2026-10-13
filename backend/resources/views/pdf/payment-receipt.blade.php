@@ -150,6 +150,6 @@
     </table>
 
     <div class="note"><strong>Payment acknowledgement:</strong> This receipt acknowledges the amount recorded against the invoice above. Keep this receipt together with the official invoice for your records.</div>
-    <div class="footer">System-generated payment receipt | {{ $company['name'] }} | Registration: {{ $company['registration'] }}</div>
+    <div class="footer">System-generated payment receipt | {{ $company['name'] }}</div>
 </body>
 </html>

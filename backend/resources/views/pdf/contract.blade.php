@@ -38,8 +38,7 @@
                 <div class="company-logo">{{ $company['name'] }}</div>
                 <div style="margin-top: 6px; font-size: 9px; color: #475569;">
                     {{ $company['address'] }}<br>
-                    {{ $company['phone'] }} &middot; {{ $company['email'] }}<br>
-                    Registration: {{ $company['registration'] }}
+                    {{ $company['phone'] }} &middot; {{ $company['email'] }}
                 </div>
             </td>
             <td class="header-right">

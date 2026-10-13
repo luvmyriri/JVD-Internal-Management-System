@@ -159,7 +159,6 @@ class CustomerPortalInvoiceSummaryTest extends TestCase
                 'address' => 'Caloocan City',
                 'phone' => '09764711294',
                 'email' => 'accounts@example.test',
-                'registration' => '912-883-911-000',
             ],
             'generatedAt' => now(),
             'taxRate' => 0.12,

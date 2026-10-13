@@ -111,7 +111,6 @@
                     </tr>
                 </table>
                 <div class="company-sub" style="margin-top: 8px;">
-                    Reg No: 912-883-911-000<br>
                     UNIT 6 - Aryanna Village Center Brgy 175 Susano Road,<br>
                     Camarin, Caloocan City<br>
                     Phone: 0976 471 1294 &nbsp;|&nbsp; Tel: 02 8293 8068

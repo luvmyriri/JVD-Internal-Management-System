@@ -14,8 +14,10 @@ use App\Models\JoinerDepartureSeat;
 use App\Models\JoinerPassenger;
 use App\Models\JoinerReservation;
 use App\Models\Service;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Services\CollectionStatementService;
+use App\Services\DocumentPdfService;
 use App\Services\InvoiceDocumentCacheService;
 use App\Services\InvoiceDocumentDispatchService;
 use App\Services\InvoiceDocumentMailService;
@@ -157,8 +159,20 @@ class CustomerDocumentDeliveryTest extends TestCase
     public function test_transaction_financial_documents_render_as_valid_pdfs(): void
     {
         Storage::fake('local');
+        SystemSetting::setValue('company.registration', 'UNVERIFIED-TAX-ID');
         [$admin, $invoice] = $this->paidInvoice();
         $documents = app(InvoiceDocumentCacheService::class);
+        $company = app(DocumentPdfService::class)->companyProfile();
+
+        foreach (['pdf.invoice', 'pdf.payment-receipt', 'pdf.statement_of_account'] as $view) {
+            $html = view($view, [
+                'invoice' => $invoice->fresh()->load(Invoice::operationalDocumentRelations()),
+                'company' => $company,
+                'generatedAt' => now(),
+            ])->render();
+            $this->assertStringNotContainsString('UNVERIFIED-TAX-ID', $html);
+            $this->assertStringNotContainsString('912-883-911-000', $html);
+        }
 
         foreach ([
             InvoiceDocumentCacheService::INVOICE,

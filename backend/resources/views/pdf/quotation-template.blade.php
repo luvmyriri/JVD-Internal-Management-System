@@ -15,7 +15,6 @@
         'address' => 'UNIT 6 - Aryanna Village Center, Brgy 175 Susano Road, Camarin, Caloocan City',
         'phone' => '0976 471 1294',
         'email' => 'accounts@jvd-travel.com',
-        'registration' => '912-883-911-000',
     ];
 
     $schoolCustomer = $package->schoolCustomer;
@@ -68,7 +67,7 @@
             <div class="brand-details">
                 {{ $company['address'] }}<br>
                 Phone: {{ $company['phone'] }} &nbsp;|&nbsp; Tel: (02) 8293 8068<br>
-                Email: {{ $company['email'] }} &nbsp;|&nbsp; TIN: {{ $company['registration'] ?? '912-883-911-000' }}
+                Email: {{ $company['email'] }}
             </div>
         </td>
         <td class="title-col">
