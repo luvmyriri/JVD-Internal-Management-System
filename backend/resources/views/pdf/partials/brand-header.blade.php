@@ -18,6 +18,7 @@
                 <strong>Email:</strong> {{ $documentCompany['email'] ?? 'jvdtransport8@gmail.com' }}<br>
                 <strong>Address:</strong> {{ $documentCompany['address'] }}<br>
                 <strong>Phone:</strong> {{ $documentCompany['phone'] }} &nbsp; <strong>Tel:</strong> 02 8293 8068
+                @if(!empty($documentCompany['tin']))<br><strong>TIN / Branch:</strong> {{ $documentCompany['tin'] }}@endif
             </td>
         </tr>
     </table>

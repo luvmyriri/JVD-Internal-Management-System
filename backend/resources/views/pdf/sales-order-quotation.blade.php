@@ -463,6 +463,7 @@
                 {{ $company['address'] }}<br>
                 Phone: {{ $company['phone'] }} &nbsp;|&nbsp; Tel: (02) 8293 8068<br>
                 Email: {{ $company['email'] }}
+                @if(!empty($company['tin']))<br>TIN &amp; Branch Code: {{ $company['tin'] }}@endif
             </div>
         </td>
         <td class="title-col">

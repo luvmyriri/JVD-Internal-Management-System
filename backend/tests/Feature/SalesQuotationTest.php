@@ -112,6 +112,13 @@ class SalesQuotationTest extends TestCase
         $this->assertStringNotContainsString('VAT', $html);
         $this->assertStringNotContainsString('TIN:', $html);
 
+        SystemSetting::setValue('company.verified_tin', '123-456-789-00000');
+        $verifiedHtml = view($quotation->pdfView(), [
+            'quotation' => $quotation,
+            'company' => app(DocumentPdfService::class)->companyProfile(),
+        ])->render();
+        $this->assertStringContainsString('TIN &amp; Branch Code: 123-456-789-00000', $verifiedHtml);
+
         $this->actingAs($user)->get("/api/v1/sales/quotations/{$quotationId}/pdf")
             ->assertOk()
             ->assertHeader('content-type', 'application/pdf');

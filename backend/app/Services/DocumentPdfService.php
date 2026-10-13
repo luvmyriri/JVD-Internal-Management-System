@@ -9,11 +9,14 @@ class DocumentPdfService
 {
     public function companyProfile(): array
     {
+        $verifiedTin = trim((string) SystemSetting::getValue('company.verified_tin', ''));
+
         return [
             'name' => SystemSetting::getValue('company.legal_name', 'JVD Event & Travel Management Company'),
             'address' => SystemSetting::getValue('company.address', 'UNIT 6 - Aryanna Village Center, Brgy 175 Susano Road, Camarin, Caloocan City'),
             'phone' => SystemSetting::getValue('company.phone', '0976 471 1294'),
             'email' => SystemSetting::getValue('company.email', 'accounts@jvd-travel.com'),
+            'tin' => $verifiedTin !== '' ? $verifiedTin : null,
         ];
     }
 

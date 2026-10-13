@@ -174,6 +174,17 @@ class CustomerDocumentDeliveryTest extends TestCase
             $this->assertStringNotContainsString('912-883-911-000', $html);
         }
 
+        SystemSetting::setValue('company.verified_tin', '123-456-789-00000');
+        $verifiedCompany = app(DocumentPdfService::class)->companyProfile();
+        foreach (['pdf.invoice', 'pdf.payment-receipt', 'pdf.statement_of_account'] as $view) {
+            $html = view($view, [
+                'invoice' => $invoice->fresh()->load(Invoice::operationalDocumentRelations()),
+                'company' => $verifiedCompany,
+                'generatedAt' => now(),
+            ])->render();
+            $this->assertStringContainsString('123-456-789-00000', $html);
+        }
+
         foreach ([
             InvoiceDocumentCacheService::INVOICE,
             InvoiceDocumentCacheService::PAYMENT_RECEIPT,

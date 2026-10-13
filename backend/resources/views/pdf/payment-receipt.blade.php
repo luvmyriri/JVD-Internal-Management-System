@@ -54,7 +54,7 @@
         <tr>
             <td>
                 <div class="brand">{{ $company['name'] }}</div>
-                <div class="company-copy">{{ $company['address'] }}<br>{{ $company['phone'] }} | {{ $company['email'] }}</div>
+                <div class="company-copy">{{ $company['address'] }}<br>{{ $company['phone'] }} | {{ $company['email'] }}@if(!empty($company['tin']))<br>TIN / Branch: {{ $company['tin'] }}@endif</div>
             </td>
             <td class="title">
                 PAYMENT RECEIPT<br>
