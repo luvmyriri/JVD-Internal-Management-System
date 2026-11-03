@@ -8,6 +8,7 @@ import { EntityPreviewProvider } from './context/EntityPreviewContext';
 import QuickRequestModal from './components/layout/QuickRequestModal';
 import { AuthGuard, RoleGuard } from './guards';
 import PageWrapper from './components/layout/PageWrapper';
+import SalesActionsGate from './components/layout/SalesActionsGate';
 import EntityPreviewPanel from './components/ui/EntityPreviewPanel';
 import FloatingCrossChecker from './components/ui/FloatingCrossChecker';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
@@ -185,19 +186,21 @@ export default function App() {
                     <Route path="/inventory/pms" element={<Navigate to="/logistics/pms" replace />} />
 
                     {/* Sales */}
-                    <Route path="/sales" element={<Sales />} />
-                    <Route path="/sales/departures" element={<JoinerDepartures />} />
-                    <Route path="/sales/departures/:departureId" element={<JoinerDepartureDetail />} />
-                    <Route path="/sales/joiners/checkout" element={<JoinerCheckout />} />
-                    <Route path="/sales/charters" element={<CharterSales />} />
-                    <Route path="/sales/educational-tours" element={<EducationalTours />} />
-                    <Route path="/sales/fixed-packages" element={<FixedPackages />} />
-                    <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
-                    <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
-                    <Route path="/sales/orders" element={<SalesOrders />} />
-                    <Route path="/sales/services/:serviceId/details" element={<SalesServiceDetails />} />
-                    <Route path="/sales/educational-programs/:programId/details" element={<EducationalProgramDetails />} />
-                    <Route path="/sales/transactions/:invoiceId" element={<TransactionDetails />} />
+                    <Route element={<SalesActionsGate />}>
+                      <Route path="/sales" element={<Sales />} />
+                      <Route path="/sales/departures" element={<JoinerDepartures />} />
+                      <Route path="/sales/departures/:departureId" element={<JoinerDepartureDetail />} />
+                      <Route path="/sales/joiners/checkout" element={<JoinerCheckout />} />
+                      <Route path="/sales/charters" element={<CharterSales />} />
+                      <Route path="/sales/educational-tours" element={<EducationalTours />} />
+                      <Route path="/sales/fixed-packages" element={<FixedPackages />} />
+                      <Route path="/sales/fixed-packages/:serviceId/book" element={<FixedPackageCheckout />} />
+                      <Route path="/sales/custom-transactions" element={<CustomTransactions />} />
+                      <Route path="/sales/orders" element={<SalesOrders />} />
+                      <Route path="/sales/services/:serviceId/details" element={<SalesServiceDetails />} />
+                      <Route path="/sales/educational-programs/:programId/details" element={<EducationalProgramDetails />} />
+                      <Route path="/sales/transactions/:invoiceId" element={<TransactionDetails />} />
+                    </Route>
 
                     {/* Travel Assistance */}
                     <Route path="/travel" element={<Navigate to="/travel/passporting" replace />} />
