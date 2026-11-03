@@ -1,7 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import { SALES_ACTIONS_ENABLED } from '../../constants/salesActions';
 
-/** Pauses Sales controls, including events from modals rendered through portals. */
+/** Silently pauses Sales actions, including events from portaled modals. */
 export default function SalesActionsGate() {
   if (SALES_ACTIONS_ENABLED) return <Outlet />;
 
@@ -17,9 +17,7 @@ export default function SalesActionsGate() {
           }
         }}
       >
-        <fieldset disabled aria-label="Sales actions temporarily disabled" className="m-0 min-w-0 border-0 p-0 [&_button]:cursor-not-allowed [&_button]:opacity-50 [&_input]:opacity-60 [&_select]:opacity-60 [&_textarea]:opacity-60">
-          <Outlet />
-        </fieldset>
+        <Outlet />
       </div>
     </section>
   );
